@@ -390,16 +390,16 @@ class Constant:
     MIN_CODE_COMPRESSION_LEVEL = 0
     MAX_CODE_COMPRESSION_LEVEL = 9
 
-    # job engine property
+    # job engine configs
     DEFAULT_JOB_POOL_TYPE = "process"
     DEFAULT_POOL_CONCURRENCY = 1
     DEFAULT_JOB_TIMEOUT = 300
     DEFAULT_JOB_INTERVAL = 5
 
-    # device monitor engine property
+    # device monitor engine configs
     DEFAULT_DEVICE_MONITOR_RETRIES = 100
-    DEFAULT_DEVICE_MONITOR_RETRY_INTERVAL = 600
-    DEFAULT_DEVICE_MONITOR_INTERVAL = 600
+    DEFAULT_DEVICE_MONITOR_RETRY_DELAY_INTERVAL = 60
+    DEFAULT_DEVICE_MONITOR_POLLING_INTERVAL = 60
 
     # user management
     AUTH_MODE_KEY = "auth_mode"

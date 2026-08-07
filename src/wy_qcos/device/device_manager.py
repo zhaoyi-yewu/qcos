@@ -22,9 +22,11 @@ import threading
 import redis
 from schema import Optional
 
-from wy_qcos.common.library import Library
-from wy_qcos.device.device import Device
+from wy_qcos.common import args_schema
 from wy_qcos.common.constant import Constant
+from wy_qcos.device.device import Device
+from wy_qcos.common.library import Library
+
 
 logger = logging.getLogger(__name__)
 
@@ -78,8 +80,15 @@ class DeviceManager:
                     "device_max_qubits", None
                 )
                 max_queued_jobs = device_configs.pop("max_queued_jobs", -1)
-                enable_device_monitor = device_configs.pop(
-                    "enable_device_monitor", None
+                # enable_device_monitor now lives under the
+                # [device.device_monitor] sub-table; fall back to the
+                # top-level key for backward compatibility.
+                device_monitor_configs = device_configs.get(
+                    "device_monitor", {}
+                )
+                enable_device_monitor = device_monitor_configs.pop(
+                    "enable_device_monitor",
+                    device_configs.pop("enable_device_monitor", None),
                 )
                 driver = self.driver_manager.get_driver(driver_name)
                 if driver:
@@ -93,9 +102,34 @@ class DeviceManager:
                     if max_queued_jobs is not None:
                         device.set_max_queued_jobs(max_queued_jobs)
                     device.set_enable_device_monitor(enable_device_monitor)
-                    success, err_msg = driver.validate_driver_configs(
-                        device_configs
+
+                    # validate default device config schemas
+                    success, err_msgs = Library.validate_schema(
+                        device_configs,
+                        args_schema.DEFAULT_DRIVER_CONFIG_SCHEMA,
+                        ignore_extra_keys=True,
                     )
+                    if success:
+                        driver.debug = device_configs.get("debug", False)
+                        driver.max_job_wait_time = device_configs.get(
+                            "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
+                        )
+                        driver.job_query_interval = device_configs.get(
+                            "job_query_interval",
+                            Constant.DEFAULT_JOB_QUERY_INTERVAL,
+                        )
+                    else:
+                        _err_msg = "\n".join(err_msgs)
+                        err_msg = (
+                            f"driver default config file error: {_err_msg}"
+                        )
+                        success = False
+
+                    if success:
+                        success, err_msg = driver.validate_driver_configs(
+                            device_configs
+                        )
+
                     if success:
                         device.set_configs(device_configs)
                         device.set_enable(True)

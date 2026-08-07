@@ -14,12 +14,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_tiangong550_v2.log
 device_log_file = "/var/log/qcos/device_tiangong550_v2.log"
 
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_tiangong550_v2.log
-monitor_log_file = "/var/log/qcos/device_monitor_tiangong550_v2.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_tiangong550_v2.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -52,3 +49,13 @@ job_query_interval = 5
 
 domain_url_auth = "http://127.0.0.1:18600"
 domain_url_task = "http://127.0.0.1:18600"
+
+[tiangong550_v2.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_tiangong550_v2.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60

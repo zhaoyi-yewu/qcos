@@ -12,13 +12,6 @@ debug = false
 # [Optional] device log file path
 # device_log_file = /var/log/qcos/device_hanyuan1_pulse.log
 
-# [Optional] enable device monitor
-# enable_device_monitor = false
-enable_device_monitor = false
-
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_hanyuan1_pulse.log
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_hanyuan1_pulse.log
 
@@ -49,3 +42,13 @@ port = 445
 shared_dir = "shared_dir"
 username = "username"
 passowrd = ""
+
+[hanyuan1_pulse.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_monitor_hanyuan1_pulse.log
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60

@@ -14,12 +14,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_uqc_matrix2.log
 device_log_file = "/var/log/qcos/device_uqc_matrix2.log"
 
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_uqc_matrix2.log
-monitor_log_file = "/var/log/qcos/device_monitor_uqc_matrix2.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_uqc_matrix2.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -46,3 +43,13 @@ uqc_port = 8003
 password_token = "123456789"
 # backend_device_name: "Matrix2" or "qiskit-sim"
 backend_device_name = "Matrix2"
+
+[uqc_matrix2.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_uqc_matrix2.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60

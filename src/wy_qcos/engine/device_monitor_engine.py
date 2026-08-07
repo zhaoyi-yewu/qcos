@@ -22,15 +22,30 @@ import redis
 from prefect import flow
 from loguru import logger
 
+from wy_qcos.common import args_schema
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.library import Library
 from wy_qcos.engine.common import init_logger
 from wy_qcos.engine.job_engine import init_driver
+
+
+def validate_device_info(device_info):
+    """Validate device info.
+
+    Args:
+        device_info: device info
+    """
+    success, err_msgs = Library.validate_schema(
+        device_info, args_schema.DEVICE_INFO_SCHEMA, allow_none=True
+    )
+    if not success:
+        logger.warning(f"Invalid device info. Reason: {'; '.join(err_msgs)}")
 
 
 @flow(
     persist_result=False,
     retries=Constant.DEFAULT_DEVICE_MONITOR_RETRIES,
-    retry_delay_seconds=Constant.DEFAULT_DEVICE_MONITOR_RETRY_INTERVAL,
+    retry_delay_seconds=Constant.DEFAULT_DEVICE_MONITOR_RETRY_DELAY_INTERVAL,
 )
 def device_monitor_flow(device_monitor_info):
     """Device monitor flow.
@@ -46,12 +61,25 @@ def device_monitor_flow(device_monitor_info):
     device_configs = device["configs"]
     global_configs = device_monitor_info["global"]["configs"]
 
+    # polling interval: read from [device.device_monitor] config table,
+    # fall back to the default constant when not configured.
+    device_monitor_configs = device_configs.get("device_monitor", {})
+    polling_interval = device_monitor_configs.get(
+        "polling_interval",
+        Constant.DEFAULT_DEVICE_MONITOR_POLLING_INTERVAL,
+    )
+
     # init logger
     debug = global_configs.get("DEBUG", False)
     if "debug" in device_configs:
         debug = device_configs["debug"]
     device_monitor_log_file = f"/var/log/qcos/device_monitor_{device_name}.log"
-    if "monitor_log_file" in device_configs:
+    # monitor_log_file now lives under the [device.device_monitor]
+    # sub-table; fall back to the top-level key for backward
+    # compatibility.
+    if "monitor_log_file" in device_monitor_configs:
+        device_monitor_log_file = device_monitor_configs["monitor_log_file"]
+    elif "monitor_log_file" in device_configs:
         device_monitor_log_file = device_configs["monitor_log_file"]
 
     # Extract logging configuration parameters
@@ -98,9 +126,15 @@ def device_monitor_flow(device_monitor_info):
             device_info = driver.fetch_running_info()
         except Exception as e:
             logger.error(f"Fail to fetch running info. exception: {e}")
-            time.sleep(Constant.DEFAULT_DEVICE_MONITOR_INTERVAL)
+            time.sleep(polling_interval)
             continue
-        device_info["last_updated_at"] = time.time()
+
+        # set updated time
+        current_datetime_ts = Library.get_current_datetime(timestamp=True)
+        device_info["last_updated_at"] = Library.to_iso(current_datetime_ts)
+        # validate device_info schema
+        validate_device_info(device_info)
+        # convert device info to json format
         device_info_json = json.dumps(device_info)
 
         # publish device info by redis
@@ -110,4 +144,4 @@ def device_monitor_flow(device_monitor_info):
         )
         redis_instance.publish(channel_name, device_info_json)
 
-        time.sleep(Constant.DEFAULT_DEVICE_MONITOR_INTERVAL)
+        time.sleep(polling_interval)

@@ -14,12 +14,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_spinq_rpc.log
 device_log_file = "/var/log/qcos/device_spinq_rpc.log"
 
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_spinq_rpc.log
-monitor_log_file = "/var/log/qcos/device_monitor_spinq_rpc.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_spinq_rpc.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -45,6 +42,16 @@ rpc_host = "127.0.0.1"
 rpc_port = 4242
 username = "user"
 password = ""
+
+[spinq_rpc.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_spinq_rpc.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
 
 [spinq_rpc.transpiler.qpu_configs]
 # TODO(wangjujun): to be defined

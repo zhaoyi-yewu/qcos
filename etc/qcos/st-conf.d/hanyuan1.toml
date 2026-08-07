@@ -14,13 +14,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_hanyuan1.log
 device_log_file = "/var/log/qcos/device_hanyuan1.log"
 
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_hanyuan1.log
-monitor_log_file = "/var/log/qcos/device_monitor_hanyuan1.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_hanyuan1.log
-mgr_log_file = "/var/log/qcos/device_mgr_hanyuan1.log"
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -49,6 +45,16 @@ zmq_ip_address = "127.0.0.1"
 zmq_port = 18403
 use_zmq = false
 zmq_pool_size = 60
+
+[hanyuan1.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = true
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_hanyuan1.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
 
 [hanyuan1.transpiler.qpu_configs]
 qubits = 6
