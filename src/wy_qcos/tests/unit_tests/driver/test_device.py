@@ -68,7 +68,7 @@ class TestDevice:
         details = {}
         calibrate_info = {}
         calibrate_info["step"] = 0.1
-        details["calibrate_info"] = calibrate_info
+        details["calibration"] = calibrate_info
         device.set_device_detail(details)
         assert device.details is not None
         assert device.calibrate_info is not None
@@ -153,7 +153,7 @@ class TestDevice:
 
         device.set_device_running_info({
             "status": "online",
-            "details": {"calibrate_info": {"step": 0.5}},
+            "details": {"calibration": {"step": 0.5}},
         })
 
         # Status should remain maintain

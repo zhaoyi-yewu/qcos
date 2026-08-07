@@ -269,7 +269,7 @@ class TaskScheduler:
         # get transpiler options
         transpiler_module_name = None
         transpiler_class_name = None
-        transpiler_name = driver.get_transpiler()
+        transpiler_name = job_info.transpiler
         transpiler = self._transpiler_manager.get_transpiler(transpiler_name)
         if transpiler:
             transpiler_module_name = transpiler.get_module_name()

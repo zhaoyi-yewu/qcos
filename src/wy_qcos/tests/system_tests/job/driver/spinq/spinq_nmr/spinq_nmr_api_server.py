@@ -31,7 +31,7 @@ options = None
 dev_running_info = {
     "status": "online",
     "details": {
-        "calibrate_info": {
+        "calibration": {
             "step": 0.1,
             "shot": 800,
         },
