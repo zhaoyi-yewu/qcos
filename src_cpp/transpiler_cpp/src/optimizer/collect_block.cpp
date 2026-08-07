@@ -91,6 +91,13 @@ std::vector<std::vector<DAGOpNode*>> collect_all_matching_blocks(
     size_t min_block_size) {
   auto op_nodes = dag.topological_op_nodes();
 
+  // Build topological order index — node_id() is NOT guaranteed to be
+  // topological after DAG modifications (e.g. replace_block_with_dag).
+  std::unordered_map<DAGOpNode*, size_t> topo_order;
+  for (size_t i = 0; i < op_nodes.size(); ++i) {
+    topo_order[op_nodes[i]] = i;
+  }
+
   // 计算每个 op 节点的 op 前驱数量（入度）
   std::unordered_map<DAGOpNode*, int> in_degree;
   std::vector<DAGOpNode*> pending_nodes;
