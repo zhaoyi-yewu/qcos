@@ -72,6 +72,55 @@ CALLBACKS_SCHEMA = [
         Optional("timeout"): int,
     }
 ]
+DEVICE_INFO_SCHEMA = {
+    "status": str,
+    Optional("details"): {
+        Optional("calibration"): {
+            Optional("last_updated"): str,
+            Optional("qubit_metrics"): [
+                {
+                    "qubit_id": int,
+                    Optional("xeb_fidelity"): Or(int, float),
+                    Optional("t1"): Or(int, float),
+                    Optional("t2"): Or(int, float),
+                    Optional("readout_fidelity_0"): Or(int, float),
+                    Optional("readout_fidelity_1"): Or(int, float),
+                }
+            ],
+            Optional("coupler_metrics"): [
+                {
+                    "qubits": [int],
+                    Optional("cz_fidelity"): Or(int, float),
+                }
+            ],
+        }
+    },
+    Optional("last_updated_at"): str,
+}
+
+# Config schema
+# Note: enable_device_monitor and monitor_log_file have been moved
+# into the [device.device_monitor] sub-table; they are validated
+# there and are no longer top-level driver config keys.
+DEFAULT_DRIVER_CONFIG_SCHEMA = {
+    Optional("debug"): bool,
+    Optional("device_log_file"): str,
+    Optional("mgr_log_file"): str,
+    Optional("max_queued_jobs"): int,
+    Optional("log_format"): str,
+    Optional("log_rotate_max_size_mb"): int,
+    Optional("log_rotate_backup_count"): int,
+    Optional("log_rotate_compression"): bool,
+    Optional("max_job_wait_time"): int,
+    Optional("job_query_interval"): int,
+    Optional("device_monitor"): {
+        Optional("enable_device_monitor"): bool,
+        Optional("monitor_log_file"): str,
+        Optional("polling_interval"): int,
+    },
+}
+
+# Options schema
 DRIVER_OPTIONS = dict
 TRANSPILER_OPTIONS = dict
 QEC_OPTIONS = dict

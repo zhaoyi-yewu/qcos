@@ -149,7 +149,7 @@ class DriverHanyuan1(DriverGateBase):
             },
         })
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema
+            configs, driver_config_schema, ignore_extra_keys=True
         )
         if not _success:
             _err_msg = "\n".join(err_msgs)
@@ -161,12 +161,6 @@ class DriverHanyuan1(DriverGateBase):
             # copy configs to self.decomposition_rule
             self.decomposition_rule = copy.deepcopy(
                 configs.get("decomposition_rule", {})
-            )
-            self.max_job_wait_time = configs.get(
-                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
-            )
-            self.job_query_interval = configs.get(
-                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
             )
         return success, err_msg
 

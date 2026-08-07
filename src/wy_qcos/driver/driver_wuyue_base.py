@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import base64
-import copy
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.backends import default_backend
@@ -88,6 +87,12 @@ class DriverWuyueBase(DriverBase):
             self.TASK_STAGE_GET_RESULTS: 95,
             self.TASK_STAGE_COMPLETE: 100,
         }
+        self.default_device_info_schema = {
+            Optional("singleFidelity"): float,
+            Optional("doubleFidelity"): float,
+            Optional("SPAMError"): float,
+            Optional("status"): str,
+        }
 
     def init_driver(self):
         """Init driver."""
@@ -106,8 +111,7 @@ class DriverWuyueBase(DriverBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
-        driver_config_schema.update({
+        driver_config_schema = {
             "ip_address": str,
             "port": int,
             "client_id": str,
@@ -115,9 +119,9 @@ class DriverWuyueBase(DriverBase):
             "password_secret": str,
             "password_pub_key": str,
             "password_pri_key": str,
-        })
+        }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema
+            configs, driver_config_schema, ignore_extra_keys=True
         )
         if _success:
             self.ip_addr = configs.get("ip_address", None)
@@ -127,12 +131,6 @@ class DriverWuyueBase(DriverBase):
             self.password_secret = configs.get("password_secret", None)
             self.password_pub_key = configs.get("password_pub_key", None)
             self.password_pri_key = configs.get("password_pri_key", None)
-            self.max_job_wait_time = configs.get(
-                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
-            )
-            self.job_query_interval = configs.get(
-                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
-            )
         else:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
