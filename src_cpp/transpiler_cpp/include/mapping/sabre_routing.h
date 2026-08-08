@@ -53,6 +53,8 @@ std::vector<int> sabre_initial_mapping(
  * 空则不使用保真度。
  * @param single_qubit_fidelities 单比特保真度数组, 空则不使用。
  * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"。
+ * @param target_bits 目标物理位(空=不限制); 全单比特门时映射到这些位,
+ * 含双比特门时在其诱导子图上路由。
  * @param fidelity_threshold 保真度阈值, <0 自适应计算, 默认 -1。
  * @param fidelity_weight DenseLayout 保真度权重，取值 [0, 1]，默认 0.5。
  * @param extension_size 扩展集大小，用于 lookahead 成本计算，默认 20。
@@ -66,8 +68,9 @@ std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<double>& edge_fidelities = {},
     const std::vector<double>& single_qubit_fidelities = {},
     const std::string& layout_method = "vf2_layout",
-    double fidelity_threshold = -1.0, double fidelity_weight = 0.5,
-    int extension_size = 20, double weight = 0.5, double decay = 0.001);
+    const std::vector<int>& target_bits = {}, double fidelity_threshold = -1.0,
+    double fidelity_weight = 0.5, int extension_size = 20, double weight = 0.5,
+    double decay = 0.001);
 
 /**
  * @brief SABRE算法中的节点结构
@@ -108,6 +111,8 @@ class SABRE {
    * @param edge_fidelities 边保真度数组(与coupling_list对应)，空则不使用保真度
    * @param single_qubit_fidelities 单比特保真度数组，空则不使用
    * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"
+   * @param target_bits 目标物理位(空=不限制); 全单比特门时映射到这些位,
+   * 含双比特门时在其诱导子图上路由。
    * @param fidelity_threshold 保真度阈值, <0 自适应计算 (mean - std, clamp
    * [0.3, 0.9]),
    *                           >=0 使用传入值, 默认 -1
@@ -120,6 +125,7 @@ class SABRE {
         const std::vector<double>& edge_fidelities = {},
         const std::vector<double>& single_qubit_fidelities = {},
         const std::string& layout_method = "vf2_layout",
+        const std::vector<int>& target_bits = {},
         double fidelity_threshold = -1.0, double fidelity_weight = 0.5,
         int extension_size = 20, double weight = 0.5, double decay = 0.001);
 
@@ -183,6 +189,7 @@ class SABRE {
   double decay_;                                 ///< SWAP衰减因子
   double fidelity_weight_;                       ///< DenseLayout保真度权重
   std::string layout_method_;                    ///< 初始映射方法
+  std::vector<int> target_bits_;                 ///< 用户指定目标物理位
   std::vector<std::vector<int>> adj_list_;       ///< 物理耦合图邻接表
   std::vector<std::vector<bool>> adj_matrix_;    ///< 邻接矩阵(O(1)查询)
   std::vector<std::vector<int>> dist_;           ///< 最短路径距离矩阵
@@ -193,8 +200,9 @@ class SABRE {
       phy_exe_gates_;             ///< 映射后的物理门序列(含measure)
   std::vector<int> logic2phy_;    ///< 最终逻辑到物理映射
   std::vector<int> initial_l2p_;  ///< 初始逻辑到物理映射
-  bool did_preprocess_ = false;   ///< 是否做了 ID 稠密化预处理
-  PhysicalIdRemap remap_;         ///< 稠密化→原始 ID 映射
+  bool did_preprocess_ = false;   ///< 是否做了逻辑位稠密化
+  IdRemap remap_;                 ///< 逻辑位 orig和dense 双向映射
+  int max_chip_qubit_ = 0;        ///< 原始耦合图最大比特 ID
 
   // 预分配的热路径缓冲区
   std::vector<std::pair<int, int>> candidate_swaps_;
@@ -217,6 +225,22 @@ class SABRE {
    * 填充成员变量`dist_`，用于后续启发式代价评估的O(1)距离查询。
    */
   void init_distance_matrix();
+
+  /**
+   * @brief 全单比特门直接映射 (无 SWAP, 无路由)
+   *
+   * 电路全为单比特门 (has_2q == false)。按 target_bits(非空)
+   * 或全芯片保真度 top-N (需有 single_qubit_fidelities 数据)
+   * 直接建立逻辑->物理映射并替换门 targets, 跳过 SABRE 路由。
+   * 两种映射来源都不可用时 (无 target_bits 且无保真度数据) 保持逻辑位
+   * 不变 (identity 映射)。
+   *
+   * @param gate_ops 逻辑门序列 (已转为 GateOperation, 不含 measure)
+   * @param measure_ops measure 操作列表
+   */
+  std::vector<GateOperation> all_single_qubit_mapping(
+      const std::vector<GateOperation>& gate_ops,
+      const std::vector<std::shared_ptr<Measure>>& measure_ops);
 
   /**
    * @brief 判断节点是否可以在当前物理映射上执行 (内联,使用邻接矩阵O(1)查询)

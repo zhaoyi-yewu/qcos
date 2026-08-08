@@ -54,15 +54,15 @@ std::shared_ptr<BaseOperation> restore_base_operation(
     const GateOperation& routed_op);
 
 /**
- * @brief 物理量子位 ID 稠密化映射表
+ * @brief ID 稠密化映射表
  *
- * 存储原始物理 ID 空间与稠密 ID 空间的双向映射。
- * 不可用量子位在 orig_to_dense 中记为 -1。
+ * 存储原始 ID 空间与稠密 ID 空间的双向映射。
+ * 不可用 ID 在 orig_to_dense 中记为 -1。
  */
-struct PhysicalIdRemap {
-  std::vector<int> orig_to_dense;  ///< 原始 ID -> 稠密 ID, 不可用量子位填 -1
+struct IdRemap {
+  std::vector<int> orig_to_dense;  ///< 原始 ID -> 稠密 ID, 不可用 ID 填 -1
   std::vector<int> dense_to_orig;  ///< 稠密 ID -> 原始 ID
-  int dense_count = 0;             ///< 稠密化后的物理位总数
+  int dense_count = 0;             ///< 稠密化后的 ID 总数
 };
 
 /**
@@ -118,9 +118,9 @@ void select_largest_component(std::vector<std::pair<int, int>>& coupling_list,
  * 并同步重建 single_qubit_fidelities。
  *
  * @param chip [in/out] 芯片标定数据, 原地修改为稠密 ID 空间
- * @return PhysicalIdRemap 映射表, 供 restore_physical_ids 后处理使用
+ * @return IdRemap 映射表, 供 restore_physical_ids 后处理使用
  */
-PhysicalIdRemap densify_chip_topology(ChipCalibration& chip);
+IdRemap densify_chip_topology(ChipCalibration& chip);
 
 /**
  * @brief 将稠密物理 ID 还原为原始物理 ID
@@ -129,9 +129,52 @@ PhysicalIdRemap densify_chip_topology(ChipCalibration& chip);
  * @param physical_gates [in/out] 物理门序列
  * @param logic2phy [in/out] 逻辑->物理映射
  */
-void restore_physical_ids(const PhysicalIdRemap& remap,
+void restore_physical_ids(const IdRemap& remap,
                           std::vector<GateOperation>& physical_gates,
                           std::vector<int>& logic2phy);
+
+/**
+ * @brief 从 gate_ops + measure_ops 收集 used 逻辑位, 构建稠密化映射
+ *
+ * 收集所有门和 measure 的 target 逻辑位 (去重升序), 若 used_count <
+ * max_id+1 说明有编号空缺, 构建 orig->dense 双向映射表。
+ * 无空缺时返回 dense_count=0 (调用方跳过稠密化)。
+ *
+ * @param gate_ops 逻辑门序列
+ * @param measure_ops measure 操作列表
+ * @return IdRemap 稠密化映射 (dense_count=0 表示无需稠密化)
+ */
+IdRemap build_logical_remap(
+    const std::vector<GateOperation>& gate_ops,
+    const std::vector<std::shared_ptr<Measure>>& measure_ops);
+
+/**
+ * @brief 逻辑位稠密化: 构建 remap 并重写 gate/measure targets 为稠密 ID
+ *
+ * 调用 build_logical_remap 构建映射, 若有编号空缺则原地重写所有
+ * gate_ops 和 measure_ops 的 targets 为稠密 0..N-1。
+ * 无空缺时返回 dense_count=0 (调用方跳过)。
+ *
+ * @param gate_ops [in/out] 逻辑门序列, targets 原地重写
+ * @param measure_ops [in/out] measure 操作列表, targets 原地重写
+ * @return IdRemap 稠密化映射 (dense_count=0 表示无需稠密化)
+ */
+IdRemap densify_logical_qubits(
+    std::vector<GateOperation>& gate_ops,
+    std::vector<std::shared_ptr<Measure>>& measure_ops);
+
+/**
+ * @brief 将映射向量从稠密逻辑位索引还原为原始逻辑位索引
+ *
+ * 构建大小为 orig_size 的新向量, 将 dense_mapping[dense_id] 的值
+ * 搬到 restored[dense_to_orig[dense_id]] 位置, 空缺位填 -1。
+ *
+ * @param remap densify_logical_qubits 返回的映射表
+ * @param dense_mapping 稠密逻辑位索引的映射向量
+ * @return 还原后的映射向量 (按原始逻辑位索引, 空缺位为 -1)
+ */
+std::vector<int> restore_logical_mapping(
+    const IdRemap& remap, const std::vector<int>& dense_mapping);
 
 /**
  * @brief 校验映射函数的公共输入参数

@@ -1758,11 +1758,13 @@ class SABRE:
         coupling_list: collections.abc.Sequence[tuple[int, int]],
         edge_fidelities: collections.abc.Sequence[float] = [],
         single_qubit_fidelities: collections.abc.Sequence[float] = [],
+        layout_method: str = "vf2_layout",
+        target_bits: collections.abc.Sequence[int] = [],
         fidelity_threshold: float = -1.0,
+        fidelity_weight: float = 0.5,
         extension_size: int = 20,
         weight: float = 0.5,
         decay: float = 0.001,
-        fidelity_weight: float = 0.5,
     ) -> None:
         """Construct a SABRE router.
 
@@ -1773,6 +1775,11 @@ class SABRE:
             corresponding to coupling_list. Empty means not used.
         single_qubit_fidelities (list[float], optional): Single-qubit
             fidelity array indexed by physical qubit ID. Empty means not used.
+        layout_method (str, optional): Initial layout method: "vf2_layout"
+            (default) or "dense_layout".
+        target_bits (list[int], optional): Target physical qubit IDs. When
+            non-empty, all-1q circuits map to these qubits and 2q circuits
+            route on the induced subgraph of edges between them.
         fidelity_threshold (float, optional): Fidelity threshold for filtering
             low-fidelity edges. Negative value means adaptive calculation
             (mean - std, clamped to [0.3, 0.9]). Defaults to -1.0 (adaptive).
@@ -2494,11 +2501,13 @@ def sabre_routing(
     coupling_list: collections.abc.Sequence[tuple[int, int]],
     edge_fidelities: collections.abc.Sequence[float] = [],
     single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    layout_method: str = "vf2_layout",
+    target_bits: collections.abc.Sequence[int] = [],
     fidelity_threshold: float = -1.0,
+    fidelity_weight: float = 0.5,
     extension_size: int = 20,
     weight: float = 0.5,
     decay: float = 0.001,
-    fidelity_weight: float = 0.5,
 ) -> list[high_performance.BaseOperation]:
     """Execute SABRE routing.
 
@@ -2509,19 +2518,24 @@ def sabre_routing(
         corresponding to coupling_list. Empty means not used.
     single_qubit_fidelities (list[float], optional): Single-qubit fidelity
         array indexed by physical qubit ID. Empty means not used.
+    layout_method (str, optional): Initial layout method: "vf2_layout"
+        (default) or "dense_layout".
+    target_bits (list[int], optional): Target physical qubit IDs. When
+        non-empty, all-1q circuits map to these qubits and 2q circuits
+        route on the induced subgraph of edges between them.
     fidelity_threshold (float, optional): Fidelity threshold for filtering
         low-fidelity edges. Negative value means adaptive calculation
         (mean - std, clamped to [0.3, 0.9]). Defaults to -1.0 (adaptive).
-    extension_size (int, optional): Size of the lookahead set.
-    Defaults to 20.
-    weight (float, optional): Weight between front layer and lookahead cost.
-    Defaults to 0.5.
-    decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
     fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
         0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
+    extension_size (int, optional): Size of the lookahead set.
+        Defaults to 20.
+    weight (float, optional): Weight between front layer and lookahead cost.
+        Defaults to 0.5.
+    decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
 
     Returns:
-    list[BaseOperation]: The routed physical operation sequence.
+        list[BaseOperation]: The routed physical operation sequence.
     """
     ...
 
@@ -2557,6 +2571,7 @@ def transpile(
     edge_fidelities: collections.abc.Sequence[float] = [],
     single_qubit_fidelities: collections.abc.Sequence[float] = [],
     layout_method: str = "vf2_layout",
+    target_bits: collections.abc.Sequence[int] = [],
     num_threads: int = 0,
     fast_mode: bool = True,
     fidelity_threshold: float = -1.0,
@@ -2579,6 +2594,9 @@ def transpile(
         array indexed by physical qubit ID. Empty means not used.
     layout_method (str, optional): Initial layout method: "vf2_layout"
         (default) or "dense_layout".
+    target_bits (list[int], optional): Target physical qubit IDs. When
+        non-empty, all-1q circuits map to these qubits and 2q circuits
+        route on the induced subgraph of edges between them.
     num_threads (int, optional): Optimization thread count. 0 = auto
         (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
     fast_mode (bool, optional): Optimization fast mode. True = run pass

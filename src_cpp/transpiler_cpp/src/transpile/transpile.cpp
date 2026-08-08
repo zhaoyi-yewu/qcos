@@ -80,8 +80,9 @@ TranspileResult transpile(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
     const std::vector<double>& single_qubit_fidelities,
-    const std::string& layout_method, size_t num_threads, bool fast_mode,
-    double fidelity_threshold, double fidelity_weight) {
+    const std::string& layout_method, const std::vector<int>& target_bits,
+    size_t num_threads, bool fast_mode, double fidelity_threshold,
+    double fidelity_weight) {
   using clock = std::chrono::high_resolution_clock;
 
   TranspileResult result;
@@ -129,7 +130,7 @@ TranspileResult transpile(
   } else {
     routed_ops =
         sabre_routing(decomposed_ops, coupling_list, edge_fidelities,
-                      single_qubit_fidelities, layout_method,
+                      single_qubit_fidelities, layout_method, target_bits,
                       fidelity_threshold, fidelity_weight, 20, 0.5, 0.001);
   }
   t.mapping_time =
