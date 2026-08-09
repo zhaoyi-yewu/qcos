@@ -2689,3 +2689,11 @@ class QuafuVerifier:
     def verify(
         self, qasm_string: str, verbose: bool = False
     ) -> high_performance.VerifyResult: ...
+
+class CMSSVerifier:
+    """CMSS (compilation service) verifier."""
+
+    def __init__(self, params: high_performance.VerifyParams) -> None: ...
+    def verify(
+        self, qasm_string: str, verbose: bool = False
+    ) -> high_performance.VerifyResult: ...
