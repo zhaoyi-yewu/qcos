@@ -29,7 +29,7 @@ FULL_DEVICE_INFO = {
     "status": "online",
     "details": {
         "calibration": {
-            "last_updated": "2026-08-04T14:24:43.870115",
+            "last_updated_at": "2026-08-04T14:24:43.870115",
             "qubit_metrics": [
                 {
                     "qubit_id": 0,
@@ -135,7 +135,7 @@ class TestDeviceInfoSchema:
         device_info = {
             "status": "online",
             "details": {
-                "calibration": {"last_updated": "2026-08-04"},
+                "calibration": {"last_updated_at": "2026-08-04"},
             },
         }
         success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)

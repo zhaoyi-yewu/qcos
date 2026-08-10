@@ -142,6 +142,16 @@ class DriverBase:
             "max_job_wait_time": Constant.DEFAULT_JOB_WAIT_TIME,
             "job_query_interval": Constant.DEFAULT_JOB_QUERY_INTERVAL,
             "compute_fidelity": False,
+            "qes": {
+                "dynamical_decoupling": {
+                    "enable": False,
+                },
+            },
+            "qem": {
+                "readout_error": {
+                    "enable": False,
+                },
+            },
         }
         # driver_options schema
         self.driver_options_schema = {
@@ -150,6 +160,16 @@ class DriverBase:
             Optional("max_job_wait_time"): int,
             Optional("job_query_interval"): int,
             Optional("compute_fidelity"): bool,
+            Optional("qes"): {
+                Optional("dynamical_decoupling"): {
+                    Optional("enable"): bool,
+                }
+            },
+            Optional("qem"): {
+                Optional("readout_error"): {
+                    Optional("enable"): bool,
+                }
+            },
         }
         self.max_job_wait_time = Constant.DEFAULT_JOB_WAIT_TIME  # 7 days
         self.job_query_interval = Constant.DEFAULT_JOB_QUERY_INTERVAL
@@ -729,3 +749,18 @@ class DriverBase:
             f"Driver: {self.__class__.__name__} "
             f"must implement method: fetch_running_info"
         )
+
+    def set_optimized_circuit(self, optimized_circuit):
+        """Set optimized circuit.
+
+        Args:
+            optimized_circuit: the optimized circuit
+        """
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            f"must implement method: set_optimized_circuit"
+        )
+
+    def get_optimized_circuit(self):
+        """Get optimized circuit."""
+        return None

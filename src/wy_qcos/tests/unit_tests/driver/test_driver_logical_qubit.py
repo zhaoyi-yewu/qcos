@@ -29,12 +29,12 @@ org_path = Library.set_driver_venv_path(
 import pytest
 from unittest.mock import patch, Mock
 
-from wy_qcos.driver.logical_qubit.driver_logical_qubit import (
-    DriverLogicalQubit,
+from wy_qcos.driver.logical_qubit.driver_lq_base import (
+    DriverLogicalQubitBase,
 )
 from wy_qcos.driver.driver_base import DriverBase
 
-driver_logical_qubit = DriverLogicalQubit()
+driver_logical_qubit = DriverLogicalQubitBase()
 shots = 10
 job_id = "00000000-0000-4000-8000-000000000001"
 num_qubits = 5
@@ -59,7 +59,7 @@ class TestDriverLogicalQubit:
     def test_init_driver(self):
         assert driver_logical_qubit.init_driver() is None
 
-    @patch("wy_qcos.driver.logical_qubit.driver_logical_qubit.LQCloudProvider")
+    @patch("wy_qcos.driver.logical_qubit.driver_lq_base.LQCloudProvider")
     def test_fetch_configs(self, mock_task):
         mock_task.return_value = Mock()
         assert driver_logical_qubit.fetch_configs() is None
@@ -71,7 +71,7 @@ class TestDriverLogicalQubit:
         mock_task = Mock()
         expected_data = {"status": "completed", "data": {"00": 9, "11": 1}}
         mock_task.result.return_value = expected_data
-        success, result = driver_logical_qubit.get_task_results(mock_task)
+        success, _, result = driver_logical_qubit.get_task_results(mock_task)
         assert success is True
 
     def test_convert_results(self):
@@ -85,14 +85,14 @@ class TestDriverLogicalQubit:
         driver_logical_qubit.backend = Mock()
         expected_task = Mock(name="FakeTaskObject")
         driver_logical_qubit.backend.run.return_value = expected_task
-        result_task = driver_logical_qubit.submit_task("qc", shots)
+        _, _, result_task = driver_logical_qubit.submit_task("qc", shots)
         assert result_task == expected_task
 
     @pytest.mark.smoke
-    @patch.object(DriverLogicalQubit, "convert_results")
-    @patch.object(DriverLogicalQubit, "get_task_results")
-    @patch.object(DriverLogicalQubit, "submit_task")
-    @patch.object(DriverLogicalQubit, "convert_code")
+    @patch.object(DriverLogicalQubitBase, "convert_results")
+    @patch.object(DriverLogicalQubitBase, "get_task_results")
+    @patch.object(DriverLogicalQubitBase, "submit_task")
+    @patch.object(DriverLogicalQubitBase, "convert_code")
     def test_run(
         self,
         mock_convert_code,
@@ -101,9 +101,10 @@ class TestDriverLogicalQubit:
         mock_convert_results,
     ):
         mock_convert_code.return_value = Mock()
-        mock_submit_task.return_value = Mock()
+        mock_submit_task.return_value = (True, None, Mock())
         mock_get_task_results.return_value = (
             True,
+            None,
             {"count": {"11111": 9, "00000": 1}},
         )
         mock_convert_results.return_value = {"11111": 9, "00000": 1}

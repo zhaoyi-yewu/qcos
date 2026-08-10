@@ -1,18 +1,18 @@
-[logical_qubit]
-alias_name = "逻辑比特 QZ01 超导驱动"
-driver = "DriverLogicalQubit"
-description = "逻辑比特 QZ01 超导驱动"
+[lq_qz01_surface]
+alias_name = "逻辑比特 QZ01-surface_code 超导驱动"
+driver = "DriverLqQZ01SurfaceCode"
+description = "逻辑比特 QZ01-surface_code 超导驱动"
 
 # [Optional] debug
 # debug = false
 debug = false
 
 # [Optional] device log file path
-# device_log_file = /var/log/qcos/device_logical_qubit.log
-device_log_file = "/var/log/qcos/device_logical_qubit.log"
+# device_log_file = /var/log/qcos/device_lq_qz01_surface.log
+device_log_file = "/var/log/qcos/device_lq_qz01_surface.log"
 
 # [Optional] device manager log file path
-# mgr_log_file = /var/log/qcos/device_logical_qubit.log
+# mgr_log_file = /var/log/qcos/device_mgr_lq_qz01_surface.log
 
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
@@ -39,17 +39,17 @@ chip_name = "QZ01-surface_code"
 token = ""
 url = "https://cloud.logicalqubit.com"
 
-[logical_qubit.device_monitor]
+[lq_qz01_surface.device_monitor]
 # [Optional] enable device monitor
 enable_device_monitor = true
 
 # [Optional] device monitor log file path
-monitor_log_file = "/var/log/qcos/device_monitor_logical_qubit.log"
+monitor_log_file = "/var/log/qcos/device_monitor_lq_qz01_surface.log"
 
 # [Optional] monitor polling interval (secs)
 polling_interval = 60
 
-[logical_qubit.transpiler.qpu_configs]
+[lq_qz01_surface.transpiler.qpu_configs]
 qubits = 17
 
 coupler_map.CZ0_9 = ["Q0", "Q9"]

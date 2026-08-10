@@ -90,6 +90,7 @@ def _get_device_info(device, auth_data=None, details=False, job_repo=None):
         "status": device.status,
         "tech_type": device.tech_type,
         "max_qubits": device.max_qubits,
+        "available_qubits": device.available_qubits,
         "job_count": _get_job_count(device.name, job_repo),
         "last_updated_at": device.last_updated_at,
         "details": device.details,
@@ -106,7 +107,7 @@ def _get_device_info(device, auth_data=None, details=False, job_repo=None):
     errors=[],
 )
 def get_devices(
-    body: schemas.GetDevicesRequest | None = None,
+    body: schemas.GetDevicesRequest,
     auth_data: dict | None = Depends(auth),
     job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> dict[str, schemas.GetDeviceResponse]:
@@ -123,6 +124,7 @@ def get_devices(
     func_name = "get_devices"
     logger.info(f"Call {func_name}: {body}")
 
+    details = body.details
     device_manager = scheduler.get_device_manager()
     devices = device_manager.get_devices()
     response_info = {}
@@ -131,7 +133,7 @@ def get_devices(
         if not success:
             continue
         _response_info = _get_device_info(
-            device, auth_data, job_repo=job_repo, details=True
+            device, auth_data, job_repo=job_repo, details=details
         )
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info

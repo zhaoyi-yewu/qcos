@@ -306,7 +306,7 @@ class Client:
         return status_code, reason, text, result
 
     # [Device]
-    def get_devices(self):
+    def get_devices(self, details=False):
         """Get device list.
 
         Returns:
@@ -315,8 +315,9 @@ class Client:
         method_name = "get_devices"
 
         # construct data and call json rpc
+        data = {"details": details}
         status_code, reason, text, result = self.call_json_rpc(
-            self.device_url, method_name, body_data=None
+            self.device_url, method_name, data
         )
         return status_code, reason, text, result
 

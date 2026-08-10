@@ -75,8 +75,20 @@ CALLBACKS_SCHEMA = [
 DEVICE_INFO_SCHEMA = {
     "status": str,
     Optional("details"): {
+        Optional("vendor_job_count"): {
+            Optional("unknown"): int,
+            Optional("queued"): int,
+            Optional("running"): int,
+            Optional("failed"): int,
+            Optional("completed"): int,
+            Optional("cancelling"): int,
+            Optional("cancelled"): int,
+            Optional("deleting"): int,
+            Optional("deleted"): int,
+            Optional("total"): int,
+        },
         Optional("calibration"): {
-            Optional("last_updated"): str,
+            Optional("last_updated_at"): str,
             Optional("qubit_metrics"): [
                 {
                     "qubit_id": int,
@@ -93,8 +105,9 @@ DEVICE_INFO_SCHEMA = {
                     Optional("cz_fidelity"): Or(int, float),
                 }
             ],
-        }
+        },
     },
+    Optional("available_qubits"): int,
     Optional("last_updated_at"): str,
 }
 

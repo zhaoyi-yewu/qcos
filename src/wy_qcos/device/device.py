@@ -57,6 +57,8 @@ class Device:
         self.status = self.DEVICE_STATUS_OFFLINE
         # qubits
         self.max_qubits = driver.get_max_qubits()
+        # available qubits
+        self.available_qubits = None
         # tech_type
         self.tech_type = driver.get_tech_type()
         # progress
@@ -233,11 +235,13 @@ class Device:
         """
         device_status = device_running_info.get("status")
         last_updated_at = device_running_info.get("last_updated_at")
+        available_qubits = device_running_info.get("available_qubits")
 
         if not self._manual_maintain_mode:
             if device_status:
                 self.set_status(device_status)
                 self.last_updated_at = last_updated_at
+                self.available_qubits = available_qubits
 
         details = device_running_info.get("details")
         if details:

@@ -741,6 +741,13 @@ class GetDevices(Lister):
             parser
         """
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--details",
+            dest="details",
+            action="store_true",
+            default=False,
+            help="Show detailed device information",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -758,8 +765,11 @@ class GetDevices(Lister):
             "status",
             "description",
         ]
+        details = parsed_args.details
 
-        status_code, reason, text, result = self.app.client.get_devices()
+        status_code, reason, text, result = self.app.client.get_devices(
+            details=details
+        )
         json_results = CommandHelper.check_results(
             resource, "get_devices", status_code, reason, text
         )
