@@ -113,7 +113,7 @@ std::vector<std::string> collect_gate_names(
  * 0.5（密度与保真度相同权重）
  * @return TranspileResult 包含最终门列表、量子比特数和各阶段计时
  */
-TranspileResult transpile(
+TranspileResult transpile_from_qasm(
     const std::string& qasm_string,
     const std::vector<std::string>& supp_basis_gates, int opt_level = 1,
     const std::vector<std::pair<int, int>>& coupling_list = {},
@@ -151,5 +151,44 @@ TranspileResult transpile(
 TranspileResult transpile_na(const std::string& qasm_string,
                              const std::vector<std::string>& supp_basis_gates,
                              const NAQpuConfig& qpu_config, int opt_level = 1);
+
+/**
+ * @brief Transpile a pre-parsed IR (no QASM parsing step).
+ *
+ * Same pipeline as transpile() but skips the QASM parse step.
+ * The caller supplies the already-parsed operation list and the
+ * logical qubit count directly.
+ *
+ * Internal pipeline:
+ *   1. Optimize #1 (opt_level capped at 1) -> optimize
+ *   2. Decompose into 1q/2q gates -> decompose_gates_to_1q2q
+ *   3. Build decompose rules -> Decomposer::get_decompose_rules
+ *   4. SABRE routing -> sabre_routing
+ *   5. Apply decompose rules -> Decomposer::apply_decompose_rules
+ *   6. Optimize #2 (full opt_level + basis_gates) -> optimize
+ *
+ * @param ir_ops Pre-parsed operation list (IR).
+ * @param num_qubits Number of logical qubits in the circuit.
+ * @param supp_basis_gates Supported basis-gate name list.
+ * @param coupling_list Physical coupling graph edges (normalized int pairs).
+ * @param opt_level Optimization level (0-3); defaults to 1.
+ * @param edge_fidelities Edge fidelities corresponding to coupling_list;
+ *        empty means unused. Defaults to {}.
+ * @param single_qubit_fidelities Single-qubit fidelities indexed by
+ *        physical qubit ID; empty means unused. Defaults to {}.
+ * @param num_threads Optimizer thread count: 0=auto, 1=serial, >1=explicit.
+ *        Defaults to 0.
+ * @param fast_mode Fast mode: true runs only one round of passes.
+ *        Defaults to true.
+ * @return TranspileResult containing the final gate list, qubit count,
+ *         and per-stage timings. parse_time is always 0.
+ */
+TranspileResult transpile_from_ir(
+    const std::vector<std::shared_ptr<BaseOperation>>& ir_ops, int num_qubits,
+    const std::vector<std::string>& supp_basis_gates,
+    const std::vector<std::pair<int, int>>& coupling_list, int opt_level = 1,
+    const std::vector<double>& edge_fidelities = {},
+    const std::vector<double>& single_qubit_fidelities = {},
+    size_t num_threads = 0, bool fast_mode = true);
 
 }  // namespace qcos

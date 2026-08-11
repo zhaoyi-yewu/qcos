@@ -52,7 +52,7 @@ from wy_qcos.transpiler.high_performance import (
     Decomposer,
     sabre_routing as cpp_sabre_routing,
     optimize,
-    transpile as cpp_transpile,
+    transpile_from_qasm as cpp_transpile_from_qasm,
     transpile_na as cpp_transpile_na,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
@@ -330,7 +330,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             )
 
             try:
-                return cpp_transpile(
+                return cpp_transpile_from_qasm(
                     qasm_string,
                     supp_basis_gates,
                     coupling_list,

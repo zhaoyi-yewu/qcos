@@ -970,6 +970,35 @@ class H:
     def to_matrix(self) -> list[complex]: ...
     def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
+class I:  # noqa: E742
+    """Identity gate."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
 class ISWAP:
     """None."""
 
@@ -2563,7 +2592,7 @@ class TranspileResult:
 
     def __init__(self) -> None: ...
 
-def transpile(
+def transpile_from_qasm(
     qasm_string: str,
     supp_basis_gates: collections.abc.Sequence[str],
     opt_level: int = 1,
@@ -2636,6 +2665,44 @@ def transpile_na(
     Returns:
     TranspileResult: Contains basis_gate_list, num_qubits, and timings.
     """
+
+def transpile_from_ir(
+    ir_ops: collections.abc.Sequence[high_performance.BaseOperation],
+    num_qubits: int,
+    supp_basis_gates: collections.abc.Sequence[str],
+    coupling_list: collections.abc.Sequence[tuple[int, int]],
+    opt_level: int = 1,
+    edge_fidelities: collections.abc.Sequence[float] = [],
+    single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    num_threads: int = 0,
+    fast_mode: bool = False,
+) -> high_performance.TranspileResult:
+    """Transpile a pre-parsed IR (no QASM parsing step).
+
+    Same pipeline as ``transpile`` but skips the QASM parse step.
+    The caller supplies the already-parsed operation list and the
+    logical qubit count directly.
+
+    Args:
+    ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
+    num_qubits (int): Number of logical qubits in the circuit.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    coupling_list (list[tuple[int, int]]): Physical qubit coupling edges
+        (must be pre-normalized via normalize_topology).
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    edge_fidelities (list[float], optional): Edge fidelity values
+        corresponding to coupling_list. Empty means not used.
+    single_qubit_fidelities (list[float], optional): Single-qubit fidelity
+        array indexed by physical qubit ID. Empty means not used.
+    num_threads (int, optional): Optimization thread count. 0 = auto,
+        1 = serial, >1 = explicit. Defaults to 0.
+    fast_mode (bool, optional): Optimization fast mode. True = run pass
+        list only once. Defaults to False.
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+    """
+    ...
 
 class ChipCalibration:
     """Chip calibration data."""

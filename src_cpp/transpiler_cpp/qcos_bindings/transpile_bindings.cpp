@@ -23,6 +23,7 @@
 
 #include <stdexcept>
 
+#include "circuit/base_operation.h"
 #include "mapping/na_mapping.h"
 #include "transpile/transpile.h"
 
@@ -63,7 +64,7 @@ NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
 }  // namespace
 
 void bind_transpile(nb::module_& m) {
-  // 绑定 TranspileTimings — 各阶段耗时记录
+  // 绑定 TranspileTimings 各阶段耗时记录
   nb::class_<TranspileTimings>(m, "TranspileTimings",
                                "Timing breakdown for each transpile stage.")
       .def(nb::init<>())
@@ -88,7 +89,7 @@ void bind_transpile(nb::module_& m) {
 
   // 绑定 transpile 函数 — 释放 GIL 以允许 Python 侧并发
   m.def(
-      "transpile",
+      "transpile_from_qasm",
       [](const std::string& qasm_string,
          const std::vector<std::string>& supp_basis_gates, int opt_level,
          const std::vector<std::pair<int, int>>& coupling_list,
@@ -98,11 +99,11 @@ void bind_transpile(nb::module_& m) {
          size_t num_threads, bool fast_mode, double fidelity_threshold,
          double fidelity_weight) {
         nb::gil_scoped_release release;
-        return transpile(qasm_string, supp_basis_gates, opt_level,
-                         coupling_list, edge_fidelities,
-                         single_qubit_fidelities, layout_method, target_bits,
-                         num_threads, fast_mode, fidelity_threshold,
-                         fidelity_weight);
+        return transpile_from_qasm(qasm_string, supp_basis_gates, opt_level,
+                                   coupling_list, edge_fidelities,
+                                   single_qubit_fidelities, layout_method,
+                                   target_bits, num_threads, fast_mode,
+                                   fidelity_threshold, fidelity_weight);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"),
       nb::arg("opt_level") = 1,
@@ -149,7 +150,7 @@ void bind_transpile(nb::module_& m) {
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
               )");
 
-  // Bind transpile_na — neutral-atom NA mapping, single-circuit path.
+  // Bind transpile_na: neutral-atom NA mapping, single-circuit path.
   m.def(
       "transpile_na",
       [](const std::string& qasm_string,
@@ -179,4 +180,51 @@ void bind_transpile(nb::module_& m) {
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
       )");
+
+  // Bind transpile_from_ir: transpile a pre-parsed IR (no QASM parse
+  // step).
+  m.def(
+      "transpile_from_ir",
+      [](const std::vector<std::shared_ptr<BaseOperation>>& ir_ops,
+         int num_qubits, const std::vector<std::string>& supp_basis_gates,
+         const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
+         const std::vector<double>& edge_fidelities,
+         const std::vector<double>& single_qubit_fidelities,
+         size_t num_threads, bool fast_mode) {
+        nb::gil_scoped_release release;
+        return transpile_from_ir(
+            ir_ops, num_qubits, supp_basis_gates, coupling_list, opt_level,
+            edge_fidelities, single_qubit_fidelities, num_threads, fast_mode);
+      },
+      nb::arg("ir_ops"), nb::arg("num_qubits"), nb::arg("supp_basis_gates"),
+      nb::arg("coupling_list"), nb::arg("opt_level") = 1,
+      nb::arg("edge_fidelities") = std::vector<double>{},
+      nb::arg("single_qubit_fidelities") = std::vector<double>{},
+      nb::arg("num_threads") = 0, nb::arg("fast_mode") = false,
+      R"(
+        Transpile a pre-parsed IR (no QASM parsing step).
+
+        Same pipeline as ``transpile`` but skips the QASM parse step.
+        The caller supplies the already-parsed operation list and the
+        logical qubit count directly.
+
+        Args:
+            ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
+            num_qubits (int): Number of logical qubits in the circuit.
+            supp_basis_gates (list[str]): Supported basis gate names.
+            coupling_list (list[tuple[int, int]]): Physical qubit coupling
+                edges (must be pre-normalized via normalize_topology).
+            opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+            edge_fidelities (list[float], optional): Edge fidelity values
+                corresponding to coupling_list. Empty means not used.
+            single_qubit_fidelities (list[float], optional): Single-qubit
+                fidelity array indexed by physical qubit ID. Empty means not used.
+            num_threads (int, optional): Optimization thread count. 0 = auto,
+                1 = serial, >1 = explicit. Defaults to 0.
+            fast_mode (bool, optional): Optimization fast mode. True = run pass
+                list only once. Defaults to False.
+
+        Returns:
+            TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+              )");
 }
