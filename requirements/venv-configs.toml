@@ -45,11 +45,18 @@ deps_sections = ["driver-quafu"]
 envs = ["python3"]
 no_deps = true
 
-[DriverLogicalQubit]
-module_name = "driver_logical_qubit"
+[logical_qubit]
 deps_pyproject_file = "../pyproject.toml"
 deps_sections = ["driver-logical-qubit"]
 envs = ["python3"]
+
+[DriverLqMQ02]
+module_name = "driver_lq_mq02"
+copy_from = "logical_qubit"
+
+[DriverLqQZ01SurfaceCode]
+module_name = "driver_lq_qz01_surface_code"
+copy_from = "logical_qubit"
 
 [qiskit]
 deps_pyproject_file = "../pyproject.toml"
