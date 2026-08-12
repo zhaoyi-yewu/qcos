@@ -128,10 +128,13 @@ TranspileResult transpile_from_qasm(
   if (coupling_list.empty()) {
     routed_ops = decomposed_ops;
   } else {
-    routed_ops =
-        sabre_routing(decomposed_ops, coupling_list, edge_fidelities,
-                      single_qubit_fidelities, layout_method, target_bits,
-                      fidelity_threshold, fidelity_weight, 20, 0.5, 0.001);
+    SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities,
+                layout_method, target_bits, fidelity_threshold,
+                fidelity_weight, 20, 0.5, 0.001);
+    sabre.execute(decomposed_ops);
+    routed_ops = sabre.get_physical_gates();
+    result.initial_mapping = sabre.get_initial_mapping();
+    result.final_mapping = sabre.get_final_mapping();
   }
   t.mapping_time =
       std::chrono::duration<double>(clock::now() - map_start).count();
@@ -248,11 +251,13 @@ TranspileResult transpile_na(const std::string& qasm_string,
 
 TranspileResult transpile_from_ir(
     const std::vector<std::shared_ptr<BaseOperation>>& ir_ops, int num_qubits,
-    const std::vector<std::string>& supp_basis_gates,
-    const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
+    const std::vector<std::string>& supp_basis_gates, int opt_level,
+    const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
-    const std::vector<double>& single_qubit_fidelities, size_t num_threads,
-    bool fast_mode) {
+    const std::vector<double>& single_qubit_fidelities,
+    const std::string& layout_method, const std::vector<int>& target_bits,
+    size_t num_threads, bool fast_mode, double fidelity_threshold,
+    double fidelity_weight) {
   using clock = std::chrono::high_resolution_clock;
 
   TranspileResult result;
@@ -292,8 +297,18 @@ TranspileResult transpile_from_ir(
 
   // Step 4: SABRE routing - logical-to-physical qubit mapping and routing
   auto map_start = clock::now();
-  auto routed_ops = sabre_routing(decomposed_ops, coupling_list,
-                                  edge_fidelities, single_qubit_fidelities);
+  std::vector<std::shared_ptr<BaseOperation>> routed_ops;
+  if (coupling_list.empty()) {
+    routed_ops = decomposed_ops;
+  } else {
+    SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities,
+                layout_method, target_bits, fidelity_threshold,
+                fidelity_weight, 20, 0.5, 0.001);
+    sabre.execute(decomposed_ops);
+    routed_ops = sabre.get_physical_gates();
+    result.initial_mapping = sabre.get_initial_mapping();
+    result.final_mapping = sabre.get_final_mapping();
+  }
   t.mapping_time =
       std::chrono::duration<double>(clock::now() - map_start).count();
 

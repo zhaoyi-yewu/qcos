@@ -2589,6 +2589,8 @@ class TranspileResult:
     basis_gate_list: list[high_performance.BaseOperation]
     num_qubits: int
     timings: high_performance.TranspileTimings
+    initial_mapping: list[int]
+    final_mapping: list[int]
 
     def __init__(self) -> None: ...
 
@@ -2670,12 +2672,16 @@ def transpile_from_ir(
     ir_ops: collections.abc.Sequence[high_performance.BaseOperation],
     num_qubits: int,
     supp_basis_gates: collections.abc.Sequence[str],
-    coupling_list: collections.abc.Sequence[tuple[int, int]],
     opt_level: int = 1,
+    coupling_list: collections.abc.Sequence[tuple[int, int]] = [],
     edge_fidelities: collections.abc.Sequence[float] = [],
     single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    layout_method: str = "vf2_layout",
+    target_bits: collections.abc.Sequence[int] = [],
     num_threads: int = 0,
     fast_mode: bool = False,
+    fidelity_threshold: float = -1.0,
+    fidelity_weight: float = 0.5,
 ) -> high_performance.TranspileResult:
     """Transpile a pre-parsed IR (no QASM parsing step).
 
@@ -2687,17 +2693,28 @@ def transpile_from_ir(
     ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
     num_qubits (int): Number of logical qubits in the circuit.
     supp_basis_gates (list[str]): Supported basis gate names.
-    coupling_list (list[tuple[int, int]]): Physical qubit coupling edges
-        (must be pre-normalized via normalize_topology).
     opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    coupling_list (list[tuple[int, int]], optional): Physical qubit coupling
+        edges. Empty means skip routing.
     edge_fidelities (list[float], optional): Edge fidelity values
         corresponding to coupling_list. Empty means not used.
     single_qubit_fidelities (list[float], optional): Single-qubit fidelity
         array indexed by physical qubit ID. Empty means not used.
-    num_threads (int, optional): Optimization thread count. 0 = auto,
-        1 = serial, >1 = explicit. Defaults to 0.
+    layout_method (str, optional): Initial layout method: "vf2_layout"
+        (default) or "dense_layout".
+    target_bits (list[int], optional): Target physical qubit IDs. When
+        non-empty, all-1q circuits map to these qubits and 2q circuits
+        route on the induced subgraph of edges between them.
+    num_threads (int, optional): Optimization thread count. 0 = auto
+        (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
     fast_mode (bool, optional): Optimization fast mode. True = run pass
-        list only once. Defaults to False.
+        list only once. Defaults to True.
+    fidelity_threshold (float, optional): Fidelity threshold; edges
+        below this value are filtered out. Negative value means adaptive
+        calculation (mean - std, clamped to [0.3, 0.9]).
+        Defaults to -1.0 (adaptive).
+    fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+        0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
 
     Returns:
     TranspileResult: Contains basis_gate_list, num_qubits, and timings.

@@ -54,6 +54,8 @@ struct TranspileResult {
   std::vector<std::shared_ptr<BaseOperation>> basis_gate_list;
   int num_qubits = 0;
   TranspileTimings timings;
+  std::vector<int> initial_mapping;
+  std::vector<int> final_mapping;
 };
 
 /**
@@ -170,8 +172,8 @@ TranspileResult transpile_na(const std::string& qasm_string,
  * @param ir_ops Pre-parsed operation list (IR).
  * @param num_qubits Number of logical qubits in the circuit.
  * @param supp_basis_gates Supported basis-gate name list.
- * @param coupling_list Physical coupling graph edges (normalized int pairs).
  * @param opt_level Optimization level (0-3); defaults to 1.
+ * @param coupling_list Physical coupling graph edges (normalized int pairs).
  * @param edge_fidelities Edge fidelities corresponding to coupling_list;
  *        empty means unused. Defaults to {}.
  * @param single_qubit_fidelities Single-qubit fidelities indexed by
@@ -185,10 +187,13 @@ TranspileResult transpile_na(const std::string& qasm_string,
  */
 TranspileResult transpile_from_ir(
     const std::vector<std::shared_ptr<BaseOperation>>& ir_ops, int num_qubits,
-    const std::vector<std::string>& supp_basis_gates,
-    const std::vector<std::pair<int, int>>& coupling_list, int opt_level = 1,
+    const std::vector<std::string>& supp_basis_gates, int opt_level = 1,
+    const std::vector<std::pair<int, int>>& coupling_list = {},
     const std::vector<double>& edge_fidelities = {},
     const std::vector<double>& single_qubit_fidelities = {},
-    size_t num_threads = 0, bool fast_mode = true);
+    const std::string& layout_method = "vf2_layout",
+    const std::vector<int>& target_bits = {}, size_t num_threads = 0,
+    bool fast_mode = true, double fidelity_threshold = -1.0,
+    double fidelity_weight = 0.5);
 
 }  // namespace qcos

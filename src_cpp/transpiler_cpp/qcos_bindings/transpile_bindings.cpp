@@ -85,7 +85,9 @@ void bind_transpile(nb::module_& m) {
       .def(nb::init<>())
       .def_rw("basis_gate_list", &TranspileResult::basis_gate_list)
       .def_rw("num_qubits", &TranspileResult::num_qubits)
-      .def_rw("timings", &TranspileResult::timings);
+      .def_rw("timings", &TranspileResult::timings)
+      .def_rw("initial_mapping", &TranspileResult::initial_mapping)
+      .def_rw("final_mapping", &TranspileResult::final_mapping);
 
   // 绑定 transpile 函数 — 释放 GIL 以允许 Python 侧并发
   m.def(
@@ -187,20 +189,28 @@ void bind_transpile(nb::module_& m) {
       "transpile_from_ir",
       [](const std::vector<std::shared_ptr<BaseOperation>>& ir_ops,
          int num_qubits, const std::vector<std::string>& supp_basis_gates,
-         const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
+         int opt_level, const std::vector<std::pair<int, int>>& coupling_list,
          const std::vector<double>& edge_fidelities,
          const std::vector<double>& single_qubit_fidelities,
-         size_t num_threads, bool fast_mode) {
+         const std::string& layout_method, const std::vector<int>& target_bits,
+         size_t num_threads, bool fast_mode, double fidelity_threshold,
+         double fidelity_weight) {
         nb::gil_scoped_release release;
-        return transpile_from_ir(
-            ir_ops, num_qubits, supp_basis_gates, coupling_list, opt_level,
-            edge_fidelities, single_qubit_fidelities, num_threads, fast_mode);
+        return transpile_from_ir(ir_ops, num_qubits, supp_basis_gates,
+                                 opt_level, coupling_list, edge_fidelities,
+                                 single_qubit_fidelities, layout_method,
+                                 target_bits, num_threads, fast_mode,
+                                 fidelity_threshold, fidelity_weight);
       },
       nb::arg("ir_ops"), nb::arg("num_qubits"), nb::arg("supp_basis_gates"),
-      nb::arg("coupling_list"), nb::arg("opt_level") = 1,
+      nb::arg("opt_level") = 1,
+      nb::arg("coupling_list") = std::vector<std::pair<int, int>>{},
       nb::arg("edge_fidelities") = std::vector<double>{},
       nb::arg("single_qubit_fidelities") = std::vector<double>{},
-      nb::arg("num_threads") = 0, nb::arg("fast_mode") = false,
+      nb::arg("layout_method") = "vf2_layout",
+      nb::arg("target_bits") = std::vector<int>{}, nb::arg("num_threads") = 0,
+      nb::arg("fast_mode") = false, nb::arg("fidelity_threshold") = -1.0,
+      nb::arg("fidelity_weight") = 0.5,
       R"(
         Transpile a pre-parsed IR (no QASM parsing step).
 
@@ -212,9 +222,9 @@ void bind_transpile(nb::module_& m) {
             ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
             num_qubits (int): Number of logical qubits in the circuit.
             supp_basis_gates (list[str]): Supported basis gate names.
+            opt_level (int, optional): Optimization level (0-3). Defaults to 1.
             coupling_list (list[tuple[int, int]]): Physical qubit coupling
                 edges (must be pre-normalized via normalize_topology).
-            opt_level (int, optional): Optimization level (0-3). Defaults to 1.
             edge_fidelities (list[float], optional): Edge fidelity values
                 corresponding to coupling_list. Empty means not used.
             single_qubit_fidelities (list[float], optional): Single-qubit

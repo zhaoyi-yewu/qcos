@@ -302,7 +302,8 @@ TEST(TranspileFromQasm, SingleQubitCircuit) {
 
 TEST(TranspileFromIr, BellState) {
   auto [ir_ops, num_qubits] = qasm_to_ir(kBellQasm);
-  auto result = transpile_from_ir(ir_ops, num_qubits, kBasisGates, kLinear4);
+  auto result =
+      transpile_from_ir(ir_ops, num_qubits, kBasisGates, 1, kLinear4);
   EXPECT_EQ(result.num_qubits, 2);
   EXPECT_FALSE(result.basis_gate_list.empty());
   // parse_time should be 0 since QASM parsing is skipped
@@ -311,7 +312,8 @@ TEST(TranspileFromIr, BellState) {
 
 TEST(TranspileFromIr, Ghz4) {
   auto [ir_ops, num_qubits] = qasm_to_ir(kGhz4Qasm);
-  auto result = transpile_from_ir(ir_ops, num_qubits, kBasisGates, kLinear4);
+  auto result =
+      transpile_from_ir(ir_ops, num_qubits, kBasisGates, 1, kLinear4);
   EXPECT_EQ(result.num_qubits, 4);
   EXPECT_FALSE(result.basis_gate_list.empty());
   EXPECT_EQ(result.timings.parse_time, 0.0);
@@ -319,7 +321,8 @@ TEST(TranspileFromIr, Ghz4) {
 
 TEST(TranspileFromIr, TimingsConsistency) {
   auto [ir_ops, num_qubits] = qasm_to_ir(kGhz4Qasm);
-  auto result = transpile_from_ir(ir_ops, num_qubits, kBasisGates, kLinear4);
+  auto result =
+      transpile_from_ir(ir_ops, num_qubits, kBasisGates, 1, kLinear4);
   const auto& t = result.timings;
   EXPECT_EQ(t.parse_time, 0.0);
   EXPECT_NEAR(
@@ -335,7 +338,7 @@ TEST(TranspileFromIr, TimingsConsistency) {
 TEST(TranspileFromIr, OptLevel0) {
   auto [ir_ops, num_qubits] = qasm_to_ir(kGhz4Qasm);
   auto result =
-      transpile_from_ir(ir_ops, num_qubits, kBasisGates, kLinear4, 0);
+      transpile_from_ir(ir_ops, num_qubits, kBasisGates, 0, kLinear4);
   EXPECT_EQ(result.num_qubits, 4);
   EXPECT_FALSE(result.basis_gate_list.empty());
 }
