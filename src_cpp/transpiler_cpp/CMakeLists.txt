@@ -78,6 +78,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)  # 禁用编译器扩展，使用标准 C++
 
+# 添加架构兼容性（关键！解决 CPU 不支持 x86-64-v2）
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=x86-64")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64")
+
 if (MSVC)
     add_compile_definitions(_USE_MATH_DEFINES)
     add_compile_options(/utf-8)

@@ -29,7 +29,7 @@
 #   docker build -f build-scripts/compiler/Dockerfile.base \
 #       -t qcos-compiler-base:1.5.0 .
 
-ARG CONTAINER_BASE_IMAGE=openeuler/openeuler:24.03-lts
+ARG CONTAINER_BASE_IMAGE=openeuler-22.03-lts-sp2:latest
 FROM ${CONTAINER_BASE_IMAGE}
 
 ARG WORK_DIR=/root
@@ -66,7 +66,7 @@ WORKDIR ${WORK_DIR}
 RUN set -e && \
     mkdir -p /etc/qcos/ /var/log/qcos/ /var/run/qcos/ && \
     yum install --nobest -y \
-      git wget curl ca-certificates \
+      git wget curl ca-certificates boost-devel boost-static\
       iproute net-tools \
       make cmake gcc gcc-c++ \
       gtest-devel \
