@@ -83,7 +83,7 @@ class CutWire:
             tmp_start_time = time.time()
             # According to nvertex, determine the solution method for
             # circuit cutting schemes
-            if self.nvertex >= 80:
+            if self.nvertex >= 90:
                 self.mip_model = GreedyModel(
                     nvertex=self.nvertex,
                     edges=self.edge_list,
