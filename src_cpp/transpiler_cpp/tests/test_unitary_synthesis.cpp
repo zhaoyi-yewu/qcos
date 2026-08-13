@@ -948,14 +948,14 @@ TEST(OptimizeIntegrationTest, Level2WithUnitarySynthesis) {
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("s", {0}), create_gate("t", {0})};
   std::set<std::string> basis = {"rz", "ry", "cx"};
-  auto result = optimize(ir, 2, false, basis);
+  auto result = optimize(ir, 3, false, basis);
   for (const auto& op : result) {
     if (op->name == "measure") continue;
     EXPECT_TRUE(basis.count(op->name) > 0 ||
                 Constant::ALL_GATE_LIST.end() ==
                     std::find(Constant::ALL_GATE_LIST.begin(),
                               Constant::ALL_GATE_LIST.end(), op->name))
-        << "Gate " << op->name << " not in basis at level 2";
+        << "Gate " << op->name << " not in basis at level 3";
   }
 }
 

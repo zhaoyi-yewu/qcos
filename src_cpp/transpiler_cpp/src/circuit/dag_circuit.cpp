@@ -121,6 +121,12 @@ void DAGCircuit::rename_op(const std::shared_ptr<BaseOperation>& old_op,
 }
 
 void DAGCircuit::parameterize_all_rz() {
+  // 若不存在离散相位门，跳过全量遍历
+  if (!op_names_.count("s") && !op_names_.count("sdg") &&
+      !op_names_.count("t") && !op_names_.count("tdg") &&
+      !op_names_.count("z")) {
+    return;
+  }
   // 离散相位门到rz的标准角度映射。
   const std::unordered_map<std::string, double> angles = {{"s", kPi / 2.0},
                                                           {"t", kPi / 4.0},
@@ -141,6 +147,9 @@ void DAGCircuit::parameterize_all_rz() {
 }
 
 void DAGCircuit::deparameterize_all_rz(double tolerance) {
+  if (!op_names_.count("rz")) {
+    return;
+  }
   const std::unordered_map<int, std::string> deparameterize_map = {
       {1, "t"}, {2, "s"}, {4, "z"}, {6, "sdg"}, {7, "tdg"}};
 
@@ -336,6 +345,21 @@ std::vector<DAGNode*> DAGCircuit::longest_path() {
 
 std::vector<DAGNode*> DAGCircuit::successors(const DAGNode* node) const {
   return multi_graph_.successors(node->node_id());
+}
+
+DAGOpNode* DAGCircuit::get_next_op_on_qubit(DAGOpNode* cur_node,
+                                            int qubit) const {
+  // 参数检查：当前节点必须存在且包含指定 qubit
+  if (!cur_node || std::find(cur_node->qargs.begin(), cur_node->qargs.end(),
+                             qubit) == cur_node->qargs.end()) {
+    throw std::invalid_argument(std::to_string(qubit) +
+                                " is not in qargs of current node.");
+  }
+  // 沿指定 qubit 的出边查找第一个后继节点，DAGOutNode 返回 nullptr
+  DAGNode* next = multi_graph_.find_first_successor_by_edge(
+      cur_node->node_id(),
+      [qubit](int edge_wire) { return edge_wire == qubit; });
+  return dynamic_cast<DAGOpNode*>(next);
 }
 
 std::vector<DAGNode*> DAGCircuit::predecessors(const DAGNode* node) const {

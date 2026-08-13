@@ -18,6 +18,7 @@
 #include "optimizer/unitary_synthesis.h"
 
 #include <algorithm>
+#include <iostream>
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -1177,10 +1178,12 @@ std::vector<std::shared_ptr<BaseOperation>> decompose_unitary(
 UnitarySynthesis::UnitarySynthesis(
     const std::optional<std::set<std::string>>& basis_gates,
     double approximation_degree,
-    size_t max_block_size)
+    size_t max_block_size,
+    bool verbose)
     : basis_gates_(basis_gates),
       approximation_degree_(approximation_degree),
-      max_block_size_(max_block_size) {}
+      max_block_size_(max_block_size),
+      verbose_(verbose) {}
 
 UnitarySynthesis::OpList UnitarySynthesis::synthesize_1q(
     const CMatrix& u, int qubit) {
@@ -1382,6 +1385,9 @@ int UnitarySynthesis::run(
     if (!any_replaced) break;
   }
 
+  if (verbose_) {
+    std::clog << name() << ": " << total_replaced << " gates reduced\n";
+  }
   return total_replaced;
 }
 

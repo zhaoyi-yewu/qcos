@@ -18,6 +18,7 @@
 #include "optimizer/gate_optimizer.h"
 
 #include <algorithm>
+#include <iostream>
 #include <stdexcept>
 #include <thread>
 #include <unordered_map>
@@ -27,14 +28,18 @@
 #include "circuit/dag_node.h"
 #include "circuit/gate_operation.h"
 #include "optimizer/adjacent_optimization.h"
-#include "optimizer/clifford_rz_optimization.h"
+#include "optimizer/cx_commute_optimization.h"
+#include "optimizer/hadamard_gate_reduction.h"
 #include "optimizer/inverse_cancellation.h"
+#include "optimizer/phase_polynomial_merging.h"
+#include "optimizer/rz_commute_optimization.h"
 #include "optimizer/subcircuit_rewrite.h"
 #include "optimizer/unitary_synthesis.h"
 
 namespace qcos {
 
 namespace {
+const std::set<std::string> kRzPhaseGates = {"s", "sdg", "t", "tdg", "z"};
 
 /**
  * @brief 计算实际并行线程数
@@ -60,8 +65,7 @@ size_t compute_parallel_threads(size_t num_threads, size_t ir_size,
   // Level 3:   每线程至少 10000 ops
   // 上限统一取系统线程数
   size_t max_threads_by_ops;
-  size_t thread_limit =
-      std::max(1u, std::thread::hardware_concurrency());
+  size_t thread_limit = std::max(1u, std::thread::hardware_concurrency());
   if (opt_level >= 3) {
     max_threads_by_ops = ir_size / 10000;
   } else {
@@ -86,60 +90,75 @@ std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
     bool fast_mode) {
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  InverseCancellation inverse_optimizer({
-      InverseCancellation::InverseGateRule(H({0})),
-      InverseCancellation::InverseGateRule(CX({0, 1})),
-      InverseCancellation::InverseGateRule(S({0}), SDG({0})),
-      InverseCancellation::InverseGateRule(T({0}), TDG({0})),
-      InverseCancellation::InverseGateRule(X({0})),
-      InverseCancellation::InverseGateRule(Y({0})),
-      InverseCancellation::InverseGateRule(Z({0})),
-      InverseCancellation::InverseGateRule(SWAP({0, 1})),
-      InverseCancellation::InverseGateRule(CZ({0, 1})),
-      InverseCancellation::InverseGateRule(CCX({0, 1, 2})),
-  });
+  InverseCancellation inverse_optimizer(
+      {
+          InverseCancellation::InverseGateRule(H({0})),
+          InverseCancellation::InverseGateRule(CX({0, 1})),
+          InverseCancellation::InverseGateRule(S({0}), SDG({0})),
+          InverseCancellation::InverseGateRule(T({0}), TDG({0})),
+          InverseCancellation::InverseGateRule(X({0})),
+          InverseCancellation::InverseGateRule(Y({0})),
+          InverseCancellation::InverseGateRule(Z({0})),
+          InverseCancellation::InverseGateRule(SWAP({0, 1})),
+          InverseCancellation::InverseGateRule(CZ({0, 1})),
+          InverseCancellation::InverseGateRule(CCX({0, 1, 2})),
+      },
+      verbose);
+  AdjacentPhaseOptPass adjacent_phase_optimizer(verbose);
+  EquivalencePass equivalence_optimizer(verbose);
+  HadamardGateReduction hadamard_reduction(verbose);
+  RzCommuteOptimization rz_commute_optimizer(verbose);
+  CxCommuteOptimization cx_commute_optimizer(verbose);
+  PhasePolynomialMerging phase_polynomial_merging(verbose);
+  UnitarySynthesis unitary_synth(basis_gates, 1.0, 2, verbose);
 
-  AdjacentPhaseOptPass adjacent_phase_optimizer;
-  EquivalencePass equivalence_optimizer;
-  CliffordRzOptimization commutative_optimizer(verbose);
-  UnitarySynthesis unitary_synth(basis_gates);
-
-  using PassFn = std::function<void(DAGCircuit&)>;
-  std::vector<PassFn> passes;
-
-  passes.push_back(
-      [&](DAGCircuit& dag) { inverse_optimizer.run(dag, basis_gates); });
-  passes.push_back([&](DAGCircuit& dag) {
-    adjacent_phase_optimizer.run(dag, basis_gates);
-  });
-  if (opt_level >= 2) {
-    passes.push_back(
-        [&](DAGCircuit& dag) { equivalence_optimizer.run(dag, basis_gates); });
-    passes.push_back(
-        [&](DAGCircuit& dag) { unitary_synth.run(dag, basis_gates); });
-  }
-  if (opt_level >= 3) {
-    passes.push_back(
-        [&](DAGCircuit& dag) { commutative_optimizer.run(dag, basis_gates); });
-  }
-
-  // 若基础门集为u,rz，那么只执行 UnitarySynthesis
+  // 若基础门集为 u,cz 或 u3,cz，只执行 UnitarySynthesis
   if (basis_gates.has_value() &&
       (basis_gates.value() == std::set<std::string>{"u", "cz"} ||
        basis_gates.value() == std::set<std::string>{"u3", "cz"})) {
-    passes.clear();
-    passes.push_back(
-        [&](DAGCircuit& dag) { unitary_synth.run(dag, basis_gates); });
-  }
-
-
-  while (true) {
-    int init_size = dag.size();
-    for (auto& pass_fn : passes) {
-      pass_fn(dag);
+    int total_reduced = unitary_synth.run(dag, basis_gates);
+    if (verbose) {
+      std::clog << "Optimization total: " << total_reduced
+                << " gates reduced\n";
     }
-    // fast_mode：只执行一轮 pass
-    if (fast_mode || dag.size() >= init_size) break;
+  } else {
+    int total_reduced = 0;
+    while (true) {
+      int init_size = dag.size();
+
+      // Level 1: 轻量 pass，不需 parameterize
+      total_reduced += inverse_optimizer.run(dag, basis_gates);
+      total_reduced += adjacent_phase_optimizer.run(dag, basis_gates);
+      total_reduced += equivalence_optimizer.run(dag, basis_gates);
+
+      if (opt_level >= 2) {
+        // HadamardGateReduction 需要原始 s/sdg 门名，必须在 parameterize 之前
+        total_reduced += hadamard_reduction.run(dag, basis_gates);
+
+        // 统一 parameterize 供 rz-merging pass 使用
+        dag.parameterize_all_rz();
+        total_reduced += rz_commute_optimizer.run(dag, basis_gates);
+        total_reduced += cx_commute_optimizer.run(dag, basis_gates);
+        total_reduced += phase_polynomial_merging.run(dag, basis_gates);
+        // deparameterize 仅当 basis 允许离散相位门
+        if (!basis_gates ||
+            std::includes(basis_gates->begin(), basis_gates->end(),
+                          kRzPhaseGates.begin(), kRzPhaseGates.end())) {
+          dag.deparameterize_all_rz();
+        }
+      }
+
+      // Level 3: UnitarySynthesis
+      if (opt_level >= 3) {
+        total_reduced += unitary_synth.run(dag, basis_gates);
+      }
+
+      if (fast_mode || dag.size() >= init_size) break;
+    }
+    if (verbose) {
+      std::clog << "Optimization total: " << total_reduced
+                << " gates reduced\n";
+    }
   }
 
   std::vector<std::shared_ptr<BaseOperation>> result;

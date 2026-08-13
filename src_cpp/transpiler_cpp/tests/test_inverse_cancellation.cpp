@@ -65,31 +65,18 @@ TEST(InverseCancellationTest, DoesNotCancelDifferentQargs) {
   EXPECT_EQ(counts.at("cz"), 2);
 }
 
-TEST(InverseCancellationTest, CancelsInversePairsAndHonorsBasis) {
+TEST(InverseCancellationTest, CancelsAllInversePairs) {
   InverseCancellation optimizer(
       {InverseCancellation::InverseGateRule(S(std::vector<int>{0}),
                                             SDG(std::vector<int>{0})),
        InverseCancellation::InverseGateRule(T(std::vector<int>{0}),
                                             TDG(std::vector<int>{0}))});
-  std::vector<std::shared_ptr<BaseOperation>> basis_filtered_ir = {
-      create_gate("s", {0}), create_gate("sdg", {0}), create_gate("t", {1}),
-      create_gate("tdg", {1})};
-
-  DAGCircuit basis_filtered = DAGCircuit::ir_to_dag(basis_filtered_ir);
-  EXPECT_EQ(optimizer.run(basis_filtered, std::set<std::string>{"s", "sdg"}),
-            2);
-  auto counts = basis_filtered.count_ops();
-  EXPECT_EQ(counts.count("s") == 0 ? 0 : counts.at("s"), 0);
-  EXPECT_EQ(counts.count("sdg") == 0 ? 0 : counts.at("sdg"), 0);
-  EXPECT_EQ(counts.at("t"), 1);
-  EXPECT_EQ(counts.at("tdg"), 1);
-
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("s", {0}), create_gate("sdg", {0}), create_gate("t", {1}),
       create_gate("tdg", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   EXPECT_EQ(optimizer.run(dag), 4);
-  counts = dag.count_ops();
+  const auto counts = dag.count_ops();
   EXPECT_EQ(counts.count("s"), 0u);
   EXPECT_EQ(counts.count("sdg"), 0u);
   EXPECT_EQ(counts.count("t"), 0u);

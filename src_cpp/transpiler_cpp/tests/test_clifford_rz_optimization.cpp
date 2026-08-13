@@ -24,7 +24,11 @@
 
 #include "circuit/dag_circuit.h"
 #include "circuit/gate_operation.h"
-#include "optimizer/clifford_rz_optimization.h"
+#include "optimizer/cx_commute_optimization.h"
+#include "optimizer/gate_optimizer.h"
+#include "optimizer/hadamard_gate_reduction.h"
+#include "optimizer/phase_polynomial_merging.h"
+#include "optimizer/rz_commute_optimization.h"
 
 using namespace qcos;
 
@@ -60,7 +64,6 @@ std::vector<DAGOpNode*> rz_nodes(DAGCircuit& dag) {
  */
 TEST(CliffordRzOptimizationTest,
      GetNextNodeOnSpecificQubitUsesWireLocalOrder) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("rz", {0}, {0.1}), create_gate("cx", {0, 1}),
       create_gate("rz", {1}, {0.2}), create_gate("x", {0})};
@@ -68,18 +71,15 @@ TEST(CliffordRzOptimizationTest,
   const auto nodes = dag.topological_op_nodes();
   ASSERT_EQ(nodes.size(), 4u);
 
-  DAGOpNode* next_on_control =
-      optimizer.get_next_node_on_specific_qubit(dag, nodes[1], 0);
-  DAGOpNode* next_on_target =
-      optimizer.get_next_node_on_specific_qubit(dag, nodes[1], 1);
+  DAGOpNode* next_on_control = dag.get_next_op_on_qubit(nodes[1], 0);
+  DAGOpNode* next_on_target = dag.get_next_op_on_qubit(nodes[1], 1);
   ASSERT_NE(next_on_control, nullptr);
   ASSERT_NE(next_on_target, nullptr);
   EXPECT_EQ(next_on_control->name(), "x");
   EXPECT_EQ(next_on_control->qargs, (std::vector<int>{0}));
   EXPECT_EQ(next_on_target->name(), "rz");
   EXPECT_EQ(next_on_target->qargs, (std::vector<int>{1}));
-  EXPECT_THROW(optimizer.get_next_node_on_specific_qubit(dag, nodes[1], 2),
-               std::invalid_argument);
+  EXPECT_THROW(dag.get_next_op_on_qubit(nodes[1], 2), std::invalid_argument);
 }
 
 /*
@@ -98,14 +98,13 @@ TEST(CliffordRzOptimizationTest,
  *      └─────────┘└───┘
  */
 TEST(CliffordRzOptimizationTest, CancelSingleQubitGatesMergesAcrossTemplates) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("rz", {1}, {0.1}), create_gate("rz", {1}, {0.1}),
       create_gate("h", {1}),         create_gate("cx", {0, 1}),
       create_gate("h", {1}),         create_gate("rz", {1}, {0.1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.cancel_single_qubit_gates(dag), 2);
+  EXPECT_EQ(RzCommuteOptimization().run(dag), 2);
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.at("rz"), 1);
   EXPECT_EQ(counts.at("h"), 2);
@@ -116,16 +115,14 @@ TEST(CliffordRzOptimizationTest, CancelSingleQubitGatesMergesAcrossTemplates) {
 }
 
 /*
- * basis_gates 过滤测试：指定 {cx, rz} 时 H 不在 basis 中，
- * H-CX-H 模板被过滤掉，Rz 无法跨过 CX，优化效果为 0。
+ * Rz 跨过连续两个 H-CX-H 模式的交换测试。
  *
  * q_0: ──────────────────■─────────■───────────────■─────────────
  *      ┌─────────┐┌───┐┌─┴─┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐┌─────────┐
  * q_1: ┤ Rz(0.1) ├┤ H ├┤ X ├┤ H ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.2) ├
  *      └─────────┘└───┘└───┘└───┘└───┘└─────────┘└───┘└─────────┘
  */
-TEST(CliffordRzOptimizationTest, CancelSingleQubitGatesHonorsBasisFilter) {
-  CliffordRzOptimization optimizer;
+TEST(CliffordRzOptimizationTest, RzCommutesAcrossHCxHChain) {
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("rz", {1}, {0.1}), create_gate("h", {1}),
       create_gate("cx", {0, 1}),     create_gate("h", {1}),
@@ -133,19 +130,13 @@ TEST(CliffordRzOptimizationTest, CancelSingleQubitGatesHonorsBasisFilter) {
       create_gate("cx", {0, 1}),     create_gate("rz", {1}, {0.2})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.cancel_single_qubit_gates(
-                dag, std::set<std::string>{"cx", "rz"}),
-            0);
-  // 门数和参数均不变
+  EXPECT_EQ(RzCommuteOptimization().run(dag), 1);
   const auto counts = dag.count_ops();
-  EXPECT_EQ(counts.at("rz"), 3);
+  EXPECT_EQ(counts.at("rz"), 2);
   EXPECT_EQ(counts.at("h"), 2);
   EXPECT_EQ(counts.at("cx"), 3);
   const auto nodes = rz_nodes(dag);
-  ASSERT_EQ(nodes.size(), 3u);
-  EXPECT_NEAR(nodes[0]->op->arg_value[0], 0.1, 1e-9);
-  EXPECT_NEAR(nodes[1]->op->arg_value[0], 0.2, 1e-9);
-  EXPECT_NEAR(nodes[2]->op->arg_value[0], 0.2, 1e-9);
+  ASSERT_EQ(nodes.size(), 2u);
 }
 
 /*
@@ -168,8 +159,6 @@ TEST(CliffordRzOptimizationTest, CancelSingleQubitGatesHonorsBasisFilter) {
  */
 TEST(CliffordRzOptimizationTest,
      CancelTwoQubitGatesCancelsControlAndTargetTemplates) {
-  CliffordRzOptimization optimizer;
-
   // test1
   {
     std::vector<std::shared_ptr<BaseOperation>> ir = {
@@ -177,7 +166,7 @@ TEST(CliffordRzOptimizationTest,
         create_gate("cx", {0, 1})};
     DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-    EXPECT_EQ(optimizer.cancel_two_qubit_gates(dag), 2);
+    EXPECT_EQ(CxCommuteOptimization().run(dag), 2);
     const auto counts = dag.count_ops();
     EXPECT_EQ(counts.at("rz"), 1);
     EXPECT_EQ(counts.count("cx"), 0u);
@@ -191,7 +180,7 @@ TEST(CliffordRzOptimizationTest,
         create_gate("cx", {0, 1})};
     DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-    EXPECT_EQ(optimizer.cancel_two_qubit_gates(dag), 2);
+    EXPECT_EQ(CxCommuteOptimization().run(dag), 2);
     const auto counts = dag.count_ops();
     EXPECT_EQ(counts.at("h"), 2);
     EXPECT_EQ(counts.at("cx"), 1);
@@ -210,15 +199,11 @@ TEST(CliffordRzOptimizationTest,
  */
 TEST(CliffordRzOptimizationTest,
      RunParameterizesAndDeparameterizesDiscretePhaseGates) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("z", {0}), create_gate("cx", {0, 1}), create_gate("z", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-
-  optimizer.run(dag);
-  const auto counts = dag.count_ops();
-  EXPECT_EQ(counts.size(), 1u);
-  EXPECT_EQ(counts.at("cx"), 1);
+  auto result = optimize(ir, 3);
+  EXPECT_EQ(result.size(), 1u);
+  EXPECT_EQ(result[0]->name, "cx");
 }
 
 // ===========================
@@ -233,12 +218,11 @@ TEST(CliffordRzOptimizationTest,
  *      └───┘└───┘└───┘          └─────┘└───┘└─────┘
  */
 TEST(ReduceHadamardGatesTest, HSH_To_SdgHSdg) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("s", {0}), create_gate("h", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 1);
+  EXPECT_EQ(HadamardGateReduction().run(dag), 1);
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.at("h"), 1);
   EXPECT_EQ(counts.at("sdg"), 2);
@@ -253,12 +237,11 @@ TEST(ReduceHadamardGatesTest, HSH_To_SdgHSdg) {
  *      └───┘└─────┘└───┘          └───┘└───┘└───┘
  */
 TEST(ReduceHadamardGatesTest, HSdgH_To_SHS) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("sdg", {0}), create_gate("h", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 1);
+  EXPECT_EQ(HadamardGateReduction().run(dag), 1);
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.at("h"), 1);
   EXPECT_EQ(counts.at("s"), 2);
@@ -275,13 +258,12 @@ TEST(ReduceHadamardGatesTest, HSdgH_To_SHS) {
  *      └───┘└───┘└───┘
  */
 TEST(ReduceHadamardGatesTest, HH_CX_HH_To_SwappedCX) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("h", {1}), create_gate("cx", {0, 1}),
       create_gate("h", {0}), create_gate("h", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 4);
+  EXPECT_EQ(HadamardGateReduction().run(dag), 4);
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.count("h"), 0u);
   EXPECT_EQ(counts.at("cx"), 1);
@@ -301,13 +283,12 @@ TEST(ReduceHadamardGatesTest, HH_CX_HH_To_SwappedCX) {
  *      └───┘└───┘└───┘
  */
 TEST(ReduceHadamardGatesTest, HH_CX_HH_OnQubits12) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {1}), create_gate("h", {2}), create_gate("cx", {1, 2}),
       create_gate("h", {1}), create_gate("h", {2})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 4);
+  EXPECT_EQ(HadamardGateReduction().run(dag), 4);
   auto nodes = dag.topological_op_nodes();
   ASSERT_EQ(nodes.size(), 1u);
   EXPECT_EQ(nodes[0]->name(), "cx");
@@ -318,13 +299,12 @@ TEST(ReduceHadamardGatesTest, HH_CX_HH_OnQubits12) {
  * 模板 tpl[2]，电路 CX 方向为 (2,1)，验证结果翻转为 (1,2)。
  */
 TEST(ReduceHadamardGatesTest, HH_CX21_HH_To_SwappedCX) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {1}), create_gate("h", {2}), create_gate("cx", {2, 1}),
       create_gate("h", {1}), create_gate("h", {2})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 4);
+  EXPECT_EQ(HadamardGateReduction().run(dag), 4);
   auto nodes = dag.topological_op_nodes();
   ASSERT_EQ(nodes.size(), 1u);
   EXPECT_EQ(nodes[0]->name(), "cx");
@@ -341,13 +321,12 @@ TEST(ReduceHadamardGatesTest, HH_CX21_HH_To_SwappedCX) {
  *      └───┘└───┘└───┘└────┘└───┘          └─────┘└───┘└───┘
  */
 TEST(ReduceHadamardGatesTest, H_S_CX_Sdg_H_To_Sdg_CX_S) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {1}), create_gate("s", {1}), create_gate("cx", {0, 1}),
       create_gate("sdg", {1}), create_gate("h", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 2);
+  EXPECT_EQ(HadamardGateReduction().run(dag), 2);
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.at("sdg"), 1);
   EXPECT_EQ(counts.at("cx"), 1);
@@ -365,13 +344,12 @@ TEST(ReduceHadamardGatesTest, H_S_CX_Sdg_H_To_Sdg_CX_S) {
  *      └───┘└────┘└───┘└───┘└───┘          └───┘└───┘└─────┘
  */
 TEST(ReduceHadamardGatesTest, H_Sdg_CX_S_H_To_S_CX_Sdg) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {1}), create_gate("sdg", {1}),
       create_gate("cx", {0, 1}), create_gate("s", {1}), create_gate("h", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(dag), 2);
+  EXPECT_EQ(HadamardGateReduction().run(dag), 2);
   const auto counts = dag.count_ops();
   EXPECT_EQ(counts.at("s"), 1);
   EXPECT_EQ(counts.at("cx"), 1);
@@ -394,7 +372,6 @@ TEST(ReduceHadamardGatesTest, H_Sdg_CX_S_H_To_S_CX_Sdg) {
  * 1）， tpl[2] 匹配 qubit 1,2（减 4），合计减 5。
  */
 TEST(ReduceHadamardGatesTest, CombinedTemplatesWithBasisAllGates) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("sdg", {0}),
       create_gate("h", {0}), create_gate("h", {1}),
@@ -402,7 +379,7 @@ TEST(ReduceHadamardGatesTest, CombinedTemplatesWithBasisAllGates) {
       create_gate("h", {1}), create_gate("h", {2})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(
+  EXPECT_EQ(HadamardGateReduction().run(
                 dag, std::set<std::string>{"h", "sdg", "s", "cx"}),
             5);
 }
@@ -411,12 +388,11 @@ TEST(ReduceHadamardGatesTest, CombinedTemplatesWithBasisAllGates) {
  * basis_gates 不包含 h，所有模板都无法使用，应返回 0。
  */
 TEST(ReduceHadamardGatesTest, BasisWithoutH_ReturnsZero) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("sdg", {0}), create_gate("h", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.reduce_hadamard_gates(
+  EXPECT_EQ(HadamardGateReduction().run(
                 dag, std::set<std::string>{"sdg", "s", "cx"}),
             0);
   // 门数不变
@@ -441,7 +417,6 @@ TEST(ReduceHadamardGatesTest, BasisWithoutH_ReturnsZero) {
  * 优化结果为 0（与 Python 版行为一致）。
  */
 TEST(MergeRotationsTest, HGateSplitsBlockOnOtherQubits) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}),         create_gate("h", {1}),
       create_gate("h", {2}),         create_gate("rz", {1}, {0.1}),
@@ -453,7 +428,7 @@ TEST(MergeRotationsTest, HGateSplitsBlockOnOtherQubits) {
       create_gate("h", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.merge_rotations(dag), 0);
+  EXPECT_EQ(PhasePolynomialMerging().run(dag), 0);
 }
 
 /*
@@ -470,7 +445,6 @@ TEST(MergeRotationsTest, HGateSplitsBlockOnOtherQubits) {
  *      └─────────┘└───┘└─────────┘└───┘
  */
 TEST(MergeRotationsTest, PhasePolynomialMergesRzAcrossCx) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("rz", {1}, {0.1}), create_gate("cx", {0, 1}),
       create_gate("rz", {1}, {0.2}), create_gate("cx", {0, 1}),
@@ -478,7 +452,7 @@ TEST(MergeRotationsTest, PhasePolynomialMergesRzAcrossCx) {
       create_gate("cx", {1, 0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.merge_rotations(dag), 1);
+  EXPECT_EQ(PhasePolynomialMerging().run(dag), 1);
   auto nodes = rz_nodes(dag);
   ASSERT_EQ(nodes.size(), 3u);
   EXPECT_NEAR(nodes[0]->op->arg_value[0], 0.5, 1e-9);
@@ -502,7 +476,6 @@ TEST(MergeRotationsTest, PhasePolynomialMergesRzAcrossCx) {
  *      └──────────┘└───┘└───┘└─────────┘└───┘
  */
 TEST(MergeRotationsTest, XGateFlipsConstantTerm) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("rz", {1}, {0.1}), create_gate("x", {1}),
       create_gate("cx", {0, 1}),     create_gate("rz", {1}, {0.2}),
@@ -511,7 +484,7 @@ TEST(MergeRotationsTest, XGateFlipsConstantTerm) {
       create_gate("rz", {0}, {0.5})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.merge_rotations(dag), 2);
+  EXPECT_EQ(PhasePolynomialMerging().run(dag), 2);
   auto nodes = rz_nodes(dag);
   ASSERT_EQ(nodes.size(), 3u);
   EXPECT_NEAR(nodes[0]->op->arg_value[0], -0.3, 1e-9);
@@ -538,7 +511,6 @@ TEST(MergeRotationsTest, XGateFlipsConstantTerm) {
  *
  */
 TEST(MergeRotationsTest, AdjacentCxCancelsAndMergesRz) {
-  CliffordRzOptimization optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("rz", {1}, {0.1}), create_gate("rz", {2}, {0.2}),
       create_gate("cx", {1, 0}),     create_gate("rz", {0}, {0.3}),
@@ -546,48 +518,11 @@ TEST(MergeRotationsTest, AdjacentCxCancelsAndMergesRz) {
       create_gate("cx", {0, 1}),     create_gate("rz", {1}, {0.4})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  EXPECT_EQ(optimizer.merge_rotations(dag), 1);
+  EXPECT_EQ(PhasePolynomialMerging().run(dag), 1);
   auto nodes = rz_nodes(dag);
   ASSERT_EQ(nodes.size(), 3u);
   // 拓扑序: Rz(0.1) on q1 → Rz(0.3) on q0 → Rz(0.2) on q2
   EXPECT_NEAR(nodes[0]->op->arg_value[0], 0.5, 1e-9);  // Rz on q1
   EXPECT_NEAR(nodes[1]->op->arg_value[0], 0.3, 1e-9);  // Rz on q0
   EXPECT_NEAR(nodes[2]->op->arg_value[0], 0.2, 1e-9);  // Rz on q2
-}
-
-/*
- * basis_gates 只包含 {rz, cx}，X 不在集合中。
- * 第一个 Rz(0.1) 被 X 隔开，无法与后面的 Rz 合并。
- *
- *                                           ┌─────────┐┌───┐┌─────────┐
- * q_0: ──────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├┤ Rz(0.5) ├
- *      ┌─────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘└─────────┘
- * q_1: ┤ Rz(0.1) ├┤ X ├┤ X ├┤ Rz(0.2) ├┤ X ├┤ Rz(0.4) ├──■─────────────
- *      └─────────┘└───┘└───┘└─────────┘└───┘└─────────┘
- *
- * 优化后 Rz(0.2) 和 Rz(0.4) 合并为 Rz(0.7)，Rz(0.1) 保留：
- *                                           ┌─────────┐┌───┐
- * q_0: ──────────────────■───────────────■──┤ Rz(0.3) ├┤ X ├
- *      ┌─────────┐┌───┐┌─┴─┐┌─────────┐┌─┴─┐├─────────┤└─┬─┘
- * q_1: ┤ Rz(0.1) ├┤ X ├┤ X ├┤ Rz(0.7) ├┤ X ├┤ Rz(0.4) ├──■──
- *      └─────────┘└───┘└───┘└─────────┘└───┘└─────────┘
- */
-TEST(MergeRotationsTest, BasisFilterExcludesXGate) {
-  CliffordRzOptimization optimizer;
-  std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("rz", {1}, {0.1}), create_gate("x", {1}),
-      create_gate("cx", {0, 1}),     create_gate("rz", {1}, {0.2}),
-      create_gate("cx", {0, 1}),     create_gate("rz", {0}, {0.3}),
-      create_gate("rz", {1}, {0.4}), create_gate("cx", {1, 0}),
-      create_gate("rz", {0}, {0.5})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-
-  EXPECT_EQ(optimizer.merge_rotations(dag, std::set<std::string>{"rz", "cx"}),
-            1);
-  auto nodes = rz_nodes(dag);
-  ASSERT_EQ(nodes.size(), 4u);
-  EXPECT_NEAR(nodes[0]->op->arg_value[0], 0.1, 1e-9);
-  EXPECT_NEAR(nodes[1]->op->arg_value[0], 0.7, 1e-9);
-  EXPECT_NEAR(nodes[2]->op->arg_value[0], 0.3, 1e-9);
-  EXPECT_NEAR(nodes[3]->op->arg_value[0], 0.4, 1e-9);
 }

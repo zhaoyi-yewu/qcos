@@ -25,12 +25,6 @@
 
 namespace qcos {
 
-namespace {
-
-DAGOpNode* as_op_node(DAGNode* node) { return dynamic_cast<DAGOpNode*>(node); }
-
-}  // namespace
-
 OptimizingTemplate::OptimizingTemplate(DAGCircuit template_dag_in,
                                        std::optional<DAGCircuit> replacement,
                                        int anchor_in, int weight_in)
@@ -55,7 +49,7 @@ std::unordered_map<int, DAGOpNode*> OptimizingTemplate::compare(
 
   DAGOpNode* t_node = nullptr;
   for (DAGNode* successor : template_dag_.successors(input_it->second)) {
-    t_node = as_op_node(successor);
+    t_node = dynamic_cast<DAGOpNode*>(successor);
     if (t_node) break;
   }
   if (!t_node) {
@@ -110,7 +104,7 @@ std::unordered_map<int, DAGOpNode*> OptimizingTemplate::compare(
         // 在模板邻居中搜索作用于当前量子比特的下一个门
         DAGOpNode* u_nxt = nullptr;
         for (DAGNode* candidate : u_nxts) {
-          DAGOpNode* op = as_op_node(candidate);
+          DAGOpNode* op = dynamic_cast<DAGOpNode*>(candidate);
           if (!op) continue;
           if (std::find(op->qargs.begin(), op->qargs.end(), qubit) !=
               op->qargs.end()) {
@@ -127,7 +121,7 @@ std::unordered_map<int, DAGOpNode*> OptimizingTemplate::compare(
 
         DAGOpNode* v_nxt = nullptr;
         for (DAGNode* candidate : v_nxts) {
-          DAGOpNode* op = as_op_node(candidate);
+          DAGOpNode* op = dynamic_cast<DAGOpNode*>(candidate);
           if (!op) continue;
           if (std::find(op->qargs.begin(), op->qargs.end(), qm_it->second) !=
               op->qargs.end()) {
@@ -287,7 +281,7 @@ std::vector<OptimizingTemplate> generate_hadamard_gate_templates() {
  * Rz 门可以跨过这些模版，用于 cancel_single_qubit_gates。
  * 模板无 replacement（仅用于模式匹配，不做替换）。
  */
-std::vector<OptimizingTemplate> generate_single_qubit_gate_templates() {
+std::vector<OptimizingTemplate> generate_rz_commute_templates() {
   std::vector<OptimizingTemplate> templates;
 
   /*
@@ -378,7 +372,7 @@ std::vector<OptimizingTemplate> generate_single_qubit_gate_templates() {
  * 用于 cancel_two_qubit_gates 中识别控制位线路上可跨过的门模式。
  * 模板跨过的子图不能包含目标位（否则双指针失去同步）。
  */
-std::vector<OptimizingTemplate> generate_cnot_ctrl_templates() {
+std::vector<OptimizingTemplate> generate_cx_commute_ctrl_templates() {
   std::vector<OptimizingTemplate> templates;
 
   /*
@@ -417,7 +411,7 @@ std::vector<OptimizingTemplate> generate_cnot_ctrl_templates() {
  * 用于 cancel_two_qubit_gates 中识别目标位线路上可跨过的门模式。
  * 模板跨过的子图不能包含控制位。
  */
-std::vector<OptimizingTemplate> generate_cnot_targ_templates() {
+std::vector<OptimizingTemplate> generate_cx_commute_targ_templates() {
   std::vector<OptimizingTemplate> templates;
 
   /*
