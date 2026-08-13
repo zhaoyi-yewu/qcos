@@ -96,6 +96,12 @@ class SubmitJobRequest(UuidMixin):
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
     )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None,
+        description="Error mitigation options. "
+        "Supports REM, ZNE, DD, Clifford fitting strategies",
+    )
     # Job ID
     job_id: UUID | None = Field(default=None, description="Job ID")
     # Job name
@@ -206,6 +212,10 @@ class SubmitJobResponse(UuidMixin):
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
     )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
+    )
     # Profiling
     profiling: list | None = Field(default=None, description="Profiling")
     # Shots
@@ -291,6 +301,10 @@ class GetJobStatusResponse(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
     )
     # Shots
     shots: int = Field(description="Shots")
@@ -383,6 +397,10 @@ class GetJobResultsResponse(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
     )
     # Shots
     shots: int = Field(description="Shots")
@@ -590,6 +608,10 @@ class UpdateJobResponse(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
     )
     # Shots
     shots: int = Field(description="Shots")

@@ -209,6 +209,9 @@ def load_configs():
     SAMPLES["simple-qasm-1-bit.qasm"] = Library.read_file(
         f"{samples_dir}/qasm/2.0/simple-qasm-1-bit.qasm"
     )
+    SAMPLES["bell-with-cz.qasm"] = Library.read_file(
+        f"{samples_dir}/qasm/2.0/bell-with-cz.qasm"
+    )
     SAMPLES["qasm3-1-bit.qasm"] = Library.read_file(
         f"{samples_dir}/qasm/3.0/qasm3-1-bit.qasm"
     )
