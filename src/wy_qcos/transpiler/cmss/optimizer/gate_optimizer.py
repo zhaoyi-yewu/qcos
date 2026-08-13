@@ -100,7 +100,7 @@ def pass_merge_theta(ir: list):
             ir[-2].arg_value[0] += ir[-1].arg_value[0]
             ir[-2].arg_value[0] %= 4 * np.pi
             ir.pop(-1)
-            if abs(ir[-1].arg_value[0]) < 1e-5:
+            if abs(ir[-1].arg_value[0]) < 1e-8:
                 ir.pop(-1)
             passed = True
             continue
@@ -286,6 +286,9 @@ def optimize(
             measures.append(op)
         else:
             regular_ops.append(op)
+
+    if not regular_ops:
+        return measures
 
     dag = DAGCircuit.ir_to_dag(regular_ops)
 

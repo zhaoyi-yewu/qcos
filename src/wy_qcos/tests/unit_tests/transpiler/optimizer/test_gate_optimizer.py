@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import pytest
+import copy
 
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree, get_ir
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import pass_merge_theta
@@ -27,7 +28,7 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gate_ir,
     validate_non_gate_ir,
 )
-from wy_qcos.common.cmss.gate_operation import H, CX, X, S, T, SDG
+from wy_qcos.common.cmss.gate_operation import H, CX, X, Y, Z, S, T, SDG
 from wy_qcos.common.cmss.measure import Measure
 
 
@@ -270,3 +271,115 @@ class TestOptimizeMeasurePlacement:
         assert len(measure_gates) == 2
         assert measure_gates[0].targets == [0]
         assert measure_gates[1].targets == [1]
+
+
+class TestOptimizeBoundary:
+    """Boundary tests for optimize() at level 1/2/3.
+
+    Covers empty circuit, measure-only, full cancellation, idle qubits,
+    single gate, non-contiguous qubits, mixed cancel/keep, and all-cancel
+    without measure.
+    """
+
+    def test_empty_circuit(self):
+        """No operations at all."""
+        for level in range(1, 4):
+            result = optimize([], opt_level=level)
+            assert not result
+
+    def test_measure_only(self):
+        """Only measure, no gates to optimize."""
+        ir = [Measure([1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 1
+            assert result[0].name == "measure"
+
+    def test_all_cancel_with_measure(self):
+        """H.H on same qubit cancels, measure remains."""
+        ir = [H([0]), H([0]), Measure([0])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 1
+            assert result[0].name == "measure"
+
+    def test_all_cancel_no_measure(self):
+        """All gates cancel, no measure left."""
+        ir = [H([0]), H([0]), X([1]), X([1]), CX([0, 1]), CX([0, 1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 0
+
+    def test_idle_qubits(self):
+        """Gates only on q0, q1/q2/q3 idle."""
+        ir = [H([0]), H([0]), Measure([0])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 1
+            assert result[0].name == "measure"
+
+    def test_single_gate(self):
+        """Single gate, nothing to cancel."""
+        ir = [H([1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 1
+            assert result[0].name == "h"
+
+    def test_non_contiguous_qubits(self):
+        """CX on q0,q3 (q1,q2 idle), cancel pair."""
+        ir = [CX([0, 3]), CX([0, 3]), Measure([0])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 1
+            assert result[0].name == "measure"
+
+    def test_mixed_cancel_keep(self):
+        """H.H on q0 cancels, X on q1 stays."""
+        ir = [H([0]), H([0]), X([1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            names = [op.name for op in result]
+            assert "h" not in names
+            assert any(op.name == "x" for op in result)
+
+    def test_multi_qubit_all_cancel(self):
+        """Multiple qubit pairs all cancel."""
+        ir = [
+            H([0]),
+            H([0]),
+            X([1]),
+            X([1]),
+            Y([2]),
+            Y([2]),
+            Z([3]),
+            Z([3]),
+        ]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 0
+
+    def test_measure_not_modified(self):
+        """Measure targets preserved after optimization."""
+        ir = [H([1]), H([1]), Measure([1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            m = [op for op in result if op.name == "measure"]
+            assert len(m) == 1
+            assert m[0].targets == [1]
+
+    def test_odd_count_self_inverse(self):
+        """Three H gates on same qubit: cancel 2, keep 1."""
+        ir = [H([1]), H([1]), H([1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            h_count = sum(1 for op in result if op.name == "h")
+            assert h_count == 1
+
+    def test_different_qargs_no_cancel(self):
+        """CX[0,1] and CX[1,0] do not cancel."""
+        ir = [CX([0, 1]), CX([1, 0])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            cx_count = sum(1 for op in result if op.name == "cx")
+            assert cx_count == 2
