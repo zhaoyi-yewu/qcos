@@ -274,6 +274,22 @@ class Device:
         """
         self.max_qubits = max_qubits
 
+    def set_available_qubits(self, available_qubits):
+        """Set device available qubits.
+
+        Args:
+            available_qubits: device available qubits
+        """
+        self.available_qubits = available_qubits
+
+    def get_available_qubits(self):
+        """Get device available qubits.
+
+        Returns:
+            available qubits
+        """
+        return self.available_qubits
+
     def set_device_options_info(self, device_options_info):
         """Set device option info.
 

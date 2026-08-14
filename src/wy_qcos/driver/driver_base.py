@@ -100,7 +100,7 @@ class DriverBase:
         self.max_qubits = 0
         # available number of qubits.
         # This value may vary according to the status of quantum hardware
-        self.available_num_qubits = -1
+        self.available_qubits = -1
         # supported basis gates
         self.supported_basis_gates = None
         # supported transpilers
@@ -663,6 +663,14 @@ class DriverBase:
             max qubits
         """
         return self.max_qubits
+
+    def get_available_qubits(self):
+        """Get available qubits.
+
+        Returns:
+            available qubits
+        """
+        return self.available_qubits
 
     def get_fake_results(self, num_qubits, shots, data):
         """Get fake results.
