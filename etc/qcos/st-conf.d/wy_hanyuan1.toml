@@ -14,12 +14,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_wy_hanyuan1.log
 device_log_file = "/var/log/qcos/device_wy_hanyuan1.log"
 
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_wy_hanyuan1.log
-monitor_log_file = "/var/log/qcos/device_monitor_wy_hanyuan1.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_wy_hanyuan1.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -48,3 +45,13 @@ eng_code = "12345678"
 password_secret = ""
 password_pub_key = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/ktW/aO0W1NM4QXb1TYo6SHQjTMt4cfhvh9a35VZ4QdKxP+HjZE0ub94gzTIYagWSowLJcgXKuhUEueRIEoR1HiuK11DyPJNMn6J8Z3pk/7e8CPZwoCPZW+R1H384+AfUUZYZnqk7lvMPRhAaDUGcTA+rAp9c4IVrJK2azYbI2wIDAQAB"
 password_pri_key = "MIICeAIBADANBgkqhkiG9w0BAQEFAASCAmIwggJeAgEAAoGBAL+S1b9o7RbU0zhBdvVNijpIdCNMy3hx+G+H1rflVnhB0rE/4eNkTS5v3iDNMhhqBZKjAslyBcq6FQS55EgShHUeK4rXUPI8k0yfonxnemT/t7wI9nCgI9lb5HUffzj4B9RRlhmeqTuW8w9GEBoNQZxMD6sCn1zghWskrZrNhsjbAgMBAAECgYEAuWle0Mu3s8I1z5uki5QJdZFMPiIER8VeomtBSGiBgRCL35spgBBClvAUd4DBvFlYnWyBtQBTVLs2voU/yPWLFbZgKhRMBY1KbD8lgV6vVfMnZvLxsvt6HGAFNauOZ7JwnwaaLSNFSR+kApjSIh5rzrPufjQ5U+1TlQiebdXAFmkCQQDiWHedCvlrIAC7txgApzodRu6TjpnCk3+r+21FD75/uQDV3OcI6D8A+UkkP22Dm6ZR5FsHZgriN9s144H+omcHAkEA2KwhPBjh3C6mW/OPGhPLJwf7pCoJRT6Y+KME76kYbpBO99aEJqH8B3e7mEHGeZGyD3E0FODwbJvshqy4k68mjQJBAKlBfFiL700jBklYtfMvGa7w7tCajvJId+00O1asWkiKIEzMPluTyCFDSGV5pLwIdYvBViynKrZVDHA0q22tJZsCQE98RezwC9tkWa8d2H9uh3ZYHV6J9UCryB5eX280DzxwQCf3UB+ECRsMN4uRhagPZMz5cGvAYTLWuJxnPIchF/kCQQDYtMa3+Yys8GjTe6gvkd6rQ7b6X3pTW2em8KfirlWeVAZtYs/MxYJZcuFy26lFA+DtO7Rg2GzhIKkUrzvqvgkQ"
+
+[wy_hanyuan1.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = true
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_wy_hanyuan1.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60

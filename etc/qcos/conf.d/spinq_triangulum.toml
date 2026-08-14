@@ -14,16 +14,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_spinq_triangulum.log
 device_log_file = "/var/log/qcos/device_spinq_triangulum.log"
 
-# [Optional] enable device monitor
-# enable_device_monitor = false
-enable_device_monitor = false
-
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_spinq_triangulum.log
-monitor_log_file = "/var/log/qcos/device_monitor_spinq_triangulum.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_spinq_triangulum.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -56,6 +49,16 @@ max_job_wait_time = 604800
 
 # [Optional] job query interval, default value is 5 seconds
 job_query_interval = 5
+
+[spinq_triangulum.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_spinq_triangulum.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
 
 [spinq_triangulum.transpiler.qpu_configs]
 qubits = 3

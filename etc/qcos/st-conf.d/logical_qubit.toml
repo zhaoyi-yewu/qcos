@@ -11,16 +11,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_logical_qubit.log
 device_log_file = "/var/log/qcos/device_logical_qubit.log"
 
-# [Optional] enable device monitor
-# enable_device_monitor = false
-enable_device_monitor = false
-
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_logical_qubit.log
-monitor_log_file = "/var/log/qcos/device_monitor_logical_qubit.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_logical_qubit.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -45,6 +38,16 @@ job_query_interval = 5
 chip_name = "QZ01-surface_code"
 token = ""
 url = "127.0.0.1"
+
+[logical_qubit.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_logical_qubit.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
 
 [logical_qubit.transpiler.qpu_configs]
 qubits = 17

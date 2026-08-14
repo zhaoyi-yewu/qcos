@@ -14,16 +14,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_dummy.log
 device_log_file = "/var/log/qcos/device_dummy.log"
 
-# [Optional] enable device monitor
-# enable_device_monitor = false
-enable_device_monitor = false
-
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_dummy.log
-monitor_log_file = "/var/log/qcos/device_monitor_dummy.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_dummy.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -38,6 +31,16 @@ monitor_log_file = "/var/log/qcos/device_monitor_dummy.log"
 
 # [Optional] max queued jobs, -1 means unlimited
 max_queued_jobs = -1
+
+[dummy.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_dummy.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
 
 [dummy.transpiler.qpu_configs]
 # Samples

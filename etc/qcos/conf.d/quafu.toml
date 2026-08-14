@@ -11,16 +11,9 @@ debug = false
 # device_log_file = /var/log/qcos/device_quafu.log
 device_log_file = "/var/log/qcos/device_quafu.log"
 
-# [Optional] enable device monitor
-# enable_device_monitor = false
-enable_device_monitor = false
-
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_quafu.log
-monitor_log_file = "/var/log/qcos/device_monitor_quafu.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_quafu.log
+
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
@@ -45,6 +38,16 @@ job_query_interval = 5
 chip_name = "Dongling"
 token = ""
 url = ""
+
+[quafu.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_quafu.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
 
 [quafu.transpiler.qpu_configs]
 qubits = 84
