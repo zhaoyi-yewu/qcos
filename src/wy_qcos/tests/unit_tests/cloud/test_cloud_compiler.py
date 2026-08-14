@@ -520,7 +520,7 @@ class TestCompileQasm:
         assert resp.code == CODE_SUCCESS
         assert resp.msg == MSG_SUCCESS
         assert resp.data is not None
-        assert resp.data.compiled == ""
+        assert resp.data.compiled is None
 
     def test_vendor_compiler_only_validates(self):
         resp = compile_qasm(_valid_request(compiler="quarkcircuit"))
@@ -619,9 +619,8 @@ class TestCompileQasm:
         assert decoded != MSG_SUCCESS
         assert "语法" in decoded or "解析" in decoded
 
-    def test_qasm3_with_cmss_still_succeeds(self):
-        # cmss branch never calls QuafuVerifier, so a QASM3.0 source that
-        # would fail syntax validation still returns success.
+    def test_qasm3_with_cmss_fails(self):
+        # CMSS now runs CMSSVerifier; QASM3.0 fails syntax validation.
         resp = compile_qasm(
             _valid_request(
                 compiler="cmss",
@@ -629,7 +628,7 @@ class TestCompileQasm:
                 qasm="OPENQASM 3.0;\nqubit[2] q;\nh q[0];\n",
             )
         )
-        assert resp.code == CODE_SUCCESS
+        assert resp.code == CODE_FAIL
 
     def test_unsupported_compiler(self):
         resp = compile_qasm(_valid_request(compiler="ibm"))
@@ -785,12 +784,12 @@ class TestCompileQasm:
             compiler=COMPILER_CMSS,
             qasmType=2,
             qasm=VALID_QASM,
-            extend={"targetBits": [1, 2, 3, 6, 8]},
+            extend={"targetBits": [0, 1]},
             topology=_topology(),
         )
         resp = compile_qasm(req)
         assert resp.code == CODE_SUCCESS
-        assert resp.data.compiled == ""
+        assert resp.data.compiled is None
 
     @pytest.mark.parametrize("ins_label", INS_LABEL_ALL)
     def test_all_tech_stacks(self, ins_label):
@@ -892,7 +891,7 @@ class TestCompileEndpoint:
         data = r.json()
         assert data["code"] == 1
         assert data["msg"] == MSG_SUCCESS
-        assert data["data"]["compiled"] == ""
+        assert data["data"]["compiled"] is None
 
     def test_post_vendor_compiler(self, client):
         r = client.post(
@@ -1172,7 +1171,7 @@ class TestCompileEndpoint:
     def test_post_extend_target_bits(self, client):
         r = client.post(
             "/compiler/qasm/compile",
-            json=self._body(extend={"targetBits": [1, 2, 3, 6, 8]}),
+            json=self._body(extend={"targetBits": [0, 1]}),
         )
         assert r.status_code == 200
         data = r.json()

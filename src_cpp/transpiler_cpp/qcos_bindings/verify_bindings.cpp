@@ -21,6 +21,7 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 
+#include "verify/cmss_verifier.h"
 #include "verify/qpu_verifier.h"
 #include "verify/quafu_verifier.h"
 
@@ -60,6 +61,28 @@ void bind_verify(nb::module_& m) {
           nb::arg("qasm_string"), nb::arg("verbose") = false,
           R"(
 Verify whether a circuit can execute on the Quafu chip.
+
+Args:
+    qasm_string (str): OpenQASM 2.0 circuit source.
+    verbose (bool): If True, print failure message to stdout.
+
+Returns:
+    VerifyResult: Result with passed (bool) and message (str).
+          )");
+
+  nb::class_<CMSSVerifier>(m, "CMSSVerifier",
+                           "CMSS (compilation service) verifier.")
+      .def(nb::init<const VerifyParams&>(), nb::arg("params"))
+      .def(
+          "verify",
+          [](const CMSSVerifier& self, const std::string& qasm_string,
+             bool verbose) {
+            nb::gil_scoped_release release;
+            return self.verify(qasm_string, verbose);
+          },
+          nb::arg("qasm_string"), nb::arg("verbose") = false,
+          R"(
+Verify whether a circuit can execute for CMSS.
 
 Args:
     qasm_string (str): OpenQASM 2.0 circuit source.

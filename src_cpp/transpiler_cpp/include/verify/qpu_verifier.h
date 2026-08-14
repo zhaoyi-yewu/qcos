@@ -74,18 +74,21 @@ struct VerifyResult {
  * 在提交电路到真机执行前，本地校验电路是否符合目标真机的约束条件，
  * 避免提交后浪费时间。子类实现各真机的具体校验规则。
  *
- * 三项核心检查（verify 按顺序调用，check_qasm_syntax 负责解析并缓存结果）：
- *   1. check_qasm_syntax     — QASM 语法校验，解析结果存入 operations_ /
- * num_qubits_
- *   2. check_topology        — 拓扑结构校验
- *   3. check_depth_and_gate_count — 最大深度/门数量校验
+ * 校验流程（verify 按顺序调用）：
+ *   1. check_qasm_syntax2  — QASM 语法校验
+ *   2. check_topology      — 拓扑结构校验（纯虚，子类实现）
+ *   3. check_depth_and_gate_count — 深度/门数量校验（虚函数，有默认实现）
  */
 class QPUVerifier {
  public:
+  explicit QPUVerifier(const VerifyParams& params);
   virtual ~QPUVerifier() = default;
 
   /**
-   * @brief 完整校验，依次调用三项检查
+   * @brief 完整校验（纯虚，子类实现）
+   *
+   * 子类按序调用 check_qasm_syntax2 -> check_topology ->
+   * check_depth_and_gate_count，并处理结果返回。
    * @param qasm_string  QASM 电路字符串
    * @param verbose      是否在校验结束时打印结果信息
    * @return VerifyResult，passed=true 表示通过，message 包含失败原因
@@ -94,35 +97,64 @@ class QPUVerifier {
                               bool verbose = false) const = 0;
 
   /**
-   * @brief QASM 语法校验
+   * @brief QASM 语法校验（虚函数）
    *
-   * 检查原始 QASM 字符串是否合法。
-   * 解析成功后将 operations 和 num_qubits 缓存到成员变量，供后续 check
-   * 方法使用。失败时通过 result_ 成员记录原因。
+   * 基类默认实现：检查 OPENQASM 2.0 声明并解析电路，解析结果缓存到
+   * parsed_operations_ / parsed_num_qubits_ 供后续 check 使用，
+   * 并执行 Measure 规则校验（Measure 必须在线路末尾，每个比特最多一次）。
+   * 子类可 override 调用基类后附加自身语法规则。
    * @param qasm_string  QASM 电路字符串
    * @return true=通过，false=不通过
    */
-  virtual bool check_qasm_syntax(const std::string& qasm_string) const = 0;
+  virtual bool check_qasm_syntax2(const std::string& qasm_string) const;
 
   /**
-   * @brief 拓扑结构校验
-   *
-   * 使用 check_qasm_syntax 缓存的解析结果，检查：
-   * - 量子比特数是否在芯片范围内
-   * - 两比特门操作的目标量子比特对是否存在于耦合图中
-   * 失败时通过 result_ 成员记录原因。
-   * @return true=通过，false=不通过
+   * @brief 拓扑结构校验（纯虚，子类实现）
    */
   virtual bool check_topology() const = 0;
 
   /**
-   * @brief 最大深度 / 门数量校验
+   * @brief 深度/两比特门数量/总门数量校验（虚函数，默认限值 200/200/不限）
    *
-   * 使用 check_qasm_syntax 缓存的解析结果，检查电路规模是否超限。
-   * 失败时通过 result_ 成员记录原因。
-   * @return true=通过，false=不通过
+   * 子类可 override 调用基类传入自定义限值。
    */
-  virtual bool check_depth_and_gate_count() const = 0;
+  virtual bool check_depth_and_gate_count() const {
+    return check_depth_and_gate_count(200, 200, -1);
+  }
+
+ protected:
+  /**
+   * @brief 深度/两比特门数量/总门数量校验实现
+   * @param max_depth   最大深度，-1 表示不限
+   * @param max_2q_size 最大两比特门数量，-1 表示不限
+   * @param max_size    最大总门数量，-1 表示不限
+   */
+  bool check_depth_and_gate_count(int max_depth, int max_2q_size,
+                                  int max_size) const;
+
+  /// Measure 门必须在线路末尾，且每个比特最多测量一次
+  bool check_measure_rules() const;
+
+  /// target_bits 越界检查
+  bool check_target_bits_range() const;
+
+  /// target_bits 越界检查 + 去重 + 数量校验
+  bool check_target_bits_range_and_count() const;
+
+  /// 最大连通分量节点数 >= required
+  bool check_largest_component_sufficient(int required) const;
+
+  /// 检测 parsed_operations_ 中是否含多比特门
+  bool has_multi_qubit_gates() const;
+
+  int max_qubits_;
+  std::vector<std::pair<int, int>> coupling_list_;
+  std::vector<double> edge_fidelities_;
+  std::vector<double> single_qubit_fidelities_;
+  mutable std::vector<int> target_bits_;
+  mutable std::vector<std::shared_ptr<BaseOperation>> parsed_operations_;
+  mutable int parsed_num_qubits_ = 0;
+  mutable VerifyResult result_;
 };
 
 }  // namespace qcos

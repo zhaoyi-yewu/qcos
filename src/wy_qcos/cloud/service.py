@@ -37,7 +37,11 @@ from wy_qcos.cloud.schemas import (
     CompileRequest,
     CompileResponse,
 )
-from wy_qcos.transpiler.high_performance import QuafuVerifier, VerifyParams
+from wy_qcos.transpiler.high_performance import (
+    CMSSVerifier,
+    QuafuVerifier,
+    VerifyParams,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +161,12 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
         ),
         "拓扑校验错误：电路拓扑无法映射到自定义比特",
     ),
+    (
+        re.compile(
+            r"^Topology error: target_bits do not form a connected graph$"
+        ),
+        "拓扑校验错误：自定义比特未构成连通图",
+    ),
     # --- gate count / depth errors ---
     (
         re.compile(
@@ -171,6 +181,13 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
             r"exceed limit (-?\d+)$"
         ),
         "门数量校验错误：分解后使用了{}个双比特门，超过上限{}",
+    ),
+    (
+        re.compile(
+            r"^Gate count error: total gate count "
+            r"exceeds limit (-?\d+)$"
+        ),
+        "门数量校验错误：量子门总个数超过上限{}",
     ),
     (
         re.compile(
@@ -486,6 +503,55 @@ def _log_request_params(params: dict) -> None:
     )
 
 
+def _run_verifier(
+    verifier_cls: type,
+    params: dict,
+) -> CompileResponse:
+    """Run circuit verification with the given verifier class.
+
+    Builds verify params, validates target bits, runs the verifier,
+    and returns a CompileResponse with the result. Used by both
+    quarkcircuit (QuafuVerifier) and cmss (CMSSVerifier) compilers.
+    """
+    compiler = params["compiler"]
+    verify_params = _build_verify_params(params)
+    target_bit_error = _validate_target_bits(params)
+    if target_bit_error is not None:
+        logger.warning(
+            "compile failed: compiler=%s reason=target_bits "
+            "validation failed: %s",
+            compiler,
+            target_bit_error,
+        )
+        return CompileResponse(
+            code=CODE_FAIL,
+            msg=_encode_msg(_truncate_msg(target_bit_error)),
+        )
+    verifier = verifier_cls(verify_params)
+    verify_result = verifier.verify(params["qasm"])
+    if verify_result.passed:
+        logger.info(
+            "compile succeeded: compiler=%s qasm_type=%s",
+            compiler,
+            params["qasm_type"],
+        )
+        return CompileResponse(
+            code=CODE_SUCCESS, msg=MSG_SUCCESS, data=CompileData()
+        )
+    else:
+        logger.warning(
+            "compile failed: compiler=%s "
+            "reason=circuit verification failed: %s",
+            compiler,
+            verify_result.message,
+        )
+        translated = _translate_verifier_message(verify_result.message)
+        return CompileResponse(
+            code=CODE_FAIL,
+            msg=_encode_msg(_truncate_msg(translated)),
+        )
+
+
 def compile_qasm(request: CompileRequest) -> CompileResponse:
     """Run the cloud compiler workflow for a single request.
 
@@ -495,8 +561,9 @@ def compile_qasm(request: CompileRequest) -> CompileResponse:
     - quarkcircuit: validate the circuit with :class:`QuafuVerifier`
       and return the result (code=1 if it passes, code=0 with the
       verifier's failure message otherwise).
-    - cmss: circuit compilation is retained as a TODO; returns
-      code=1 with an empty compiled field.
+    - cmss: validate the circuit with :class:`CMSSVerifier`
+      and return the result (code=1 if it passes, code=0 with the
+      verifier failure message otherwise).
     - any other compiler name: returns code=0 with an
       "invalid request parameter" message.
 
@@ -512,54 +579,9 @@ def compile_qasm(request: CompileRequest) -> CompileResponse:
         compiler = params["compiler"]
 
         if compiler == COMPILER_QUARKCIRCUIT:
-            verify_params = _build_verify_params(params)
-            target_bit_error = _validate_target_bits(params)
-            if target_bit_error is not None:
-                logger.warning(
-                    "compile failed: compiler=%s reason=target_bits "
-                    "validation failed: %s",
-                    compiler,
-                    target_bit_error,
-                )
-                return CompileResponse(
-                    code=CODE_FAIL,
-                    msg=_encode_msg(_truncate_msg(target_bit_error)),
-                )
-            verifier = QuafuVerifier(verify_params)
-            verify_result = verifier.verify(params["qasm"])
-            if verify_result.passed:
-                logger.info(
-                    "compile succeeded: compiler=%s qasm_type=%s",
-                    compiler,
-                    params["qasm_type"],
-                )
-                return CompileResponse(
-                    code=CODE_SUCCESS, msg=MSG_SUCCESS, data=CompileData()
-                )
-            else:
-                logger.warning(
-                    "compile failed: compiler=%s reason=circuit verification "
-                    "failed: %s",
-                    compiler,
-                    verify_result.message,
-                )
-                translated = _translate_verifier_message(verify_result.message)
-                return CompileResponse(
-                    code=CODE_FAIL,
-                    msg=_encode_msg(_truncate_msg(translated)),
-                )
+            return _run_verifier(QuafuVerifier, params)
         elif compiler == COMPILER_CMSS:
-            # TODO: cmss circuit compilation is not implemented yet.
-            data = CompileData(compiled="")
-            logger.info(
-                "compile succeeded: compiler=%s qasm_type=%s "
-                "(cmss compilation not yet implemented, empty output)",
-                compiler,
-                params["qasm_type"],
-            )
-            return CompileResponse(
-                code=CODE_SUCCESS, msg=MSG_SUCCESS, data=data
-            )
+            return _run_verifier(CMSSVerifier, params)
         else:
             logger.warning(
                 "compile failed: compiler=%s reason=unsupported compiler",

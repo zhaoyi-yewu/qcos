@@ -17,28 +17,33 @@
 
 #pragma once
 
-#include <utility>
-#include <vector>
+#include <string>
 
 #include "verify/qpu_verifier.h"
 
 namespace qcos {
 
 /**
- * @brief 北量院 Quafu（夸父）系列超导芯片校验
+ * @brief CMSS 编译器校验
  *
- * 从 VerifyParams 读取芯片参数，校验电路是否可在 Quafu 真机上执行：
- * - QASM 语法必须合法（OPENQASM 2.0 + 可解析 + Measure 规则）
- * - 拓扑约束：比特数 + 连通图 + 用户指定比特（bin-packing）
- * - 门数量/深度不超过上限
+ * - QASM 语法：OPENQASM 2.0 声明且可解析 + Measure 规则
+ * - 比特数：电路实际使用比特数不超过真机可用比特数
+ * - target_bits 越界：每个 target_bit 在 [0, bits) 范围内
+ * - target_bits 数量：去重后与电路实际使用比特数一致
+ * - 全单比特门（无 target_bits）：仅校验比特数是否足够
+ * - 全单比特门（有 target_bits）：比特数 + 越界 + 数量校验，不检查连通性
+ * - 含多比特门（无 target_bits）：最大连通分量节点数 >= 电路比特数
+ * - 含多比特门（有 target_bits）：target_bits 必须构成单一连通图，
+ *   且数量与电路实际使用比特数一致
+ * - 深度 <= 200，两比特门数量 <= 200，总门数量 <= 500（分解后）
  */
-class QuafuVerifier : public QPUVerifier {
+class CMSSVerifier : public QPUVerifier {
  public:
   /**
    * @brief 从 VerifyParams 构造
    * @param params 校验参数，由 Python 层解析 API 请求后传入
    */
-  explicit QuafuVerifier(const VerifyParams& params);
+  explicit CMSSVerifier(const VerifyParams& params);
 
   /**
    * @brief 完整校验入口
@@ -64,11 +69,12 @@ class QuafuVerifier : public QPUVerifier {
   /**
    * @brief 拓扑结构校验
    *
-   * 根据电路是否含多比特门、是否指定 target_bits 分情况校验：
-   * - 全单比特门：比特数 <= 真机可用比特数即可
+   * 根据电路是否含多比特门、是否指定 target_bits 分四种情况：
+   * - 全单比特门，无 target_bits：仅校验比特数 <= 真机可用比特数
+   * - 全单比特门，有 target_bits：比特数 + target_bits 越界 + 数量校验
    * - 含多比特门，无 target_bits：最大连通分量节点数 >= 电路比特数
-   * - 含多比特门，有 target_bits：电路各连通分量能否装入 target_bits
-   *   诱导子图的各连通分量（bin-packing 可行性）
+   * - 含多比特门，有 target_bits：target_bits 必须构成单一连通图，
+   *   且数量与电路实际使用比特数一致
    * @return true 拓扑约束满足
    */
   bool check_topology() const override;
@@ -76,7 +82,7 @@ class QuafuVerifier : public QPUVerifier {
   /**
    * @brief 深度/门数量校验
    *
-   * 调用基类实现，限值深度 200、两比特门 200，总门数不限。
+   * 调用基类实现，限值深度 200、两比特门 200、总门数 500（分解后）。
    * @return true 未超限
    */
   bool check_depth_and_gate_count() const override;

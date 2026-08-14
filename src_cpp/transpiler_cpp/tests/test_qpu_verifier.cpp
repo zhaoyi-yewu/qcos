@@ -17,46 +17,10 @@
 
 #include <gtest/gtest.h>
 
+#include "test_verify_utils.h"
 #include "verify/quafu_verifier.h"
 
 using namespace qcos;
-
-namespace {
-
-VerifyParams make_test_params() {
-  VerifyParams params;
-  params.bits = 8;
-  params.basis_gates = {"h", "rx", "ry", "rz", "cz"};
-  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}};
-  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98};
-  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
-                                    0.0,   0.0,   0.0,   0.0};
-  return params;
-}
-
-// Shenglian 真实芯片拓扑：83 比特、60 条耦合边
-VerifyParams make_shenglian_params() {
-  VerifyParams params;
-  params.bits = 83;
-  params.basis_gates = {"h", "x", "rx", "ry", "rz", "cz", "cx", "measure"};
-  params.coupling_list = {
-      {15, 22}, {16, 22}, {16, 23}, {17, 23}, {18, 24}, {18, 25}, {20, 27},
-      {22, 29}, {23, 30}, {25, 32}, {27, 34}, {28, 35}, {29, 35}, {30, 36},
-      {30, 37}, {31, 37}, {31, 38}, {32, 38}, {32, 39}, {33, 39}, {34, 40},
-      {34, 41}, {36, 43}, {37, 44}, {38, 45}, {39, 46}, {41, 48}, {42, 49},
-      {43, 49}, {43, 50}, {45, 51}, {46, 53}, {47, 53}, {48, 54}, {49, 56},
-      {50, 57}, {51, 58}, {53, 60}, {54, 61}, {59, 66}, {60, 66}, {61, 67},
-      {61, 68}, {62, 68}, {62, 69}, {63, 70}, {64, 71}, {66, 73}, {67, 74},
-      {68, 75}, {69, 76}, {70, 77}, {71, 77}, {73, 79}, {73, 80}, {74, 80},
-      {74, 81}, {75, 81}, {75, 82}, {76, 82}};
-  params.edge_fidelities = std::vector<double>(60, 0.99);
-  params.single_qubit_fidelities = std::vector<double>(83, 0.999);
-  return params;
-}
-
-}  // namespace
-
-// check_qasm_syntax
 
 TEST(QuafuVerifier, CheckQasmSyntax_ValidQasm2) {
   QuafuVerifier verifier(make_test_params());
@@ -70,7 +34,7 @@ TEST(QuafuVerifier, CheckQasmSyntax_ValidQasm2) {
       "cz q[0],q[1];\n"
       "measure q[0] -> c[0];\n";
 
-  EXPECT_TRUE(verifier.check_qasm_syntax(qasm));
+  EXPECT_TRUE(verifier.check_qasm_syntax2(qasm));
 }
 
 TEST(QuafuVerifier, CheckQasmSyntax_Qasm3Header_ReturnsFalse) {
@@ -82,7 +46,7 @@ TEST(QuafuVerifier, CheckQasmSyntax_Qasm3Header_ReturnsFalse) {
       "qubit[2] q;\n"
       "h q[0];\n";
 
-  EXPECT_FALSE(verifier.check_qasm_syntax(qasm));
+  EXPECT_FALSE(verifier.check_qasm_syntax2(qasm));
 }
 
 TEST(QuafuVerifier, CheckQasmSyntax_NoHeader_ReturnsFalse) {
@@ -90,7 +54,7 @@ TEST(QuafuVerifier, CheckQasmSyntax_NoHeader_ReturnsFalse) {
 
   std::string qasm = "qreg q[2];\nh q[0];\n";
 
-  EXPECT_FALSE(verifier.check_qasm_syntax(qasm));
+  EXPECT_FALSE(verifier.check_qasm_syntax2(qasm));
 }
 
 TEST(QuafuVerifier, CheckQasmSyntax_InvalidGate_ReturnsFalse) {
@@ -103,7 +67,7 @@ TEST(QuafuVerifier, CheckQasmSyntax_InvalidGate_ReturnsFalse) {
       "qreg q[2];\n"
       "foobar q[0];\n";
 
-  EXPECT_FALSE(verifier.check_qasm_syntax(qasm));
+  EXPECT_FALSE(verifier.check_qasm_syntax2(qasm));
 }
 
 TEST(QuafuVerifier, CheckQasmSyntax_CommentBeforeHeader) {
@@ -116,7 +80,7 @@ TEST(QuafuVerifier, CheckQasmSyntax_CommentBeforeHeader) {
       "qreg q[2];\n"
       "h q[0];\n";
 
-  EXPECT_TRUE(verifier.check_qasm_syntax(qasm));
+  EXPECT_TRUE(verifier.check_qasm_syntax2(qasm));
 }
 
 // Measure 之后出现非 Measure 门 -> False
@@ -197,7 +161,10 @@ TEST(QuafuVerifier, CheckTopology_AllSingleQubit_ExceedsBits_ReturnsFalse) {
       "qreg q[10];\n"
       "h q[0];\nh q[1];\nh q[2];\nh q[3];\nh q[4];\n"
       "h q[5];\nh q[6];\nh q[7];\nh q[8];\nh q[9];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Topology error: circuit requires 10 qubits, but chip only has 8");
 }
 
 TEST(QuafuVerifier,
@@ -240,7 +207,11 @@ TEST(QuafuVerifier,
       "qreg q[5];\n"
       "h q[0];\nh q[1];\nh q[2];\nh q[3];\nh q[4];\n"
       "cz q[0],q[1];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Topology error: circuit requires 5 qubits, but largest connected "
+            "component only has 3");
 }
 
 TEST(QuafuVerifier, CheckTopology_ZeroQubits_ReturnsFalse) {
@@ -250,7 +221,9 @@ TEST(QuafuVerifier, CheckTopology_ZeroQubits_ReturnsFalse) {
       "OPENQASM 2.0;\n"
       "include \"qelib1.inc\";\n"
       "qreg q[0];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: circuit has no qubits");
 }
 
 // target_bits（规则2，含多比特门时触发）
@@ -294,7 +267,11 @@ TEST(QuafuVerifier,
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cz q[0],q[1];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
 }
 
 TEST(QuafuVerifier, CheckTopology_TargetBitsWithIsolatedQubit_ReturnsFalse) {
@@ -316,8 +293,11 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsWithIsolatedQubit_ReturnsFalse) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cz q[0],q[1];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
-  EXPECT_FALSE(verifier.verify(qasm).message.empty());
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
 }
 
 // target_bits 整体位于同一连通分量，但自身诱导子图不连通：应失败
@@ -340,7 +320,11 @@ TEST(QuafuVerifier,
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cz q[0],q[1];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
 }
 
 // target_bits 恰好为一条直连耦合边：诱导子图连通，应通过
@@ -556,7 +540,10 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsOutOfRange_ReturnsFalse) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cz q[0],q[1];\n";
-  EXPECT_FALSE(verifier.verify(qasm_with_cz).passed);
+  auto result = verifier.verify(qasm_with_cz);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Topology error: target_bit 10 out of range [0, 8)");
 
   // 全单比特门时越界同样返回 false
   std::string qasm_single =
@@ -564,7 +551,10 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsOutOfRange_ReturnsFalse) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "h q[0];\n";
-  EXPECT_FALSE(verifier.verify(qasm_single).passed);
+  auto result2 = verifier.verify(qasm_single);
+  EXPECT_FALSE(result2.passed);
+  EXPECT_EQ(result2.message,
+            "Topology error: target_bit 10 out of range [0, 8)");
 }
 
 // 真实芯片拓扑：target_bits 诱导子图分 3 个连通区(容量 5/3/1 及若干 1)。
@@ -994,7 +984,10 @@ TEST(QuafuVerifier, CheckDepthAndGateCount_201Cx_ReturnsFalse) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n";
   for (int i = 0; i < 201; ++i) qasm += "cx q[0],q[1];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Gate count error: 201 multi-qubit gates exceed limit 200");
 }
 
 TEST(QuafuVerifier,
@@ -1007,7 +1000,11 @@ TEST(QuafuVerifier,
       "include \"qelib1.inc\";\n"
       "qreg q[3];\n";
   for (int i = 0; i < 40; ++i) qasm += "ccx q[0],q[1],q[2];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Gate count error: 240 two-qubit gates after decomposition exceed "
+            "limit 200");
 }
 
 TEST(QuafuVerifier, CheckDepth_200SequentialGates_Passes) {
@@ -1029,7 +1026,10 @@ TEST(QuafuVerifier, CheckDepth_201SequentialGates_Fails) {
       "include \"qelib1.inc\";\n"
       "qreg q[1];\n";
   for (int i = 0; i < 201; ++i) qasm += "h q[0];\n";
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Depth error: circuit depth 201 exceeds limit 200");
 }
 
 // verify（完整入口）
@@ -1054,5 +1054,8 @@ TEST(QuafuVerifier, Verify_InvalidQasm_ReturnsFalse) {
 
   std::string qasm = "OPENQASM 3.0;\nqubit[2] q;\n";
 
-  EXPECT_FALSE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "QASM syntax error: only OPENQASM 2.0 is supported");
 }

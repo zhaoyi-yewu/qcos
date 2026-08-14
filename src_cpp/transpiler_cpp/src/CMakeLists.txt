@@ -52,6 +52,8 @@ add_library(${LIB_TRANSPILER} STATIC
                             compiler/quantum_computation.cpp
                             transpile/transpile.cpp
                             verify/quafu_verifier.cpp
+                            verify/qpu_verifier.cpp
+                            verify/cmss_verifier.cpp
                             )
 
 
