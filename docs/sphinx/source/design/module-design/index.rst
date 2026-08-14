@@ -7,6 +7,7 @@
    :maxdepth: 2
 
    jobs
+   auto-scheduler
    job-engine
    device-monitor-engine
    device-mgr-engine

@@ -24,8 +24,8 @@ services:
     security_opt:
       - no-new-privileges:true
     tmpfs:
-      - /tmp
-      - /var/tmp
+      - /tmp:exec
+      - /var/tmp:exec
     environment:
       TZ: Asia/Shanghai
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}

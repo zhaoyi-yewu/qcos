@@ -265,7 +265,7 @@ property 字段说明
      - 支持的代码类型
      - ``"qasm2,qasm3"``
 
-   * - ``qc:device_availability`` 【暂不支持】
+   * - ``qc:device_availability``
      - 设备可用性要求
      - ``0.99``
 

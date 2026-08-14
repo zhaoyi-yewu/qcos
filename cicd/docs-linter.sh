@@ -59,6 +59,7 @@ MD_FILES=$(find ${TOP_DIR} \
   -not -path "*/samples/*" \
   -not -path "*/.pytest_cache/*" \
   -not -path "*/.roo/*" \
+  -not -path "*/webui/*" \
   -type f -name "*.md" \
 )
 if [ "${fix}" = false ]; then

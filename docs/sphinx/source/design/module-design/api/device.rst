@@ -55,18 +55,39 @@
                    }
                  },
                  "details": {
-                   "qubit1": {
-                     "single_qubit_gate_fidelity": 0.999,
-                     "qubit_frequency": 5.018,
-                     "readout_frequency": 6.8295,
-                     "single_qubit_gate_duration": 30.0,
-                     "T1": 28.994326898773733,
-                     "T2": 5.690175203450656,
-                     "readout_fidelity_state0": 0.9705333333333334,
-                     "readout_fidelity_state1": 0.8440000000000001
-                   }
+                   "calibration": {
+                     "qubit_metrics": [
+                       {
+                         "qubit_id": 0,
+                         "xeb_fidelity": 0.9994911077777162,
+                         "t1": 93.65534519298853,
+                         "t2": 21.69603004007777,
+                         "readout_fidelity_0": 0.9970842105263155,
+                         "readout_fidelity_1": 0.9929904761904763
+                       },
+                       {
+                         "qubit_id": 1,
+                         "xeb_fidelity": 0.9996612585952729,
+                         "t1": 59.806677312256596,
+                         "t2": 7.625306974862727,
+                         "readout_fidelity_0": 0.9950309278350515,
+                         "readout_fidelity_1": 0.9879223300970874
+                       }
+                   ],
+                   "coupler_metrics": [
+                     {
+                       "qubits": [0, 1],
+                       "cz_fidelity": 0.9941850270405544
+                     }
+                   ]
                  },
-                 "topo_configs": null
+                 "topo_configs": null,
+                 "metrics": {
+                   "availability_hourly": 0.95,
+                   "availability_total": 0.93,
+                   "avg_1q_fidelity": 0.9995,
+                   "avg_2q_fidelity": 0.9957
+                 }
                },
                "error": null,
                "id": 1
@@ -75,7 +96,7 @@
    * - **查询设备列表**
      - **get_devices**
 
-       URI: /v1/device/get_devices
+        URI: /v1/device/get_devices
      - .. container:: table-code-small-font
 
           .. code-block:: json
@@ -331,11 +352,12 @@
                "method": "set_device",
                "params": {
                  "body": {
-                   "device_name": "dummy",
-                   "status": "online",
-                   "enable": true,
-                   "max_qubits": "auto"
-                 }
+                     "device_name": "dummy",
+                     "status": "online",
+                     "enable": true,
+                     "max_qubits": "auto",
+                     "available_qubits": "auto"
+                   }
                }
              }
      - .. container:: table-code-small-font
@@ -349,7 +371,8 @@
                  "name": "dummy",
                  "status": "online",
                  "enable": true,
-                 "max_qubits": 20
+                 "max_qubits": 20,
+                 "available_qubits": 20
                },
                "error": null,
                "id": 1
@@ -453,6 +476,25 @@
    * - readout_fidelity_state1
      - 无(0-1)
      - 读取状态|1⟩的正确概率
+
+上线率指标 (metrics)
+^^^^^^^^^^^^^^^^^^^^^
+
+``get_device`` 响应新增 ``metrics`` 字典，包含上线率相关指标：
+
+- ``metrics.availability_hourly``：当前小时实时上线率
+   （``online``/``busy`` 采样数 / 总采样数），取值 ``0.0``~``1.0``；
+   当前小时尚无采样时为 ``null``。
+- ``metrics.availability_last_hour``：上一个整点小时的聚合上线率，
+   来源于 ``device_availability_hourly`` 表；无历史记录时为 ``null``。
+- ``metrics.availability_history``：最近若干小时的上线率历史列表，
+   用于展示趋势；无历史记录时为 ``null``。
+
+.. note::
+
+  上线率由 ``DeviceAvailabilityCollector`` 实时采集并通过
+  ``DeviceAvailabilityScheduler`` 每小时整点聚合落库，详见
+  :doc:`../device-monitor-engine`。
 
 设备状态说明 (Device Status)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

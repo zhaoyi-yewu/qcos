@@ -54,7 +54,14 @@
    * - src/wy_qcos/log
      - 日志配置模块
    * - src/wy_qcos/metrics
-     - 系统监控模块
+     - 系统监控模块，包括：
+        - 系统健康指标
+        - 作业/API指标统计
+        - 设备可用率采集与聚合（DeviceAvailabilityCollector/Scheduler/Task）
+   * - src/wy_qcos/scheduler
+     - 自动调度器模块，包括：Filter（过滤器）、Weigher（权重器）、DeviceState、RequestSpec、AutoScheduler
+   * - src/wy_qcos/flavor
+     - Flavor预设调度策略管理，包括FlavorManager、DeviceGroupManager
    * - src/wy_qcos/task_manager
      - 任务管理和调度
    * - src/wy_qcos/tests
@@ -69,3 +76,5 @@
      - QCOS命令行和客户端实现
    * - src_cpp/transpiler_cpp
      - C++实现的转译器模块，提供Python接口
+   * - webui
+     - Web前端界面（Vue.js），包括API封装、路由、状态管理等
