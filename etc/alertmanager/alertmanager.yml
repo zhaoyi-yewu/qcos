@@ -17,7 +17,7 @@ global:
   smtp_smarthost:
   smtp_from:
   smtp_auth_username:
-  smtp_auth_password: "P@ssword1"
+  smtp_auth_password: "P*ssword1"
   smtp_require_tls: true
 
 route:
