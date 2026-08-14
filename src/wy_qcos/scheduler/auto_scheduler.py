@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+from typing import Any
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.db.repositories.job import JobRepository
@@ -27,6 +28,7 @@ from wy_qcos.scheduler.errors import NoValidDeviceError
 from wy_qcos.scheduler.filters import (
     BaseFilterHandler,
     DEFAULT_FILTERS,
+    FILTER_REGISTRY,
 )
 from wy_qcos.scheduler.filters.device_group import (
     DeviceGroupFilter,
@@ -35,6 +37,7 @@ from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.scheduler.weighers import (
     BaseWeightHandler,
     DEFAULT_WEIGHERS,
+    WEIGHER_REGISTRY,
 )
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 
@@ -61,6 +64,9 @@ class AutoScheduler:
         db_engine=None,
         filter_handler: BaseFilterHandler | None = None,
         weight_handler: BaseWeightHandler | None = None,
+        enabled_filters: list[str] | None = None,
+        enabled_weighers: list[str] | None = None,
+        transpiler_manager: Any = None,
     ):
         """Init AutoScheduler.
 
@@ -76,24 +82,118 @@ class AutoScheduler:
                 DEFAULT_FILTERS with DeviceGroupFilter injected)
             weight_handler: weight handler (default uses
                 DEFAULT_WEIGHERS)
+            enabled_filters: list of filter class names to enable.
+                When provided, filters are resolved from
+                FILTER_REGISTRY by name. DeviceGroupFilter is always
+                injected when a device_group_manager is available.
+                When None or empty, DEFAULT_FILTERS are used.
+            enabled_weighers: list of weigher class names to enable.
+                When provided, weighers are resolved from
+                WEIGHER_REGISTRY by name. When None or empty,
+                DEFAULT_WEIGHERS are used.
+            transpiler_manager: transpiler manager used to resolve
+                transpiler instances for supported code types.
+                When None, falls back to the driver's code types.
         """
         self._device_manager = device_manager
         self._task_manager = task_manager
         self._flavor_manager = flavor_manager
         self._device_group_manager = device_group_manager
         self._db_engine = db_engine
+        self._transpiler_manager = transpiler_manager
 
         if filter_handler is None:
-            # Build filter list with DeviceGroupFilter configured
-            # with the device_group_manager
-            dg_filter = DeviceGroupFilter(device_group_manager)
-            filter_classes = DEFAULT_FILTERS + [dg_filter]
+            filter_classes = self._resolve_filter_classes(
+                enabled_filters, device_group_manager
+            )
             filter_handler = BaseFilterHandler(filter_classes)
         self._filter_handler = filter_handler
 
         if weight_handler is None:
-            weight_handler = BaseWeightHandler(DEFAULT_WEIGHERS)
+            weigher_classes = self._resolve_weigher_classes(enabled_weighers)
+            weight_handler = BaseWeightHandler(weigher_classes)
         self._weight_handler = weight_handler
+
+    @staticmethod
+    def _resolve_filter_classes(enabled_filters, device_group_manager):
+        """Resolve filter classes from names in FILTER_REGISTRY.
+
+        Args:
+            enabled_filters: list of filter class names; when None or
+                empty, DEFAULT_FILTERS are used
+            device_group_manager: device group manager used to
+                configure DeviceGroupFilter
+
+        Returns:
+            list of filter classes/instances
+        """
+        if not enabled_filters:
+            filter_classes = list(DEFAULT_FILTERS)
+        else:
+            filter_classes = []
+            for name in enabled_filters:
+                cls = FILTER_REGISTRY.get(name)
+                if cls is None:
+                    logger.warning(
+                        f"Unknown filter '{name}' in enabled_filters, skipping"
+                    )
+                    continue
+                filter_classes.append(cls)
+            if not filter_classes:
+                logger.warning(
+                    "No valid filters resolved from enabled_filters, "
+                    "falling back to DEFAULT_FILTERS"
+                )
+                filter_classes = list(DEFAULT_FILTERS)
+
+        # always inject DeviceGroupFilter when device_group_manager
+        # is available so device group constraints are enforced
+        if device_group_manager is not None:
+            filter_classes.append(DeviceGroupFilter(device_group_manager))
+
+        filter_names = [
+            getattr(c, "__name__", c.__class__.__name__)
+            for c in filter_classes
+        ]
+        logger.info(f"AutoScheduler enabled filters: {filter_names}")
+        return filter_classes
+
+    @staticmethod
+    def _resolve_weigher_classes(enabled_weighers):
+        """Resolve weigher classes from names in WEIGHER_REGISTRY.
+
+        Args:
+            enabled_weighers: list of weigher class names; when None
+                or empty, DEFAULT_WEIGHERS are used
+
+        Returns:
+            list of weigher classes
+        """
+        if not enabled_weighers:
+            weigher_classes = list(DEFAULT_WEIGHERS)
+        else:
+            weigher_classes = []
+            for name in enabled_weighers:
+                cls = WEIGHER_REGISTRY.get(name)
+                if cls is None:
+                    logger.warning(
+                        f"Unknown weigher '{name}' in "
+                        f"enabled_weighers, skipping"
+                    )
+                    continue
+                weigher_classes.append(cls)
+            if not weigher_classes:
+                logger.warning(
+                    "No valid weighers resolved from enabled_weighers, "
+                    "falling back to DEFAULT_WEIGHERS"
+                )
+                weigher_classes = list(DEFAULT_WEIGHERS)
+
+        logger.info(
+            f"AutoScheduler enabled weighers: "
+            f"{[c.__name__ for c in weigher_classes]}"
+        )
+        return weigher_classes
 
     def schedule(self, request_spec: RequestSpec) -> str:
         """Execute auto scheduling.
@@ -163,7 +263,18 @@ class AutoScheduler:
         devices = self._device_manager.get_devices()
         device_states = []
         for device in devices.values():
-            state = DeviceState.from_device(device)
+            # Resolve the device's transpiler instance (if a
+            # transpiler manager is available) so that the
+            # transpiler-declared supported code types take
+            # precedence over the driver's declaration.
+            transpiler = None
+            if self._transpiler_manager is not None:
+                transpiler_name = device.get_driver().get_transpiler()
+                if transpiler_name:
+                    transpiler = self._transpiler_manager.get_transpiler(
+                        transpiler_name
+                    )
+            state = DeviceState.from_device(device, transpiler=transpiler)
             # Populate dynamic load info
             queued = self._get_queued_count(device.get_name())
             running = self._get_running_count(device.get_name())
