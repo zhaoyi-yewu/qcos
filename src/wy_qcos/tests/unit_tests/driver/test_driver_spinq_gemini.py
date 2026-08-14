@@ -44,7 +44,7 @@ class TestDriverSpinQGemini:
             {
                 "status": "online",
                 "details": {
-                    "calibrate_info": {
+                    "calibration": {
                         "step": 0.1,
                         "shot": 800,
                     },
@@ -54,8 +54,8 @@ class TestDriverSpinQGemini:
         )
         dev_running_info = spinq_gemini.fetch_running_info()
         assert "details" in dev_running_info
-        assert dev_running_info["details"]["calibrate_info"]["step"] == 0.1
-        assert dev_running_info["details"]["calibrate_info"]["shot"] == 800
+        assert dev_running_info["details"]["calibration"]["step"] == 0.1
+        assert dev_running_info["details"]["calibration"]["shot"] == 800
         assert (
             dev_running_info["details"]["device_options_info"]["shot_gap"] == 0
         )
@@ -107,7 +107,7 @@ class TestDriverSpinQGemini:
             "result": {
                 "status": "online",
                 "details": {
-                    "calibrate_info": {
+                    "calibration": {
                         "step": 0.1,
                         "shot": 800,
                     },
@@ -133,7 +133,7 @@ class TestDriverSpinQGemini:
         assert succ is True
         assert err_msgs == ""
         assert "details" in result
-        assert result["details"]["calibrate_info"]["step"] == 0.1
-        assert result["details"]["calibrate_info"]["shot"] == 800
+        assert result["details"]["calibration"]["step"] == 0.1
+        assert result["details"]["calibration"]["shot"] == 800
         assert result["details"]["device_options_info"]["shot_gap"] == 0
         assert result["status"] == "online"

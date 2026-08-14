@@ -222,7 +222,7 @@ class Device:
             details: device details
         """
         self.details = details
-        self.calibrate_info = details.get("calibrate_info")
+        self.calibrate_info = details.get("calibration")
         self.device_options_info = details.get("device_options_info")
 
     def set_device_running_info(self, device_running_info):
