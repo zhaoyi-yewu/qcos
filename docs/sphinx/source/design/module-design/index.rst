@@ -16,6 +16,7 @@
    transpiler
    instruction-set
    aggregation-cutting
+   qec
    user
    metrics
    background-tasks
