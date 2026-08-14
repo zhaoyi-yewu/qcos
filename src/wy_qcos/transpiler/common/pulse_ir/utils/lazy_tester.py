@@ -331,7 +331,8 @@ class LazyImportTester(LazyDependencyManager):
         failed_names = collections.defaultdict(list)
         for module, names in self._modules.items():
             try:
-                imported = importlib.import_module(module)
+                _import_module = importlib.import_module
+                imported = _import_module(module)
             except ModuleNotFoundError as exc:
                 failed_parts = exc.name.split(".")
                 target_parts = module.split(".")

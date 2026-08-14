@@ -67,6 +67,25 @@ RUN set -e && \
 COPY bin/qcos-compiler.py /usr/bin/qcos-compiler
 RUN chmod +x /usr/bin/qcos-compiler
 
+# ---- least-privilege runtime user ---------------------------------------
+# Pin a dedicated non-root account (uid/gid 10001, above the system range so
+# it cannot collide with host system users) and run the service as it. The
+# same pinned identity is used in build-scripts/qcos/Dockerfile and
+# build-scripts/cli/Dockerfile so the qcos user maps to the same uid:gid
+# across all three images and shared volumes stay accessible. Those images
+# keep USER root (their entrypoints need it); only the compiler drops
+# privileges, since it just reads the venv + entrypoint and binds a
+# non-privileged port (8080). A writable HOME/WORKDIR is provided so
+# libraries that cache under ~ do not fail at runtime.
+RUN groupadd -r -g 10001 qcos && \
+    useradd  -r -u 10001 -g qcos -m -d /home/qcos -s /sbin/nologin qcos && \
+    chown -R qcos:qcos /etc/qcos /var/log/qcos /var/run/qcos /home/qcos
+
+# Numeric form stays correct even if /etc/passwd is not resolvable at runtime.
+USER 10001:10001
+ENV HOME=/home/qcos
+WORKDIR /home/qcos
+
 EXPOSE 8080
 
 # Run the compiler cloud service with the venv interpreter.
