@@ -24,10 +24,10 @@ from schema import Optional, Or
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
-from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 
 
-class DriverDummy(DriverBase):
+class DriverDummy(DriverGateBase):
     """空载测试驱动.
 
     Dummy neutral-atom driver for test purpose

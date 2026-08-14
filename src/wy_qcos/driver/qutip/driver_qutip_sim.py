@@ -25,7 +25,7 @@ from schema import Optional
 
 from wy_qcos.device.device import Device
 from wy_qcos.common.constant import Constant
-from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.base_operation import OperationType
 
 Z = sigmaz()
@@ -50,7 +50,7 @@ def ashn(arg_value):
     return Qobj(U, dims=[[2, 2], [2, 2]])
 
 
-class DriverQutipSim(DriverBase):
+class DriverQutipSim(DriverGateBase):
     """QUTIP 模拟器驱动."""
 
     def __init__(self):

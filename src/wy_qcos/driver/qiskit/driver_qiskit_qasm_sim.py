@@ -20,10 +20,10 @@ from qiskit_aer import QasmSimulator
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.device.device import Device
-from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 
 
-class DriverQiskitQasmSim(DriverBase):
+class DriverQiskitQasmSim(DriverGateBase):
     """Qiskit Qasm 模拟器驱动."""
 
     verbose = False

@@ -31,10 +31,10 @@ from datetime import datetime
 from wy_qcos.common.constant import Constant, HttpMethod, HttpCode
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
-from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 
 
-class DriverHanyuan1(DriverBase):
+class DriverHanyuan1(DriverGateBase):
     """中科酷原-汉原1 中性原子驱动.
 
     Cascoldatom Hanyuan1 driver

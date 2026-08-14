@@ -27,12 +27,13 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
-class DriverUQCMatrix2(DriverBase):
+class DriverUQCMatrix2(DriverGateBase):
     """幺正量子 UQC-Matrix2 离子阱驱动.
 
     UQC-Matrix2 driver
