@@ -34,7 +34,7 @@ namespace {
  * @return 活跃 op 后继节点列表
  */
 std::vector<DAGOpNode*> get_active_op_successors(DAGCircuit& dag,
-                                                  DAGOpNode* node) {
+                                                 DAGOpNode* node) {
   std::vector<DAGOpNode*> op_successors;
   for (DAGNode* succ : dag.successors(node)) {
     auto* op_node = dynamic_cast<DAGOpNode*>(succ);
@@ -53,7 +53,8 @@ std::vector<DAGOpNode*> get_active_op_successors(DAGCircuit& dag,
  * @param in_degree 各节点当前入度（会被修改）
  * @param pending_nodes 当前可处理的节点队列（会被清空并回填不匹配节点）
  * @param collect_gates 目标门名集合
- * @param negate 为 false 时收集门名在集合中的节点，为 true 时收集不在集合中的节点
+ * @param negate 为 false 时收集门名在集合中的节点，为 true
+ * 时收集不在集合中的节点
  * @return 收集到的匹配节点块
  */
 std::vector<DAGOpNode*> collect_matching_block(
@@ -128,8 +129,7 @@ std::vector<std::vector<DAGOpNode*>> collect_all_matching_blocks(
       dsu_parent[qubit] = qubit;
       return qubit;
     }
-    if (it->second != qubit)
-      it->second = find_ref(it->second, find_ref);
+    if (it->second != qubit) it->second = find_ref(it->second, find_ref);
     return it->second;
   };
 
@@ -162,10 +162,7 @@ std::vector<std::vector<DAGOpNode*>> collect_all_matching_blocks(
     // 过滤过小块，恢复拓扑序后加入结果
     for (auto& [group_root, sub_block] : dsu_groups) {
       if (sub_block.size() < min_block_size) continue;
-      std::sort(sub_block.begin(), sub_block.end(),
-                [](const DAGOpNode* lhs, const DAGOpNode* rhs) {
-                  return lhs->node_id() < rhs->node_id();
-                });
+      // collect_matching_block 返回的已经是拓扑序，直接添加到 result
       result.push_back(std::move(sub_block));
     }
   }
