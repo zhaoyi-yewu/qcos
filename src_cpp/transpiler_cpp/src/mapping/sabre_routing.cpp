@@ -29,6 +29,7 @@
 #include "mapping/dense_layout.h"
 #include "mapping/mapping_utils.h"
 #include "mapping/sabre_mapping.h"
+#include "mapping/vf2_layout.h"
 
 namespace qcos {
 
@@ -172,11 +173,13 @@ void SABRE::execute(
   }
 
   // 3. 计算初始映射并执行路由
-  // DenseLayout 选区域 + SABRE 精化排列
-  std::vector<int> initial_l2p =
-      dense_layout_mapping(gate_ops, coupling_list_, edge_fidelities_,
-                           logic_qubit_num_, fidelity_weight_);
-  initial_l2p_ = initial_l2p;
+  // 先尝试 VF2 完美嵌入 (零 SWAP)，失败则回退 DenseLayout + SABRE 精化
+  std::vector<int> initial_l2p = vf2_layout_mapping(
+      gate_ops, coupling_list_, edge_fidelities_, logic_qubit_num_);
+  if (initial_l2p.empty()) {
+    initial_l2p = dense_layout_mapping(gate_ops, coupling_list_,
+                                       edge_fidelities_, logic_qubit_num_);
+  }
 
   std::vector<GateOperation> routed_gate_ops =
       execute_routing(gate_ops, initial_l2p);

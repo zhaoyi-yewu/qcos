@@ -31,6 +31,7 @@
 #include "mapping/na_mapping.h"
 #include "mapping/sabre_mapping.h"
 #include "mapping/sabre_routing.h"
+#include "mapping/vf2_layout.h"
 
 namespace nb = nanobind;
 using namespace qcos;
@@ -345,6 +346,29 @@ Returns:
 
         Returns:
             list[int]: The initial logical-to-physical mapping.
+        )");
+
+  m.def("vf2_layout_mapping", &qcos::vf2_layout_mapping, nb::arg("gates_list"),
+        nb::arg("coupling_list"), nb::arg("edge_fidelities"),
+        nb::arg("num_logical"),
+        R"(
+        Compute initial layout using VF2 subgraph isomorphism.
+
+        Attempts to find a "perfect" embedding where all two-qubit gates can
+        execute directly on the coupling graph without any SWAP. If multiple
+        valid embeddings exist, the one with the lowest error rate is chosen.
+        Returns an empty list if no perfect embedding is found.
+
+        Args:
+            gates_list (list[GateOperation]): Logical gate sequence.
+            coupling_list (list[tuple[int, int]]): Physical coupling list (directed).
+            edge_fidelities (list[float]): Edge fidelities corresponding to
+                coupling_list. Pass empty list to disable fidelity-aware scoring.
+            num_logical (int): Number of logical qubits declared in the circuit.
+
+        Returns:
+            list[int]: The initial logical-to-physical mapping, or empty if
+            no perfect embedding exists.
         )");
 
   m.def("na_routing", &bind_na_routing, nb::arg("gates_list"),
