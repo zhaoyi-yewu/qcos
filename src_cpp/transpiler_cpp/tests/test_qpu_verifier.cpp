@@ -245,6 +245,120 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsWithIsolatedQubit_ReturnsFalse) {
   EXPECT_FALSE(verifier.verify(qasm).message.empty());
 }
 
+// target_bits 整体位于同一连通分量，但自身诱导子图不连通：应失败
+TEST(QuafuVerifier,
+     CheckTopology_TargetBitsNotFormingConnectedComponent_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  // 耦合图整体连通：0-1-2-3 链
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 0 与 3 在同一连通分量，但诱导子图无边，各自孤立
+  params.target_bits = {0, 3};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
+      "cz q[0],q[1];\n";
+  EXPECT_FALSE(verifier.verify(qasm).passed);
+}
+
+// target_bits 恰好为一条直连耦合边：诱导子图连通，应通过
+TEST(QuafuVerifier, CheckTopology_TargetBitsDirectlyConnected_ReturnsTrue) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {5, 6}, {6, 5}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.0,
+                                    0.0,   0.999, 0.999, 0.0};
+  // 5 与 6 直连，诱导子图只有一条边，连通
+  params.target_bits = {5, 6};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
+      "cz q[0],q[1];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// 两个 target_bits 中间隔一个非 target 节点：诱导子图断开，应失败
+TEST(QuafuVerifier,
+     CheckTopology_TargetBitsSplitByNonTargetNode_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  // 链 0-1-2-3，整体连通
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 0 与 3 都和 1/2 相邻，但 1、2 不在 target_bits 中
+  // 诱导子图中 0、3 之间无边，各自孤立
+  params.target_bits = {0, 3};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
+      "cz q[0],q[1];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: target_bits are not connected");
+}
+
+// 三个 target_bits 首尾相连构成链：诱导子图连通，应通过
+TEST(QuafuVerifier, CheckTopology_TargetBitsFormChain_ReturnsTrue) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 0-1-2 首尾相邻，诱导子图为 0-1、1-2 两条边，连通
+  params.target_bits = {0, 1, 2};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[3];\n"
+      "cz q[0],q[1];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// 三个 target_bits 中一个孤立（不在任何耦合边）：诱导子图缺节点，应失败
+TEST(QuafuVerifier, CheckTopology_TargetBitsWithOneIsolated_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 0、1 直连，但 4 不在任何耦合边中
+  params.target_bits = {0, 1, 4};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[3];\n"
+      "cz q[0],q[1];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: target_bits are not connected");
+}
+
 TEST(QuafuVerifier, CheckTopology_TargetBitsOutOfRange_ReturnsFalse) {
   // target_bits 越界（>=bits=8），无论有无多比特门都返回 false
   VerifyParams params;
@@ -272,6 +386,36 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsOutOfRange_ReturnsFalse) {
       "qreg q[2];\n"
       "h q[0];\n";
   EXPECT_FALSE(verifier.verify(qasm_single).passed);
+}
+
+// 真实芯片拓扑：83 比特，18 个 target_bits 诱导子图不连通，应失败
+TEST(QuafuVerifier,
+     CheckTopology_RealChip_TargetBitsNotConnected_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 83;
+  params.coupling_list = {
+      {15, 22}, {16, 22}, {16, 23}, {17, 23}, {18, 24}, {18, 25}, {20, 27},
+      {22, 29}, {23, 30}, {25, 32}, {27, 34}, {28, 35}, {29, 35}, {30, 36},
+      {30, 37}, {31, 37}, {31, 38}, {32, 38}, {32, 39}, {33, 39}, {34, 40},
+      {34, 41}, {36, 43}, {37, 44}, {38, 45}, {39, 46}, {41, 48}, {42, 49},
+      {43, 49}, {43, 50}, {45, 51}, {46, 53}, {47, 53}, {48, 54}, {49, 56},
+      {50, 57}, {51, 58}, {53, 60}, {54, 61}, {59, 66}, {60, 66}, {61, 67},
+      {61, 68}, {62, 68}, {62, 69}, {63, 70}, {64, 71}, {66, 73}, {67, 74},
+      {68, 75}, {69, 76}, {70, 77}, {71, 77}, {73, 79}, {73, 80}, {74, 80},
+      {74, 81}, {75, 81}, {75, 82}, {76, 82}};
+  params.target_bits = {15, 16, 17, 18, 20, 22, 23, 24, 25, 35,
+                        36, 37, 38, 39, 40, 79, 80, 81, 82};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
+      "cz q[0],q[1];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: target_bits are not connected");
 }
 
 // check_depth_and_gate_count

@@ -711,7 +711,7 @@ class TestCompileQasm:
         )
         resp = compile_qasm(req)
         assert resp.code == CODE_FAIL
-        assert "连通分量" in _decode_msg(resp.msg)
+        assert "自定义比特位" in _decode_msg(resp.msg)
 
     def test_target_bits_out_of_range(self):
         # extend.targetBits [0,99]: 99 > bits_num(65) AND 99 is not among
@@ -1069,7 +1069,7 @@ class TestCompileEndpoint:
         assert r.status_code == 200
         data = r.json()
         assert data["code"] == 0
-        assert "连通分量" in _decode_msg(data["msg"])
+        assert "自定义比特位" in _decode_msg(data["msg"])
 
     def test_post_target_bits_out_of_range(self, client):
         r = client.post(
