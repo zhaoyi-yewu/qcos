@@ -266,6 +266,9 @@ class Constant:
     DEVICE_MONITOR_PREFIX = "device_monitor_"
     DEVICE_MANAGER_PREFIX = "device_mgr_"
 
+    # Device Groups
+    DEVICE_GROUP_DN_ALL = "_all"
+
     # Work pool name prefixes
     WORK_POOL_DEVICE_PREFIX = "device|"
     WORK_POOL_MONITOR_PREFIX = "monitor|"

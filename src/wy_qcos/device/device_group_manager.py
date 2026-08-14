@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 # Default preset device groups.
+DEFAULT_DEVICE_GROUP_QC_NONE = "qc.none"
 DEFAULT_DEVICE_GROUP_QC_ALL = "qc.all"
 DEFAULT_DEVICE_GROUP_QC_REAL = "qc.real"
 DEFAULT_DEVICE_GROUP_QC_SIM = "qc.sim"
@@ -42,7 +43,7 @@ DEFAULT_DEVICE_GROUPS = [
         "project_id": Constant.ADMIN_PROJECT_ID,
         "description": "all quantum computers (real and simulators)",
         "is_public": True,
-        "device_names": ["_all"],
+        "device_names": [Constant.DEVICE_GROUP_DN_ALL],
     },
     {
         "id": "00000000-0000-4000-8000-000000000002",
@@ -51,6 +52,17 @@ DEFAULT_DEVICE_GROUPS = [
         "description": "all quantum computers (real)",
         "is_public": True,
         "device_names": None,
+    },
+    {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "name": DEFAULT_DEVICE_GROUP_QC_NONE,
+        "project_id": Constant.ADMIN_PROJECT_ID,
+        "description": (
+            "no quantum computers (extra_property: "
+            "'qc:devices' must be specified explicitly)"
+        ),
+        "is_public": True,
+        "device_names": [],
     },
     {
         "id": "00000000-0000-4000-8000-100000000001",

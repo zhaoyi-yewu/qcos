@@ -19,12 +19,10 @@ import logging
 import uuid
 
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.flavor_constant import FlavorConstant
 from wy_qcos.common.library import Library
 from wy_qcos.db.models import Flavor
 from wy_qcos.db.repositories.flavor import FlavorRepository
-from wy_qcos.scheduler.filters.device_group import (
-    DEVICE_GROUP_SPEC_KEY,
-)
 from wy_qcos.db.repositories.flavor_device_group import (
     FlavorDeviceGroupRepository,
 )
@@ -353,13 +351,17 @@ class FlavorManager:
 
         specs = {}
         if flavor.min_qubits is not None:
-            specs["min_qubits"] = flavor.min_qubits
+            specs[FlavorConstant.FS_KEY_MIN_QUBITS] = flavor.min_qubits
         if flavor.max_qubits is not None:
-            specs["max_qubits"] = flavor.max_qubits
+            specs[FlavorConstant.FS_KEY_MAX_QUBITS] = flavor.max_qubits
         if flavor.gate_fidelity_1q_min is not None:
-            specs["gate_fidelity_1q_min"] = flavor.gate_fidelity_1q_min
+            specs[FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN] = (
+                flavor.gate_fidelity_1q_min
+            )
         if flavor.gate_fidelity_2q_min is not None:
-            specs["gate_fidelity_2q_min"] = flavor.gate_fidelity_2q_min
+            specs[FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN] = (
+                flavor.gate_fidelity_2q_min
+            )
         # merge extra_properties (user custom properties)
         if flavor.extra_properties:
             specs.update(flavor.extra_properties)
@@ -367,7 +369,7 @@ class FlavorManager:
         # for DeviceGroupFilter compatibility
         group_ids = self.get_flavor_device_groups(flavor_id)
         if group_ids:
-            specs[DEVICE_GROUP_SPEC_KEY] = group_ids[0]
+            specs[FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS] = group_ids
         return specs
 
     def get_visible_flavor(
