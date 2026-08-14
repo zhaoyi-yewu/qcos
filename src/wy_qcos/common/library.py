@@ -871,13 +871,19 @@ class Library:
             return False, f"failed to write toml file: {file_path}. {e}"
 
     @staticmethod
-    def get_current_datetime():
+    def get_current_datetime(timestamp=False):
         """Get current datetime.
+
+        Args:
+            timestamp: return timestamp
 
         Returns:
             datetime
         """
-        return datetime.now()
+        datetime_now = datetime.now()
+        if timestamp:
+            return datetime_now.timestamp()
+        return datetime_now
 
     @staticmethod
     def to_iso(timestamp):
