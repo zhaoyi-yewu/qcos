@@ -42,7 +42,7 @@ class DriverCiqtekIon1(DriverGateBase):
         self.app_secret = None
         self.device_id = None
         self.version = "0.0.1"
-        self.alias_name = "国仪量子 离子阱驱动"
+        self.alias_name = "国仪量子-离子阱驱动"
         self.description = "国仪量子 离子阱驱动"
         self.transpiler = Constant.TRANSPILER_DUMMY
         self.tech_type = Constant.TECH_TYPE_ION_TRAP

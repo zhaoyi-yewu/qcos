@@ -44,8 +44,8 @@ class DriverQuafu(DriverGateBase):
         self.tmgr = None
         self.token = None
         self.version = "0.0.1"
-        self.alias_name = "北京量子院 夸父-Dongling 超导驱动"
-        self.description = "北京量子院 夸父-Dongling 超导驱动"
+        self.alias_name = "北京量子院-夸父-Dongling 超导驱动"
+        self.description = "北京量子院-夸父-Dongling 超导驱动"
         self.backend_name = [
             "Baihua",
             "Yudu",

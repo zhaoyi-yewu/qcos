@@ -47,8 +47,8 @@ class DriverUQCMatrix2(DriverGateBase):
         self.uqc_port = None
         self.backend_device_name = "Matrix2"
         self.version = "0.0.1"
-        self.alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
-        self.description = "幺正量子 UQC-Matrix2 离子阱驱动"
+        self.alias_name = "幺正量子-UQC-Matrix2 离子阱驱动"
+        self.description = "幺正量子-UQC-Matrix2 离子阱驱动"
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_ION_TRAP
         self.supported_basis_gates = [
