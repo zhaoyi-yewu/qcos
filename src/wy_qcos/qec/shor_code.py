@@ -45,7 +45,7 @@ class ShorStrategy:
         """
         return {
             "Z": [(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (7, 8)],
-            "X": [(0, 3, 6), (1, 4, 7), (2, 5, 8)],
+            "X": [(0, 1, 2, 3, 4, 5), (3, 4, 5, 6, 7, 8)],
         }
 
     @staticmethod
@@ -178,22 +178,17 @@ class ShorStimStrategy(ShorStrategy):
         # init
         data = list(range(9))
         anc_z = list(range(9, 15))
-        anc_x = list(range(15, 18))
+        anc_x = list(range(15, 17))
         all_q = data + anc_z + anc_x
 
         encoded_circuit.append("R", all_q)
         encoded_circuit.append("TICK")
 
-        # phase-flip: H[0] → CX[0,3]CX[0,6]
-        encoded_circuit.append("H", [0])
+        encoded_circuit.append("H", [0, 3, 6])
         encoded_circuit.append("TICK")
-        encoded_circuit.append("CX", [0, 3, 0, 6])
-        encoded_circuit.append("TICK")
-
-        # bit-flip: CX in every block
-        encoded_circuit.append("CX", [0, 1, 0, 2])
-        encoded_circuit.append("CX", [3, 4, 3, 5])
-        encoded_circuit.append("CX", [6, 7, 6, 8])
+        encoded_circuit.append("CX", [0, 1, 0, 2])  # block0
+        encoded_circuit.append("CX", [3, 4, 3, 5])  # block1
+        encoded_circuit.append("CX", [6, 7, 6, 8])  # block2
         encoded_circuit.append("TICK")
 
         # apply logical gate
@@ -228,41 +223,28 @@ class ShorStimStrategy(ShorStrategy):
         encoded_circuit.append("TICK")
 
         # Z stablizers: Z₀Z₁, Z₁Z₂, Z₃Z₄, Z₄Z₅, Z₆Z₇, Z₇Z₈
-        z_stablizers = self.get_stabilizers().get("Z")
-        if z_stablizers is None:
-            raise ValueError("Z stablizers should not be None")
-        for idx, (a, b) in enumerate(z_stablizers):
-            anc = anc_z[idx]
-            encoded_circuit.append("CX", [a, anc, b, anc])
+        for (q1, q2), anc in zip(self.get_stabilizers()["Z"], anc_z):
+            encoded_circuit.append("CX", [q1, anc, q2, anc])
             encoded_circuit.append("M", [anc])
             encoded_circuit.append("R", [anc])
             encoded_circuit.append("TICK")
 
-        # X stablizers: X₀X₃X₆, X₁X₄X₇, X₂X₅X₈
-        x_stablizers = self.get_stabilizers().get("X")
-        if x_stablizers is None:
-            raise ValueError("X stablizers should not be None")
-        for idx, (a, b, c) in enumerate(x_stablizers):
-            anc = anc_x[idx]
+        # X stablizers
+        for qs, anc in zip(self.get_stabilizers()["X"], anc_x):
             encoded_circuit.append("H", [anc])
-            encoded_circuit.append("CX", [anc, a, anc, b, anc, c])
+            for q in qs:
+                encoded_circuit.append("CX", [anc, q])
             encoded_circuit.append("H", [anc])
             encoded_circuit.append("M", [anc])
             encoded_circuit.append("R", [anc])
             encoded_circuit.append("TICK")
 
-        # reverse bit-flip
+        # reverse
         encoded_circuit.append("CX", [6, 7, 6, 8])
         encoded_circuit.append("CX", [3, 4, 3, 5])
         encoded_circuit.append("CX", [0, 1, 0, 2])
         encoded_circuit.append("TICK")
-
-        # reverse phase-flip
-        encoded_circuit.append("CX", [0, 3, 0, 6])
-        encoded_circuit.append("TICK")
-
-        # reverse H
-        encoded_circuit.append("H", [0])
+        encoded_circuit.append("H", [0, 3, 6])
         encoded_circuit.append("TICK")
 
         # measure
@@ -278,28 +260,19 @@ class ShorStimStrategy(ShorStrategy):
         Returns:
             corrected bits.
         """
+        if not len(self.raw_bits):
+            raise RuntimeError("Need to call compute_samples before correct")
+
         err_pos = kwargs.get("err_pos", None)
         if err_pos is None:
-            return None
+            return self.raw_bits
 
-        raw_bits = np.asarray(self.raw_bits, dtype=np.int8)
-        err_pos = np.asarray(err_pos, dtype=np.int8)
-        orig_ndim = raw_bits.ndim
+        raw_bits = np.atleast_2d(self.raw_bits).astype(np.int8)
+        err_pos = np.atleast_2d(err_pos).astype(np.int8)
 
-        if orig_ndim == 1:
-            rb = raw_bits[np.newaxis, :]
-            ep = err_pos[np.newaxis, :]
-        else:
-            rb = raw_bits
-            ep = err_pos
-
-        corrected = rb.copy()
-        mask = ep == 1
-        corrected[mask] ^= 1
-
-        if orig_ndim == 1:
-            return corrected[0]
-        return corrected
+        corr = raw_bits.copy()
+        corr[err_pos == 1] ^= 1
+        return corr[0] if raw_bits.shape[0] == 1 else corr
 
     def decode(self):
         """Decode syndrome.
@@ -307,6 +280,9 @@ class ShorStimStrategy(ShorStrategy):
         Returns:
             err_pos.
         """
+        if len(self.syndrome) == 0:
+            raise RuntimeError("decode() called before compute_samples()")
+
         syndrome = np.asarray(self.syndrome, dtype=np.int8)
         orig_ndim = syndrome.ndim
 
@@ -316,8 +292,9 @@ class ShorStimStrategy(ShorStrategy):
             syn = syndrome
 
         n = syn.shape[0]
-        z_syn = syn[:, :6]
         err_pos = np.zeros((n, 9), dtype=np.int8)
+
+        z_syn = syn[:, :6]
 
         def block_x_decode(s0, s1):
             res = np.full_like(s0, -1, dtype=np.int8)
@@ -338,9 +315,11 @@ class ShorStimStrategy(ShorStrategy):
         mask2 = off2 != -1
         err_pos[mask2, 6 + off2[mask2]] = 1
 
-        if orig_ndim == 1:
-            return err_pos[0]
-        return err_pos
+        x_syn = syn[:, 6:8]
+        block0_z = (x_syn[:, 0] == 1) & (x_syn[:, 1] == 0)
+        err_pos[block0_z, 0] ^= 1
+
+        return err_pos[0] if orig_ndim == 1 else err_pos
 
     def logical_measure(self, bits):
         """Get logical value.
@@ -351,19 +330,8 @@ class ShorStimStrategy(ShorStrategy):
         Returns:
             logical measure
         """
-        bits = np.asarray(bits, dtype=np.int8)
-        orig_ndim = bits.ndim
-
-        if orig_ndim == 1:
-            b = bits[np.newaxis, :]
-        else:
-            b = bits
-
-        logical = b[:, 0].copy()
-
-        if orig_ndim == 1:
-            return int(logical[0])
-        return logical
+        bits = np.atleast_1d(bits).astype(np.int8)
+        return int(bits[0]) if bits.ndim == 1 else bits[:, 0]
 
     def compute_samples(self, samples: NDArray[np.int_]):
         """Compute samles to get raw bits and syndrome.
@@ -371,12 +339,9 @@ class ShorStimStrategy(ShorStrategy):
         Args:
             samples: samples data
         """
-        samples = np.asarray(samples)
-        samples = np.atleast_2d(samples)
-        z_syn = samples[:, 0:6]
-        x_syn = samples[:, 6:9]
-        self.syndrome = np.concatenate([z_syn, x_syn], axis=1)
-        self.raw_bits = samples[:, 9:18]
+        s = np.atleast_2d(samples)
+        self.syndrome = s[:, :8]
+        self.raw_bits = s[:, 8:17]
 
 
 class ShorQuantumCircuitStrategy(ShorStrategy):

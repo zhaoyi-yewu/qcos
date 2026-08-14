@@ -143,7 +143,7 @@ class TestShorStimStrategyEncode:
         # Verify it compiles without error
         sampler = encoded.compile_sampler()
         samples = sampler.sample(shots=10)
-        assert samples.shape == (10, 18)
+        assert samples.shape == (10, 17)
 
     def test_encode_logical_z_gate(self):
         strategy = ShorStimStrategy()
@@ -153,7 +153,7 @@ class TestShorStimStrategyEncode:
         assert isinstance(encoded, stim.Circuit)
         sampler = encoded.compile_sampler()
         samples = sampler.sample(shots=10)
-        assert samples.shape == (10, 18)
+        assert samples.shape == (10, 17)
 
     def test_encode_logical_y_gate(self):
         strategy = ShorStimStrategy()
@@ -163,7 +163,7 @@ class TestShorStimStrategyEncode:
         assert isinstance(encoded, stim.Circuit)
         sampler = encoded.compile_sampler()
         samples = sampler.sample(shots=10)
-        assert samples.shape == (10, 18)
+        assert samples.shape == (10, 17)
 
     def test_encode_logical_s_gate(self):
         strategy = ShorStimStrategy()
@@ -173,7 +173,7 @@ class TestShorStimStrategyEncode:
         assert isinstance(encoded, stim.Circuit)
         sampler = encoded.compile_sampler()
         samples = sampler.sample(shots=10)
-        assert samples.shape == (10, 18)
+        assert samples.shape == (10, 17)
 
     def test_encode_logical_h_gate_raises_error(self):
         strategy = ShorStimStrategy()
@@ -191,7 +191,128 @@ class TestShorStimStrategyEncode:
         assert isinstance(encoded, stim.Circuit)
         sampler = encoded.compile_sampler()
         samples = sampler.sample(shots=10)
-        assert samples.shape == (10, 18)
+        assert samples.shape == (10, 17)
+
+    @pytest.mark.smoke
+    def test_encode_with_x_error_inject(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "x_error", "noise_prob": 0.05},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "X_ERROR" in encoded_str
+        sampler = encoded.compile_sampler()
+        samples = sampler.sample(shots=10)
+        assert samples.shape == (10, 17)
+
+    @pytest.mark.smoke
+    def test_encode_with_y_error_inject(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "y_error", "noise_prob": 0.02},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "Y_ERROR" in encoded_str
+        sampler = encoded.compile_sampler()
+        samples = sampler.sample(shots=10)
+        assert samples.shape == (10, 17)
+
+    @pytest.mark.smoke
+    def test_encode_with_z_error_inject(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "z_error", "noise_prob": 0.03},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "Z_ERROR" in encoded_str
+        sampler = encoded.compile_sampler()
+        samples = sampler.sample(shots=10)
+        assert samples.shape == (10, 17)
+
+    @pytest.mark.smoke
+    def test_encode_with_depolarize_error_inject(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "depolarize", "noise_prob": 0.01},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "DEPOLARIZE1" in encoded_str
+        sampler = encoded.compile_sampler()
+        samples = sampler.sample(shots=10)
+        assert samples.shape == (10, 17)
+
+    def test_encode_with_unsupported_error_inject_raises_error(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        with pytest.raises(ValueError, match="Invalid error_type"):
+            strategy.encode(
+                circuit,
+                error_inject={
+                    "error_type": "unsupported_error",
+                    "noise_prob": 0.01,
+                },
+            )
+
+    def test_encode_with_invalid_error_inject_type_raises_error(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        with pytest.raises(ValueError, match="error_inject type error"):
+            strategy.encode(circuit, error_inject="invalid")
+
+    def test_encode_with_invalid_noise_prob_raises_error(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        with pytest.raises(ValueError, match="noise_prob type error"):
+            strategy.encode(
+                circuit,
+                error_inject={
+                    "error_type": "x_error",
+                    "noise_prob": "invalid",
+                },
+            )
+
+    def test_encode_with_custom_noise_prob(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(
+            circuit,
+            error_inject={"error_type": "x_error", "noise_prob": 0.5},
+        )
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        assert "X_ERROR" in encoded_str
+        assert "0.5" in encoded_str
+
+    def test_encode_without_error_inject_uses_default(self):
+        strategy = ShorStimStrategy()
+        circuit = stim.Circuit()
+        circuit.append("X", [0])
+        encoded = strategy.encode(circuit)
+        assert isinstance(encoded, stim.Circuit)
+        encoded_str = str(encoded)
+        # Default behavior: x_error with 0.01 probability
+        assert "X_ERROR" in encoded_str
+        assert "0.01" in encoded_str
 
 
 class TestShorStimStrategyCorrection:
@@ -281,8 +402,8 @@ class TestShorStimStrategyCorrection:
         samples = sampler.sample(shots=10)
 
         strategy.compute_samples(samples)
-        # Syndrome: 6 Z-stabilizer + 3 X-stabilizer = 9
-        assert np.array(strategy.syndrome).shape[-1] == 9
+        # Syndrome: 6 Z-stabilizer + 2 X-stabilizer = 8
+        assert np.array(strategy.syndrome).shape[-1] == 8
         # Raw bits: 9 physical qubits
         assert np.array(strategy.raw_bits).shape[-1] == 9
 
