@@ -225,6 +225,13 @@
    # 夸父 超导量子计算机 真实运行
    qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu -f ./samples/qasm/2.0/simple-qasm.qasm
 
+- 逻辑比特 超导量子计算机
+
+.. code-block:: shell
+
+   # 逻辑比特 超导量子计算机 真实运行
+   qcos-cli submit-job --code-type qasm --shots 100 --backend logical_qubit -f ./samples/qasm/2.0/simple-qasm.qasm
+
 - stim 驱动 (量子纠错用)
 
 .. code-block:: shell

@@ -280,11 +280,12 @@ def transpile(parsed_gates, driver, transpiler):
     Returns:
         basis gate list
     """
+    final_layout_dict = {}
     num_qubits = -1
     try:
         supp_basis_gates = driver.get_supported_basis_gates()
-        transpile_results, mapping_dict = transpiler.transpile(
-            parsed_gates, supp_basis_gates
+        transpile_results, mapping_dict, final_layout_dict = (
+            transpiler.transpile(parsed_gates, supp_basis_gates)
         )
         num_qubits = transpiler.total_qubits
         logger.info(f"final transpiled_result: {transpile_results}")
@@ -292,6 +293,7 @@ def transpile(parsed_gates, driver, transpiler):
             "transpile_results": transpile_results,
             "mapping_dict": mapping_dict,
             "num_qubits": num_qubits,
+            "final_layout_dict": final_layout_dict,
             "error": None,
         }
     except Exception as e:
@@ -299,6 +301,7 @@ def transpile(parsed_gates, driver, transpiler):
             "transpile_results": None,
             "mapping_dict": None,
             "num_qubits": num_qubits,
+            "final_layout_dict": final_layout_dict,
             "error": ValueError(str(e)),
         }
 
@@ -962,6 +965,7 @@ def _run_code(
 
     transpile_results = transpile_task_results.get("transpile_results", None)
     num_qubits = transpile_task_results.get("num_qubits", None)
+    final_layout_dict = transpile_task_results.get("final_layout_dict", None)
     if transpile_results is None or num_qubits is None:
         raise ValueError("unexpected transpile_results or num_qubits")
     job_results["num_qubits"] = num_qubits
@@ -973,6 +977,7 @@ def _run_code(
             "index": source_code_index,
             "source_code": source_code,
             "transpile_results": transpile_results,
+            "final_layout_dict": final_layout_dict,
         }
 
         run_results, driver_run_profiling = flow_run_driver(

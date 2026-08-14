@@ -1,0 +1,118 @@
+[logical_qubit]
+alias_name = "逻辑比特 QZ01 超导驱动"
+driver = "DriverLogicalQubit"
+description = "逻辑比特 QZ01 超导驱动"
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_logical_qubit.log
+device_log_file = "/var/log/qcos/device_logical_qubit.log"
+
+# [Optional] enable device monitor
+# enable_device_monitor = false
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+# monitor_log_file = /var/log/qcos/device_logical_qubit.log
+monitor_log_file = "/var/log/qcos/device_monitor_logical_qubit.log"
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_logical_qubit.log
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
+# [Optional] max job wait time, default value is 604800 seconds (7 days)
+max_job_wait_time = 604800
+
+# [Optional] job query interval, default value is 5 seconds
+job_query_interval = 5
+
+chip_name = "QZ01-surface_code"
+token = ""
+url = "127.0.0.1"
+
+[logical_qubit.transpiler.qpu_configs]
+qubits = 17
+
+coupler_map.CZ0_9 = ["Q0", "Q9"]
+coupler_map.CZ1_9 = ["Q1", "Q9"]
+coupler_map.CZ1_10 = ["Q1", "Q10"]
+coupler_map.CZ1_13 = ["Q1", "Q13"]
+coupler_map.CZ2_10 = ["Q2", "Q10"]
+coupler_map.CZ2_13 = ["Q2", "Q13"]
+coupler_map.CZ3_9 = ["Q3", "Q9"]
+coupler_map.CZ3_11 = ["Q3", "Q11"]
+coupler_map.CZ4_9 = ["Q4", "Q9"]
+coupler_map.CZ4_10 = ["Q4", "Q10"]
+coupler_map.CZ4_11 = ["Q4", "Q11"]
+coupler_map.CZ4_12 = ["Q4", "Q12"]
+coupler_map.CZ5_10 = ["Q5", "Q10"]
+coupler_map.CZ5_12 = ["Q5", "Q12"]
+coupler_map.CZ5_14 = ["Q5", "Q14"]
+coupler_map.CZ6_11 = ["Q6", "Q11"]
+coupler_map.CZ6_15 = ["Q6", "Q15"]
+coupler_map.CZ7_11 = ["Q7", "Q11"]
+coupler_map.CZ7_12 = ["Q7", "Q12"]
+coupler_map.CZ7_15 = ["Q7", "Q15"]
+coupler_map.CZ8_12 = ["Q8", "Q12"]
+coupler_map.CZ8_14 = ["Q8", "Q14"]
+coupler_map.CZ3_16 = ["Q3", "Q16"]
+coupler_map.CZ0_16 = ["Q0", "Q16"]
+
+readout_error.Q0 = 0.01
+readout_error.Q1 = 0.0165
+readout_error.Q2 = 0.011
+readout_error.Q3 = 0.01
+readout_error.Q4 = 0.016
+readout_error.Q5 = 0.012
+readout_error.Q6 = 0.014
+readout_error.Q7 = 0.011
+readout_error.Q8 = 0.0135
+readout_error.Q9 = 0.008
+readout_error.Q10 = 0.018
+readout_error.Q11 = 0.013
+readout_error.Q12 = 0.0295
+readout_error.Q13 = 0.008
+readout_error.Q14 = 0.0125
+readout_error.Q15 = 0.009
+readout_error.Q16 = 0.0095
+
+coupler_error.CZ0_9 = 0.0046
+coupler_error.CZ1_9 = 0.0052
+coupler_error.CZ1_10 = 0.004
+coupler_error.CZ1_13 = 0.0042
+coupler_error.CZ2_10 = 0.0047
+coupler_error.CZ2_13 = 0.0072
+coupler_error.CZ3_9 = 0.0041
+coupler_error.CZ3_11 = 0.0038
+coupler_error.CZ4_9 = 0.0046
+coupler_error.CZ4_10 = 0.0059
+coupler_error.CZ4_11 = 0.0058
+coupler_error.CZ4_12 = 0.0039
+coupler_error.CZ5_10 = 0.0035
+coupler_error.CZ5_12 = 0.0051
+coupler_error.CZ5_14 = 0.0037
+coupler_error.CZ6_11 = 0.0065
+coupler_error.CZ6_15 = 0.0048
+coupler_error.CZ7_11 = 0.0053
+coupler_error.CZ7_12 = 0.0071
+coupler_error.CZ7_15 = 0.0069
+coupler_error.CZ8_12 = 0.0036
+coupler_error.CZ8_14 = 0.0055
+coupler_error.CZ3_16 = 0.0053
+coupler_error.CZ0_16 = 0.0057

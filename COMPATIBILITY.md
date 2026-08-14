@@ -33,6 +33,7 @@
 | 五岳-中科酷原-汉原1 中性原子驱动 | DriverWuyueHanyuan1 | 0.0.1 | 中性原子 | 100 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台版) |
 | 五岳-中科酷原-汉原1 中性原子驱动 - 模拟器 | DriverWuyueHanyuan1Sim | 0.0.1 | 中性原子 | 25 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台模拟器版) |
 | 北京量子院 夸父-Dongling 超导驱动 | DriverQuafu | 0.0.1 | 超导 | 84 | cmss | 北京量子院 夸父-Dongling 超导驱动 |
+| 逻辑比特 QZ01 超导驱动 | DriverLogicalQubit | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01 超导驱动 |
 | Qiskit Aer 模拟器驱动 | DriverQiskitAerSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Aer 模拟器驱动 |
 | Qiskit Qasm 模拟器驱动 | DriverQiskitQasmSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Qasm 模拟器驱动 |
 | Qutip 模拟器驱动 | DriverQutipSim | 0.0.1 | 通用模拟器 | 10 | cmss | Qutip 模拟器驱动 |
