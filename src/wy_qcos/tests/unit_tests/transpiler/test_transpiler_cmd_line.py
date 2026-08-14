@@ -28,7 +28,6 @@ from wy_qcos.transpiler.common.utils import (
     Timer,
     TranspileRuntime,
 )
-from wy_qcos.transpiler.high_performance import TranspileTimings
 from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
     TranspilerHighPerformanceCmss,
 )
@@ -195,16 +194,13 @@ class TestTranspilerCmdLine:
             "wy_qcos.transpiler.cmss.transpiler_cmd_line."
             "TranspilerHighPerformanceCmss"
         ) as MockTranspilerHighPerformanceCmss:
-            mock_transpiler = MagicMock()
+            mock_transpiler = self._build_mock_transpiler_for_single()
             MockTranspilerHighPerformanceCmss.return_value = mock_transpiler
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 [X([0])],
                 None,
             )
-            mock_result = MagicMock()
-            mock_result.timings = TranspileTimings()
-            mock_transpiler.transpile_single.return_value = mock_result
 
             perf = CMSSTranspilerPerf()
             input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
@@ -435,6 +431,8 @@ class TestTranspilerCmdLine:
         mock_transpiler.transpiler_options = {}
         mock_result = MagicMock()
         mock_result.timings = TranspileRuntime()
+        mock_result.basis_gate_list = [X([0])]
+        mock_result.num_qubits = 1
         mock_transpiler.transpile_single.return_value = mock_result
         return mock_transpiler
 
@@ -567,7 +565,10 @@ class TestTranspilerCmdLine:
         mock_transpiler = MagicMock()
         mock_transpiler.transpiler_options = {}
         mock_transpiler.parse.return_value = {"000": (3, ["x"])}
-        mock_transpiler.transpile.return_value = ([X([0])], None)
+        mock_transpiler.transpile.return_value = (
+            [X([0]), X([4])],
+            None,
+        )
         MockTranspiler.return_value = mock_transpiler
 
         orig_max_qubits = trans_cfg_inst.get_max_qubits()
@@ -586,7 +587,7 @@ class TestTranspilerCmdLine:
                 ),
                 sc_mapping_options={"routing_algorithm": "sc"},
             )
-            assert runtime.transpiled_gate_count == 1
+            assert runtime.transpiled_gate_count == 2
             assert runtime.transpiled_depth > 0
         finally:
             trans_cfg_inst.set_max_qubits(orig_max_qubits)

@@ -43,6 +43,7 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,12 @@ class CMSSTranspilerPerf:
         # whether to enable the C++ all-in-one transpile (single-circuit
         # sabre routing path); defaults to True
         self.enable_transpile_single = True
+        # whether to write the transpiled basis_gate_list to a qasm file
+        self.enable_output_qasm = False
+        # directory for qasm output; empty means alongside the input file
+        self.qasm_output_dir = ""
+        # qasm version for output, "2.0" or "3.0"
+        self.qasm_version = "2.0"
         # transpiler configs
         self.base_gates = []
         # optimization level, 0, 1, 2, 3
@@ -111,6 +118,8 @@ class CMSSTranspilerPerf:
             "cx": Constant.TWO_QUBIT_GATE_CX,
             "cy": Constant.TWO_QUBIT_GATE_CY,
             "cz": Constant.TWO_QUBIT_GATE_CZ,
+            "u3": Constant.SINGLE_QUBIT_GATE_U3,
+            "u": Constant.SINGLE_QUBIT_GATE_U,
         }
 
         self.parse_results = {}
@@ -220,6 +229,15 @@ class CMSSTranspilerPerf:
         )
         self.enable_transpile_single = extra_configs["transpile"].get(
             "enable_transpile_single", True
+        )
+        self.enable_output_qasm = extra_configs["transpile"].get(
+            "enable_output_qasm", False
+        )
+        self.qasm_output_dir = extra_configs["transpile"].get(
+            "qasm_output_dir", ""
+        )
+        self.qasm_version = extra_configs["transpile"].get(
+            "qasm_version", "2.0"
         )
 
         self.enable_transpiler = extra_configs["transpile"]["transpiler"].get(
@@ -615,6 +633,39 @@ class CMSSTranspilerPerf:
 
         return csv_file_path
 
+    def output_qasm_file(
+        self,
+        circuit: QuantumCircuit,
+        input_file: str | os.PathLike[str],
+        opt_level: int,
+        tech_type: str,
+    ):
+        """Write the transpiled circuit to a qasm file via QasmConverter.
+
+        The output file is named after the input file, suffixed with the
+        tech type and optimization level to avoid collisions across the
+        parameter combinations. When ``qasm_output_dir`` is configured the
+        file is written there, otherwise alongside the input file.
+
+        Args:
+            circuit (QuantumCircuit): the transpiled circuit to convert.
+            input_file (Path): the input qasm file path.
+            opt_level (int): optimization level, used in the output name.
+            tech_type (str): technology type, used in the output name.
+        """
+        stem = Path(input_file).stem
+        out_name = f"{stem}_{tech_type}_opt{opt_level}.qasm"
+        if self.qasm_output_dir:
+            out_dir = Path(self.qasm_output_dir).resolve()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / out_name
+        else:
+            out_path = Path(input_file).resolve().parent / out_name
+
+        converter = QasmConverter(circuit)
+        converter.save(str(out_path), version=self.qasm_version)
+        logger.info(f"write transpiled qasm to: {out_path}")
+
     def cmss_transpiler_perf_exec(
         self,
         input_file: Path | None = None,
@@ -744,10 +795,14 @@ class CMSSTranspilerPerf:
             # generate basis gates list
             log_perf(logger, "Start performace testing of cmss compiling.")
 
-            # Decide whether the C++ all-in-one transpile (single-circuit path)
-            #  can be used.
-            # - superconducting + sabre -> SABRE routing
-            # - neutral_atom + enable_na_move + default -> NA mapping (NARoute)
+            # transpiled basis gate list and the QuantumCircuit built from it,
+            # kept for post-transpile statistics and qasm output.
+            basis_gate_list = []
+            transpiled_qc = None
+
+            # whether the C++ all-in-one transpile path can be used
+            # (single-circuit sabre routing path). It requires
+            # enable_transpile_single to be true plus the existing conditions.
             routing_algorithm = sc_mapping_options.get(
                 "routing_algorithm",
                 DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
@@ -776,8 +831,25 @@ class CMSSTranspilerPerf:
                 result = transpiler.transpile_single(
                     qasm_data, expected_basis_gates, qpu_config
                 )
-                # populate Python TranspileRuntime from C++ TranspileTimings
-                runtime = result.timings
+                # fill Python TranspileRuntime from C++ TranspileTimings;
+                # copy field by field because the C++ object cannot carry the
+                # extra attributes (transpiled_gate_count/depth,
+                # decomposed_time, ...) that downstream code writes onto
+                # runtime.
+                basis_gate_list = result.basis_gate_list
+                cpp_timings = result.timings
+                for attr in (
+                    "parse_time",
+                    "opt_time1",
+                    "decompose_1q2q_time",
+                    "decompose_rule_time",
+                    "mapping_time",
+                    "decompose_apply_time",
+                    "opt_time2",
+                    "transpile_time",
+                    "total_time",
+                ):
+                    setattr(runtime, attr, getattr(cpp_timings, attr))
                 for label, attr in [
                     ("parse time", "parse_time"),
                     ("first optimize time", "opt_time1"),
@@ -833,17 +905,31 @@ class CMSSTranspilerPerf:
         # gate count and depth of the transpiled circuit, derived from the
         # final basis gate list. Computed outside the timing blocks so it
         # does not pollute the transpile/total time statistics.
-        if not use_cpp_transpile and self.enable_transpiler:
+        if self.enable_transpiler and basis_gate_list:
             runtime.transpiled_gate_count = len(basis_gate_list)
-            # num_qubits after mapping may exceed the input circuit; use the
-            # qpu max qubits when available, otherwise fall back to the
-            # parsed circuit size.
-            transpiled_num_qubits = trans_cfg_inst.get_max_qubits()
-            if transpiled_num_qubits <= 0:
-                transpiled_num_qubits = self.parse_results[input_file][0]
+            if use_cpp_transpile:
+                # the C++ path reports the post-mapping qubit count directly
+                transpiled_num_qubits = result.num_qubits
+            else:
+                # num_qubits after mapping may exceed the input circuit; use
+                # the qpu max qubits when available, otherwise fall back to
+                # counting the physical qubits referenced by the basis
+                # gate list.
+                transpiled_num_qubits = trans_cfg_inst.get_max_qubits()
+                if transpiled_num_qubits <= 0:
+                    transpiled_num_qubits = (
+                        max(q for op in basis_gate_list for q in op.targets)
+                        + 1
+                    )
             transpiled_qc = QuantumCircuit(num_qubits=transpiled_num_qubits)
             transpiled_qc.append_operations(basis_gate_list)
             runtime.transpiled_depth = transpiled_qc.depth()
+
+            # write the transpiled circuit to a qasm file when enabled
+            if self.enable_output_qasm:
+                self.output_qasm_file(
+                    transpiled_qc, file_path, opt_level, tech_type
+                )
         return runtime
 
 
