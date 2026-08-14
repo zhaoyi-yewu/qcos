@@ -192,3 +192,63 @@ class TraceMemResponse(BaseModel):
         default_factory=list,
         description="Top memory allocation statistics",
     )
+
+
+class ListWorkersRequest(BaseModel):
+    """List Workers Request.
+
+    Pydantic Model for List Workers Request.
+    """
+
+
+class WorkerInfo(BaseModel):
+    """Worker Info.
+
+    Pydantic Model for single prefect worker info.
+    """
+
+    # worker name
+    worker_name: str = Field(..., description="Worker name")
+    # work pool name
+    work_pool: str = Field(..., description="Work pool name")
+    # worker status (e.g. ONLINE, OFFLINE)
+    worker_status: str = Field(..., description="Worker status")
+    # worker process pid, may be None
+    pid: int | None = Field(None, description="Worker process pid")
+
+
+class ListWorkersResponse(BaseModel):
+    """List Workers Response.
+
+    Pydantic Model for List Workers Response.
+    """
+
+    # list of workers
+    workers: list[WorkerInfo] = Field(
+        default_factory=list,
+        description="List of prefect workers",
+    )
+
+
+class RestartWorkerRequest(BaseModel):
+    """Restart Worker Request.
+
+    Pydantic Model for Restart Worker Request.
+    """
+
+    # worker name to restart
+    worker_name: str = Field(..., description="Worker name to restart")
+
+
+class RestartWorkerResponse(BaseModel):
+    """Restart Worker Response.
+
+    Pydantic Model for Restart Worker Response.
+    """
+
+    # whether the restart operation succeeded
+    success: bool = Field(..., description="Whether restart succeeded")
+    # detail message
+    message: str = Field(..., description="Detail message")
+    # worker name
+    worker_name: str = Field(..., description="Worker name")

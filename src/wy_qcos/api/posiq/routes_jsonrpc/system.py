@@ -21,9 +21,10 @@ import os
 import tracemalloc
 
 import psutil
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from wy_qcos.api import schemas
+from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
@@ -36,6 +37,7 @@ module_name = "SYSTEM"
 
 
 @system_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"no_auth": True},
 )
 def ping(
@@ -62,6 +64,7 @@ def ping(
 
 
 @system_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def system_info(
@@ -91,6 +94,7 @@ def system_info(
 
 
 @system_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def show_mem(
@@ -125,6 +129,7 @@ def show_mem(
 
 
 @system_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def gc_mem(
@@ -175,6 +180,7 @@ def gc_mem(
 
 
 @system_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def trace_mem(
@@ -272,4 +278,90 @@ def trace_mem(
         }
 
     response_info = schemas.TraceMemResponse.model_validate(_response_info)
+    return response_info
+
+
+@system_api_v1.method(
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.BadRequestError],
+)
+def list_workers(
+    request: Request,
+    body: schemas.ListWorkersRequest | None = None,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.ListWorkersResponse:
+    """List all prefect workers with name and status.
+
+    Args:
+        body(schemas.ListWorkersRequest): list workers request
+        request: fastapi request
+        auth_data: auth data
+
+    Returns:
+        list workers response
+    """
+    func_name = "list_workers"
+    logger.info(f"Call {func_name}: {body}")
+
+    task_manager = getattr(request.app.state, "_task_manager", None)
+    if not task_manager:
+        err = jsonrpc_errors.BadRequestError(
+            data={"details": "task manager is not initialized"}
+        )
+        err.MESSAGE = f"[{module_name}] Failed to {func_name}"
+        raise err
+
+    workers = task_manager.list_workers()
+    response_info = schemas.ListWorkersResponse.model_validate({
+        "workers": workers
+    })
+    return response_info
+
+
+@system_api_v1.method(
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.BadRequestError, jsonrpc_errors.NotFoundError],
+)
+def restart_worker(
+    request: Request,
+    body: schemas.RestartWorkerRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.RestartWorkerResponse:
+    """Restart a single prefect worker by worker name.
+
+    Args:
+        body(schemas.RestartWorkerRequest): restart worker request
+        request: fastapi request
+        auth_data: auth data
+
+    Returns:
+        restart worker response
+    """
+    func_name = "restart_worker"
+    logger.info(f"Call {func_name}: {body}")
+
+    worker_name = body.worker_name
+    if not worker_name:
+        err = jsonrpc_errors.BadRequestError(
+            data={"details": "worker_name must not be empty"}
+        )
+        err.MESSAGE = f"[{module_name}] Failed to {func_name}"
+        raise err
+
+    task_manager = getattr(request.app.state, "_task_manager", None)
+    if not task_manager:
+        err = jsonrpc_errors.BadRequestError(
+            data={"details": "task manager is not initialized"}
+        )
+        err.MESSAGE = f"[{module_name}] Failed to {func_name}"
+        raise err
+
+    success, message = task_manager.restart_worker(worker_name)
+    response_info = schemas.RestartWorkerResponse.model_validate({
+        "success": success,
+        "message": message,
+        "worker_name": worker_name,
+    })
     return response_info

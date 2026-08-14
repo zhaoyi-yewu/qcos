@@ -20,6 +20,7 @@ import json
 import logging
 import multiprocessing
 import os
+import re
 import setproctitle
 import threading
 import time
@@ -434,74 +435,358 @@ class TaskFlowManager:
         """
         return self.deployments.get(deployment_name, None)
 
+    @staticmethod
+    def _kill_workers_by_regex(regex_list):
+        """Kill prefect worker processes matching the given regex list.
+
+        Args:
+            regex_list: list of regex patterns to match process cmdlines
+
+        Returns:
+            tuple(success_pids, failed_pids)
+        """
+        process_list = Library.get_processes(regex_list)
+        if not process_list:
+            return [], []
+        return Library.kill(process_list, force=True)
+
     def kill_workers(self):
         """Kill workers."""
         logger.info("Kill existing prefect workers")
         regex_list = [r"\[prefect\]", r"prefect.engine"]
-        process_list = Library.get_processes(regex_list)
-        Library.kill(process_list, force=True)
+        self._kill_workers_by_regex(regex_list)
+
+    def list_workers(self):
+        """List all prefect workers with name and status.
+
+        The prefect Worker object does not carry a process pid, so the
+        pid is resolved by matching the worker proctitle
+        (``[prefect] {worker_name}``) against running processes.
+
+        Returns:
+            list of dict, each item contains worker_name, work_pool,
+            worker_status and pid.
+        """
+        if not self._sync_client:
+            logger.warning("Prefect sync client is not initialized")
+            return []
+
+        results = []
+        try:
+            pools = self._sync_client.read_work_pools()
+        except Exception as e:
+            logger.error(f"Failed to read work pools: {e}")
+            return results
+
+        for pool in pools:
+            pool_name = pool.name
+            try:
+                workers = self._sync_client.read_workers_for_work_pool(
+                    pool_name
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to read workers for pool {pool_name}: {e}"
+                )
+                continue
+
+            if not workers:
+                results.append({
+                    "worker_name": "",
+                    "work_pool": pool_name,
+                    "worker_status": "no_workers",
+                    "pid": None,
+                })
+                continue
+
+            for worker in workers:
+                status_value = (
+                    worker.status.value
+                    if hasattr(worker.status, "value")
+                    else str(worker.status)
+                )
+                pid = self._get_worker_pid(worker.name)
+                # Prefect may still report ONLINE for a short period after
+                # the process is killed. If no matching process is found,
+                # correct the status to OFFLINE.
+                if status_value == WorkerStatus.ONLINE.value and pid is None:
+                    status_value = WorkerStatus.OFFLINE.value
+                results.append({
+                    "worker_name": worker.name,
+                    "work_pool": pool_name,
+                    "worker_status": status_value,
+                    "pid": pid,
+                })
+
+        # sort by work_pool name for stable output
+        results.sort(key=lambda item: item["work_pool"])
+        return results
+
+    @staticmethod
+    def _worker_name_to_proctitle(worker_name):
+        """Convert a prefect worker name to its process proctitle.
+
+        The job worker proctitle is ``[prefect] {worker_name}``, but the
+        monitor/mgr worker proctitles use a different suffix than their
+        worker names:
+
+            - ``_monitor`` -> ``_device_monitor``
+            - ``_mgr``     -> ``_device_mgr``
+
+        Args:
+            worker_name: prefect worker name
+
+        Returns:
+            str: the proctitle used to identify the worker process
+        """
+        if not worker_name:
+            return ""
+        if worker_name.endswith("_monitor"):
+            base = worker_name[: -len("_monitor")]
+            return f"[prefect] {base}_device_monitor"
+        if worker_name.endswith("_mgr"):
+            base = worker_name[: -len("_mgr")]
+            return f"[prefect] {base}_device_mgr"
+        return f"[prefect] {worker_name}"
+
+    @staticmethod
+    def _build_proctitle_regex(worker_name):
+        """Build a regex that matches the exact worker proctitle.
+
+        The proctitle is embedded in the full process cmdline, so the
+        pattern anchors the proctitle end with a word boundary to avoid
+        partial matches (e.g. ``pro`` must not match ``process-...``).
+
+        Args:
+            worker_name: prefect worker name
+
+        Returns:
+            str: regex pattern for exact proctitle matching
+        """
+        proctitle = TaskFlowManager._worker_name_to_proctitle(worker_name)
+        # escape special chars, then anchor the end so that a short worker
+        # name does not match longer ones (e.g. "pro" != "process-device|x")
+        return re.escape(proctitle) + r"(?=\s|$)"
+
+    @staticmethod
+    def _get_worker_pid(worker_name):
+        """Resolve the process pid of a prefect worker by its name.
+
+        The worker process proctitle is derived from the worker name via
+        _worker_name_to_proctitle. We match running processes against the
+        proctitle pattern to find the pid.
+
+        Args:
+            worker_name: worker name
+
+        Returns:
+            int or None: the pid of the worker process, None if not found
+        """
+        if not worker_name:
+            return None
+
+        regex_list = [TaskFlowManager._build_proctitle_regex(worker_name)]
+        try:
+            process_list = Library.get_processes(regex_list)
+        except Exception as e:
+            logger.debug(f"Failed to get process for {worker_name}: {e}")
+            return None
+
+        if not process_list:
+            return None
+
+        return process_list[0].pid
+
+    def restart_worker(self, worker_name):
+        """Restart a single prefect worker by worker name.
+
+        The worker process is identified by its proctitle which is set to
+        ``[prefect] {worker_name}`` when started. The worker name follows
+        the pattern ``process-{pool_prefix}{device_name}`` with optional
+        ``_monitor`` / ``_mgr`` suffix for monitor and manager workers.
+
+        Args:
+            worker_name: worker name to restart
+
+        Returns:
+            tuple(success: bool, message: str)
+        """
+        if not worker_name:
+            return False, "worker_name must not be empty"
+
+        logger.info(f"Restart worker: {worker_name}")
+
+        # kill the target worker process by matching its proctitle exactly.
+        # the proctitle is derived from the worker name because monitor/mgr
+        # workers use a different proctitle suffix than their worker names.
+        # _build_proctitle_regex anchors the proctitle end to avoid partial
+        # matches (e.g. "pro" must not match "process-device|x").
+        # NOTE: if no process is found, the worker may already be dead
+        # (OFFLINE). In that case we skip the kill step and proceed to
+        # start a fresh worker process directly.
+        regex_list = [self._build_proctitle_regex(worker_name)]
+        success_pids, failed_pids = self._kill_workers_by_regex(regex_list)
+        if not success_pids:
+            logger.info(
+                f"No running process found for {worker_name}, "
+                f"proceeding to start a new worker"
+            )
+        if failed_pids:
+            logger.warning(f"Failed to kill some processes: {failed_pids}")
+
+        # resolve device name and worker type from worker name, then
+        # start a new worker process for the corresponding pool.
+        # worker name patterns:
+        #   process-device|{device}          -> job worker
+        #   process-device|{device}_monitor  -> device monitor worker
+        #   process-device|{device}_mgr      -> device manager worker
+        device_name, worker_type = self._parse_worker_name(worker_name)
+        if not device_name:
+            msg = (
+                f"worker {worker_name} killed but could not be restarted "
+                f"(worker name unrecognized)"
+            )
+            logger.warning(msg)
+            return True, msg
+
+        started = self._start_worker_process(device_name, worker_type)
+        if not started:
+            msg = (
+                f"worker {worker_name} killed but could not be restarted "
+                f"(device not found or worker type disabled)"
+            )
+            logger.warning(msg)
+            return True, msg
+
+        return True, f"worker {worker_name} restarted successfully"
+
+    @staticmethod
+    def _parse_worker_name(worker_name):
+        """Parse worker name into device name and worker type.
+
+        Worker name patterns:
+            process-device|{device}          -> ("{device}", "job")
+            process-device|{device}_monitor  -> ("{device}", "monitor")
+            process-device|{device}_mgr      -> ("{device}", "mgr")
+
+        Args:
+            worker_name: worker name (process-{pool_name}[_suffix])
+
+        Returns:
+            tuple(device_name, worker_type); (None, None) if unrecognized
+        """
+        prefix = "process-"
+        if not worker_name.startswith(prefix):
+            return None, None
+        remainder = worker_name[len(prefix) :]
+
+        # determine worker type by suffix
+        monitor_suffix = "_monitor"
+        mgr_suffix = "_mgr"
+
+        if remainder.endswith(mgr_suffix):
+            pool_name = remainder[: -len(mgr_suffix)]
+            worker_type = "mgr"
+        elif remainder.endswith(monitor_suffix):
+            pool_name = remainder[: -len(monitor_suffix)]
+            worker_type = "monitor"
+        else:
+            pool_name = remainder
+            worker_type = "job"
+
+        # resolve device name from pool name using known prefixes
+        for pool_prefix in (
+            Constant.WORK_POOL_DEVICE_PREFIX,
+            Constant.WORK_POOL_MONITOR_PREFIX,
+            Constant.WORK_POOL_MGR_PREFIX,
+        ):
+            if pool_name.startswith(pool_prefix):
+                return pool_name[len(pool_prefix) :], worker_type
+
+        return None, None
+
+    def _start_worker_process(self, device_name, worker_type):
+        """Start a single worker process for a device.
+
+        Shared by start_workers (batch startup) and restart_worker
+        (single worker restart).
+
+        Args:
+            device_name: device name
+            worker_type: one of "job", "monitor", "mgr"
+
+        Returns:
+            bool: True if a worker process was started
+        """
+        device = self.device_manager.get_devices().get(device_name)
+        if not device:
+            return False
+
+        # validate worker type is enabled for the device
+        if worker_type == "monitor":
+            if not self._is_device_monitor_enabled(device):
+                return False
+            target = self.start_device_monitor_work
+        elif worker_type == "mgr":
+            if not device.get_driver().enable_device_mgr:
+                return False
+            target = self.start_device_mgr_work
+        else:
+            target = self.start_work
+
+        # device pool name (with device| prefix) is the base for job worker
+        device_pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
+        concurrency_limit = Constant.DEFAULT_POOL_CONCURRENCY
+        process_name = f"process-{device_pool_name}"
+
+        # load deployment env (PYTHONPATH) if available
+        deployment = self.get_deployment(device_name)
+        if deployment:
+            env = deployment.get("env", {})
+            pythonpath = env.get("PYTHONPATH", None)
+            if pythonpath:
+                os.environ["PYTHONPATH"] = pythonpath
+
+        # NOTE: start_device_monitor_work / start_device_mgr_work build the
+        # monitor|/mgr| pool name from the given pool_name argument, so we
+        # pass the bare device_name (not the device|-prefixed name) for
+        # monitor/mgr workers; start_work expects the device| pool name.
+        if worker_type == "job":
+            pool_arg = device_pool_name
+        else:
+            pool_arg = device_name
+
+        worker_process = multiprocessing.Process(
+            target=target,
+            args=(process_name, pool_arg, concurrency_limit),
+            name=process_name,
+        )
+        worker_process.daemon = True
+        worker_process.start()
+        logger.info(
+            f"Started worker process: {process_name} "
+            f"(type={worker_type}, device={device_name}, "
+            f"pid: {worker_process.pid})"
+        )
+        return True
 
     def start_workers(self):
-        """Start workers using multiprocessing."""
+        """Start workers using multiprocessing.
+
+        For each device, start the job worker and (if enabled) the device
+        monitor worker and device manager worker. Each worker process is
+        started via _start_worker_process so that batch startup and single
+        worker restart share the same code path.
+        """
         logger.info("Start prefect workers")
         device_names = self.device_manager.get_devices().keys()
         for device_name in device_names:
-            pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
-            deployment_name = device_name
-            process_name = f"process-{pool_name}"
-            concurrency_limit = Constant.DEFAULT_POOL_CONCURRENCY
-            deployment = self.get_deployment(deployment_name)
-            if deployment:
-                env = deployment["env"]
-                pythonpath = env.get("PYTHONPATH", None)
-                if pythonpath:
-                    os.environ["PYTHONPATH"] = pythonpath
-
             # start job worker process
-            job_worker_process = multiprocessing.Process(
-                target=self.start_work,
-                args=(process_name, pool_name, concurrency_limit),
-                name=process_name,
-            )
-            job_worker_process.daemon = True
-            job_worker_process.start()
-            logger.info(
-                f"Started Prefect Worker process: {process_name} "
-                f"for pool: {pool_name}"
-            )
-            # start device monitor process
-            device = self.device_manager.get_devices().get(device_name)
-            enable_device_monitor = self._is_device_monitor_enabled(device)
-            if enable_device_monitor:
-                monitor_pool = (
-                    f"{Constant.WORK_POOL_MONITOR_PREFIX}{device_name}"
-                )
-                device_monitor_process = multiprocessing.Process(
-                    target=self.start_device_monitor_work,
-                    args=(process_name, device_name, concurrency_limit),
-                    name=process_name,
-                )
-                device_monitor_process.daemon = True
-                device_monitor_process.start()
-                logger.info(
-                    f"Started Prefect Worker process: "
-                    f"{process_name}_monitor for pool: {monitor_pool}"
-                )
-
-            enable_device_mgr = device.get_driver().enable_device_mgr
-            if enable_device_mgr:
-                mgr_pool = f"{Constant.WORK_POOL_MGR_PREFIX}{device_name}"
-                device_mgr_process = multiprocessing.Process(
-                    target=self.start_device_mgr_work,
-                    args=(process_name, device_name, concurrency_limit),
-                    name=process_name,
-                )
-                device_mgr_process.daemon = True
-                device_mgr_process.start()
-                logger.info(
-                    f"Started Prefect Worker process: "
-                    f"{process_name}_mgr for pool: {mgr_pool}"
-                )
+            self._start_worker_process(device_name, "job")
+            # start device monitor process if enabled
+            self._start_worker_process(device_name, "monitor")
+            # start device manager process if enabled
+            self._start_worker_process(device_name, "mgr")
 
     def run_device_monitor(self):
         """Run device monitor by prefect."""
