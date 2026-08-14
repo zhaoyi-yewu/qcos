@@ -1041,7 +1041,8 @@ class OpenQasmParser final : public InstVisitor {
                                                      std::move(no_args));
             break;
           case qc::otI:
-            operation = nullptr;
+            operation = std::make_shared<qcos::I>(std::move(all_qubits),
+                                                  std::move(no_args));
             break;
           default:
             // Fall through to general path for gates not in the fast path
@@ -1321,7 +1322,8 @@ class OpenQasmParser final : public InstVisitor {
                                                     std::move(arg_values));
           break;
         case qc::otI:
-          operation = nullptr;
+          operation = std::make_shared<qcos::I>(std::move(all_qubits),
+                                                std::move(arg_values));
           break;
         default:
           error("Unsupported standard gate type: " + qc::toString(op_type),

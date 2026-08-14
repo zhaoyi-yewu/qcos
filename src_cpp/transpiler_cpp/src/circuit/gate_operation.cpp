@@ -515,6 +515,24 @@ std::string SXDG ::to_string() const {
          ", arg_value=" + arg_value_to_string() + ")";
 }
 
+I ::I(std::vector<int> targets_, std::vector<double> arg_value_)
+    : GateOperation(Constant::SINGLE_QUBIT_GATE_I, std::move(targets_),
+                    std::move(arg_value_),
+                    OperationType::SINGLE_QUBIT_OPERATION, true) {}
+
+std::vector<std::shared_ptr<BaseOperation>> I ::default_decompose() {
+  return {};
+}
+
+std::array<std::complex<double>, 4> I ::to_matrix() const {
+  return {1.0, 0.0, 0.0, 1.0};
+}
+
+std::string I ::to_string() const {
+  return "I(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
 CZ ::CZ(std::vector<int> targets_, std::vector<double> arg_value_,
         OperationType gate_type)
     : GateOperation(Constant::TWO_QUBIT_GATE_CZ, std::move(targets_),
@@ -1668,11 +1686,8 @@ std::array<std::complex<double>, 16> ECR ::to_matrix() const {
   using C = std::complex<double>;
   const double s = 1.0 / std::sqrt(2.0);
 
-  return {
-      C(0), C(0), C(s), C(0, s),
-      C(0), C(0), C(0, s), C(s),
-      C(s), C(0, -s), C(0), C(0),
-      C(0, -s), C(s), C(0), C(0)};
+  return {C(0), C(0),     C(s), C(0, s), C(0),     C(0), C(0, s), C(s),
+          C(s), C(0, -s), C(0), C(0),    C(0, -s), C(s), C(0),    C(0)};
 }
 
 std::string ECR ::to_string() const {
@@ -3657,6 +3672,8 @@ std::shared_ptr<BaseOperation> create_gate(std::string_view name,
     return std::make_shared<SX>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::SINGLE_QUBIT_GATE_SXDG) {
     return std::make_shared<SXDG>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_I) {
+    return std::make_shared<I>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::SINGLE_QUBIT_GATE_S) {
     return std::make_shared<S>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::SINGLE_QUBIT_GATE_T) {

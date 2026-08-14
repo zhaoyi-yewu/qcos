@@ -177,6 +177,13 @@ void bind_circuits(nb::module_& m) {
       .def("default_decompose", &SXDG::default_decompose)
       .def("__repr__", [](const SXDG& self) { return self.to_string(); });
 
+  nb::class_<I, GateOperation>(m, "I")
+      .def(nb::init<std::vector<int>, std::vector<double>>(),
+           nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())
+      .def("to_matrix", &I::to_matrix)
+      .def("default_decompose", &I::default_decompose)
+      .def("__repr__", [](const I& self) { return self.to_string(); });
+
   nb::class_<CZ, GateOperation>(m, "CZ")
       .def(nb::init<std::vector<int>, std::vector<double>>(),
            nb::arg("targets"), nb::arg("arg_value") = std::vector<double>())

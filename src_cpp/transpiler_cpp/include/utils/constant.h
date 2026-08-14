@@ -36,6 +36,7 @@ inline constexpr std::string_view SINGLE_QUBIT_GATE_RY = "ry";
 inline constexpr std::string_view SINGLE_QUBIT_GATE_RZ = "rz";
 inline constexpr std::string_view SINGLE_QUBIT_GATE_SX = "sx";
 inline constexpr std::string_view SINGLE_QUBIT_GATE_SXDG = "sxdg";
+inline constexpr std::string_view SINGLE_QUBIT_GATE_I = "id";
 inline constexpr std::string_view SINGLE_QUBIT_GATE_SDG = "sdg";
 inline constexpr std::string_view SINGLE_QUBIT_GATE_TDG = "tdg";
 inline constexpr std::string_view SINGLE_QUBIT_GATE_U1 = "u1";
@@ -60,6 +61,7 @@ inline const std::vector<std::string> SINGLE_QUBIT_GATE_LIST = {
     std::string(SINGLE_QUBIT_GATE_RZ),
     std::string(SINGLE_QUBIT_GATE_SX),
     std::string(SINGLE_QUBIT_GATE_SXDG),
+    std::string(SINGLE_QUBIT_GATE_I),
     std::string(SINGLE_QUBIT_GATE_SDG),
     std::string(SINGLE_QUBIT_GATE_TDG),
     std::string(SINGLE_QUBIT_GATE_U1),
@@ -169,6 +171,7 @@ inline const std::vector<std::string> ALL_GATE_LIST = {
     std::string(SINGLE_QUBIT_GATE_RZ),
     std::string(SINGLE_QUBIT_GATE_SX),
     std::string(SINGLE_QUBIT_GATE_SXDG),
+    std::string(SINGLE_QUBIT_GATE_I),
     std::string(SINGLE_QUBIT_GATE_SDG),
     std::string(SINGLE_QUBIT_GATE_TDG),
     std::string(SINGLE_QUBIT_GATE_U1),
