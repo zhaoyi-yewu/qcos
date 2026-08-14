@@ -766,6 +766,8 @@ class GetDevices(Lister):
             "driver_name",
             "enable",
             "status",
+            "max_qubits",
+            "availability_total",
             "description",
         ]
         details = parsed_args.details
@@ -776,6 +778,14 @@ class GetDevices(Lister):
         json_results = CommandHelper.check_results(
             resource, "get_devices", status_code, reason, text
         )
+        # flatten metrics.availability_total to top-level so the
+        # table helper can pick it up as a regular column
+        if json_results:
+            for dev_info in json_results.values():
+                metrics = dev_info.get("metrics") or {}
+                dev_info["availability_total"] = metrics.get(
+                    "availability_total"
+                )
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
@@ -1079,16 +1089,18 @@ class SetDeviceMaintainMode(Command):
 
 
 class SetDevice(Command):
-    """Set device attributes (status, enable, max_qubits).
+    """Set device attributes (status, enable, max_qubits, etc.).
 
-    At least one of --status, --enable, or --max-qubits must be
-    specified.
+    At least one of --status, --enable, --max-qubits, or
+    --available-qubits must be specified.
 
     Examples:
         qcos set-device hanyuan1 --status online
         qcos set-device hanyuan1 --enable false
         qcos set-device hanyuan1 --max-qubits 100
         qcos set-device hanyuan1 --max-qubits auto
+        qcos set-device hanyuan1 --available-qubits 50
+        qcos set-device hanyuan1 --available-qubits auto
         qcos set-device hanyuan1 --status online \
             --enable true --max-qubits auto
     """
@@ -1144,6 +1156,14 @@ class SetDevice(Command):
             help="Max qubits: 'auto' to restore driver default, "
             "or a positive integer",
         )
+        parser.add_argument(
+            "--available-qubits",
+            dest="available_qubits",
+            type=str,
+            default=None,
+            help="Available qubits: 'auto' to restore driver "
+            "default, or a positive integer",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1157,12 +1177,19 @@ class SetDevice(Command):
         status = parsed_args.status
         enable_str = parsed_args.enable
         max_qubits = parsed_args.max_qubits
+        available_qubits = parsed_args.available_qubits
 
         # at least one option must be specified
-        if status is None and enable_str is None and max_qubits is None:
+        if (
+            status is None
+            and enable_str is None
+            and max_qubits is None
+            and available_qubits is None
+        ):
             print(
                 "Error: at least one of --status, --enable, "
-                "or --max-qubits must be specified"
+                "--max-qubits, or --available-qubits must be "
+                "specified"
             )
             return
 
@@ -1176,6 +1203,7 @@ class SetDevice(Command):
             status=status,
             enable=enable,
             max_qubits=max_qubits,
+            available_qubits=available_qubits,
         )
         json_results = CommandHelper.check_results(
             resource, "set_device", status_code, reason, text
@@ -1184,7 +1212,8 @@ class SetDevice(Command):
             f"Device {json_results['name']}: "
             f"status={json_results['status']}, "
             f"enable={json_results['enable']}, "
-            f"max_qubits={json_results['max_qubits']}"
+            f"max_qubits={json_results['max_qubits']}, "
+            f"available_qubits={json_results.get('available_qubits')}"
         )
 
 
@@ -2068,7 +2097,18 @@ class GetJobStatus(ShowOne):
 
 
 class GetJobResults(ShowOne):
-    """Get job results."""
+    """Get job results.
+
+    The job_id positional argument accepts a real job UUID or the
+    special value "last" (case-insensitive). When "last" is given,
+    the most recent job (sorted by created_at descending on the
+    server side) is resolved automatically and its results fetched.
+
+    Examples:
+        qcos-cli get-job-results <job_id>
+        qcos-cli get-job-results last
+        qcos-cli get-job-results LAST -o results.txt -y
+    """
 
     group = QcosShell.CMD_GROUP_JOB
 
@@ -2131,7 +2171,12 @@ class GetJobResults(ShowOne):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("job_id", type=str, help="Job ID")
+        parser.add_argument(
+            "job_id",
+            type=str,
+            help="Job ID, or the special value 'last' "
+            "(case-insensitive) to fetch the most recent job",
+        )
         parser.add_argument(
             "--output-file",
             dest="output_file",
@@ -2161,6 +2206,25 @@ class GetJobResults(ShowOne):
         job_id = parsed_args.job_id
         output_file = parsed_args.output_file
         assume_override = parsed_args.assume_override
+
+        # Special value "last" (case-insensitive): resolve the most
+        # recent job by querying the job list (already sorted by
+        # created_at descending on the server side).
+        if job_id and job_id.lower() == Constant.JOB_ID_LAST:
+            status_code, reason, text, result = self.app.client.get_jobs()
+            jobs_list = CommandHelper.check_results(
+                resource, "get_jobs", status_code, reason, text
+            )
+            if not jobs_list:
+                raise errors.GenericException(
+                    "No jobs found, cannot resolve 'last'"
+                )
+            job_id = jobs_list[0].get("job_id")
+            if not job_id:
+                raise errors.GenericException(
+                    "Failed to resolve job_id from the latest job"
+                )
+            print(f"Latest job_id: {job_id}")
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
