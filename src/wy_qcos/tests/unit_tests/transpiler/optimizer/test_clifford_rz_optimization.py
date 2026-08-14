@@ -855,10 +855,15 @@ class TestCliffordRzOptimization:
 
         with pytest.raises(CircuitException) as e:
             ir = rcg.random_circuit_with_depth(
-                num_qubits=10, depth=10, max_operands=2, gate_type=2
+                num_qubits=10, depth=10, max_operands=2, gate_type=3
             )
         err_msg = str(e.value)
         assert "Invalid gate_type" in err_msg
+
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=10, depth=10, max_operands=2, gate_type=2
+        )
+        assert isinstance(ir, list)
 
     @patch("wy_qcos.transpiler.cmss.circuit.utils.QasmConverter")
     def test_random_circuit_save(self, mock_qasm_converter):
@@ -871,6 +876,6 @@ class TestCliffordRzOptimization:
         assert isinstance(ir, list)
 
         ir = rcg.random_circuit_with_depth(
-            num_qubits=2, depth=2, outfile="output.log"
+            num_qubits=2, depth=2, outfile="output.qasm"
         )
         assert isinstance(ir, list)
