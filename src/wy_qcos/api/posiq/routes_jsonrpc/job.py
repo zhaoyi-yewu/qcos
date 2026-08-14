@@ -216,9 +216,7 @@ def submit_job(
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_values_range(
-            shots, "shots", Constant.MIN_SHOTS, Constant.MAX_SHOTS
-        ),
+        Library.validate_values_range(shots, "shots", Constant.MIN_SHOTS),
     )
 
     # validate: code_compression_level

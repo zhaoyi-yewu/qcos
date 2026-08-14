@@ -139,6 +139,7 @@ class DriverBase:
             "wirecut_qubit_width": 0,
             "max_job_wait_time": Constant.DEFAULT_JOB_WAIT_TIME,
             "job_query_interval": Constant.DEFAULT_JOB_QUERY_INTERVAL,
+            "compute_fidelity": False,
         }
         # driver_options schema
         self.driver_options_schema = {
@@ -146,6 +147,7 @@ class DriverBase:
             Optional("wirecut_qubit_width"): int,
             Optional("max_job_wait_time"): int,
             Optional("job_query_interval"): int,
+            Optional("compute_fidelity"): bool,
         }
         # default driver_config schema
         self.default_driver_config_schema = {

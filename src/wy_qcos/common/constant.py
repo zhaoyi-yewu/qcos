@@ -477,7 +477,6 @@ class Constant:
     # Shots
     DEFAULT_SHOTS = 10
     MIN_SHOTS = 1
-    MAX_SHOTS = 10240
 
     # Qubits
     DEFAULT_QUBITS = 1

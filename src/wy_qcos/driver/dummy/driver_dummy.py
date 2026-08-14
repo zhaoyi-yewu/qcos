@@ -55,12 +55,12 @@ class DriverDummy(DriverGateBase):
         self.max_qubits = 10
         # pylint: disable=duplicate-code
         self.extra_configs = {}
-        self.driver_options_schema = {
+        self.driver_options_schema.update({
             Optional("sleep"): int,
             Optional("enable_wirecut"): bool,
             Optional("max_qubits"): int,
             Optional("wirecut_qubit_width"): int,
-        }
+        })
 
     def init_driver(self):
         """Init driver."""

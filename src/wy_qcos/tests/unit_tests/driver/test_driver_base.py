@@ -22,6 +22,7 @@ import pytest
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 
 
 driver_base = DriverBase()
@@ -74,6 +75,17 @@ class TestDriverBase:
     def test_get_driver_options_schema(self):
         driver_options_schema = driver_base.get_driver_options_schema()
         assert driver_options_schema == driver_base.driver_options_schema
+
+    @pytest.mark.parametrize("compute_fidelity", [True, False])
+    def test_compute_fidelity_is_available_to_all_drivers(
+        self, compute_fidelity
+    ):
+        schema = DriverDummy().get_driver_options_schema()
+        success, _ = Library.validate_schema(
+            {"compute_fidelity": compute_fidelity},
+            schema,
+        )
+        assert success is True
 
     def test_driver_options_defaults_include_max_job_wait_time(self):
         """Test driver_options defaults include max_job_wait_time."""

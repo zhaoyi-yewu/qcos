@@ -69,10 +69,10 @@ class DriverQutipSim(DriverGateBase):
         self.supported_transpilers = [Constant.TRANSPILER_CMSS]
         self.enable_circuit_aggregation = True
         self.max_qubits = 10
-        self.driver_options_schema = {
+        self.driver_options_schema.update({
             Optional("sleep"): int,
             Optional("max_qubits"): int,
-        }
+        })
 
     def convert_result(self, results, shots):
         """Convert result.

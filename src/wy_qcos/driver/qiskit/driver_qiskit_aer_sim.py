@@ -15,12 +15,66 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
+import sys
+
 from loguru import logger
+from qiskit import qasm2
 from qiskit_aer import AerSimulator
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_gate_base import DriverGateBase
+
+MAX_IDEAL_SIMULATOR_QUBITS = 10
+
+
+def simulate_qasm_probabilities(source_code):
+    """Calculate ideal probabilities with the Qiskit Aer backend.
+
+    Final measurements are removed before state-vector simulation so the
+    returned dictionary contains exact probabilities instead of sampled
+    counts.
+    """
+    if not isinstance(source_code, str) or not source_code.strip():
+        raise ValueError("source_code must be a non-empty OpenQASM string")
+
+    try:
+        circuit = qasm2.loads(source_code)
+        if circuit.num_qubits > MAX_IDEAL_SIMULATOR_QUBITS:
+            raise ValueError(
+                f"ideal simulation supports at most "
+                f"{MAX_IDEAL_SIMULATOR_QUBITS} qubits"
+            )
+        circuit = circuit.remove_final_measurements(inplace=False)
+        circuit.save_statevector()
+        simulator = AerSimulator(method="statevector")
+        result = simulator.run(circuit).result()
+        statevector = result.get_statevector(circuit)
+    except Exception as error:
+        raise ValueError(
+            f"unable to simulate OpenQASM circuit with Qiskit Aer: {error}"
+        ) from error
+
+    probabilities = {}
+    for index, amplitude in enumerate(statevector):
+        probability = float(abs(amplitude) ** 2)
+        if probability > 0:
+            state = format(index, f"0{circuit.num_qubits}b")
+            probabilities[state] = probability
+    return probabilities
+
+
+def _run_ideal_simulation_cli():
+    """Run ideal simulation over a stdin/stdout JSON subprocess protocol."""
+    try:
+        probabilities = simulate_qasm_probabilities(sys.stdin.read())
+    except Exception as error:
+        print(str(error), file=sys.stderr)
+        return 1
+
+    print(json.dumps(probabilities, sort_keys=True))
+    return 0
 
 
 class DriverQiskitAerSim(DriverGateBase):
@@ -123,3 +177,10 @@ class DriverQiskitAerSim(DriverGateBase):
             job_id: job ID
         """
         logger.info(f"Cancel job: job_id: {job_id}")
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--ideal-probabilities"]:
+        sys.exit(_run_ideal_simulation_cli())
+    print("unsupported command", file=sys.stderr)
+    sys.exit(2)
