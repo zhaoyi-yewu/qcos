@@ -1,7 +1,10 @@
 [uqc_matrix2]
-alias_name = "幺正量子 UQC-Matrix2 离子阱驱动"
+alias_name = "幺正量子-UQC-Matrix2 离子阱驱动"
 driver = "DriverUQCMatrix2"
-description = "幺正量子 UQC-Matrix2 离子阱驱动"
+description = "幺正量子-UQC-Matrix2 离子阱驱动"
+
+# [Optional] enable or disable the device
+# enable = true
 
 # [Optional] max qubits of device
 # device_max_qubits = 100

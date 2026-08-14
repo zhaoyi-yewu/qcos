@@ -3,6 +3,9 @@ alias_name = "量旋科技-三角座核磁量子计算机"
 driver = "DriverSpinQTriangulum"
 description = "量旋科技-三角座核磁量子计算机"
 
+# [Optional] enable or disable the device
+# enable = true
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
 
@@ -52,7 +55,7 @@ job_query_interval = 5
 
 [spinq_triangulum.device_monitor]
 # [Optional] enable device monitor
-enable_device_monitor = false
+enable_device_monitor = true
 
 # [Optional] device monitor log file path
 monitor_log_file = "/var/log/qcos/device_monitor_spinq_triangulum.log"

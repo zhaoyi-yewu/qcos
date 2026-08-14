@@ -3,6 +3,9 @@ alias_name = "量旋科技-双子座核磁量子计算机"
 driver = "DriverSpinQGemini"
 description = "量旋科技-双子座核磁量子计算机"
 
+# [Optional] enable or disable the device
+# enable = true
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
 

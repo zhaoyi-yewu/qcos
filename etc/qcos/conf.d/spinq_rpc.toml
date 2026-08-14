@@ -1,7 +1,10 @@
 [spinq_rpc]
 driver = "DriverSpinQRpc"
-alias_name = "量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本)"
-description = "量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本)"
+alias_name = "量旋科技-大熊座-S25 超导量子计算机驱动 (RPC版本)"
+description = "量旋科技-大熊座-S25 超导量子计算机驱动 (RPC版本)"
+
+# [Optional] enable or disable the device
+# enable = true
 
 # [Optional] max qubits of device
 # device_max_qubits = 100

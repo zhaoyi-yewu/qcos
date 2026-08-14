@@ -3,6 +3,9 @@ alias_name = "QEC专用仿真器"
 driver = "DriverStim"
 description = "QEC专用仿真器(stim)"
 
+# [Optional] enable or disable the device
+# enable = true
+
 # [Optional] max qubits of device
 # device_max_qubits = 10
 

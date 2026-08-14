@@ -3,6 +3,9 @@ alias_name = "玻色量子-天工1000"
 driver = "DriverTiangong1000V2"
 description = "玻色量子-天工(tiangong1000_v2)"
 
+# [Optional] enable or disable the device
+# enable = true
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
 

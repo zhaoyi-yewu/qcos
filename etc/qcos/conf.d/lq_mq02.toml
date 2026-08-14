@@ -3,6 +3,9 @@ alias_name = "逻辑比特 MQ02 超导驱动"
 driver = "DriverLqMQ02"
 description = "逻辑比特 MQ02 超导驱动"
 
+# [Optional] enable or disable the device
+# enable = true
+
 # [Optional] debug
 # debug = false
 debug = false

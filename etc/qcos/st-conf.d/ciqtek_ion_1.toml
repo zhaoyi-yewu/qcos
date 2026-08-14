@@ -1,7 +1,10 @@
 [ciqtek_ion_1]
-alias_name = "国仪量子 离子阱驱动"
+alias_name = "国仪量子-离子阱驱动"
 driver = "DriverCiqtekIon1"
-description = "国仪量子 离子阱驱动"
+description = "国仪量子-离子阱驱动"
+
+# [Optional] enable or disable the device
+# enable = true
 
 # [Optional] max qubits of device
 # device_max_qubits = 100
