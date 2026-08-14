@@ -94,20 +94,23 @@ void bind_transpile(nb::module_& m) {
          const std::vector<std::pair<int, int>>& coupling_list,
          const std::vector<double>& edge_fidelities,
          const std::vector<double>& single_qubit_fidelities,
-         const std::string& layout_method, size_t num_threads, bool fast_mode,
-         double fidelity_threshold, double fidelity_weight) {
+         const std::string& layout_method, const std::vector<int>& target_bits,
+         size_t num_threads, bool fast_mode, double fidelity_threshold,
+         double fidelity_weight) {
         nb::gil_scoped_release release;
         return transpile(qasm_string, supp_basis_gates, opt_level,
                          coupling_list, edge_fidelities,
-                         single_qubit_fidelities, layout_method, num_threads,
-                         fast_mode, fidelity_threshold, fidelity_weight);
+                         single_qubit_fidelities, layout_method, target_bits,
+                         num_threads, fast_mode, fidelity_threshold,
+                         fidelity_weight);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"),
       nb::arg("opt_level") = 1,
       nb::arg("coupling_list") = std::vector<std::pair<int, int>>{},
       nb::arg("edge_fidelities") = std::vector<double>{},
       nb::arg("single_qubit_fidelities") = std::vector<double>{},
-      nb::arg("layout_method") = "vf2_layout", nb::arg("num_threads") = 0,
+      nb::arg("layout_method") = "vf2_layout",
+      nb::arg("target_bits") = std::vector<int>{}, nb::arg("num_threads") = 0,
       nb::arg("fast_mode") = true, nb::arg("fidelity_threshold") = -1.0,
       nb::arg("fidelity_weight") = 0.5,
       R"(
@@ -128,6 +131,9 @@ void bind_transpile(nb::module_& m) {
                 fidelity array indexed by physical qubit ID. Empty means not used.
             layout_method (str, optional): Initial layout method: "vf2_layout"
                 (default) or "dense_layout".
+            target_bits (list[int], optional): Target physical qubit IDs.
+                When non-empty, all-1q circuits map to these qubits and 2q
+                circuits route on the induced subgraph of edges between them.
             num_threads (int, optional): Optimization thread count. 0 = auto
                 (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
             fast_mode (bool, optional): Optimization fast mode. True = run pass

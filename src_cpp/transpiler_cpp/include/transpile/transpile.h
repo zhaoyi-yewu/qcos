@@ -100,6 +100,8 @@ std::vector<std::string> collect_gate_names(
  * @param single_qubit_fidelities 单比特保真度，按物理位 ID
  * 索引，空表示不使用，默认空
  * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"
+ * @param target_bits 目标物理位(空=不限制); 全单比特门时映射到这些位,
+ * 含双比特门时在其诱导子图上路由, 透传给内部 sabre_routing
  * @param num_threads 优化阶段线程数：0=自动并行(取 hardware_concurrency)，
  * 1=串行，>1=指定。默认 0，透传给内部 optimize() 调用。
  * @param fast_mode 优化快速模式：true 只跑一轮 pass，透传给内部 optimize()
@@ -117,7 +119,8 @@ TranspileResult transpile(
     const std::vector<std::pair<int, int>>& coupling_list = {},
     const std::vector<double>& edge_fidelities = {},
     const std::vector<double>& single_qubit_fidelities = {},
-    const std::string& layout_method = "vf2_layout", size_t num_threads = 0,
+    const std::string& layout_method = "vf2_layout",
+    const std::vector<int>& target_bits = {}, size_t num_threads = 0,
     bool fast_mode = true, double fidelity_threshold = -1.0,
     double fidelity_weight = 0.5);
 

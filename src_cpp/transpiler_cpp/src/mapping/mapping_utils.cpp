@@ -218,7 +218,7 @@ void select_largest_component(
   select_largest_component(coupling_list, dummy_fidelities);
 }
 
-PhysicalIdRemap densify_chip_topology(ChipCalibration& chip) {
+IdRemap densify_chip_topology(ChipCalibration& chip) {
   auto& coupling_list = chip.coupling_list;
   auto& single_qubit_fidelities = chip.single_qubit_fidelities;
 
@@ -236,7 +236,7 @@ PhysicalIdRemap densify_chip_topology(ChipCalibration& chip) {
     }
   }
 
-  PhysicalIdRemap remap;
+  IdRemap remap;
   if (available_qubits.empty()) {
     chip = ChipCalibration();
     return remap;
@@ -279,7 +279,7 @@ PhysicalIdRemap densify_chip_topology(ChipCalibration& chip) {
  *   - physical_gates: 每条门的目标位替换为原始 ID
  *   - logic2phy:      每个逻辑位对应的物理位替换为原始 ID
  */
-void restore_physical_ids(const PhysicalIdRemap& remap,
+void restore_physical_ids(const IdRemap& remap,
                           std::vector<GateOperation>& physical_gates,
                           std::vector<int>& logic2phy) {
   // 门目标: dense_id -> orig_id
@@ -298,6 +298,71 @@ void restore_physical_ids(const PhysicalIdRemap& remap,
       phy = remap.dense_to_orig[phy];
     }
   }
+}
+
+IdRemap build_logical_remap(
+    const std::vector<GateOperation>& gate_ops,
+    const std::vector<std::shared_ptr<Measure>>& measure_ops) {
+  // 收集所有出现过的逻辑位 (门 + measure), 升序去重
+  std::set<int> used_qubits;
+  for (const auto& gate : gate_ops) {
+    for (int target : gate.targets) used_qubits.insert(target);
+  }
+  for (const auto& measure : measure_ops) {
+    for (int target : measure->targets) used_qubits.insert(target);
+  }
+  if (used_qubits.empty()) return {};
+
+  int max_orig_id = *used_qubits.rbegin();
+  int used_count = static_cast<int>(used_qubits.size());
+
+  // 无空缺: used_count == max_id+1, 无需稠密化
+  if (used_count == max_orig_id + 1) return {};
+
+  // 有空缺: 构建 orig->dense 双向映射
+  IdRemap remap;
+  remap.orig_to_dense.assign(max_orig_id + 1, -1);
+  remap.dense_to_orig.reserve(used_count);
+  for (int orig_id : used_qubits) {
+    remap.orig_to_dense[orig_id] =
+        static_cast<int>(remap.dense_to_orig.size());
+    remap.dense_to_orig.push_back(orig_id);
+  }
+  remap.dense_count = used_count;
+  return remap;
+}
+
+IdRemap densify_logical_qubits(
+    std::vector<GateOperation>& gate_ops,
+    std::vector<std::shared_ptr<Measure>>& measure_ops) {
+  IdRemap remap = build_logical_remap(gate_ops, measure_ops);
+  if (remap.dense_count == 0) return remap;
+
+  // 重写 gate_ops 的 targets 为稠密 ID
+  for (auto& gate : gate_ops) {
+    for (int& target : gate.targets) {
+      target = remap.orig_to_dense[target];
+    }
+  }
+
+  // 重写 measure_ops 的 targets 为稠密 ID
+  for (auto& measure : measure_ops) {
+    for (int& target : measure->targets) {
+      target = remap.orig_to_dense[target];
+    }
+  }
+  return remap;
+}
+
+std::vector<int> restore_logical_mapping(
+    const IdRemap& remap, const std::vector<int>& dense_mapping) {
+  int orig_size = static_cast<int>(remap.orig_to_dense.size());
+  std::vector<int> restored(orig_size, -1);
+  for (int dense_id = 0; dense_id < remap.dense_count; ++dense_id) {
+    int orig_id = remap.dense_to_orig[dense_id];
+    restored[orig_id] = dense_mapping[dense_id];
+  }
+  return restored;
 }
 
 void validate_mapping_inputs(

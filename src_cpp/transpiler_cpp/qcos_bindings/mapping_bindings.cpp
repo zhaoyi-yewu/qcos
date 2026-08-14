@@ -46,6 +46,8 @@ namespace {
  * @param edge_fidelities 边保真度数组。
  * @param single_qubit_fidelities 单比特保真度数组。
  * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"。
+ * @param target_bits 目标物理位(空=不限制); 全单比特门映射到这些位,
+ * 含双比特门在其诱导子图上路由。
  * @param fidelity_threshold 保真度过滤阈值, <0 自适应计算。
  * @param fidelity_weight DenseLayout 保真度权重，取值 [0, 1]。
  * @param extension_size 扩展集大小。
@@ -58,8 +60,9 @@ nb::list bind_cpp_sabre_routing(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
     const std::vector<double>& single_qubit_fidelities,
-    const std::string& layout_method, double fidelity_threshold,
-    double fidelity_weight, int extension_size, double weight, double decay) {
+    const std::string& layout_method, const std::vector<int>& target_bits,
+    double fidelity_threshold, double fidelity_weight, int extension_size,
+    double weight, double decay) {
   std::vector<std::shared_ptr<qcos::BaseOperation>> gates_list;
   gates_list.reserve(gates_list_raw.size());
   for (auto* op : gates_list_raw) {
@@ -72,8 +75,8 @@ nb::list bind_cpp_sabre_routing(
 
   auto routed_ops = qcos::sabre_routing(
       gates_list, coupling_list, edge_fidelities, single_qubit_fidelities,
-      layout_method, fidelity_threshold, fidelity_weight, extension_size,
-      weight, decay);
+      layout_method, target_bits, fidelity_threshold, fidelity_weight,
+      extension_size, weight, decay);
 
   nb::list nb_list;
   for (auto& op : routed_ops) {
@@ -191,11 +194,13 @@ Returns:
   nb::class_<SABRE>(m, "SABRE", "SABRE quantum routing algorithm")
       .def(nb::init<const std::vector<std::pair<int, int>>&,
                     const std::vector<double>&, const std::vector<double>&,
-                    const std::string&, double, double, int, double, double>(),
+                    const std::string&, const std::vector<int>&, double,
+                    double, int, double, double>(),
            nb::arg("coupling_list"),
            nb::arg("edge_fidelities") = std::vector<double>{},
            nb::arg("single_qubit_fidelities") = std::vector<double>{},
            nb::arg("layout_method") = "vf2_layout",
+           nb::arg("target_bits") = std::vector<int>{},
            nb::arg("fidelity_threshold") = -1.0,
            nb::arg("fidelity_weight") = 0.5, nb::arg("extension_size") = 20,
            nb::arg("weight") = 0.5, nb::arg("decay") = 0.001,
@@ -211,6 +216,9 @@ Returns:
                     fidelity array indexed by physical qubit ID. Empty means not used.
                 layout_method (str, optional): Initial layout method: "vf2_layout"
                     (default) or "dense_layout".
+                target_bits (list[int], optional): Target physical qubit IDs. When
+                    non-empty, all-1q circuits map to these qubits and 2q circuits
+                    route on the induced subgraph of edges between them.
                 fidelity_threshold (float, optional): Fidelity threshold for
                     filtering low-fidelity edges. Negative value means adaptive
                     calculation (mean - std, clamped to [0.3, 0.9]).
@@ -301,6 +309,7 @@ Returns:
         nb::arg("edge_fidelities") = std::vector<double>{},
         nb::arg("single_qubit_fidelities") = std::vector<double>{},
         nb::arg("layout_method") = "vf2_layout",
+        nb::arg("target_bits") = std::vector<int>{},
         nb::arg("fidelity_threshold") = -1.0, nb::arg("fidelity_weight") = 0.5,
         nb::arg("extension_size") = 20, nb::arg("weight") = 0.5,
         nb::arg("decay") = 0.001,
@@ -316,6 +325,9 @@ Returns:
                 fidelity array. Empty means not used.
             layout_method (str, optional): Initial layout method: "vf2_layout"
                 (default) or "dense_layout".
+            target_bits (list[int], optional): Target physical qubit IDs. When
+                non-empty, all-1q circuits map to these qubits and 2q circuits
+                route on the induced subgraph of edges between them.
             fidelity_threshold (float, optional): Fidelity threshold for
                 filtering low-fidelity edges. Negative value means adaptive
                 calculation (mean - std, clamped to [0.3, 0.9]).

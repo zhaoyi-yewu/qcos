@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <queue>
 #include <set>
 #include <stdexcept>
@@ -79,6 +80,114 @@ double compute_adaptive_fidelity_threshold(
   return threshold;
 }
 
+/**
+ * @brief 为全单比特门电路构建逻辑->物理映射
+ *
+ * 全单比特门无需邻接约束, 直接按保真度选最优物理位:
+ * - target_bits 非空: 映射到 target_bits (去重, 数量须与电路比特数一致)
+ * - target_bits 为空: 从 single_qubit_fidelities 选全芯片保真度最高的 N 个位
+ *
+ * 返回空 vector 表示无法映射 (无 target_bits 且无保真度数据),
+ * 返回上一层使用顺序映射。
+ *
+ * @param gate_ops 门序列 (已转为 GateOperation, 不含 measure)
+ * @param measure_ops measure 操作列表
+ * @param target_bits 用户指定的目标物理位 (可为空)
+ * @param single_qubit_fidelities 单比特保真度数组 (按物理位 ID 索引)
+ * @param logic_qubit_num 逻辑比特总数 (max ID + 1)
+ * @return std::vector<int> 逻辑->物理映射 (索引为逻辑位)
+ * @throw std::invalid_argument 当 target_bits 数量与电路比特数不一致
+ */
+std::vector<int> build_single_qubit_mapping(
+    const std::vector<GateOperation>& gate_ops,
+    const std::vector<std::shared_ptr<Measure>>& measure_ops,
+    const std::vector<int>& target_bits,
+    const std::vector<double>& single_qubit_fidelities, int logic_qubit_num) {
+  // 收集电路实际使用的逻辑位 (门 + measure), 升序去重
+  std::set<int> used_qubit_set;
+  for (const auto& gate : gate_ops) {
+    for (int target_qubit : gate.targets) used_qubit_set.insert(target_qubit);
+  }
+  for (const auto& measure : measure_ops) {
+    for (int target_qubit : measure->targets)
+      used_qubit_set.insert(target_qubit);
+  }
+  std::vector<int> used_logical_qubits(used_qubit_set.begin(),
+                                       used_qubit_set.end());
+  int used_count = static_cast<int>(used_logical_qubits.size());
+
+  std::vector<int> physical_targets;
+  if (!target_bits.empty()) {
+    // target_bits 非空: 映射到用户指定的物理位
+    std::set<int> target_set(target_bits.begin(), target_bits.end());
+    physical_targets.assign(target_set.begin(), target_set.end());
+    if (static_cast<int>(physical_targets.size()) < used_count) {
+      throw std::invalid_argument(
+          "target_bits count (" + std::to_string(physical_targets.size()) +
+          ") < circuit qubit count (" + std::to_string(used_count) +
+          "); not enough target qubits");
+    }
+  } else if (!single_qubit_fidelities.empty()) {
+    // 无 target_bits: 全芯片保真度 top-N, 按降序选前 N 个物理位
+    int total_qubits = static_cast<int>(single_qubit_fidelities.size());
+    std::vector<int> qubit_indices(total_qubits);
+    std::iota(qubit_indices.begin(), qubit_indices.end(), 0);
+    std::sort(qubit_indices.begin(), qubit_indices.end(),
+              [&](int qubit_a, int qubit_b) {
+                return single_qubit_fidelities[qubit_a] >
+                       single_qubit_fidelities[qubit_b];
+              });
+    int select_count = std::min(used_count, total_qubits);
+    physical_targets.assign(qubit_indices.begin(),
+                            qubit_indices.begin() + select_count);
+    if (static_cast<int>(physical_targets.size()) < used_count) {
+      // 物理位不足以容纳所有逻辑位
+      return {};
+    }
+  } else {
+    // 无 target_bits 且无保真度数据
+    return {};
+  }
+
+  // 按顺序配对: 第 order 个使用的逻辑位 -> 第 order 个物理位
+  std::vector<int> mapping(logic_qubit_num, -1);
+  for (int order = 0; order < used_count; ++order) {
+    mapping[used_logical_qubits[order]] = physical_targets[order];
+  }
+  return mapping;
+}
+
+/**
+ * @brief 诱导子图: 只保留两端均属于 target_bits 的耦合边, 同步过滤边保真度
+ *
+ * 用于 target_bits 非空时的路由前置处理: 在诱导子图上做映射路由,
+ * 跳过 filter_low_fidelity 与 select_largest_component.
+ *
+ * @param coupling_list [in/out] 耦合边列表, 原地过滤为诱导子图
+ * @param edge_fidelities [in/out] 边保真度, 与 coupling_list 同步过滤
+ * @param target_bits 目标物理位集合
+ */
+void induce_target_subgraph(std::vector<std::pair<int, int>>& coupling_list,
+                            std::vector<double>& edge_fidelities,
+                            const std::vector<int>& target_bits) {
+  std::unordered_set<int> target_set(target_bits.begin(), target_bits.end());
+  std::vector<std::pair<int, int>> induced_edges;
+  std::vector<double> induced_fids;
+  induced_edges.reserve(coupling_list.size());
+  induced_fids.reserve(coupling_list.size());
+  for (size_t i = 0; i < coupling_list.size(); ++i) {
+    const auto& [qubit_a, qubit_b] = coupling_list[i];
+    if (target_set.count(qubit_a) && target_set.count(qubit_b)) {
+      induced_edges.emplace_back(qubit_a, qubit_b);
+      if (i < edge_fidelities.size()) {
+        induced_fids.push_back(edge_fidelities[i]);
+      }
+    }
+  }
+  coupling_list = std::move(induced_edges);
+  edge_fidelities = std::move(induced_fids);
+}
+
 }  // namespace
 
 std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
@@ -86,19 +195,80 @@ std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
     const std::vector<double>& single_qubit_fidelities,
-    const std::string& layout_method, double fidelity_threshold,
-    double fidelity_weight, int extension_size, double weight, double decay) {
+    const std::string& layout_method, const std::vector<int>& target_bits,
+    double fidelity_threshold, double fidelity_weight, int extension_size,
+    double weight, double decay) {
   SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities,
-              layout_method, fidelity_threshold, fidelity_weight,
+              layout_method, target_bits, fidelity_threshold, fidelity_weight,
               extension_size, weight, decay);
   sabre.execute(gates_list);
   return sabre.get_physical_gates();
 }
 
+std::vector<GateOperation> SABRE::all_single_qubit_mapping(
+    const std::vector<GateOperation>& gate_ops,
+    const std::vector<std::shared_ptr<Measure>>& measure_ops) {
+  // target_bits 越界校验
+  if (!target_bits_.empty()) {
+    int max_valid_qubit = max_chip_qubit_;
+    if (!single_qubit_fidelities_.empty()) {
+      max_valid_qubit =
+          std::max(max_valid_qubit,
+                   static_cast<int>(single_qubit_fidelities_.size()) - 1);
+    }
+    for (int target_bit : target_bits_) {
+      if (target_bit < 0 || target_bit > max_valid_qubit) {
+        throw std::invalid_argument(
+            "target_bit " + std::to_string(target_bit) + " out of range [0, " +
+            std::to_string(max_valid_qubit) + "]");
+      }
+    }
+  }
+  // 调用方已保证电路全为单比特门; 按 target_bits 或全芯片保真度 top-N 建立映射
+  auto mapping =
+      build_single_qubit_mapping(gate_ops, measure_ops, target_bits_,
+                                 single_qubit_fidelities_, logic_qubit_num_);
+  if (mapping.empty()) {
+    // 无 target_bits 且无保真度数据: identity映射
+    // 校验芯片是否有足够物理比特
+    int available_phys =
+        single_qubit_fidelities_.empty()
+            ? max_chip_qubit_ + 1
+            : static_cast<int>(single_qubit_fidelities_.size());
+    if (logic_qubit_num_ > available_phys) {
+      throw std::invalid_argument(
+          "Circuit requires " + std::to_string(logic_qubit_num_) +
+          " qubits, but chip only has " + std::to_string(available_phys) +
+          " available qubits");
+    }
+    logic2phy_.resize(logic_qubit_num_);
+    std::iota(logic2phy_.begin(), logic2phy_.end(), 0);
+    initial_l2p_ = logic2phy_;
+    return gate_ops;
+  }
+
+  // 替换门的 targets 为物理位
+  std::vector<GateOperation> routed_gate_ops;
+  routed_gate_ops.reserve(gate_ops.size());
+  for (auto gate : gate_ops) {
+    for (int& target : gate.targets) {
+      if (target >= 0 && target < static_cast<int>(mapping.size()) &&
+          mapping[target] >= 0) {
+        target = mapping[target];
+      }
+    }
+    routed_gate_ops.push_back(std::move(gate));
+  }
+  logic2phy_ = std::move(mapping);
+  initial_l2p_ = logic2phy_;
+  return routed_gate_ops;
+}
+
 SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
              const std::vector<double>& edge_fidelities,
              const std::vector<double>& single_qubit_fidelities,
-             const std::string& layout_method, double fidelity_threshold,
+             const std::string& layout_method,
+             const std::vector<int>& target_bits, double fidelity_threshold,
              double fidelity_weight, int extension_size, double weight,
              double decay)
     : coupling_list_(coupling_list),
@@ -112,19 +282,29 @@ SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
       weight_(weight),
       decay_(decay),
       fidelity_weight_(fidelity_weight),
-      layout_method_(layout_method) {
-  // 若提供了保真度数据且阈值 > 0, 则过滤
-  if (!edge_fidelities_.empty() && fidelity_threshold_ > 0.0) {
-    ChipCalibration chip(coupling_list_, edge_fidelities_,
-                         single_qubit_fidelities_);
-    filter_low_fidelity(chip, fidelity_threshold_);
-    coupling_list_ = chip.coupling_list;
-    edge_fidelities_ = chip.edge_fidelities;
-    single_qubit_fidelities_ = chip.single_qubit_fidelities;
+      layout_method_(layout_method),
+      target_bits_(target_bits) {
+  // 保存原始耦合图最大比特 ID
+  max_chip_qubit_ = 0;
+  for (const auto& edge : coupling_list_) {
+    max_chip_qubit_ = std::max({max_chip_qubit_, edge.first, edge.second});
   }
-
-  // 始终选择最大连通分量
-  select_largest_component(coupling_list_, edge_fidelities_);
+  if (!target_bits_.empty()) {
+    // target_bits 非空: 诱导子图 (跳过 filter_low_fidelity 与
+    // select_largest_component)
+    induce_target_subgraph(coupling_list_, edge_fidelities_, target_bits_);
+  } else {
+    // 无 target_bits: 维持原有 filter + 最大连通分量行为
+    if (!edge_fidelities_.empty() && fidelity_threshold_ > 0.0) {
+      ChipCalibration chip(coupling_list_, edge_fidelities_,
+                           single_qubit_fidelities_);
+      filter_low_fidelity(chip, fidelity_threshold_);
+      coupling_list_ = chip.coupling_list;
+      edge_fidelities_ = chip.edge_fidelities;
+      single_qubit_fidelities_ = chip.single_qubit_fidelities;
+    }
+    select_largest_component(coupling_list_, edge_fidelities_);
+  }
 
   build_coupling_graph(coupling_list_);
   init_distance_matrix();
@@ -145,6 +325,9 @@ void SABRE::execute(
       auto measure = std::dynamic_pointer_cast<Measure>(op);
       if (!measure) measure = std::make_shared<Measure>(op->targets);
       measure_ops.push_back(measure);
+    } else if (op->name == "sync") {
+      // sync不参与路由也不输出, 直接丢弃
+      continue;
     } else {
       regular_gates.push_back(op);
     }
@@ -157,47 +340,84 @@ void SABRE::execute(
     gate_ops.push_back(to_gate_operation(*op));
   }
 
-  // 无 Measure 时为所有逻辑位补充 Measure
+  // 3. 逻辑位稠密化: 若编号有空缺则压缩为 0..N-1
+  remap_ = densify_logical_qubits(gate_ops, measure_ops);
+  // dense_count==0 则表示无空缺，不需要稠密化
+  did_preprocess_ = (remap_.dense_count > 0);
+  if (did_preprocess_) {
+    logic_qubit_num_ = remap_.dense_count;
+  }
+
+  // 4. 未稠密时计算 logic_qubit_num_
+  if (!did_preprocess_) {
+    logic_qubit_num_ = get_qubit_num_from_ir(gate_ops);
+    for (const auto& measure_op : measure_ops) {
+      int qubit_count = measure_op->targets[0] + 1;
+      if (qubit_count > logic_qubit_num_) logic_qubit_num_ = qubit_count;
+    }
+  }
+
+  // 5. 无 Measure 时为所有逻辑位补充 Measure
   // TODO: 补充Measure门的操作应该在 parse 中处理
   if (measure_ops.empty()) {
-    int logical_qubit_num = get_qubit_num_from_ir(gate_ops);
-    for (int i = 0; i < logical_qubit_num; ++i) {
+    for (int i = 0; i < logic_qubit_num_; ++i) {
       measure_ops.push_back(std::make_shared<Measure>(std::vector<int>{i}));
     }
   }
 
-  // 计算完整的逻辑位数: gate_ops + measure_ops 中引用的最大逻辑位 ID + 1
-  // (优化器可能消除某些位上的全部门, 但 measure 仍引用)
-  logic_qubit_num_ = get_qubit_num_from_ir(gate_ops);
-  for (const auto& measure_op : measure_ops) {
-    int qubit_count = measure_op->targets[0] + 1;
-    if (qubit_count > logic_qubit_num_) logic_qubit_num_ = qubit_count;
+  // 6. 全单比特门映射 / SABRE 路由
+  // has_2q = 是否含双比特门: 全单比特门走直接映射
+  bool has_2q = std::any_of(
+      gate_ops.begin(), gate_ops.end(), [](const GateOperation& g) {
+        return g.operation_type >= OperationType::DOUBLE_QUBIT_OPERATION;
+      });
+  // 多比特 + target_bits 连通性校验: 诱导子图必须单一连通
+  if (has_2q && !target_bits_.empty()) {
+    auto comp_map = find_connected_components(coupling_list_);
+    int root = -1;
+    for (int target_bit : target_bits_) {
+      auto it = comp_map.find(target_bit);
+      if (it == comp_map.end()) {
+        throw std::invalid_argument(
+            "target_bits do not form a connected graph: target_bit " +
+            std::to_string(target_bit) + " is isolated in the induced subgraph");
+      }
+      if (root == -1) {
+        root = it->second;
+      } else if (it->second != root) {
+        throw std::invalid_argument(
+            "target_bits do not form a connected graph");
+      }
+    }
   }
-
-  // 3. 计算初始映射并执行路由
-  std::vector<int> initial_l2p;
-  if (layout_method_ == "vf2_layout") {
-    initial_l2p = vf2_layout_mapping(gate_ops, coupling_list_,
-                                     edge_fidelities_, logic_qubit_num_);
-  }
-  if (initial_l2p.empty()) {
-    initial_l2p = dense_layout_mapping(gate_ops, coupling_list_,
+  std::vector<GateOperation> routed_gate_ops;
+  if (!has_2q) {
+    // 全单比特门: 直接映射
+    routed_gate_ops = all_single_qubit_mapping(gate_ops, measure_ops);
+  } else {
+    // 含双比特门 -> vf2/dense + SABRE 路由
+    std::vector<int> initial_l2p;
+    if (layout_method_ == "vf2_layout") {
+      initial_l2p = vf2_layout_mapping(gate_ops, coupling_list_,
                                        edge_fidelities_, logic_qubit_num_);
+    }
+    if (initial_l2p.empty()) {
+      initial_l2p = dense_layout_mapping(gate_ops, coupling_list_,
+                                         edge_fidelities_, logic_qubit_num_);
+    }
+    routed_gate_ops = execute_routing(gate_ops, initial_l2p);
   }
-
-  std::vector<GateOperation> routed_gate_ops =
-      execute_routing(gate_ops, initial_l2p);
 
   const std::vector<int>& final_mapping = get_final_mapping();
 
-  // 4. 转换为 BaseOperation
+  // 7. 转换为 BaseOperation
   phy_exe_gates_.clear();
   phy_exe_gates_.reserve(routed_gate_ops.size() + measure_ops.size());
   for (const auto& g : routed_gate_ops) {
     phy_exe_gates_.push_back(restore_base_operation(g));
   }
 
-  // 5. 将 measure 门的逻辑位替换为物理位，保留原有 cbits
+  // 8. 将 measure 门的逻辑位替换为物理位，保留原有 cbits
   for (const auto& measure_op : measure_ops) {
     int logic_q = measure_op->targets[0];
     int physical_q = (logic_q < static_cast<int>(final_mapping.size()))
@@ -205,6 +425,12 @@ void SABRE::execute(
                          : logic_q;
     phy_exe_gates_.push_back(std::make_shared<Measure>(
         std::vector<int>{physical_q}, measure_op->cbits));
+  }
+
+  // 9. 还原逻辑映射: 稠密逻辑位索引 → 原始逻辑位索引
+  if (did_preprocess_) {
+    logic2phy_ = restore_logical_mapping(remap_, logic2phy_);
+    initial_l2p_ = restore_logical_mapping(remap_, initial_l2p_);
   }
 }
 
