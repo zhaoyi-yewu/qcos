@@ -65,7 +65,7 @@ spec:
         - name: PREFECT_SERVER_API_HOST
           value: "${PREFECT_SERVER_API_HOST}"
         - name: PREFECT_API_URL
-          value: "${PREFECT_API_URL}"
+          value: "${PREFECT_API_URL:-http://127.0.0.1:4200/api}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
           value: "${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL}"
         - name: PREFECT_SERVER_ANALYTICS_ENABLED
@@ -91,7 +91,7 @@ spec:
           value: "5000"
         # prefect docket configs
         - name: PREFECT_SERVER_DOCKET_URL
-          value: "redis://${REDIS_SERVER_IP}:${REDIS_SERVER_PORT}/1"
+          value: "redis://${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/1"
         # prefect event messaging configs
         #- name: PREFECT_SERVER_EVENTS_MESSAGING_BROKER
         #  value: "prefect_redis.messaging"
@@ -102,15 +102,15 @@ spec:
         #- name: PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE
         #  value: "prefect_redis.lease_storage"
         #- name: PREFECT_REDIS_MESSAGING_HOST
-        #  value: "${REDIS_SERVER_IP}"
+        #  value: "${REDIS_SERVER_IP:-127.0.0.1}"
         #- name: PREFECT_REDIS_MESSAGING_PORT
-        #  value: "${REDIS_SERVER_PORT}"
+        #  value: "${REDIS_SERVER_PORT:-6379}"
         #- name: PREFECT_REDIS_MESSAGING_DB
         #  value: "1"
         #- name: PREFECT_REDIS_EVENTS_HOST
-        #  value: "${REDIS_SERVER_IP}"
+        #  value: "${REDIS_SERVER_IP:-127.0.0.1}"
         #- name: PREFECT_REDIS_EVENTS_PORT
-        #  value: "${REDIS_SERVER_PORT}"
+        #  value: "${REDIS_SERVER_PORT:-6379}"
         #- name: PREFECT_REDIS_EVENTS_DB
         #  value: "1"
         - name: PYTHONPATH
@@ -198,7 +198,7 @@ spec:
           capabilities:
             drop:
             - ALL
-        command: ["redis-server", "--bind", "${REDIS_SERVER_LISTEN_IP}"]
+        command: ["redis-server", "--bind", "${REDIS_SERVER_LISTEN_IP:-127.0.0.1}"]
         env:
         - name: TZ
           value: "Asia/Shanghai"
@@ -242,7 +242,7 @@ spec:
     app: redis
   type: ClusterIP
   ports:
-  - port: ${REDIS_SERVER_PORT}
+  - port: ${REDIS_SERVER_PORT:-6379}
     targetPort: 6379
 ---
 # Deploy qcos
@@ -315,6 +315,8 @@ spec:
           value: ${QCOS_DATABASE_CONNECTION_URL:-sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL}
         - name: QCOS_VIRTUAL_INSTANCE_ID
           value: ${QCOS_VIRTUAL_INSTANCE_ID}
+        - name: DEFAULT_ADMIN_PASSWORD
+          value: ${DEFAULT_ADMIN_PASSWORD}
         - name: DEVICE_LIST
           value: ${DEVICE_LIST}
         - name: MAX_JOBS
@@ -342,9 +344,9 @@ spec:
         - name: PREFECT_LOGGING_LEVEL
           value: ${PREFECT_LOGGING_LEVEL:-INFO}
         - name: REDIS_SERVER_IP
-          value: ${REDIS_SERVER_IP}
+          value: ${REDIS_SERVER_IP:-127.0.0.1}
         - name: REDIS_SERVER_PORT
-          value: ${REDIS_SERVER_PORT}
+          value: ${REDIS_SERVER_PORT:-6379}
         resources:
           requests:
             cpu: "1000m"
