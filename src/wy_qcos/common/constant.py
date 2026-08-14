@@ -404,6 +404,12 @@ class Constant:
     # treating the device as disconnected
     DEFAULT_DEVICE_MONITOR_FETCH_TIMEOUT = 30
 
+    # device availability rate aggregation
+    # cron minute (0 = top of every hour) for hourly availability aggregation
+    DEFAULT_AVAILABILITY_AGGREGATE_CRON_MINUTE = 0
+    # device statuses counted as "online" for availability rate calculation
+    DEVICE_AVAILABILITY_STATUS_ONLINE_BUSY = ("online", "busy")
+
     # user management
     AUTH_MODE_KEY = "auth_mode"
     AUTH_MODE_NO = "no"
