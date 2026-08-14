@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
 import enum
 import json
 import time
@@ -152,9 +151,7 @@ class DriverSpinQRpc(DriverGateBase):
         # Note: storage_area and operate_area are optional for
         # superconducting devices as they don't require separate storage
         # and operation areas like neutral atom devices
-        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
-        # TODO(zhouyunxiao): qpu_configs redefine
-        driver_config_schema.update({
+        driver_config_schema = {
             "rpc_host": str,
             "rpc_port": int,
             "username": str,
@@ -170,21 +167,14 @@ class DriverSpinQRpc(DriverGateBase):
                     Optional("closest"): {str: str},
                 }
             },
-        })
+        }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema
+            configs, driver_config_schema, ignore_extra_keys=True
         )
         if not _success:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
-        else:
-            self.max_job_wait_time = configs.get(
-                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
-            )
-            self.job_query_interval = configs.get(
-                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
-            )
 
         return success, err_msg
 

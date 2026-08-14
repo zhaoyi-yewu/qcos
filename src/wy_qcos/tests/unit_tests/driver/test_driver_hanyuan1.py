@@ -85,6 +85,10 @@ class TestDriverHanyuan1:
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_success(self, mock_validate):
         driver = DriverHanyuan1()
+        # validate_driver_configs deep-copies default_driver_config_schema
+        # before calling validate_schema; provide a stub so the method
+        # does not raise AttributeError before the mocked validation.
+        driver.default_driver_config_schema = {}
         configs = {
             "ip_address": "127.0.0.1",
             "port": 18402,
@@ -107,6 +111,7 @@ class TestDriverHanyuan1:
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_failure(self, mock_validate):
         driver = DriverHanyuan1()
+        driver.default_driver_config_schema = {}
         configs = {}
         mock_validate.return_value = (False, ["error"])
         success, err_msg = driver.validate_driver_configs(configs)

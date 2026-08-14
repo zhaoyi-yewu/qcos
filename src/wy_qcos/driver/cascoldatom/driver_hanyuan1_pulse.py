@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
 import json
 
 from loguru import logger
@@ -77,16 +76,15 @@ class DriverHanyuan1Pulse(DriverPulseBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
-        driver_config_schema.update({
+        driver_config_schema = {
             "ip_address": str,
             "port": int,
             "username": str,
             "password": str,
             "shared_dir": str,
-        })
+        }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema
+            configs, driver_config_schema, ignore_extra_keys=True
         )
         if _success:
             self.ip_address = configs.get("ip_address", "127.0.0.1")
@@ -94,12 +92,6 @@ class DriverHanyuan1Pulse(DriverPulseBase):
             self.username = configs.get("username", "username")
             self.password = configs.get("password", "password")
             self.shared_dir = configs.get("shared_dir", "shared_dir")
-            self.max_job_wait_time = configs.get(
-                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
-            )
-            self.job_query_interval = configs.get(
-                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
-            )
             try:
                 smbclient.register_session(
                     server=self.ip_address,

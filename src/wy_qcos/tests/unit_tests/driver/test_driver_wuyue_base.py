@@ -20,7 +20,7 @@ import pytest
 
 from unittest.mock import patch, MagicMock
 
-from wy_qcos.common.constant import HttpCode
+from wy_qcos.common.constant import Constant, HttpCode
 from wy_qcos.common.library import Library, _s
 from wy_qcos.driver.driver_wuyue_base import DriverWuyueBase
 
@@ -197,8 +197,17 @@ class TestDriverWuyueBase:
             "RhAaDUGcTA+rAp9c4IVrJK2azYbI2wIDAQAB"
         )
         assert driver_wuyue_base.password_pri_key == ""
-        assert driver_wuyue_base.max_job_wait_time == 10000
-        assert driver_wuyue_base.job_query_interval == 10
+        # max_job_wait_time and job_query_interval are not read from
+        # configs by DriverWuyueBase.validate_driver_configs; they keep
+        # the default values set in DriverBase.__init__.
+        assert (
+            driver_wuyue_base.max_job_wait_time
+            == Constant.DEFAULT_JOB_WAIT_TIME
+        )
+        assert (
+            driver_wuyue_base.job_query_interval
+            == Constant.DEFAULT_JOB_QUERY_INTERVAL
+        )
 
     def test_validate_driver_configs_missing_required_fields(self):
         """Test validate_driver_configs with missing required fields."""

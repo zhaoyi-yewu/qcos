@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
 import csv
 import json
 import os
@@ -86,25 +85,18 @@ class DriverTiangongBase(DriverQuboBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
-        driver_config_schema.update({
+        driver_config_schema = {
             "domain_url_auth": str,
             "domain_url_task": str,
             "user_id": str,
             "password_sdk_code": str,
             "machine_name": str,
-        })
+        }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema
+            configs, driver_config_schema, ignore_extra_keys=True
         )
         if _success:
             self.machine_name = configs.get("machine_name", "CPQC-1000")
-            self.max_job_wait_time = configs.get(
-                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
-            )
-            self.job_query_interval = configs.get(
-                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
-            )
 
         else:
             _err_msg = "\n".join(err_msgs)

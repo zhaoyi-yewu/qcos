@@ -74,6 +74,8 @@ class DriverBase:
     def __init__(self):
         # driver version
         self.version = "unknown"
+        # debug
+        self.debug = False
         # driver name
         self.name = self.__class__.__name__
         # driver alias name
@@ -148,26 +150,6 @@ class DriverBase:
             Optional("max_job_wait_time"): int,
             Optional("job_query_interval"): int,
             Optional("compute_fidelity"): bool,
-        }
-        # default driver_config schema
-        self.default_driver_config_schema = {
-            Optional("debug"): bool,
-            Optional("device_log_file"): str,
-            Optional("monitor_log_file"): str,
-            Optional("mgr_log_file"): str,
-            Optional("max_queued_jobs"): int,
-            Optional("log_format"): str,
-            Optional("log_rotate_max_size_mb"): int,
-            Optional("log_rotate_backup_count"): int,
-            Optional("log_rotate_compression"): bool,
-            Optional("max_job_wait_time"): int,
-            Optional("job_query_interval"): int,
-        }
-        self.default_device_info_schema = {
-            Optional("singleFidelity"): float,
-            Optional("doubleFidelity"): float,
-            Optional("SPAMError"): float,
-            Optional("status"): str,
         }
         self.max_job_wait_time = Constant.DEFAULT_JOB_WAIT_TIME  # 7 days
         self.job_query_interval = Constant.DEFAULT_JOB_QUERY_INTERVAL

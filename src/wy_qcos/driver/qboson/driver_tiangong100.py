@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
 import csv
 import json
 import os
@@ -131,28 +130,20 @@ class DriverTiangong100(DriverQuboBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
-        driver_config_schema.update({
+        driver_config_schema = {
             "base_url": str,
             "username": str,
             "password": str,
             "project_id": int,
             "device_id": int,
-        })
+        }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema
+            configs, driver_config_schema, ignore_extra_keys=True
         )
         if not _success:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
-        else:
-            self.max_job_wait_time = configs.get(
-                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
-            )
-            self.job_query_interval = configs.get(
-                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
-            )
 
         return success, err_msg
 

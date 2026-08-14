@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import copy
 
 from loguru import logger
 from lqcloud import LQCloudProvider, QuantumCircuit
@@ -110,8 +109,7 @@ class DriverLogicalQubit(DriverBase):
         success = True
         err_msg = None
 
-        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
-        driver_config_schema.update({
+        driver_config_schema = {
             "token": str,
             "chip_name": str,
             "url": str,
@@ -123,21 +121,14 @@ class DriverLogicalQubit(DriverBase):
                     "coupler_error": {str: Or(float, int)},
                 }
             },
-        })
+        }
         _success, err_msgs = Library.validate_schema(
-            configs, driver_config_schema
+            configs, driver_config_schema, ignore_extra_keys=True
         )
         if not _success:
             _err_msg = "\n".join(err_msgs)
             err_msg = f"driver config file error: {_err_msg}"
             success = False
-        else:
-            self.max_job_wait_time = configs.get(
-                "max_job_wait_time", Constant.DEFAULT_JOB_WAIT_TIME
-            )
-            self.job_query_interval = configs.get(
-                "job_query_interval", Constant.DEFAULT_JOB_QUERY_INTERVAL
-            )
 
         return success, err_msg
 
