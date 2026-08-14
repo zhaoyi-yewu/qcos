@@ -1981,6 +1981,7 @@ def format_run_results(driver, job_id, data_index):
         job_status = Constant.JOB_STATUS_COMPLETED
         ended_at = Library.get_current_datetime().isoformat()
         machine_profiling = driver.get_machine_profiling(job_id, data_index)
+        optimized_circuit = driver.get_optimized_circuit()
     elif driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
         # async mode: get results in the async set-job-results call
         job_status = Constant.JOB_STATUS_RUNNING
@@ -1988,6 +1989,8 @@ def format_run_results(driver, job_id, data_index):
     job_results["results"] = results
     if raw_results:
         job_results["raw_results"] = raw_results
+    if optimized_circuit:
+        job_results["metadata"]["optimized_source_code"] = optimized_circuit
     job_results["metadata"]["status"] = job_status
     job_results["metadata"]["ended_at"] = ended_at
     job_results["machine_profiling"] = machine_profiling

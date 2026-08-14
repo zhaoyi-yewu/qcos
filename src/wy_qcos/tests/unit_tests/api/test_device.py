@@ -279,9 +279,11 @@ class TestDevice:
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
         )
+        mock_client = Mock(spec=GetDeviceRequest)
+        mock_client.details = False
         mock_validate_virtual_instance.return_value = (False, "forbidden")
 
-        response_info = get_devices(None, {"dummy": "auth"})
+        response_info = get_devices(mock_client, {"dummy": "auth"})
         assert response_info == {}
 
     def test_get_device_info_hides_configs_for_virtual_instance_user(self):

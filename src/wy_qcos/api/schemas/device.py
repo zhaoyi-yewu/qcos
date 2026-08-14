@@ -24,6 +24,9 @@ class GetDevicesRequest(BaseModel):
     Pydantic Model for Get Devices Request.
     """
 
+    # need details or not
+    details: bool = Field(description="Details info needed or not")
+
 
 class GetDeviceRequest(BaseModel):
     """Get Device Request.
@@ -61,6 +64,10 @@ class GetDeviceResponse(BaseModel):
     tech_type: str = Field(description="Technology type")
     # max qubits
     max_qubits: int = Field(description="Maximum number of qubits")
+    # available_qubits qubits
+    available_qubits: int | None = Field(
+        default=None, description="Maximum number of available qubits"
+    )
     # configs
     configs: dict | None = Field(
         default=None, description="Device configurations"
