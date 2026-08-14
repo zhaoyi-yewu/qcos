@@ -17,6 +17,7 @@
 
 """Unit tests for scheduler filters."""
 
+from wy_qcos.common.flavor_constant import FlavorConstant
 from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.filters.code_type import CodeTypeFilter
@@ -150,13 +151,15 @@ class TestQubitCountFilter:
     def test_filter_min_qubits_from_flavor(self):
         filter_obj = QubitCountFilter()
         device = make_device_state(max_qubits=10)
-        spec = make_spec(flavor_specs={"min_qubits": 16})
+        key = FlavorConstant.FS_KEY_MIN_QUBITS
+        spec = make_spec(flavor_specs={key: 16})
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_max_qubits_from_extra_specs(self):
         filter_obj = QubitCountFilter()
         device = make_device_state(max_qubits=200)
-        spec = make_spec(extra_specs={"max_qubits": 100})
+        key = FlavorConstant.FS_KEY_MAX_QUBITS
+        spec = make_spec(extra_specs={key: 100})
         assert filter_obj._filter_one(device, spec) is False
 
 
@@ -189,9 +192,16 @@ class TestTechTypeFilter:
 class TestGateFidelityFilter:
     """Tests for GateFidelityFilter."""
 
-    def test_is_enabled_when_fidelity_set(self):
+    def test_is_enabled_when_2q_fidelity_set(self):
         filter_obj = GateFidelityFilter()
-        spec = make_spec(flavor_specs={"gate_fidelity_2q_min": 0.99})
+        key = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
+        spec = make_spec(flavor_specs={key: 0.99})
+        assert filter_obj.is_enabled(spec) is True
+
+    def test_is_enabled_when_1q_fidelity_set(self):
+        filter_obj = GateFidelityFilter()
+        key = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
+        spec = make_spec(flavor_specs={key: 0.99})
         assert filter_obj.is_enabled(spec) is True
 
     def test_is_disabled_when_no_fidelity(self):
@@ -199,7 +209,7 @@ class TestGateFidelityFilter:
         spec = make_spec()
         assert filter_obj.is_enabled(spec) is False
 
-    def test_filter_fidelity_meets_threshold(self):
+    def test_filter_2q_fidelity_meets_threshold(self):
         filter_obj = GateFidelityFilter()
         details = {
             "double_qubit_prop": {
@@ -208,10 +218,11 @@ class TestGateFidelityFilter:
             }
         }
         device = make_device_state(details=details)
-        spec = make_spec(flavor_specs={"gate_fidelity_2q_min": 0.995})
+        key = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
+        spec = make_spec(flavor_specs={key: 0.995})
         assert filter_obj._filter_one(device, spec) is True
 
-    def test_filter_fidelity_below_threshold(self):
+    def test_filter_2q_fidelity_below_threshold(self):
         filter_obj = GateFidelityFilter()
         details = {
             "double_qubit_prop": {
@@ -220,14 +231,74 @@ class TestGateFidelityFilter:
             }
         }
         device = make_device_state(details=details)
-        spec = make_spec(flavor_specs={"gate_fidelity_2q_min": 0.995})
+        key = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
+        spec = make_spec(flavor_specs={key: 0.995})
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_filter_1q_fidelity_meets_threshold(self):
+        filter_obj = GateFidelityFilter()
+        details = {
+            "single_qubit_prop": {
+                "q1": {"single_qubit_gate_fidelity": 0.999},
+                "q2": {"single_qubit_gate_fidelity": 0.998},
+            }
+        }
+        device = make_device_state(details=details)
+        key = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
+        spec = make_spec(flavor_specs={key: 0.995})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_filter_1q_fidelity_below_threshold(self):
+        filter_obj = GateFidelityFilter()
+        details = {
+            "single_qubit_prop": {
+                "q1": {"single_qubit_gate_fidelity": 0.98},
+                "q2": {"single_qubit_gate_fidelity": 0.99},
+            }
+        }
+        device = make_device_state(details=details)
+        key = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
+        spec = make_spec(flavor_specs={key: 0.995})
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_no_fidelity_data(self):
         filter_obj = GateFidelityFilter()
         device = make_device_state(details={})
-        spec = make_spec(flavor_specs={"gate_fidelity_2q_min": 0.995})
+        key = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
+        spec = make_spec(flavor_specs={key: 0.995})
         assert filter_obj._filter_one(device, spec) is True
+
+    def test_filter_both_1q_and_2q_pass(self):
+        filter_obj = GateFidelityFilter()
+        details = {
+            "single_qubit_prop": {
+                "q1": {"single_qubit_gate_fidelity": 0.999},
+            },
+            "double_qubit_prop": {
+                "q1": {"gate_fidelity": 0.998},
+            },
+        }
+        device = make_device_state(details=details)
+        key1 = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
+        key2 = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
+        spec = make_spec(flavor_specs={key1: 0.995, key2: 0.995})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_filter_1q_pass_2q_fail(self):
+        filter_obj = GateFidelityFilter()
+        details = {
+            "single_qubit_prop": {
+                "q1": {"single_qubit_gate_fidelity": 0.999},
+            },
+            "double_qubit_prop": {
+                "q1": {"gate_fidelity": 0.98},
+            },
+        }
+        device = make_device_state(details=details)
+        key1 = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
+        key2 = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
+        spec = make_spec(flavor_specs={key1: 0.995, key2: 0.995})
+        assert filter_obj._filter_one(device, spec) is False
 
 
 class TestQueueLimitFilter:

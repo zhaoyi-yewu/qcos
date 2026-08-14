@@ -52,7 +52,7 @@ class TestClientFlavor:
         assert status_code == 200
         mock_call.assert_called_once()
         call_args = mock_call.call_args[0]
-        assert call_args[0] == client.job_url
+        assert call_args[0] == client.flavor_url
         assert call_args[1] == "create_flavor"
         data = call_args[2]
         assert data["name"] == "test-flavor"
@@ -129,7 +129,7 @@ class TestClientFlavor:
         mock_call.return_value = self.return_values
         client.update_flavor(flavor_id=FLAVOR_ID, device_groups=DEVICE_GROUPS)
         call_args = mock_call.call_args[0]
-        assert call_args[0] == client.job_url
+        assert call_args[0] == client.flavor_url
         assert call_args[1] == "update_flavor"
         data = call_args[2]
         assert data["flavor_id"] == FLAVOR_ID
@@ -222,7 +222,7 @@ class TestClientFlavor:
         mock_call.return_value = self.return_values
         client.get_flavor(FLAVOR_ID)
         mock_call.assert_called_once_with(
-            client.job_url,
+            client.flavor_url,
             "get_flavor",
             {"flavor_id": FLAVOR_ID},
         )
@@ -243,7 +243,7 @@ class TestClientFlavor:
     def test_get_flavors_no_filter(self, mock_call):
         mock_call.return_value = self.return_values
         client.get_flavors()
-        mock_call.assert_called_once_with(client.job_url, "get_flavors", {})
+        mock_call.assert_called_once_with(client.flavor_url, "get_flavors", {})
 
     @patch.object(Client, "call_json_rpc")
     def test_get_flavors_with_filter(self, mock_call):
@@ -267,7 +267,7 @@ class TestClientFlavor:
         mock_call.return_value = self.return_values
         client.delete_flavors([FLAVOR_ID])
         mock_call.assert_called_once_with(
-            client.job_url,
+            client.flavor_url,
             "delete_flavors",
             {"flavor_ids": [FLAVOR_ID]},
         )

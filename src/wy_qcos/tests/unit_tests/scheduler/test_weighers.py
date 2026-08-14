@@ -20,6 +20,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
+from wy_qcos.common.flavor_constant import FlavorConstant
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.scheduler.weighers.device_load import DeviceLoadWeigher
@@ -321,7 +322,7 @@ class TestAutoScheduler:
     def test_build_request_spec_with_flavor(self):
         flavor_manager = MagicMock()
         flavor_manager.get_flavor_specs.return_value = {
-            "min_qubits": 16,
+            FlavorConstant.FS_KEY_MIN_QUBITS: 16,
             "tech_type": "superconducting",
         }
 
@@ -329,7 +330,7 @@ class TestAutoScheduler:
             code_type="qasm",
             num_qubits=5,
             flavor_id="test-flavor-id",
-            extra_specs={"max_qubits": 100},
+            extra_specs={FlavorConstant.FS_KEY_MAX_QUBITS: 100},
             flavor_manager=flavor_manager,
         )
 
@@ -339,3 +340,133 @@ class TestAutoScheduler:
         assert spec.min_qubits == 16
         assert spec.tech_type == "superconducting"
         assert spec.max_qubits == 100
+
+    def test_build_request_spec_with_parsed_num_qubits(self):
+        """Test build_request_spec uses parsed num_qubits from QASM.
+
+        Simulates the submit_job flow: source_code list is parsed by
+        Library.get_max_qubits_from_source_code and the max qubit count
+        is passed to build_request_spec so QubitCountFilter can pick a
+        device whose max_qubits is large enough.
+        """
+        from wy_qcos.common.library import Library
+
+        # source_code with OpenQASM 2.0 (qreg q[5]) and 3.0
+        # (qubit[8] q); max qubit count is 8
+        source_code = [
+            "OPENQASM 2.0;\nqreg q[5];",
+            "OPENQASM 3.0;\nqubit[8] q;",
+        ]
+        num_qubits = Library.get_max_qubits_from_source_code(
+            source_code, "qasm"
+        )
+
+        spec = AutoScheduler.build_request_spec(
+            code_type="qasm",
+            num_qubits=num_qubits,
+        )
+
+        assert spec.num_qubits == 8
+
+    def test_build_request_spec_qubo_returns_zero_qubits(self):
+        """Test build_request_spec with qubo code type returns 0 qubits.
+
+        qubo source code does not contain qreg/qubit declarations, so
+        get_max_qubits_from_source_code returns 0, leaving num_qubits
+        unconstrained for the QubitCountFilter.
+        """
+        from wy_qcos.common.library import Library
+
+        source_code = ["[[1, 0], [0, 1]]"]
+        num_qubits = Library.get_max_qubits_from_source_code(
+            source_code, "qubo"
+        )
+        assert num_qubits == 0
+
+        spec = AutoScheduler.build_request_spec(
+            code_type="qubo",
+            num_qubits=num_qubits,
+        )
+        assert spec.num_qubits == 0
+
+
+class TestAutoSchedulerConfig:
+    """Tests for configurable filter/weigher loading."""
+
+    def _make_scheduler(self, **kwargs):
+        """Create an AutoScheduler with mocked dependencies."""
+        device_manager = MagicMock()
+        device_manager.get_devices.return_value = {}
+        task_manager = MagicMock()
+        flavor_manager = MagicMock()
+        return AutoScheduler(
+            device_manager,
+            task_manager,
+            flavor_manager,
+            **kwargs,
+        )
+
+    def test_enabled_filters_resolved_from_registry(self):
+        """enabled_filters names resolve to filter classes."""
+        scheduler = self._make_scheduler(
+            enabled_filters=["CodeTypeFilter", "DeviceStatusFilter"]
+        )
+        filter_names = [
+            getattr(f, "__name__", f.__class__.__name__)
+            for f in scheduler._filter_handler._filters
+        ]
+        assert "CodeTypeFilter" in filter_names
+        assert "DeviceStatusFilter" in filter_names
+
+    def test_unknown_filter_name_skipped(self):
+        """Unknown filter names are skipped with a warning."""
+        scheduler = self._make_scheduler(
+            enabled_filters=["CodeTypeFilter", "NonExistentFilter"]
+        )
+        filter_names = [
+            getattr(f, "__name__", f.__class__.__name__)
+            for f in scheduler._filter_handler._filters
+        ]
+        assert "CodeTypeFilter" in filter_names
+        assert "NonExistentFilter" not in filter_names
+
+    def test_empty_enabled_filters_uses_defaults(self):
+        """Empty enabled_filters falls back to DEFAULT_FILTERS."""
+        scheduler = self._make_scheduler(enabled_filters=[])
+        filter_names = [
+            getattr(f, "__name__", f.__class__.__name__)
+            for f in scheduler._filter_handler._filters
+        ]
+        # DEFAULT_FILTERS contains at least CodeTypeFilter
+        assert "CodeTypeFilter" in filter_names
+
+    def test_enabled_weighers_resolved_from_registry(self):
+        """enabled_weighers names resolve to weigher classes."""
+        scheduler = self._make_scheduler(
+            enabled_weighers=["DeviceLoadWeigher"]
+        )
+        weigher_names = [
+            w.__class__.__name__ for w in scheduler._weight_handler._weighers
+        ]
+        assert "DeviceLoadWeigher" in weigher_names
+        assert "AvgExecTimeWeigher" not in weigher_names
+
+    def test_unknown_weigher_name_skipped(self):
+        """Unknown weigher names are skipped with a warning."""
+        scheduler = self._make_scheduler(
+            enabled_weighers=["DeviceLoadWeigher", "FakeWeigher"]
+        )
+        weigher_names = [
+            w.__class__.__name__ for w in scheduler._weight_handler._weighers
+        ]
+        assert "DeviceLoadWeigher" in weigher_names
+        assert "FakeWeigher" not in weigher_names
+
+    def test_all_unknown_filters_falls_back_to_defaults(self):
+        """All-unknown filter names fall back to DEFAULT_FILTERS."""
+        scheduler = self._make_scheduler(enabled_filters=["Fake1", "Fake2"])
+        filter_names = [
+            getattr(f, "__name__", f.__class__.__name__)
+            for f in scheduler._filter_handler._filters
+        ]
+        assert "CodeTypeFilter" in filter_names

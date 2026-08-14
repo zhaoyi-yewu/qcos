@@ -42,7 +42,7 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         client.create_device_group(name="test-group", device_names=None)
         call_args = mock_call.call_args[0]
-        assert call_args[0] == client.job_url
+        assert call_args[0] == client.device_group_url
         assert call_args[1] == "create_device_group"
         data = call_args[2]
         assert data["name"] == "test-group"
@@ -160,7 +160,7 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         client.get_device_group(GROUP_ID)
         mock_call.assert_called_once_with(
-            client.job_url,
+            client.device_group_url,
             "get_device_group",
             {"group_id": GROUP_ID},
         )
@@ -181,7 +181,7 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         client.get_device_groups()
         mock_call.assert_called_once_with(
-            client.job_url, "get_device_groups", {}
+            client.device_group_url, "get_device_groups", {}
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -206,7 +206,7 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         client.delete_device_groups([GROUP_ID])
         mock_call.assert_called_once_with(
-            client.job_url,
+            client.device_group_url,
             "delete_device_groups",
             {"group_ids": [GROUP_ID]},
         )
