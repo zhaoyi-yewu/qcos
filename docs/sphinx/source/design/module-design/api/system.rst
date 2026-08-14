@@ -395,6 +395,7 @@ Worker 管理接口用于查询 Prefect Worker 列表及动态重启指定 Worke
                    {
                      "worker_name": "process-device|dummy",
                      "work_pool": "device|dummy",
+                     "device_name": "dummy",
                      "worker_status": "ONLINE",
                      "pid": 1234
                    }
@@ -441,6 +442,7 @@ Worker 管理接口用于查询 Prefect Worker 列表及动态重启指定 Worke
 - ``workers``: Worker 列表，每项包含：
   - ``worker_name``: Worker 名称（格式 ``process-{pool_name}[_suffix]``）
   - ``work_pool``: 所属工作池名称
+  - ``device_name``: Worker 所属设备名称
   - ``worker_status``: Worker 状态（如 ``ONLINE``、``OFFLINE``、``no_workers``）
   - ``pid``: Worker 进程 PID，可能为 ``null``
 

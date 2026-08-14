@@ -211,6 +211,8 @@ class WorkerInfo(BaseModel):
     worker_name: str = Field(..., description="Worker name")
     # work pool name
     work_pool: str = Field(..., description="Work pool name")
+    # device name parsed from worker name / work pool
+    device_name: str = Field("", description="Device name")
     # worker status (e.g. ONLINE, OFFLINE)
     worker_status: str = Field(..., description="Worker status")
     # worker process pid, may be None

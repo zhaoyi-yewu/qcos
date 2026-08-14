@@ -91,8 +91,10 @@ class TestListWorkers:
         assert len(result) == 2
         assert result[0]["worker_name"] == "process-device|dummy"
         assert result[0]["work_pool"] == "device|dummy"
+        assert result[0]["device_name"] == "dummy"
         assert result[0]["worker_status"] == WorkerStatus.ONLINE.value
         assert result[0]["pid"] == 101
+        assert result[1]["device_name"] == "dummy"
         assert result[1]["worker_status"] == WorkerStatus.OFFLINE.value
         assert result[1]["pid"] is None
 
@@ -126,6 +128,7 @@ class TestListWorkers:
         result = task_manager.list_workers()
         assert len(result) == 1
         assert result[0]["worker_name"] == ""
+        assert result[0]["device_name"] == "dummy"
         assert result[0]["worker_status"] == "no_workers"
 
     def test_read_workers_failure_skipped(self, task_manager):

@@ -491,9 +491,11 @@ class TaskFlowManager:
                 continue
 
             if not workers:
+                device_name = self._parse_device_name_from_pool(pool_name)
                 results.append({
                     "worker_name": "",
                     "work_pool": pool_name,
+                    "device_name": device_name,
                     "worker_status": "no_workers",
                     "pid": None,
                 })
@@ -511,9 +513,11 @@ class TaskFlowManager:
                 # correct the status to OFFLINE.
                 if status_value == WorkerStatus.ONLINE.value and pid is None:
                     status_value = WorkerStatus.OFFLINE.value
+                device_name, _ = self._parse_worker_name(worker.name)
                 results.append({
                     "worker_name": worker.name,
                     "work_pool": pool_name,
+                    "device_name": device_name or "",
                     "worker_status": status_value,
                     "pid": pid,
                 })
@@ -659,6 +663,30 @@ class TaskFlowManager:
             return True, msg
 
         return True, f"worker {worker_name} restarted successfully"
+
+    @staticmethod
+    def _parse_device_name_from_pool(pool_name):
+        """Resolve the device name from a work pool name.
+
+        Pool name patterns:
+            device|{device}   -> "{device}"
+            monitor|{device}  -> "{device}"
+            mgr|{device}      -> "{device}"
+
+        Args:
+            pool_name: prefect work pool name
+
+        Returns:
+            device name string, or empty string if unrecognized
+        """
+        for pool_prefix in (
+            Constant.WORK_POOL_DEVICE_PREFIX,
+            Constant.WORK_POOL_MONITOR_PREFIX,
+            Constant.WORK_POOL_MGR_PREFIX,
+        ):
+            if pool_name.startswith(pool_prefix):
+                return pool_name[len(pool_prefix) :]
+        return ""
 
     @staticmethod
     def _parse_worker_name(worker_name):
