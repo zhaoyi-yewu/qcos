@@ -74,9 +74,8 @@ async def login(
     user = user_manager.get_user(username)
     login_failure_type = None
     login_failure_reason = None
-    is_user_locked_before_password_check = (
-        False  # Track if user was locked before password validation
-    )
+    # Track if user was locked before password validation
+    is_user_locked_before_password_check = False
 
     if not user:
         login_failure_type = "unauthorized"
@@ -128,9 +127,8 @@ async def login(
                 # Continue to password validation to check if password is
                 # also incorrect. This allows us to track and increment
                 # failed_login_attempts for attempts during lockout
-                is_user_locked_before_password_check = (
-                    True  # Mark that user was locked
-                )
+                # Mark that user was locked
+                is_user_locked_before_password_check = True
                 logger.debug(
                     f"User '{username}' is locked until "
                     f"{user.locked_until}. Proceeding to password "

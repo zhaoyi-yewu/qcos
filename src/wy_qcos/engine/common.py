@@ -15,11 +15,44 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import sys
 
 from loguru import logger
 
 from wy_qcos.common.config import Config
+
+
+class InterceptHandler(logging.Handler):
+    """Forward standard logging records to loguru.
+
+    Third-party libraries (e.g. lqcloud) emit logs via the standard
+    ``logging`` module. Loguru only routes records produced through
+    its own ``logger`` object, so those records never reach the
+    stdout/file sinks configured in ``init_logger``. This handler,
+    attached to the root logger, re-emits every standard record
+    through loguru, bridging the two systems.
+    """
+
+    def emit(self, record):
+        # Loguru expects a level name; fall back to the numeric
+        # level when the name is not recognised.
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Walk up the stack to find the frame that issued the log
+        # call so loguru reports the original caller (file/line)
+        # rather than this handler.
+        frame, depth = logging.currentframe(), 2
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
 
 
 def convert_log_format_to_loguru(log_format):
@@ -126,3 +159,34 @@ def init_logger(
         retention=log_rotate_backup_count,
         format=loguru_format,
     )
+
+    # Bridge the standard logging module into loguru so that
+    # third-party libraries (e.g. lqcloud, requests, urllib3) that
+    # emit via ``logging.getLogger(...)`` are also captured by the
+    # stdout and file sinks configured above. Without this, their
+    # WARNING/ERROR records (such as lqcloud's transient HTTP error
+    # retries) never reach the device monitor log file.
+    #
+    # NOTE: Prefect calls ``logging.config.dictConfig`` during flow
+    # execution which re-assigns the *root* logger handlers (see
+    # prefect/logging/logging.yml -> root.handlers=[console]). That
+    # would silently drop an InterceptHandler installed on the root.
+    # To stay immune to this reset we attach InterceptHandler directly
+    # to each third-party logger we care about and disable
+    # propagation, so the records never travel up to the root logger.
+    intercept = InterceptHandler()
+    level = logging.DEBUG if debug else logging.INFO
+    for name in ("lqcloud", "urllib3", "requests", "charset_normalizer"):
+        lib_logger = logging.getLogger(name)
+        lib_logger.handlers = [intercept]
+        lib_logger.propagate = False
+        lib_logger.setLevel(level)
+
+    # Also install InterceptHandler on the root as a catch-all for
+    # any other library; if Prefect later resets the root handlers the
+    # per-library handlers above still keep working.
+    logging.basicConfig(
+        level=level,
+        handlers=[intercept],
+    )
+    logging.getLogger().handlers = [intercept]
