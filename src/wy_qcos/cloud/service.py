@@ -119,6 +119,12 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
+            r"^Topology error: target qubits number mismatch with circuit$"
+        ),
+        "拓扑校验错误：自定义比特数和实际使用比特数不等",
+    ),
+    (
+        re.compile(
             r"^Topology error: circuit requires (-?\d+) qubits, but chip "
             r"only has (-?\d+)$"
         ),
@@ -132,8 +138,11 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
         "拓扑校验错误：线路需要{}个量子比特，超出最大连通分量{}",
     ),
     (
-        re.compile(r"^Topology error: target_bits are not connected$"),
-        "拓扑校验错误：自定义比特位不连通",
+        re.compile(
+            r"^Topology error: circuit topology cannot be mapped onto "
+            r"target_bits$"
+        ),
+        "拓扑校验错误：电路拓扑无法映射到自定义比特",
     ),
     # --- gate count / depth errors ---
     (

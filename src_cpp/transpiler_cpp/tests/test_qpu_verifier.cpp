@@ -34,6 +34,26 @@ VerifyParams make_test_params() {
   return params;
 }
 
+// Shenglian 真实芯片拓扑：83 比特、60 条耦合边
+VerifyParams make_shenglian_params() {
+  VerifyParams params;
+  params.bits = 83;
+  params.basis_gates = {"h", "x", "rx", "ry", "rz", "cz", "cx", "measure"};
+  params.coupling_list = {
+      {15, 22}, {16, 22}, {16, 23}, {17, 23}, {18, 24}, {18, 25}, {20, 27},
+      {22, 29}, {23, 30}, {25, 32}, {27, 34}, {28, 35}, {29, 35}, {30, 36},
+      {30, 37}, {31, 37}, {31, 38}, {32, 38}, {32, 39}, {33, 39}, {34, 40},
+      {34, 41}, {36, 43}, {37, 44}, {38, 45}, {39, 46}, {41, 48}, {42, 49},
+      {43, 49}, {43, 50}, {45, 51}, {46, 53}, {47, 53}, {48, 54}, {49, 56},
+      {50, 57}, {51, 58}, {53, 60}, {54, 61}, {59, 66}, {60, 66}, {61, 67},
+      {61, 68}, {62, 68}, {62, 69}, {63, 70}, {64, 71}, {66, 73}, {67, 74},
+      {68, 75}, {69, 76}, {70, 77}, {71, 77}, {73, 79}, {73, 80}, {74, 80},
+      {74, 81}, {75, 81}, {75, 82}, {76, 82}};
+  params.edge_fidelities = std::vector<double>(60, 0.99);
+  params.single_qubit_fidelities = std::vector<double>(83, 0.999);
+  return params;
+}
+
 }  // namespace
 
 // check_qasm_syntax
@@ -197,6 +217,7 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsInSameComponent_ReturnsTrue) {
       "OPENQASM 2.0;\n"
       "include \"qelib1.inc\";\n"
       "qreg q[3];\n"
+      "h q[2];\n"
       "cz q[0],q[1];\n";
   EXPECT_TRUE(verifier.verify(qasm).passed);
 }
@@ -312,7 +333,9 @@ TEST(QuafuVerifier,
       "cz q[0],q[1];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message, "Topology error: target_bits are not connected");
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
 }
 
 // 三个 target_bits 首尾相连构成链：诱导子图连通，应通过
@@ -332,11 +355,13 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsFormChain_ReturnsTrue) {
       "OPENQASM 2.0;\n"
       "include \"qelib1.inc\";\n"
       "qreg q[3];\n"
+      "h q[2];\n"
       "cz q[0],q[1];\n";
   EXPECT_TRUE(verifier.verify(qasm).passed);
 }
 
-// 三个 target_bits 中一个孤立（不在任何耦合边）：诱导子图缺节点，应失败
+// target {0,1,4} 诱导子图：{0,1}连通(容量2)、{4}孤立(容量1)
+// 电路 3 比特全连通(团大小3)，超过最大容量2，不可行
 TEST(QuafuVerifier, CheckTopology_TargetBitsWithOneIsolated_ReturnsFalse) {
   VerifyParams params;
   params.bits = 8;
@@ -344,8 +369,35 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsWithOneIsolated_ReturnsFalse) {
   params.edge_fidelities = {0.99, 0.99, 0.98, 0.98};
   params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
                                     0.0,   0.0,   0.0,   0.0};
-  // 0、1 直连，但 4 不在任何耦合边中
+  // 0、1 直连容量2，4 孤立容量1
   params.target_bits = {0, 1, 4};
+
+  QuafuVerifier verifier(params);
+
+  // cz q[0],q[1] + cz q[1],q[2] 使 0,1,2 形成连通团大小3
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[3];\n"
+      "cz q[0],q[1];\n"
+      "cz q[1],q[2];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
+}
+
+// target_bits 有重复但去重后数量正确且连通：应通过
+TEST(QuafuVerifier, CheckTopology_TargetBitsDedupCorrect_ReturnsTrue) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 重复 0 和 1，去重后为 {0, 1, 2}，与电路使用的 3 比特匹配
+  params.target_bits = {0, 0, 1, 1, 2};
 
   QuafuVerifier verifier(params);
 
@@ -353,10 +405,83 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsWithOneIsolated_ReturnsFalse) {
       "OPENQASM 2.0;\n"
       "include \"qelib1.inc\";\n"
       "qreg q[3];\n"
+      "cz q[0],q[1];\n"
+      "h q[2];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// target_bits 看似数量正确(3)但去重后只有2个，少于电路实际3比特：应失败
+TEST(QuafuVerifier, CheckTopology_TargetBitsDedupTooFew_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 3 个 target_bits 含重复 0，去重后 {0, 1}，但电路用 3 比特
+  params.target_bits = {0, 0, 1};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[3];\n"
+      "cz q[0],q[1];\n"
+      "h q[2];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Topology error: target qubits number mismatch with circuit");
+}
+
+// target_bits 数量多于电路实际使用比特数：应失败
+TEST(QuafuVerifier, CheckTopology_TargetBitsTooMany_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 电路用 2 比特，target_bits 给 3 比特
+  params.target_bits = {0, 1, 2};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
       "cz q[0],q[1];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message, "Topology error: target_bits are not connected");
+  EXPECT_EQ(result.message,
+            "Topology error: target qubits number mismatch with circuit");
+}
+
+// target_bits 数量少于电路实际使用比特数：应失败
+TEST(QuafuVerifier, CheckTopology_TargetBitsTooFew_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // 电路用 3 比特，target_bits 只给 2 比特
+  params.target_bits = {0, 1};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[3];\n"
+      "cz q[0],q[1];\n"
+      "h q[2];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Topology error: target qubits number mismatch with circuit");
 }
 
 TEST(QuafuVerifier, CheckTopology_TargetBitsOutOfRange_ReturnsFalse) {
@@ -388,7 +513,9 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsOutOfRange_ReturnsFalse) {
   EXPECT_FALSE(verifier.verify(qasm_single).passed);
 }
 
-// 真实芯片拓扑：83 比特，18 个 target_bits 诱导子图不连通，应失败
+// 真实芯片拓扑：target_bits 诱导子图分 3 个连通区(容量 5/3/1 及若干 1)。
+// 电路在 bin0(5) 和 bin1(3) 的比特间放 cz，形成 6 比特连通团，
+// 超过任一 target 连通区容量，不可行。
 TEST(QuafuVerifier,
      CheckTopology_RealChip_TargetBitsNotConnected_ReturnsFalse) {
   VerifyParams params;
@@ -403,19 +530,393 @@ TEST(QuafuVerifier,
       {61, 68}, {62, 68}, {62, 69}, {63, 70}, {64, 71}, {66, 73}, {67, 74},
       {68, 75}, {69, 76}, {70, 77}, {71, 77}, {73, 79}, {73, 80}, {74, 80},
       {74, 81}, {75, 81}, {75, 82}, {76, 82}};
+  // bin0={15,16,17,22,23} 容量5, bin1={18,24,25} 容量3, 其余孤立容量1
   params.target_bits = {15, 16, 17, 18, 20, 22, 23, 24, 25, 35,
                         36, 37, 38, 39, 40, 79, 80, 81, 82};
 
   QuafuVerifier verifier(params);
 
+  // cz 链: 15-22-16-23-17(全在 bin0) 再连 17-18(跨 bin0/bin1)
+  // 形成 6 比特连通团, 超过最大 bin 容量 5
   std::string qasm =
       "OPENQASM 2.0;\n"
       "include \"qelib1.inc\";\n"
-      "qreg q[2];\n"
-      "cz q[0],q[1];\n";
+      "qreg q[83];\n"
+      "cz q[15],q[22];\n"
+      "cz q[22],q[16];\n"
+      "cz q[16],q[23];\n"
+      "cz q[23],q[17];\n"
+      "cz q[17],q[18];\n"
+      "h q[20];\n"
+      "h q[24];\n"
+      "h q[25];\n"
+      "h q[35];\n"
+      "h q[36];\n"
+      "h q[37];\n"
+      "h q[38];\n"
+      "h q[39];\n"
+      "h q[40];\n"
+      "h q[79];\n"
+      "h q[80];\n"
+      "h q[81];\n"
+      "h q[82];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message, "Topology error: target_bits are not connected");
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
+}
+
+// bin-packing: target 两个连通区(6,4), 电路三个团(4,3,3)
+// 4 放进 bin4, 3+3 放进 bin6, 恰好放满, 可行
+TEST(QuafuVerifier, CheckTopology_BinPacking_MultiComponentFits_ReturnsTrue) {
+  VerifyParams params;
+  params.bits = 12;
+  // bin0: 0-1-2-3-4-5 (容量6), bin1: 6-7-8-9 (容量4)
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2},
+                          {3, 4}, {4, 3}, {4, 5}, {5, 4}, {6, 7}, {7, 6},
+                          {7, 8}, {8, 7}, {8, 9}, {9, 8}};
+  params.edge_fidelities = std::vector<double>(16, 0.99);
+  params.single_qubit_fidelities = std::vector<double>(12, 0.999);
+  params.target_bits = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+  QuafuVerifier verifier(params);
+
+  // 电路团: {0,1,2,3}大小4, {4,5,6}大小3, {7,8,9}大小3
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[10];\n"
+      "cz q[0],q[1];\n"
+      "cz q[1],q[2];\n"
+      "cz q[2],q[3];\n"
+      "cz q[4],q[5];\n"
+      "cz q[5],q[6];\n"
+      "cz q[7],q[8];\n"
+      "cz q[8],q[9];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// bin-packing: target 两个连通区(5,5), 电路两个团(6,4)
+// 团6 超过任一 bin 容量5, 不可行
+TEST(QuafuVerifier,
+     CheckTopology_BinPacking_BigComponentExceedsBin_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 12;
+  // bin0: 0-1-2-3-4 (容量5), bin1: 5-6-7-8-9 (容量5)
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2},
+                          {3, 4}, {4, 3}, {5, 6}, {6, 5}, {6, 7}, {7, 6},
+                          {7, 8}, {8, 7}, {8, 9}, {9, 8}};
+  params.edge_fidelities = std::vector<double>(16, 0.99);
+  params.single_qubit_fidelities = std::vector<double>(12, 0.999);
+  params.target_bits = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+  QuafuVerifier verifier(params);
+
+  // 电路团: {0,1,2,3,4,5}大小6 (跨 bin0/bin1), {6,7,8,9}大小4
+  // 团6 超过最大 bin 容量5
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[10];\n"
+      "cz q[0],q[1];\n"
+      "cz q[1],q[2];\n"
+      "cz q[2],q[3];\n"
+      "cz q[3],q[4];\n"
+      "cz q[4],q[5];\n"
+      "cz q[6],q[7];\n"
+      "cz q[7],q[8];\n"
+      "cz q[8],q[9];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
+}
+
+// bin-packing: target 两个连通区(3,3), 电路一个大团(4) + 两个单比特
+// 大团4 超过最大 bin 容量3, 单比特优化不参与回溯, 不可行
+TEST(QuafuVerifier,
+     CheckTopology_BinPacking_SinglesSkipButBigFails_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  // bin0: 0-1-2 (容量3), bin1: 3-4-5 (容量3)
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1},
+                          {3, 4}, {4, 3}, {4, 5}, {5, 4}};
+  params.edge_fidelities = std::vector<double>(8, 0.99);
+  params.single_qubit_fidelities = std::vector<double>(8, 0.999);
+  params.target_bits = {0, 1, 2, 3, 4, 5};
+
+  QuafuVerifier verifier(params);
+
+  // 电路团: {0,1,2,3}大小4 (跨 bin0/bin1), 单比特 4,5
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[6];\n"
+      "cz q[0],q[1];\n"
+      "cz q[1],q[2];\n"
+      "cz q[2],q[3];\n"
+      "h q[4];\n"
+      "h q[5];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
+}
+
+// 真实芯片拓扑完整数据：83 比特、60 条耦合边、19 个 target_bits。
+// target 诱导子图: bin0={15,16,17,22,23}容量5, bin1={18,24,25}容量3,
+// 11 个孤立比特各容量1。电路来自真实编译请求，交互图形成 4 个连通团
+// (大小 6/5/4/4), 最大团 6 > 最大 bin 5, 不可映射, 应失败。
+TEST(QuafuVerifier, CheckTopology_RealChip_BinPackingFails_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 83;
+  params.coupling_list = {
+      {15, 22}, {16, 22}, {16, 23}, {17, 23}, {18, 24}, {18, 25}, {20, 27},
+      {22, 29}, {23, 30}, {25, 32}, {27, 34}, {28, 35}, {29, 35}, {30, 36},
+      {30, 37}, {31, 37}, {31, 38}, {32, 38}, {32, 39}, {33, 39}, {34, 40},
+      {34, 41}, {36, 43}, {37, 44}, {38, 45}, {39, 46}, {41, 48}, {42, 49},
+      {43, 49}, {43, 50}, {45, 51}, {46, 53}, {47, 53}, {48, 54}, {49, 56},
+      {50, 57}, {51, 58}, {53, 60}, {54, 61}, {59, 66}, {60, 66}, {61, 67},
+      {61, 68}, {62, 68}, {62, 69}, {63, 70}, {64, 71}, {66, 73}, {67, 74},
+      {68, 75}, {69, 76}, {70, 77}, {71, 77}, {73, 79}, {73, 80}, {74, 80},
+      {74, 81}, {75, 81}, {75, 82}, {76, 82}};
+  params.edge_fidelities = {
+      0.989, 0.997, 0.996, 0.998, 0.988, 0.995, 0.981, 0.992, 0.994, 0.978,
+      0.997, 0.993, 0.993, 0.973, 0.986, 0.985, 0.987, 0.988, 0.993, 0.991,
+      0.997, 0.997, 0.985, 0.990, 0.997, 0.982, 0.995, 0.996, 0.998, 0.990,
+      0.994, 0.996, 0.992, 0.996, 0.991, 0.994, 0.991, 0.995, 0.997, 0.983,
+      0.990, 0.983, 0.989, 0.999, 0.987, 0.995, 0.992, 0.988, 0.986, 0.997,
+      0.996, 0.995, 0.998, 0.984, 0.996, 0.982, 0.993, 0.984, 0.996, 0.998};
+  params.single_qubit_fidelities = {
+      0.997, 0.997, 0.999, 0.997, 0.999, 0.999, 0.999, 0.976, 0.996, 0.996,
+      0.994, 0.994, 0.997, 0.998, 0.999, 0.999, 0.999, 0.999, 0.996, 0.999,
+      0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.997, 0.999, 0.999, 0.999,
+      0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999,
+      0.999, 0.999, 0.999, 0.997, 0.995, 0.999, 0.999, 0.999, 0.999, 0.999,
+      0.999, 0.999, 0.999, 0.999, 0.998, 0.999, 0.999, 0.999, 0.996, 0.998,
+      0.999, 0.999, 0.996, 0.999, 0.999, 0.999, 0.999, 0.992, 0.999, 0.999,
+      0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999,
+      0.999, 0.999, 0.999};
+  params.target_bits = {15, 16, 17, 18, 20, 22, 23, 24, 25, 35,
+                        36, 37, 38, 39, 40, 79, 80, 81, 82};
+
+  QuafuVerifier verifier(params);
+
+  // 真实电路: 交互团 {15,16,17,18}=4, {20,22,23,24,25}=5,
+  // {35,36,37,38,39,40}=6, {79,80,81,82}=4。bins=[5,3,1*11],
+  // 最大团 6 > 最大 bin 5, 不可映射。
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[83];\n"
+      "creg c[83];\n"
+      "cz q[16],q[15];\n"
+      "cy q[22],q[20];\n"
+      "rzz(1.570796) q[24],q[25];\n"
+      "ccz q[36],q[37],q[35];\n"
+      "ccz q[39],q[40],q[38];\n"
+      "ccx q[82],q[80],q[79];\n"
+      "id q[15];\n"
+      "cy q[16],q[17];\n"
+      "cswap q[24],q[23],q[22];\n"
+      "ccx q[38],q[37],q[36];\n"
+      "cy q[40],q[39];\n"
+      "cswap q[79],q[81],q[80];\n"
+      "x q[82];\n"
+      "t q[16];\n"
+      "t q[17];\n"
+      "ryy(1.570796) q[24],q[23];\n"
+      "cz q[80],q[79];\n"
+      "h q[81];\n"
+      "ccx q[17],q[15],q[18];\n"
+      "x q[15];\n"
+      "t q[16];\n"
+      "sx q[17];\n"
+      "cx q[16],q[15];\n"
+      "iswap q[18],q[17];\n"
+      "y q[15];\n"
+      "rx(1.570796) q[16];\n"
+      "tdg q[17];\n"
+      "cp(1.570796) q[16],q[15];\n"
+      "swap q[18],q[17];\n"
+      "rzz(1.570796) q[16],q[15];\n"
+      "ryy(1.570796) q[17],q[16];\n"
+      "rxx(1.570796) q[15],q[16];\n"
+      "ccx q[16],q[17],q[15];\n"
+      "z q[15];\n"
+      "sxdg q[16];\n"
+      "ry(1.570796) q[17];\n"
+      "h q[15];\n"
+      "rz(1.570796) q[16];\n"
+      "p(1.570796) q[15];\n"
+      "cswap q[16],q[18],q[17];\n"
+      "ccz q[16],q[17],q[15];\n"
+      "u3(1.570796,1.570796,1.570796) q[15];\n"
+      "s q[15];\n"
+      "sdg q[15];\n"
+      "rxx(1.570796) q[16],q[15];\n"
+      "rzz(1.570796) q[17],q[15];\n"
+      "measure q[15] -> c[15];\n"
+      "measure q[16] -> c[16];\n"
+      "measure q[17] -> c[17];\n"
+      "measure q[18] -> c[18];\n"
+      "measure q[20] -> c[20];\n"
+      "measure q[22] -> c[22];\n"
+      "measure q[23] -> c[23];\n"
+      "measure q[24] -> c[24];\n"
+      "measure q[25] -> c[25];\n"
+      "measure q[35] -> c[35];\n"
+      "measure q[36] -> c[36];\n"
+      "measure q[37] -> c[37];\n"
+      "measure q[38] -> c[38];\n"
+      "measure q[39] -> c[39];\n"
+      "measure q[40] -> c[40];\n"
+      "measure q[79] -> c[79];\n"
+      "measure q[80] -> c[80];\n"
+      "measure q[81] -> c[81];\n"
+      "measure q[82] -> c[82];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
+}
+
+// === Shenglian 拓扑 bin-packing 综合用例 ===
+
+// 1. 4比特 cx[0,1]+measure 0,1, target=[15,22](相连), 电路2比特→可装入→PASS
+TEST(QuafuVerifier, Shenglian_CxMeasure2_TargetConnected_ReturnsTrue) {
+  auto params = make_shenglian_params();
+  params.target_bits = {15, 22};
+  QuafuVerifier verifier(params);
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[4];\n"
+      "creg c[4];\n"
+      "cx q[0],q[1];\n"
+      "measure q[0] -> c[0];\n"
+      "measure q[1] -> c[1];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// 2. 4比特 cx[0,1]+measure 0,1, target=[15,16](不相连), 电路团2 >
+// bin[1,1]→FAIL
+TEST(QuafuVerifier, Shenglian_CxMeasure2_TargetDisconnected_ReturnsFalse) {
+  auto params = make_shenglian_params();
+  params.target_bits = {15, 16};
+  QuafuVerifier verifier(params);
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[4];\n"
+      "creg c[4];\n"
+      "cx q[0],q[1];\n"
+      "measure q[0] -> c[0];\n"
+      "measure q[1] -> c[1];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
+}
+
+// 3. 4比特 cx[0,1]+measure 0,1,2,3(用4比特), target=[15,22](2个),
+// 数量不符→FAIL
+TEST(QuafuVerifier, Shenglian_CxMeasure4_TargetCountMismatch_ReturnsFalse) {
+  auto params = make_shenglian_params();
+  params.target_bits = {15, 22};
+  QuafuVerifier verifier(params);
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[4];\n"
+      "creg c[4];\n"
+      "cx q[0],q[1];\n"
+      "measure q[0] -> c[0];\n"
+      "measure q[1] -> c[1];\n"
+      "measure q[2] -> c[2];\n"
+      "measure q[3] -> c[3];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "Topology error: target qubits number mismatch with circuit");
+}
+
+// 4. 4比特 x[0],x[1]+measure 2,3, target=[15,16,18,20](不相连),
+//    全单比特门, 不触发连通性检查, 数量匹配→PASS
+TEST(QuafuVerifier, Shenglian_AllSingleQubit_DisconnectedTarget_ReturnsTrue) {
+  auto params = make_shenglian_params();
+  params.target_bits = {15, 16, 18, 20};
+  QuafuVerifier verifier(params);
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[4];\n"
+      "creg c[4];\n"
+      "x q[0];\n"
+      "x q[1];\n"
+      "measure q[2] -> c[2];\n"
+      "measure q[3] -> c[3];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// 5. 6比特 cx[0,1]+cx[2,3](用4比特), target=[15,22,18,25](两对相连),
+//    items[2,2], bins[2,2], 可装入→PASS
+TEST(QuafuVerifier, Shenglian_TwoCx_TwoConnectedPairs_ReturnsTrue) {
+  auto params = make_shenglian_params();
+  params.target_bits = {15, 22, 18, 25};
+  QuafuVerifier verifier(params);
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[6];\n"
+      "creg c[6];\n"
+      "cx q[0],q[1];\n"
+      "cx q[2],q[3];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// 6. 6比特 cx[0,1]+cx[2,3]+x[4]+x[5](用6比特), target=[15,22,18,25,20,40],
+//    items[2,2,1,1], bins[2,2,1,1], 可装入→PASS
+TEST(QuafuVerifier, Shenglian_TwoCxTwoSingle_SixTargets_ReturnsTrue) {
+  auto params = make_shenglian_params();
+  params.target_bits = {15, 22, 18, 25, 20, 40};
+  QuafuVerifier verifier(params);
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[6];\n"
+      "creg c[6];\n"
+      "cx q[0],q[1];\n"
+      "cx q[2],q[3];\n"
+      "x q[4];\n"
+      "x q[5];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
+// 7. 6比特 cx[0,1]+cx[2,3]+cx[4,5](用6比特), target=[15,22,18,25,20,40],
+//    items[2,2,2], bins[2,2,1,1], 第三个团2放不进容量1的bin→FAIL
+TEST(QuafuVerifier, Shenglian_ThreeCx_ThirdCantFit_ReturnsFalse) {
+  auto params = make_shenglian_params();
+  params.target_bits = {15, 22, 18, 25, 20, 40};
+  QuafuVerifier verifier(params);
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[6];\n"
+      "creg c[6];\n"
+      "cx q[0],q[1];\n"
+      "cx q[2],q[3];\n"
+      "cx q[4],q[5];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "Topology error: circuit topology cannot be mapped onto target_bits");
 }
 
 // check_depth_and_gate_count

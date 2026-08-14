@@ -30,6 +30,109 @@
 
 namespace qcos {
 
+namespace {
+
+/**
+ * @brief 回溯放置电路连通分量（bin-packing 核心递归）
+ *
+ * 逐个将电路连通分量放入 target 连通区，每个分量尝试所有箱子，
+ * 放不下则回退。本质是带容量约束的装箱回溯。
+ *
+ * 术语对照（组合优化标准术语）：
+ *   - item（物品）= 电路交互图某连通分量的大小，即一组互相耦合的比特数
+ *   - bin（箱子）= target_bits 诱导子图某连通分量的容量
+ *
+ * @param items 电路各连通分量大小，已降序排列
+ * @param bins  target 各连通区容量，已降序排列
+ * @param bin_load 各 bin 当前已放入量，递归过程中原地修改
+ * @param idx   当前正在放置的 item 下标
+ * @return true 所有 item 都成功放入
+ */
+bool backtrack_place_component(const std::vector<int>& items,
+                               const std::vector<int>& bins,
+                               std::vector<int>& bin_load, size_t idx) {
+  if (idx == items.size()) return true;
+  for (size_t j = 0; j < bins.size(); ++j) {
+    if (bin_load[j] + items[idx] <= bins[j]) {
+      bin_load[j] += items[idx];
+      if (backtrack_place_component(items, bins, bin_load, idx + 1))
+        return true;
+      bin_load[j] -= items[idx];
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief 检查电路连通分量能否分配到 target 连通区（bin-packing 可行性）
+ *
+ * 将问题建模为装箱：电路每个连通分量（item）需放入 target 某个连通区
+ * （bin），约束为每箱放入量 <= 容量。总量相等时自动收紧为恰好放满。
+ *
+ * 优化：大小为 1 的离散单比特（孤立逻辑比特）不参与回溯，只在大分量
+ * 放完后检查剩余总容量是否足够，因为任何容量 >= 1 的箱子都能接纳它们。
+ * 连通分量数极小时回溯 + 剪枝即可求解。
+ *
+ * @param items 电路各连通分量大小
+ * @param bins  target 各连通区容量
+ * @return true 存在合法分配方案
+ */
+bool can_place_components(std::vector<int> items, std::vector<int> bins) {
+  if (items.empty()) return true;
+  std::sort(items.begin(), items.end(), [](int a, int b) { return a > b; });
+  std::sort(bins.begin(), bins.end(), [](int a, int b) { return a > b; });
+  // 大小为 1 的离散物品（孤立单比特）无需回溯：只要大分量放完后，
+  // 剩余总容量足够即可，因为任何容量 >= 1 的箱子都能接纳它们。
+  std::vector<int> big_items;
+  int single_count = 0;
+  for (int item : items) {
+    if (item == 1) {
+      ++single_count;
+    } else {
+      big_items.push_back(item);
+    }
+  }
+  // 大物品放不进最大 bin，直接否决
+  if (!big_items.empty() && big_items.front() > bins.front()) return false;
+  std::vector<int> bin_load(bins.size(), 0);
+  if (!backtrack_place_component(big_items, bins, bin_load, 0)) return false;
+  // 离散单比特：检查剩余总容量是否足够
+  int remaining = 0;
+  for (size_t j = 0; j < bins.size(); ++j) {
+    remaining += bins[j] - bin_load[j];
+  }
+  return remaining >= single_count;
+}
+
+/**
+ * @brief 计算图的各连通分量大小
+ *
+ * @param edges 图的边列表
+ * @param nodes 需要纳入统计的所有节点（含孤立节点）
+ * @return 各连通分量的大小列表
+ */
+std::vector<int> compute_component_sizes(
+    const std::vector<std::pair<int, int>>& edges,
+    const std::set<int>& nodes) {
+  auto comp_map = find_connected_components(edges);
+  std::unordered_map<int, int> size_by_root;
+  for (const auto& [node, root] : comp_map) {
+    ++size_by_root[root];
+  }
+  std::vector<int> sizes;
+  for (const auto& [root, sz] : size_by_root) {
+    sizes.push_back(sz);
+  }
+  for (int node : nodes) {
+    if (comp_map.find(node) == comp_map.end()) {
+      sizes.push_back(1);
+    }
+  }
+  return sizes;
+}
+
+}  // namespace
+
 QuafuVerifier::QuafuVerifier(const VerifyParams& params)
     : max_qubits_(params.bits),
       coupling_list_(params.coupling_list),
@@ -85,6 +188,8 @@ bool QuafuVerifier::check_qasm_syntax(const std::string& qasm_string) const {
     // 以实际操作中使用的去重比特数作为比特数，而非 QASM 声明值
     std::set<int> used_qubits;
     for (const auto& op : parsed_operations_) {
+      // 跳过 barrier(sync)门
+      if (op->operation_type == OperationType::SYNC) continue;
       for (int target : op->targets) {
         used_qubits.insert(target);
       }
@@ -110,6 +215,17 @@ bool QuafuVerifier::check_topology() const {
       result_.add_failure("Topology error: target_bit " +
                           std::to_string(target_bit) + " out of range [0, " +
                           std::to_string(max_qubits_) + ")");
+      return false;
+    }
+  }
+
+  // target_bits 非空时去重，并校验去重后的数量与电路实际使用比特数一致
+  if (!target_bits_.empty()) {
+    std::set<int> unique_set(target_bits_.begin(), target_bits_.end());
+    target_bits_.assign(unique_set.begin(), unique_set.end());
+    if (static_cast<int>(target_bits_.size()) != parsed_num_qubits_) {
+      result_.add_failure(
+          "Topology error: target qubits number mismatch with circuit");
       return false;
     }
   }
@@ -155,8 +271,25 @@ bool QuafuVerifier::check_topology() const {
     }
     return true;
   } else {
-    // 用户指定了 target_bits：要求这些比特本身构成一个连通分量
-    // 只保留两端都在 target_bits 集合中的耦合边，检查诱导子图是否连通
+    // 用户指定了 target_bits：检查电路交互图的连通分量能否装入
+    // target_bits 诱导子图的连通分量中（bin-packing）。
+
+    // 1. 电路交互图：多比特门产生交互边，统计实际使用比特
+    std::vector<std::pair<int, int>> interaction_edges;
+    std::set<int> used_qubits;
+    for (const auto& op : parsed_operations_) {
+      if (op->operation_type == OperationType::SYNC) continue;
+      for (int t : op->targets) used_qubits.insert(t);
+      if (op->operation_type >= OperationType::DOUBLE_QUBIT_OPERATION) {
+        for (size_t i = 0; i + 1 < op->targets.size(); ++i) {
+          interaction_edges.emplace_back(op->targets[i], op->targets[i + 1]);
+        }
+      }
+    }
+    auto circuit_items =
+        compute_component_sizes(interaction_edges, used_qubits);
+
+    // 2. target_bits 诱导子图：只保留两端都在 target_bits 中的耦合边
     std::unordered_set<int> target_set(target_bits_.begin(),
                                        target_bits_.end());
     std::vector<std::pair<int, int>> induced_edges;
@@ -165,21 +298,15 @@ bool QuafuVerifier::check_topology() const {
         induced_edges.emplace_back(qubit_a, qubit_b);
       }
     }
-    // 诱导子图连通当且仅当：所有 target_bit 都出现在诱导边中（无孤立节点）
-    // 且它们属于同一个连通分量。
-    auto component_map = find_connected_components(induced_edges);
-    std::unordered_set<int> roots;
-    for (int target_bit : target_bits_) {
-      auto it = component_map.find(target_bit);
-      if (it == component_map.end()) {
-        // 该 target_bit 不在任何耦合边中，是孤立节点
-        result_.add_failure("Topology error: target_bits are not connected");
-        return false;
-      }
-      roots.insert(it->second);
-    }
-    if (roots.size() != 1) {
-      result_.add_failure("Topology error: target_bits are not connected");
+    std::set<int> target_nodes(target_bits_.begin(), target_bits_.end());
+    auto target_bins = compute_component_sizes(induced_edges, target_nodes);
+
+    // 3. bin-packing 可行性：每个电路分量放入某 target 分量，放入量 <= 容量
+    if (!can_place_components(std::move(circuit_items),
+                              std::move(target_bins))) {
+      result_.add_failure(
+          "Topology error: circuit topology cannot be mapped onto "
+          "target_bits");
       return false;
     }
     return true;

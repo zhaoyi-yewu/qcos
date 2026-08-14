@@ -187,7 +187,8 @@ class TestCheckTopology(unittest.TestCase):
             target_bits=[0, 1, 2],
         )
         qasm = (
-            'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[3];\ncz q[0],q[1];\n'
+            'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[3];\n'
+            "h q[2];\ncz q[0],q[1];\n"
         )
         self.assertTrue(verifier.verify(qasm).passed)
 
