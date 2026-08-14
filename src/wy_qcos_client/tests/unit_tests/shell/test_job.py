@@ -363,6 +363,106 @@ class TestGetJobResults:
         assert "File exists and do not override it, abort saving" in output
         os.remove("result.txt")
 
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(Client, "get_jobs")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_job_id_last_lowercase(
+        self,
+        mock_check_results,
+        mock_get_jobs,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        """job_id='last' resolves most recent job from get_jobs."""
+        mock_check_results.side_effect = [
+            [{"job_id": job_id, "job_status": "COMPLETED"}],
+            response,
+        ]
+        mock_get_jobs.return_value = (200, "OK", "{}", None)
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = "last"
+        mock_client.output_file = None
+        mock_client.assume_override = False
+
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values != ((), ())
+        mock_get_jobs.assert_called_once()
+
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(Client, "get_jobs")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_job_id_last_uppercase(
+        self,
+        mock_check_results,
+        mock_get_jobs,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        """job_id='LAST' (case-insensitive) resolves most recent job."""
+        mock_check_results.side_effect = [
+            [{"job_id": job_id, "job_status": "COMPLETED"}],
+            response,
+        ]
+        mock_get_jobs.return_value = (200, "OK", "{}", None)
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = "LAST"
+        mock_client.output_file = None
+        mock_client.assume_override = False
+
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values != ((), ())
+        mock_get_jobs.assert_called_once()
+
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(Client, "get_jobs")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_job_id_last_no_jobs(
+        self,
+        mock_check_results,
+        mock_get_jobs,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        """job_id='last' with no jobs raises GenericException."""
+        mock_check_results.return_value = []
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = "last"
+        mock_client.output_file = None
+        mock_client.assume_override = False
+
+        with pytest.raises(Exception):
+            get_job_results.take_action(mock_client)
+
 
 class TestGetJobs:
     def test_get_parser(self):
