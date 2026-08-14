@@ -300,4 +300,35 @@ void restore_physical_ids(const PhysicalIdRemap& remap,
   }
 }
 
+void validate_mapping_inputs(
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<double>& edge_fidelities, int num_logical) {
+  if (coupling_list.empty()) {
+    throw std::invalid_argument("coupling_list is empty");
+  }
+
+  if (!edge_fidelities.empty() &&
+      edge_fidelities.size() != coupling_list.size()) {
+    throw std::invalid_argument("edge_fidelities size (" +
+                                std::to_string(edge_fidelities.size()) +
+                                ") != coupling_list size (" +
+                                std::to_string(coupling_list.size()) + ")");
+  }
+
+  std::unordered_set<int> qubits;
+  for (const auto& edge : coupling_list) {
+    qubits.insert(edge.first);
+    qubits.insert(edge.second);
+  }
+  const int num_unique_physical = static_cast<int>(qubits.size());
+
+  if (num_logical > num_unique_physical) {
+    throw std::invalid_argument("num_logical (" + std::to_string(num_logical) +
+                                ") > available physical qubits (" +
+                                std::to_string(num_unique_physical) +
+                                "); if fidelity filtering is enabled, try "
+                                "lowering fidelity_threshold");
+  }
+}
+
 }  // namespace qcos

@@ -82,7 +82,8 @@ TEST(SabreRouting, FidelityAwareRouting) {
   };
 
   // 阈值 0.8 应过滤掉边 0-1
-  SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities, 0.8);
+  SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities,
+              "vf2_layout", 0.8);
   sabre.execute(circuit);
   const auto& phys = sabre.get_physical_gates();
 

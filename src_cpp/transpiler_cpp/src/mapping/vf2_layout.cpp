@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "circuit/base_operation.h"
+#include "mapping/mapping_utils.h"
 
 namespace qcos {
 
@@ -367,7 +368,9 @@ std::vector<int> vf2_layout_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities, int num_logical) {
-  if (coupling_list.empty() || num_logical <= 0) return {};
+  if (num_logical <= 0) return {};
+
+  validate_mapping_inputs(coupling_list, edge_fidelities, num_logical);
 
   // 1. 提取交互图
   auto interaction = extract_interactions(gates_list);

@@ -2552,10 +2552,13 @@ class TranspileResult:
 def transpile(
     qasm_string: str,
     supp_basis_gates: collections.abc.Sequence[str],
-    coupling_list: collections.abc.Sequence[tuple[int, int]],
     opt_level: int = 1,
+    coupling_list: collections.abc.Sequence[tuple[int, int]] = [],
     edge_fidelities: collections.abc.Sequence[float] = [],
     single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    layout_method: str = "vf2_layout",
+    num_threads: int = 0,
+    fast_mode: bool = True,
     fidelity_threshold: float = -1.0,
     fidelity_weight: float = 0.5,
 ) -> high_performance.TranspileResult:
@@ -2567,13 +2570,19 @@ def transpile(
     Args:
     qasm_string (str): QASM circuit string.
     supp_basis_gates (list[str]): Supported basis gate names.
-    coupling_list (list[tuple[int, int]]): Physical qubit coupling edges
-        (must be pre-normalized via normalize_topology).
     opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    coupling_list (list[tuple[int, int]], optional): Physical qubit coupling
+        edges. Empty means skip routing.
     edge_fidelities (list[float], optional): Edge fidelity values
         corresponding to coupling_list. Empty means not used.
     single_qubit_fidelities (list[float], optional): Single-qubit fidelity
         array indexed by physical qubit ID. Empty means not used.
+    layout_method (str, optional): Initial layout method: "vf2_layout"
+        (default) or "dense_layout".
+    num_threads (int, optional): Optimization thread count. 0 = auto
+        (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
+    fast_mode (bool, optional): Optimization fast mode. True = run pass
+        list only once. Defaults to True.
     fidelity_threshold (float, optional): Fidelity threshold; edges
         below this value are filtered out. Negative value means adaptive
         calculation (mean - std, clamped to [0.3, 0.9]).
