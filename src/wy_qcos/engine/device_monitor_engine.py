@@ -17,6 +17,10 @@
 
 import json
 import time
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    TimeoutError as FuturesTimeoutError,
+)
 
 import redis
 from prefect import flow
@@ -25,6 +29,7 @@ from loguru import logger
 from wy_qcos.common import args_schema
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.device.device import Device
 from wy_qcos.engine.common import init_logger
 from wy_qcos.engine.job_engine import init_driver
 
@@ -77,10 +82,9 @@ def device_monitor_flow(device_monitor_info):
     # monitor_log_file now lives under the [device.device_monitor]
     # sub-table; fall back to the top-level key for backward
     # compatibility.
+
     if "monitor_log_file" in device_monitor_configs:
         device_monitor_log_file = device_monitor_configs["monitor_log_file"]
-    elif "monitor_log_file" in device_configs:
-        device_monitor_log_file = device_configs["monitor_log_file"]
 
     # Extract logging configuration parameters
     log_format = device_configs.get("log_format")
@@ -120,28 +124,73 @@ def device_monitor_flow(device_monitor_info):
         decode_responses=True,
     )
 
+    # set init device status
+    device_running_info = {
+        "status": Device.DEVICE_STATUS_UNKNOWN,
+        "available_qubits": None,
+    }
+    device_info_json = json.dumps(device_running_info)
+    channel_name = (
+        f"{Constant.REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX}/{device_name}"
+    )
+    redis_instance.publish(channel_name, device_info_json)
+
+    # poll device running info periodically (in {polling_interval} secs)
+    fetch_timeout = Constant.DEFAULT_DEVICE_MONITOR_FETCH_TIMEOUT
     while True:
-        # get running device info by driver
+        # get running device info by driver with a timeout
+        # to avoid long hangs when the device is unreachable
+        device_running_info = {}
+        disconnected = True
+        # NOTE: ThreadPoolExecutor workers cannot be forcibly killed.
+        # future.result(timeout=...) only abandons the wait while the
+        # underlying thread keeps running. Exiting a
+        # `with ThreadPoolExecutor(...)` block calls shutdown(wait=True)
+        # which blocks until the worker finishes, effectively negating
+        # the timeout. We therefore manage the executor manually and
+        # shut it down without waiting so a hung device call does not
+        # block the monitor loop.
+        executor = ThreadPoolExecutor(max_workers=1)
         try:
-            device_info = driver.fetch_running_info()
+            future = executor.submit(driver.fetch_running_info)
+            device_running_info = future.result(timeout=fetch_timeout)
+            disconnected = False
+            if (
+                device_running_info.get("status")
+                == Device.DEVICE_STATUS_DISCONNECTED
+            ):
+                disconnected = True
+        except FuturesTimeoutError:
+            logger.error(
+                f"[{device_name}] fetch_running_info timed out after "
+                f"{fetch_timeout}s, treating as disconnected"
+            )
+            disconnected = True
         except Exception as e:
             logger.error(f"Fail to fetch running info. exception: {e}")
-            time.sleep(polling_interval)
-            continue
+            disconnected = True
+        finally:
+            # do not wait (wait=False) for the possibly hung worker
+            # thread, otherwise the loop blocks here until the device
+            # call eventually returns.
+            executor.shutdown(wait=False)
 
         # set updated time
-        current_datetime_ts = Library.get_current_datetime(timestamp=True)
-        device_info["last_updated_at"] = Library.to_iso(current_datetime_ts)
-        # validate device_info schema
-        validate_device_info(device_info)
-        # convert device info to json format
-        device_info_json = json.dumps(device_info)
+        current_ts = Library.get_current_datetime(timestamp=True)
+        device_running_info["last_updated_at"] = Library.to_iso(current_ts)
+        if disconnected:
+            # when connection fails, publish disconnected status
+            device_running_info["status"] = Device.DEVICE_STATUS_DISCONNECTED
+            device_running_info["available_qubits"] = None
+        else:
+            # validate device_info schema
+            validate_device_info(device_running_info)
 
-        # publish device info by redis
+        # convert device info to json format and publish by redis
+        device_info_json = json.dumps(device_running_info)
         channel_name = (
             f"{Constant.REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX}/"
             f"{device_name}"
         )
         redis_instance.publish(channel_name, device_info_json)
-
         time.sleep(polling_interval)

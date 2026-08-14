@@ -400,6 +400,9 @@ class Constant:
     DEFAULT_DEVICE_MONITOR_RETRIES = 100
     DEFAULT_DEVICE_MONITOR_RETRY_DELAY_INTERVAL = 600
     DEFAULT_DEVICE_MONITOR_POLLING_INTERVAL = 60
+    # max wait time (seconds) for fetch_running_info before
+    # treating the device as disconnected
+    DEFAULT_DEVICE_MONITOR_FETCH_TIMEOUT = 30
 
     # user management
     AUTH_MODE_KEY = "auth_mode"
@@ -413,7 +416,7 @@ class Constant:
     DEFAULT_PROJECT_ID = "00000000-0000-4000-8000-000000000000"
     DEFAULT_PROJECT_NAME = "default project"
     ADMIN_USERNAME = "admin"
-    DEFAULT_ADMIN_PASSWORD = _s("P@ssword1")
+    DEFAULT_ADMIN_PASSWORD = _s("P*ssword1")
     DEFAULT_VIRTUAL_INSTANCE_PASSWORD = _s("111111")
     ANONYMOUS_USER_ID = "00000000-0000-4000-8000-000000000000"
     ANONYMOUS_USERNAME = "anonymous"
@@ -439,7 +442,6 @@ class Constant:
     # Sum of all job statuses (used in job_count totals)
     JOB_STATUS_TOTAL = "TOTAL"
     JOB_STATUSES = [
-        JOB_STATUS_UNKNOWN,
         JOB_STATUS_QUEUED,
         JOB_STATUS_RUNNING,
         JOB_STATUS_FAILED,
@@ -448,6 +450,7 @@ class Constant:
         JOB_STATUS_CANCELLED,
         JOB_STATUS_DELETING,
         JOB_STATUS_DELETED,
+        JOB_STATUS_UNKNOWN,
     ]
 
     # Prefect flow state

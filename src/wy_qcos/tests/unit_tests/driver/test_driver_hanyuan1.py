@@ -737,5 +737,5 @@ class TestDriverHanyuan1:
         driver = DriverHanyuan1()
         mock_get_device_info.return_value = (False, "test error", None)
         result = driver.fetch_running_info()
-        assert result["status"] == "offline"
+        assert result["status"] == "disconnected"
         assert result["details"] == {}

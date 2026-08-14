@@ -163,3 +163,27 @@ class TestDevice:
         assert device.calibrate_info["step"] == 0.5
         # Clean up
         device.set_manual_maintain_mode(False)
+
+    def test_set_status_disconnected(self):
+        """Test setting device status to disconnected."""
+        device.set_status(device.DEVICE_STATUS_DISCONNECTED)
+        assert device.get_status() == device.DEVICE_STATUS_DISCONNECTED
+
+    def test_disconnected_in_device_statuses(self):
+        """Test that disconnected is in DEVICE_STATUSES list."""
+        assert device.DEVICE_STATUS_DISCONNECTED in device.DEVICE_STATUSES
+
+    def test_set_device_running_info_disconnected(self):
+        """Test that monitor can set device to disconnected status."""
+        device.set_status(device.DEVICE_STATUS_ONLINE)
+        device.set_manual_maintain_mode(False)
+
+        # Monitor reports disconnected
+        device.set_device_running_info({
+            "status": device.DEVICE_STATUS_DISCONNECTED
+        })
+        assert device.get_status() == device.DEVICE_STATUS_DISCONNECTED
+
+        # Monitor then reports online again - should be applied
+        device.set_device_running_info({"status": "online"})
+        assert device.get_status() == device.DEVICE_STATUS_ONLINE

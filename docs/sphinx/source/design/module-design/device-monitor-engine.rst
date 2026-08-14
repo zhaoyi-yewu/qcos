@@ -8,7 +8,7 @@
 监控数据与自动调度的关系
 --------------------------
 
-设备监控引擎周期性采集的设备状态（online/busy/maintain 等）与可用性指标，
+设备监控引擎周期性采集的设备状态（online/busy/disconnected/maintain 等）与可用性指标，
 会通过 DeviceManager 更新到设备对象上。自动调度器（AutoScheduler）在为作业
 选择后端时，会读取这些实时状态作为 Filter 链的过滤条件：
 
