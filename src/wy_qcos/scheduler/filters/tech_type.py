@@ -27,20 +27,22 @@ logger = logging.getLogger(__name__)
 class TechTypeFilter(BaseFilter):
     """Filter devices by technology type.
 
-    Only enabled when spec.tech_type is specified (from flavor.specs).
-    Matches the device's tech_type against the required value.
+    Only enabled when ``qc:tech_types`` is specified in flavor or
+    extra_specs. Matches the device's tech_type against any of the
+    required values (comma-separated list supported).
     """
 
     def is_enabled(self, spec: RequestSpec) -> bool:
-        return spec.tech_type is not None
+        return bool(spec.tech_types)
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
+        required = spec.tech_types
         logger.debug(
             f"TechTypeFilter: device_name: {obj.name}. "
             f"obj.tech_type: {obj.tech_type}, "
-            f"spec.tech_type: {spec.tech_type}"
+            f"spec.tech_types: {required}"
         )
 
-        if spec.tech_type is None:
+        if not required:
             return True
-        return obj.tech_type == spec.tech_type
+        return obj.tech_type in required

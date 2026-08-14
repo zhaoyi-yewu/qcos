@@ -18,7 +18,6 @@
 import logging
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.common.flavor_constant import FlavorConstant
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.filters.base import BaseFilter
 from wy_qcos.scheduler.request_spec import RequestSpec
@@ -57,7 +56,8 @@ class DeviceGroupFilter(BaseFilter):
     def is_enabled(self, spec: RequestSpec) -> bool:
         """Check if this filter is enabled for the given spec.
 
-        Enabled when flavor_specs contains 'qc:device_groups'.
+        Enabled when extra_specs or flavor_specs contains
+        'qc:device_groups'. extra_specs takes precedence.
 
         Args:
             spec: request spec
@@ -65,10 +65,7 @@ class DeviceGroupFilter(BaseFilter):
         Returns:
             True if the filter should be applied.
         """
-        group_ref = spec.flavor_specs.get(
-            FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS
-        )
-        return group_ref is not None
+        return spec.device_groups is not None
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
         """Check if a single device passes the filter.
@@ -81,9 +78,7 @@ class DeviceGroupFilter(BaseFilter):
             True if the device is in the referenced group,
             False otherwise. Returns True if filter is disabled.
         """
-        device_groups = spec.flavor_specs.get(
-            FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS
-        )
+        device_groups = spec.device_groups
         if not device_groups:
             return True
 
