@@ -56,6 +56,8 @@ vector<string> EquivalenceLibary = {
      //   └──────┘        └───────┘
     "p(theta) q0 -> u1(theta) q0",
     "p(theta) q0 -> u(0, 0, theta) q0",
+    "p(theta) q0 -> u3(0, 0, theta) q0",
+    "p(theta) q0 -> rz(theta) q0",
      //CPhaseGate
      //                     ┌────────┐
      //q_0: ─■────     q_0: ┤ P(ϴ/2) ├──■───────────────■────────────
@@ -216,6 +218,7 @@ vector<string> EquivalenceLibary = {
      //q: ┤ Rz(ϴ) ├  ≡  q: ┤ U1(ϴ) ├
      //   └───────┘        └───────┘
     "rz(theta) q0 -> u1(theta) q0",
+    "rz(theta) q0 -> h() q0 | rx(theta) q0 | h() q0",
      //RZGate
      //
      //   ┌───────┐        ┌────┐┌────────┐┌──────┐
