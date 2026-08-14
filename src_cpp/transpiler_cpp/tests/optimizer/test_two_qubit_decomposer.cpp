@@ -1332,18 +1332,12 @@ TEST(TwoQubitWeylSelfConsistency, CZ_RebuildsExactly) {
 // 以下用 Haar-随机酉矩阵验证 Weyl 分解的自洽性。这些矩阵的 Weyl 坐标
 // a,b,c 均不为零，需要完整 3-CX 的 KAK 重建路径。
 //
-// 已知问题：当前实现对一般酉（M2 非对角、特征值非简并）的 Weyl 分解
-// 产生的 K1l/K1r/K2l/K2r 不自洽，导致重建失败。根因是 magic basis 下
-// 的对角化 P 在非简并但仍可自由选择符号/排列时，选出的基使后续的
-// decompose_product_gate 遇到 detR≈0 并产生 NaN。
-//
-// 这些测试故意保留为失败状态，作为回归保护网，跟踪该缺陷直至修复。
 // 参考矩阵由 scipy.stats.unitary_group.rvs(seed=12345) 生成，与 qiskit
 // TwoQubitWeylDecomposition 对照过坐标（a/b/c 一致）。
 // ========================================================================
 
 // Haar-random U0 (scipy seed 12345, t=0). qiskit: a=0.7668 b=0.4988 c=0.0991.
-TEST(TwoQubitWeylSelfConsistency, DISABLED_GeneralUnitary_U0_Rebuilds) {
+TEST(TwoQubitWeylSelfConsistency, GeneralUnitary_U0_Rebuilds) {
   CMatrix u = {
       {C(-0.4999576302408142, 0.2769924246427977),
        C(0.27468624198732094, -0.40774338166142177),
@@ -1369,7 +1363,7 @@ TEST(TwoQubitWeylSelfConsistency, DISABLED_GeneralUnitary_U0_Rebuilds) {
 }
 
 // Haar-random U1 (scipy seed 12345, t=1).
-TEST(TwoQubitWeylSelfConsistency, DISABLED_GeneralUnitary_U1_Rebuilds) {
+TEST(TwoQubitWeylSelfConsistency, GeneralUnitary_U1_Rebuilds) {
   CMatrix u = {
       {C(-0.6837091740839236, 0.04359253133139244),
        C(-0.394413487801985, 0.05955281340509669),
@@ -1391,8 +1385,8 @@ TEST(TwoQubitWeylSelfConsistency, DISABLED_GeneralUnitary_U1_Rebuilds) {
   EXPECT_TRUE(equal_up_to_global_phase(u, rebuild_from_weyl(d), 1e-6));
 }
 
-// General-unitary basis roundtrip (decomp3 path). Also currently failing.
-TEST(TwoQubitBasisRoundtrip, DISABLED_GeneralUnitary_U0_CxRzRyU3) {
+// General-unitary basis roundtrip (decomp3 path).
+TEST(TwoQubitBasisRoundtrip, GeneralUnitary_U0_CxRzRyU3) {
   CMatrix u = {
       {C(-0.4999576302408142, 0.2769924246427977),
        C(0.27468624198732094, -0.40774338166142177),

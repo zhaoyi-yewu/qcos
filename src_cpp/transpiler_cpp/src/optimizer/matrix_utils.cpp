@@ -231,7 +231,13 @@ bool simultaneous_diag_4x4(const CMatrix& M, CMatrix& P,
       for (int j = 0; j < 4; ++j)
         if (i != j) off_diag += std::norm(PTMP[i][j]);
 
-    if (off_diag < 1e-20) {
+    // Accept the diagonalization when the off-diagonal of P^T M P is small.
+    // The threshold mirrors the practical accuracy of a 4x4 real-symmetric
+    // eigensolver (LAPACK's eigh / our Jacobi both bottom out around 1e-9 per
+    // element for near-degenerate spectra). The previous threshold (1e-20)
+    // was unachievable, so well-conditioned inputs like the general Haar-random
+    // unitary U1 were rejected even though they were correctly diagonalized.
+    if (off_diag < 1e-12) {
       // Sort eigenpairs by the eigenvalue of H (ascending) to match the
       // behavior of LAPACK's symmetric eigensolver (np.linalg.eigh), which
       // qiskit's Weyl decomposition relies on: degenerate eigenvalues must be
