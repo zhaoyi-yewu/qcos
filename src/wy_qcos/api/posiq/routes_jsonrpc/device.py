@@ -107,7 +107,9 @@ def _get_device_info(device, auth_data=None, details=False, job_repo=None):
 
 
 @device_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def get_devices(
     body: schemas.GetDevicesRequest | None = None,
@@ -134,7 +136,9 @@ def get_devices(
         success, _ = validate_virtual_instance(auth_data, backend=device_name)
         if not success:
             continue
-        _response_info = _get_device_info(device, auth_data, job_repo=job_repo)
+        _response_info = _get_device_info(
+            device, auth_data, job_repo=job_repo, details=True
+        )
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
         )
@@ -142,6 +146,7 @@ def get_devices(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -187,6 +192,7 @@ def get_device(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -213,6 +219,7 @@ def calibrate_device(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -245,6 +252,7 @@ def get_calibrate_results(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -273,6 +281,7 @@ def set_device_options(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -308,6 +317,7 @@ def get_device_options(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )

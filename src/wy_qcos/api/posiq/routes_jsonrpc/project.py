@@ -45,6 +45,7 @@ def get_project_manager(request: Request):
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.ConflictError, jsonrpc_errors.BadRequestError],
 )
@@ -116,6 +117,7 @@ def create_project(
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -174,7 +176,9 @@ def get_project(
 
 
 @project_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_projects(
     request: Request,
@@ -226,6 +230,7 @@ def get_projects(
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.NotFoundError,
@@ -304,6 +309,7 @@ def update_project(
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.NotFoundError,
