@@ -19,6 +19,7 @@ import logging
 from uuid import UUID
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from wy_qcos.db.models import Flavor
@@ -194,9 +195,20 @@ class FlavorRepository(BaseRepository):
             self._db_session.delete(flavor)
             self._db_session.commit()
             return True, None
+        except IntegrityError:
+            self._db_session.rollback()
+            # check for foreign key constraint violation
+            # (e.g. flavor still referenced by jobs)
+            return False, (
+                "Flavor is still referenced by other resources (e.g. jobs) "
+                "and cannot be deleted."
+            )
         except Exception as e:
             self._db_session.rollback()
-            return False, str(e)
+            # check for foreign key constraint violation
+            # (e.g. flavor still referenced by jobs)
+            err_str = str(e)
+            return False, err_str
 
     def update_flavor(
         self,

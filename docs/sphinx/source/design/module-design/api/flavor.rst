@@ -275,11 +275,11 @@ Flavor的extra_properties字段支持以下键值，用于调度时过滤设备�
      - 说明
      - 示例值
 
-   * - ``qc:devices``
+   * - ``qcos:devices``
      - 允许的设备名称列表（逗号分隔）
      - ``"dummy,qutip_sim"``
 
-   * - ``qc:exclude_devices``
+   * - ``qcos:exclude_devices``
      - 排除的设备名称列表（逗号分隔）
      - ``"dummy"``
 
