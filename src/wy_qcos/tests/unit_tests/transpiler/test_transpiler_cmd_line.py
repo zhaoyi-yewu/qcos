@@ -590,3 +590,103 @@ class TestTranspilerCmdLine:
             assert runtime.transpiled_depth > 0
         finally:
             trans_cfg_inst.set_max_qubits(orig_max_qubits)
+
+    def test_ising_model_10_redundant_u_gates_analysis(self):
+        """检查 ising_model_10 转译后是否仍存在可合并的连续 U 门.
+
+        复现同事脚本发现的问题：优化后的门列表中同一量子比特上仍残留
+        大量相邻 U 门，理论上应被优化器合并为单个 U 门。
+
+        判定规则：
+        - 同一量子比特上，两个 U 门之间仅夹杂 measure/barrier/reset 等
+          非酉操作（这些操作不影响酉等价性），即可视为可合并。
+        - 若两个 U 门之间夹杂了其他酉门（如 cz），则不可合并。
+        """
+        from pathlib import Path
+        from collections import defaultdict
+        from wy_qcos.common.config import Config
+
+        qasm_file = (
+            f"{self.samples_dir}/qasm/2.0/benchmark/compiler_qasm/"
+            "ising_model_10.qasm"
+        )
+        if not Path(qasm_file).exists():
+            pytest.skip(f"QASM file not found: {qasm_file}")
+
+        config_file = f"{self.etc_dir}/topology/baihua_156.toml"
+
+        chip_name = Path(config_file).stem
+        extra_configs = Config.get_extra_configs()
+        Config.load_config_file(config_file, extra_config=True)
+        qpu_config = extra_configs[chip_name]["transpiler"]["qpu_configs"]
+
+        orig_max_qubits = trans_cfg_inst.get_max_qubits()
+        trans_cfg_inst.set_qpu_cfg(qpu_config)
+        trans_cfg_inst.set_tech_type(Constant.TECH_TYPE_SUPERCONDUCTING)
+        trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
+
+        try:
+            perf = CMSSTranspilerPerf()
+            qasm_data = perf.read_qasm_from_file(qasm_file)
+            assert qasm_data is not None
+
+            opt_level = 1
+            basis_gates = ["u", "cz"]
+            transpiler = TranspilerHighPerformanceCmss(
+                optimization_level=opt_level
+            )
+
+            src_code_info = {"000": qasm_data}
+            parse_result = transpiler.parse(src_code_info)
+            transpiler.transpiler_options["enable_mapping"] = True
+            transpiler.transpiler_options["sc_mapping_options"] = {
+                "routing_algorithm": "sabre"
+            }
+            basis_gate_list, _ = transpiler.transpile(
+                parse_result, basis_gates
+            )
+
+            # 门分类：酉门（u/cz）vs 非酉门（measure/barrier/reset/sync）
+            NON_UNITARY = {"measure", "barrier", "reset", "sync"}
+            u_gates = [g for g in basis_gate_list if g.name == "u"]
+
+            # 按量子比特收集 U 门索引；中间若出现非酉门则不中断该链，
+            # 若出现其他酉门（cz）则当前链结束，开启新链。
+            qubit_runs = defaultdict(list)
+            current_run = defaultdict(list)
+            for idx, gate in enumerate(basis_gate_list):
+                if gate.name in NON_UNITARY:
+                    continue
+                if gate.name == "u":
+                    qubit = gate.targets[0]
+                    current_run[qubit].append(idx)
+                else:
+                    affected = gate.targets
+                    for q in affected:
+                        if current_run[q]:
+                            qubit_runs[q].append(current_run[q])
+                            current_run[q] = []
+            for q, run in current_run.items():
+                if run:
+                    qubit_runs[q].append(run)
+
+            # 提取可合并的运行（长度 >= 2）
+            mergable_runs = []
+            for qubit, runs in qubit_runs.items():
+                for run in runs:
+                    if len(run) >= 2:
+                        mergable_runs.append((qubit, run))
+
+            # 统计可节省的门数
+            total_mergable = sum(len(run) - 1 for _, run in mergable_runs)
+
+            # 断言：优化后不应再存在可合并的连续 U 门
+            assert len(u_gates) > 0, "Should have U gates"
+            assert total_mergable == 0, (
+                f"Optimizer left {len(mergable_runs)} mergable U-gate runs "
+                f"({total_mergable} redundant U gates) on the same qubit "
+                f"that could be combined into single U gates"
+            )
+
+        finally:
+            trans_cfg_inst.set_max_qubits(orig_max_qubits)
