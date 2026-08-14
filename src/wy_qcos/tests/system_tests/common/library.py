@@ -72,6 +72,8 @@ class StLibrary:
         description = job_info["description"]
         shots = job_info["shots"]
         backend = job_info["backend"]
+        flavor_id = job_info.get("flavor_id", None)
+        extra_specs = job_info.get("extra_specs", None)
         driver_options = job_info.get("driver_options", None)
         transpiler = job_info["transpiler"]
         transpiler_options = job_info.get("transpiler_options", None)
@@ -90,6 +92,8 @@ class StLibrary:
             description=description,
             shots=shots,
             backend=backend,
+            flavor_id=flavor_id,
+            extra_specs=extra_specs,
             driver_options=driver_options,
             transpiler=transpiler,
             transpiler_options=transpiler_options,
@@ -120,7 +124,12 @@ class StLibrary:
         assert result["job_priority"] == job_priority
         assert result["description"] == description
         assert result["shots"] == shots
-        assert result["backend"] == backend
+        if flavor_id:
+            assert result["backend"] is not None
+        else:
+            assert result["backend"] == backend
+        assert result["flavor_id"] == flavor_id
+        assert result["extra_specs"] == extra_specs
         assert result["driver_options"] == driver_options
         assert result["transpiler"] == transpiler
         assert result["transpiler_options"] == transpiler_options
@@ -232,6 +241,52 @@ class StLibrary:
         job_error = job_result.get("error", {})
         error_code = job_error.get("code", 0)
         assert error_code == jsonrpc_errors.NotFoundError.CODE
+
+    @staticmethod
+    def cleanup_test_flavors(client, test_flavor_names):
+        """Clean up test flavors by name.
+
+        Args:
+            client: API client
+            test_flavor_names: list of flavor names to clean up
+        """
+        try:
+            status_code, _, text, _ = client.get_flavors()
+            if status_code != HttpCode.SUCCESS_OK:
+                return
+            resp = json.loads(text)
+            flavors = resp.get("result", [])
+            flavor_ids = []
+            for f in flavors:
+                if f.get("name") in test_flavor_names:
+                    flavor_ids.append(f["id"])
+            if flavor_ids:
+                client.delete_flavors(flavor_ids)
+        except Exception:  # noqa: S110
+            pass
+
+    @staticmethod
+    def cleanup_test_device_groups(client, test_group_names):
+        """Clean up test device groups by name.
+
+        Args:
+            client: API client
+            test_group_names: list of device group names to clean up
+        """
+        try:
+            status_code, _, text, _ = client.get_device_groups()
+            if status_code != HttpCode.SUCCESS_OK:
+                return
+            resp = json.loads(text)
+            groups = resp.get("result", [])
+            group_ids = []
+            for g in groups:
+                if g.get("name") in test_group_names:
+                    group_ids.append(g["id"])
+            if group_ids:
+                client.delete_device_groups(group_ids)
+        except Exception:  # noqa: S110
+            pass
 
     @staticmethod
     def get_devices(client):

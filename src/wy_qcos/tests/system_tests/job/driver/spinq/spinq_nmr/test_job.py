@@ -64,6 +64,14 @@ class TestJob:
             f"{cls.api_host}:{cls.api_port}"
         )
 
+        # Ensure spinq_triangulum is online before submitting jobs.
+        # The device monitor polls the (mock) backend and may briefly
+        # report disconnected during startup; force the status here so
+        # the scheduler treats the device as eligible.
+        cls.admin_client.set_device(
+            "spinq_triangulum", enable=True, status="online"
+        )
+
         # Initialize and clean up test resources
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
 

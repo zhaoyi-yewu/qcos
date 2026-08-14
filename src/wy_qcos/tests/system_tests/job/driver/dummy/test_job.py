@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import json
 import logging
 import pytest
 import time
@@ -43,6 +44,8 @@ class TestJob:
         "test_submit_two_diff_priority_jobs_2",
         "test_submit_two_diff_device_jobs_1",
         "test_submit_two_diff_device_jobs_2",
+        "test_submit_job_disabled_device",
+        "test_submit_job_offline_device",
     ]
 
     @classmethod
@@ -534,3 +537,135 @@ class TestJob:
                 f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
             )
         assert success is True
+
+    def _restore_device(self, enable=True, status="online"):
+        """Restore device to enabled and online state."""
+        self.admin_client.set_device(
+            Constant.DEVICE_DUMMY,
+            enable=enable,
+            status=status,
+        )
+
+    @pytest.mark.smoke
+    def test_submit_job_disabled_device(self):
+        """Submit job to a disabled device (enable=false) should fail."""
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_job_disabled_device",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_job_disabled_device",
+            "backend": Constant.DEVICE_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        # disable device
+        self.admin_client.set_device(Constant.DEVICE_DUMMY, enable=False)
+        try:
+            status_code, reason, text, response = self.admin_client.submit_job(
+                job_info["source_code_list"],
+                code_type=job_info["code_type"],
+                job_id=job_info["job_id"],
+                circuit_aggregation=None,
+                job_name=job_info["job_name"],
+                job_type=job_info["job_type"],
+                job_priority=job_info["job_priority"],
+                description=job_info["description"],
+                shots=job_info["shots"],
+                backend=job_info["backend"],
+                driver_options=None,
+                transpiler=job_info["transpiler"],
+                transpiler_options=None,
+                profiling=None,
+                callbacks=None,
+                dry_run=False,
+                qec_options=None,
+            )
+            # job submission should fail with error
+            job_result = json.loads(text)
+            assert "error" in job_result
+            assert job_result["error"] is not None
+        except AssertionError:
+            # if submission succeeded, job should fail
+            success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+                self.admin_client,
+                job_info,
+                self.timeout,
+                self.interval,
+            )
+            assert success is False or (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_FAILED
+            )
+        finally:
+            self._restore_device()
+
+    @pytest.mark.smoke
+    def test_submit_job_offline_device(self):
+        """Submit job to an offline device (status=offline) should fail."""
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_submit_job_offline_device",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_submit_job_offline_device",
+            "backend": Constant.DEVICE_DUMMY,
+            "shots": Constant.DEFAULT_SHOTS,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        # set device offline
+        self.admin_client.set_device(Constant.DEVICE_DUMMY, status="offline")
+        try:
+            status_code, reason, text, response = self.admin_client.submit_job(
+                job_info["source_code_list"],
+                code_type=job_info["code_type"],
+                job_id=job_info["job_id"],
+                circuit_aggregation=None,
+                job_name=job_info["job_name"],
+                job_type=job_info["job_type"],
+                job_priority=job_info["job_priority"],
+                description=job_info["description"],
+                shots=job_info["shots"],
+                backend=job_info["backend"],
+                driver_options=None,
+                transpiler=job_info["transpiler"],
+                transpiler_options=None,
+                profiling=None,
+                callbacks=None,
+                dry_run=False,
+                qec_options=None,
+            )
+            # job submission should fail with error
+            job_result = json.loads(text)
+            assert "error" in job_result
+            assert job_result["error"] is not None
+        except AssertionError:
+            # if submission succeeded, job should fail
+            success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+                self.admin_client,
+                job_info,
+                self.timeout,
+                self.interval,
+            )
+            assert success is False or (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_FAILED
+            )
+        finally:
+            self._restore_device()
