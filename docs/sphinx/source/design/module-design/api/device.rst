@@ -315,6 +315,46 @@
                "id": 1
              }
 
+   * - **设置设备属性**
+     - **set_device**
+
+       URI: /v1/device/set_device
+
+       需要 admin 角色权限
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "set_device",
+               "params": {
+                 "body": {
+                   "device_name": "dummy",
+                   "status": "online",
+                   "enable": true,
+                   "max_qubits": "auto"
+                 }
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "result": {
+                 "name": "dummy",
+                 "status": "online",
+                 "enable": true,
+                 "max_qubits": 20
+               },
+               "error": null,
+               "id": 1
+             }
+
 设备参数详解
 ~~~~~~~~~~~~
 
@@ -423,11 +463,13 @@
 
    status 可能的值：
 
-   ✓ online       - 设备在线可用，可以提交作业
-   ✗ offline      - 设备离线不可用，无法提交作业
-   ⟳ calibrating - 设备正在校准中，无法提交作业
-   ⛔ maintenance - 设备维护中，无法提交作业
-   ⚠️  error      - 设备出现故障，无法提交作业
+   ✓ online        - 设备在线可用，可以提交作业
+   ✗ offline       - 设备离线不可用，无法提交作业
+   ⏳ busy          - 设备忙碌中，可以提交作业但可能排队
+   🔌 disconnected - 设备连接断开，无法提交作业
+   ⟳ calibrating  - 设备正在校准中，无法提交作业
+   ⛔ maintenance  - 设备维护中，无法提交作业
+   ❓ unknown       - 设备状态未知
 
 校准参数说明 (Calibration Options)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

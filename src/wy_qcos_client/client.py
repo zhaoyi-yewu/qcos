@@ -442,6 +442,47 @@ class Client:
         )
         return status_code, reason, text, result
 
+    def set_device(
+        self,
+        device_name,
+        *,
+        status=None,
+        enable=None,
+        max_qubits=None,
+    ):
+        """Set device attributes (status, enable, max_qubits).
+
+        Each parameter is optional; when omitted (None) the
+        corresponding attribute is not changed.
+
+        Args:
+            device_name: device name
+            status: device status ("auto", "online", "offline",
+                "maintain", "calibration"). None means no change.
+            enable: enable flag (True/False). None means no change.
+            max_qubits: max qubits ("auto" or positive integer
+                string). None means no change.
+
+        Returns:
+            status_code, reason, text, result
+        """
+        method_name = "set_device"
+
+        # construct data and call json rpc
+        data = {"device_name": device_name}
+        if status is not None:
+            data["status"] = status
+        if enable is not None:
+            data["enable"] = enable
+        if max_qubits is not None:
+            data["max_qubits"] = max_qubits
+
+        # construct data and call json rpc
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_url, method_name, data
+        )
+        return status_code, reason, text, result
+
     # [Transpiler]
     def get_transpilers(self):
         """Get transpiler list.
