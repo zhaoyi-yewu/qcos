@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.device.device import Device
 from wy_qcos.driver.spinq.spinq_nmr.driver_spinq_nmr import DriverSpinQNmr
 
 
@@ -35,13 +34,5 @@ class DriverSpinQTriangulum(DriverSpinQNmr):
         self.tech_type = Constant.TECH_TYPE_NMR
         self.max_qubits = 3
         self.platform_name = "triangulum_vp"
-
-    def fetch_running_info(self):
-        """Fetch running info.
-
-        Returns:
-            remote device running info
-        """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
-        return device_running_info
+        self.enable_device_mgr = True
+        self.enable_device_monitor = True

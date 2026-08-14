@@ -53,13 +53,8 @@ class TestDriverSpinQGemini:
             },
         )
         dev_running_info = spinq_gemini.fetch_running_info()
-        assert "details" in dev_running_info
-        assert dev_running_info["details"]["calibration"]["step"] == 0.1
-        assert dev_running_info["details"]["calibration"]["shot"] == 800
-        assert (
-            dev_running_info["details"]["device_options_info"]["shot_gap"] == 0
-        )
         assert dev_running_info["status"] == "online"
+        assert "details" not in dev_running_info
 
     @patch.object(DriverSpinQGemini, "send_request_and_process_response")
     def test_calibrate_deivce(self, mock_send_request_and_process_response):
