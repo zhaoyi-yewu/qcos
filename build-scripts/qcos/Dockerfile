@@ -15,6 +15,7 @@ ARG BUILD_CONTEXT=/tmp/build-context
 ARG CONTAINER_NAME
 ARG WORK_DIR=/root
 ARG DEV
+ARG DOCKER_USER_QCOS
 
 ARG QCOS_IMAGE_VERSION
 
@@ -80,5 +81,5 @@ RUN useradd -u 1000 -g root -m qcos && \
              /var/lib/qcos /var/qcos/db /var/qcos/storage && \
     chown -R qcos:root /var/log/qcos /etc/qcos /var/run/qcos \
                        /var/lib/qcos /var/qcos
-USER qcos
+USER ${DOCKER_USER_QCOS}
 ENTRYPOINT ["/entrypoint.sh"]

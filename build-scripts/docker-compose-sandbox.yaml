@@ -25,13 +25,13 @@ services:
     security_opt:
       - no-new-privileges:true
     tmpfs:
-      - /root
       - /tmp
       - /var/tmp
     working_dir: /root/qcos-project
     environment:
       DEBUG: ${DEBUG}
       TZ: Asia/Shanghai
+      DO_NOT_TRACK: 1
       PYTHONPATH: /root/qcos-project/src
     logging:
       driver: "json-file"

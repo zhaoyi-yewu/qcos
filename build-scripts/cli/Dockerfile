@@ -19,6 +19,7 @@ ARG BUILD_CONTEXT=/tmp/build-context
 ARG CONTAINER_NAME
 ARG QCOS_IMAGE_VERSION
 ARG DEV
+ARG DOCKER_USER_QCOS
 
 LABEL stage=${CONTAINER_NAME}-builder
 LABEL build=${CONTAINER_NAME}
@@ -49,7 +50,7 @@ RUN set -e && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # install basic rpms
     yum install --nobest -y hostname openssh openssh-clients sshpass iputils iproute \
-      telnet net-tools openssl util-linux vim findutils \
+      telnet net-tools openssl util-linux vim findutils sudo \
       python3 python3-pip python3-requests python3-devel && \
 # install python basic requirements
     ${PIPBIN} install --no-cache-dir tomlkit==0.15.1 && \
@@ -87,6 +88,6 @@ RUN set -e && \
 
 RUN useradd -u 1000 -g root -m qcos && \
     echo "qcos ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/qcos
-USER qcos
+USER ${DOCKER_USER_QCOS}
 WORKDIR /root
 ENTRYPOINT ["/entrypoint.sh"]
