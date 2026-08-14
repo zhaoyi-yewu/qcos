@@ -271,6 +271,19 @@ class SABRE {
    */
   void extend_l2p_with_unused_qubits(int old_size);
 
+  /**
+   * @brief 回溯 + Dijkstra 最短路径插入 SWAP
+   *
+   * 当启发式连续插入过多 SWAP 仍无法执行门时调用：
+   * 1. 选 front layer 中距离最短的 2q 门
+   * 2. 用 dist_ 矩阵重建最短路径
+   * 3. 沿路径插入 SWAP（距离严格递减，保证门变相邻）
+   *
+   * @param result [in/out] 路由结果，追加 SWAP
+   * @throw std::runtime_error 当 front layer 门不可达（图不连通）
+   */
+  void dijkstra_fallback(std::vector<GateOperation>& result);
+
   std::vector<GateOperation> execute_routing(
       const std::vector<GateOperation>& gates_list,
       const std::vector<int>& initial_l2p);
