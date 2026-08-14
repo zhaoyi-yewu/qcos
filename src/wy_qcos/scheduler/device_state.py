@@ -35,7 +35,7 @@ class DeviceState:
     status: str = ""
     enable: bool = False
     max_qubits: int = 0
-    available_num_qubits: int = -1
+    available_qubits: int = -1
     tech_type: str = ""
     supported_code_types: list[str] = field(default_factory=list)
     supported_basis_gates: list[str] | None = None
@@ -50,6 +50,10 @@ class DeviceState:
 
     # Historical statistics (from DB)  # TODO(zhaoyi): NOT IMPLEMENTED YET
     avg_exec_time_per_qubit: float = 0.0
+    # overall availability rate (0.0-1.0): historical + current hour
+    availability_total: float = 0.0
+    # current-hour real-time availability rate (0.0-1.0)
+    availability_hourly: float = 0.0
 
     @classmethod
     def from_device(
@@ -81,7 +85,7 @@ class DeviceState:
             status=device.get_status(),
             enable=device.get_enable(),
             max_qubits=driver.get_max_qubits(),
-            available_num_qubits=getattr(driver, "available_num_qubits", -1),
+            available_qubits=driver.get_available_qubits(),
             tech_type=device.tech_type,
             supported_code_types=supported_code_types or [],
             supported_basis_gates=driver.get_supported_basis_gates(),
@@ -109,42 +113,78 @@ class DeviceState:
         self.vendor_queued_job_count = vendor_queued_job_count
         self.vendor_running_job_count = vendor_running_job_count
 
-    def get_avg_1q_fidelity(self) -> float:
+    def set_availability(
+        self,
+        availability_hourly: float | None = None,
+        availability_total: float | None = None,
+    ):
+        """Set device availability rates.
+
+        Each parameter is optional; when None (omitted) the
+        corresponding field is left unchanged.
+
+        Args:
+            availability_hourly: current-hour real-time availability
+                rate (0.0-1.0). None means no change.
+            availability_total: overall availability rate (0.0-1.0),
+                aggregated from historical and current-hour data.
+                None means no change.
+        """
+        if availability_hourly is not None:
+            self.availability_hourly = availability_hourly
+        if availability_total is not None:
+            self.availability_total = availability_total
+
+    def get_avg_1q_fidelity(self) -> float | None:
         """Get average 1-qubit gate fidelity from device details.
 
+        Extracts ``xeb_fidelity`` from each qubit entry in
+        ``details["calibration"]["qubit_metrics"]`` and returns the
+        arithmetic mean.
+
         Returns:
-            Average fidelity, 0.0 if not available.
+            Average fidelity (0.0-1.0), or None when no data.
         """
-        single_qubit_prop = self.details.get("single_qubit_prop", {})
-        if not single_qubit_prop or not isinstance(single_qubit_prop, dict):
-            return 0.0
+        calibration = self.details.get("calibration")
+        if not isinstance(calibration, dict):
+            return None
+        qubit_metrics = calibration.get("qubit_metrics")
+        if not isinstance(qubit_metrics, list) or not qubit_metrics:
+            return None
         fidelities = []
-        for prop in single_qubit_prop.values():
-            if isinstance(prop, dict):
-                fidelity = prop.get("single_qubit_gate_fidelity")
+        for qm in qubit_metrics:
+            if isinstance(qm, dict):
+                fidelity = qm.get("xeb_fidelity")
                 if fidelity is not None:
                     fidelities.append(float(fidelity))
         if not fidelities:
-            return 0.0
+            return None
         return sum(fidelities) / len(fidelities)
 
-    def get_avg_2q_fidelity(self) -> float:
+    def get_avg_2q_fidelity(self) -> float | None:
         """Get average 2-qubit gate fidelity from device details.
 
+        Extracts ``cz_fidelity`` from each coupler entry in
+        ``details["calibration"]["coupler_metrics"]`` and returns the
+        arithmetic mean.
+
         Returns:
-            Average fidelity, 0.0 if not available.
+            Average fidelity (0.0-1.0), or None when no data.
         """
-        double_qubit_prop = self.details.get("double_qubit_prop", {})
-        if not double_qubit_prop or not isinstance(double_qubit_prop, dict):
-            return 0.0
+        calibration = self.details.get("calibration")
+        if not isinstance(calibration, dict):
+            return None
+        coupler_metrics = calibration.get("coupler_metrics")
+        if not isinstance(coupler_metrics, list) or not coupler_metrics:
+            return None
         fidelities = []
-        for prop in double_qubit_prop.values():
-            if isinstance(prop, dict):
-                fidelity = prop.get("gate_fidelity")
+        for cm in coupler_metrics:
+            if isinstance(cm, dict):
+                fidelity = cm.get("cz_fidelity")
                 if fidelity is not None:
                     fidelities.append(float(fidelity))
         if not fidelities:
-            return 0.0
+            return None
         return sum(fidelities) / len(fidelities)
 
     def to_dict(self) -> dict[str, Any]:
