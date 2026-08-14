@@ -30,7 +30,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
 from wy_qcos.api.posiq.routes_jsonrpc.project import (
     get_project_manager,
 )
-from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
+from wy_qcos.api.posiq.routes_jsonrpc.routes import device_group_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.db.utils.db_utils import get_db_filters
@@ -69,7 +69,7 @@ def _validate_device_names(device_names: list[str] | None):
         return
     for name in device_names:
         # skip special value _all
-        if name == "_all":
+        if name == Constant.DEVICE_GROUP_DN_ALL:
             continue
         if device_manager.get_device(name) is None:
             logger.warning(
@@ -77,10 +77,14 @@ def _validate_device_names(device_names: list[str] | None):
             )
 
 
-@job_api_v1.method(
-    tags=["device_group"],
+@device_group_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.ConflictError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def create_device_group(
     body: schemas.CreateDeviceGroupRequest,
@@ -165,8 +169,8 @@ def create_device_group(
         if x not in _seen:
             _seen.add(x)
             device_names.append(x)
-    if "_all" in device_names:
-        device_names = ["_all"]
+    if Constant.DEVICE_GROUP_DN_ALL in device_names:
+        device_names = [Constant.DEVICE_GROUP_DN_ALL]
     _validate_device_names(device_names)
 
     group_data: dict[str, Any] = {
@@ -193,10 +197,14 @@ def create_device_group(
     return response
 
 
-@job_api_v1.method(
-    tags=["device_group"],
+@device_group_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.ConflictError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def update_device_group(
     body: schemas.UpdateDeviceGroupRequest,
@@ -272,8 +280,8 @@ def update_device_group(
             if x not in _seen:
                 _seen.add(x)
                 device_names.append(x)
-        if "_all" in device_names:
-            device_names = ["_all"]
+        if Constant.DEVICE_GROUP_DN_ALL in device_names:
+            device_names = [Constant.DEVICE_GROUP_DN_ALL]
         _validate_device_names(device_names)
         group_data["device_names"] = device_names
     if "device_names" in set_fields and body.device_names is None:
@@ -319,10 +327,14 @@ def update_device_group(
     return response
 
 
-@job_api_v1.method(
-    tags=["device_group"],
+@device_group_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.NotFoundError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def get_device_group(
     body: schemas.GetDeviceGroupRequest,
@@ -366,10 +378,13 @@ def get_device_group(
     return response
 
 
-@job_api_v1.method(
-    tags=["device_group"],
+@device_group_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def get_device_groups(
     body: schemas.GetDeviceGroupsRequest | None = None,
@@ -409,10 +424,13 @@ def get_device_groups(
     return [schemas.DeviceGroupResponse.model_validate(g) for g in groups]
 
 
-@job_api_v1.method(
-    tags=["device_group"],
+@device_group_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
-    errors=[jsonrpc_errors.BadRequestError],
+    errors=[
+        jsonrpc_errors.BadRequestError,
+        jsonrpc_errors.InternalServerError,
+    ],
 )
 def delete_device_groups(
     body: schemas.DeleteDeviceGroupsRequest,
