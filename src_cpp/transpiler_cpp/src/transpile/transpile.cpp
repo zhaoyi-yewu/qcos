@@ -18,6 +18,7 @@
 #include "transpile/transpile.h"
 
 #include <chrono>
+#include <cmath>
 #include <memory>
 #include <set>
 #include <string>
@@ -79,7 +80,8 @@ TranspileResult transpile(
     const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
     const std::vector<double>& edge_fidelities,
     const std::vector<double>& single_qubit_fidelities, size_t num_threads,
-    bool fast_mode) {
+    bool fast_mode,
+    double fidelity_threshold, double fidelity_weight) {
   using clock = std::chrono::high_resolution_clock;
 
   TranspileResult result;
@@ -120,8 +122,9 @@ TranspileResult transpile(
 
   // Step 5: SABRE routing — 逻辑比特到物理比特的映射与路由
   auto map_start = clock::now();
-  auto routed_ops = sabre_routing(decomposed_ops, coupling_list,
-                                  edge_fidelities, single_qubit_fidelities);
+  auto routed_ops = sabre_routing(
+      decomposed_ops, coupling_list, edge_fidelities, single_qubit_fidelities,
+      fidelity_threshold, 20, 0.5, 0.001, fidelity_weight);
   t.mapping_time =
       std::chrono::duration<double>(clock::now() - map_start).count();
 
@@ -173,7 +176,8 @@ TranspileResult transpile_na(const std::string& qasm_string,
   t.parse_time =
       std::chrono::duration<double>(clock::now() - parse_start).count();
 
-  // Step 2: Optimize #1 — lightweight pre-mapping optimization (opt_level capped at 1).
+  // Step 2: Optimize #1 — lightweight pre-mapping optimization (opt_level
+  // capped at 1).
   auto opt1_start = clock::now();
   std::set<std::string> basis_set(supp_basis_gates.begin(),
                                   supp_basis_gates.end());
@@ -188,7 +192,8 @@ TranspileResult transpile_na(const std::string& qasm_string,
   t.decompose_1q2q_time =
       std::chrono::duration<double>(clock::now() - decomp_start).count();
 
-  // Step 4: Get decompose rules — build the decomposition rule table from the basis gates.
+  // Step 4: Get decompose rules — build the decomposition rule table from the
+  // basis gates.
   auto rule_start = clock::now();
   auto gate_names = collect_gate_names(decomposed_ops);
   Decomposer decomposer;
@@ -197,7 +202,8 @@ TranspileResult transpile_na(const std::string& qasm_string,
   t.decompose_rule_time =
       std::chrono::duration<double>(clock::now() - rule_start).count();
 
-  // Step 5: NA mapping — NARoute maps logical to physical qubits and inserts MOVE.
+  // Step 5: NA mapping — NARoute maps logical to physical qubits and inserts
+  // MOVE.
   auto map_start = clock::now();
   NARoute router;
   router.prepare_data(num_qubits, decomposed_ops, qpu_config);
@@ -205,14 +211,16 @@ TranspileResult transpile_na(const std::string& qasm_string,
   t.mapping_time =
       std::chrono::duration<double>(clock::now() - map_start).count();
 
-  // Step 6: Apply decompose rules — replace routed gates with basis gates per the rules.
+  // Step 6: Apply decompose rules — replace routed gates with basis gates per
+  // the rules.
   auto apply_start = clock::now();
   auto decomposed_circuit =
       decomposer.apply_decompose_rules(routed_ops, decompose_table);
   t.decompose_apply_time =
       std::chrono::duration<double>(clock::now() - apply_start).count();
 
-  // Step 7: Optimize #2 — full post-routing optimization (full opt_level + basis_gates filter).
+  // Step 7: Optimize #2 — full post-routing optimization (full opt_level +
+  // basis_gates filter).
   auto opt2_start = clock::now();
   result.basis_gate_list =
       optimize(decomposed_circuit, opt_level, false, basis_set, 0);
@@ -222,10 +230,10 @@ TranspileResult transpile_na(const std::string& qasm_string,
   // Aggregate timings.
   t.total_time =
       std::chrono::duration<double>(clock::now() - total_start).count();
-  t.decomposed_time = t.decompose_rule_time + t.decompose_1q2q_time +
-                      t.decompose_apply_time;
-  t.transpile_time = t.opt_time1 + t.decomposed_time + t.mapping_time +
-                     t.opt_time2;
+  t.decomposed_time =
+      t.decompose_rule_time + t.decompose_1q2q_time + t.decompose_apply_time;
+  t.transpile_time =
+      t.opt_time1 + t.decomposed_time + t.mapping_time + t.opt_time2;
 
   return result;
 }

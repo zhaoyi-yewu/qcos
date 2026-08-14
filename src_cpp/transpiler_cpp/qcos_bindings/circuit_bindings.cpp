@@ -572,11 +572,23 @@ void bind_circuits(nb::module_& m) {
        },
        nb::arg("circuit"))
       .def(
+          "to_qasm2",
+          [](const std::vector<std::shared_ptr<BaseOperation>>& operations) {
+            return qcos::to_qasm2(operations);
+          },
+          nb::arg("operations"))
+      .def(
           "to_qasm3",
           [](const QuantumCircuit& circuit) {
             return qcos::to_qasm3(circuit.get_operations());
           },
           nb::arg("circuit"))
+      .def(
+          "to_qasm3",
+          [](const std::vector<std::shared_ptr<BaseOperation>>& operations) {
+            return qcos::to_qasm3(operations);
+          },
+          nb::arg("operations"))
       .def(
           "save_qasm",
           [](const std::string& path, const QuantumCircuit& circuit,

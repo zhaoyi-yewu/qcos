@@ -94,17 +94,20 @@ void bind_transpile(nb::module_& m) {
          const std::vector<std::pair<int, int>>& coupling_list, int opt_level,
          const std::vector<double>& edge_fidelities,
          const std::vector<double>& single_qubit_fidelities,
-         size_t num_threads, bool fast_mode) {
+         size_t num_threads, bool fast_mode,
+         double fidelity_threshold, double fidelity_weight) {
         nb::gil_scoped_release release;
         return transpile(qasm_string, supp_basis_gates, coupling_list,
                          opt_level, edge_fidelities, single_qubit_fidelities,
-                         num_threads, fast_mode);
+                         num_threads, fast_mode,
+                         fidelity_threshold, fidelity_weight);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"),
       nb::arg("coupling_list"), nb::arg("opt_level") = 1,
       nb::arg("edge_fidelities") = std::vector<double>{},
       nb::arg("single_qubit_fidelities") = std::vector<double>{},
       nb::arg("num_threads") = 0, nb::arg("fast_mode") = false,
+      nb::arg("fidelity_threshold") = -1.0, nb::arg("fidelity_weight") = 0.5,
       R"(
         All-in-one transpile function (sabre routing, single-circuit path).
 
@@ -125,6 +128,12 @@ void bind_transpile(nb::module_& m) {
                 (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
             fast_mode (bool, optional): Optimization fast mode. True = run pass
                 list only once. Defaults to False.
+            fidelity_threshold (float, optional): Fidelity threshold; edges
+                below this value are filtered out. Negative value means adaptive
+                calculation (mean - std, clamped to [0.3, 0.9]).
+                Defaults to -1.0 (adaptive).
+            fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+                0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
@@ -140,8 +149,8 @@ void bind_transpile(nb::module_& m) {
         nb::gil_scoped_release release;
         return transpile_na(qasm_string, supp_basis_gates, cfg, opt_level);
       },
-      nb::arg("qasm_string"), nb::arg("supp_basis_gates"),
-      nb::arg("qpu_cfg"), nb::arg("opt_level") = 1,
+      nb::arg("qasm_string"), nb::arg("supp_basis_gates"), nb::arg("qpu_cfg"),
+      nb::arg("opt_level") = 1,
       R"(
         All-in-one transpile function (neutral-atom NA mapping, single-circuit path).
 

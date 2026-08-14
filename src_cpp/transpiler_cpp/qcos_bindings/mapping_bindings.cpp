@@ -44,10 +44,11 @@ namespace {
  * @param coupling_list 物理耦合图边列表。
  * @param edge_fidelities 边保真度数组。
  * @param single_qubit_fidelities 单比特保真度数组。
- * @param fidelity_threshold 保真度过滤阈值。
+ * @param fidelity_threshold 保真度过滤阈值, <0 自适应计算。
  * @param extension_size 扩展集大小。
  * @param weight 前沿层与扩展层成本权重。
  * @param decay SWAP 衰减系数。
+ * @param fidelity_weight DenseLayout 保真度权重，取值 [0, 1]。
  * @return nb::list 路由后的 BaseOperation 对象列表。
  */
 nb::list bind_cpp_sabre_routing(
@@ -55,8 +56,8 @@ nb::list bind_cpp_sabre_routing(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
     const std::vector<double>& single_qubit_fidelities,
-    double fidelity_threshold, int extension_size, double weight,
-    double decay) {
+    double fidelity_threshold, int extension_size, double weight, double decay,
+    double fidelity_weight) {
   std::vector<std::shared_ptr<qcos::BaseOperation>> gates_list;
   gates_list.reserve(gates_list_raw.size());
   for (auto* op : gates_list_raw) {
@@ -69,7 +70,7 @@ nb::list bind_cpp_sabre_routing(
 
   auto routed_ops = qcos::sabre_routing(
       gates_list, coupling_list, edge_fidelities, single_qubit_fidelities,
-      fidelity_threshold, extension_size, weight, decay);
+      fidelity_threshold, extension_size, weight, decay, fidelity_weight);
 
   nb::list nb_list;
   for (auto& op : routed_ops) {
@@ -113,7 +114,8 @@ qcos::NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
  * @brief Python entry point for NA mapping.
  *
  * @param gates_list_raw Python-side BaseOperation list.
- * @param qpu_cfg QPU config dict (storage_area/operate_area/coupler_map/readout_error).
+ * @param qpu_cfg QPU config dict
+ * (storage_area/operate_area/coupler_map/readout_error).
  * @param qbit_num Number of logical qubits.
  * @param optimize Whether to enable overlap optimization (execute_with_opt).
  * @return nb::tuple (mapped_ops, final_layout)
@@ -186,23 +188,34 @@ Returns:
   nb::class_<SABRE>(m, "SABRE", "SABRE quantum routing algorithm")
       .def(nb::init<const std::vector<std::pair<int, int>>&,
                     const std::vector<double>&, const std::vector<double>&,
-                    double, int, double, double>(),
+                    double, int, double, double, double>(),
            nb::arg("coupling_list"),
            nb::arg("edge_fidelities") = std::vector<double>{},
            nb::arg("single_qubit_fidelities") = std::vector<double>{},
-           nb::arg("fidelity_threshold") = 0.8, nb::arg("extension_size") = 20,
-           nb::arg("weight") = 0.5, nb::arg("decay") = 0.001,
+           nb::arg("fidelity_threshold") = -1.0,
+           nb::arg("extension_size") = 20, nb::arg("weight") = 0.5,
+           nb::arg("decay") = 0.001, nb::arg("fidelity_weight") = 0.5,
            R"(
             Construct a SABRE router.
 
             Args:
                 coupling_list (list[tuple[int, int]]): Physical qubit connectivity
                     graph.
+                edge_fidelities (list[float], optional): Edge fidelity values
+                    corresponding to coupling_list. Empty means not used.
+                single_qubit_fidelities (list[float], optional): Single-qubit
+                    fidelity array indexed by physical qubit ID. Empty means not used.
+                fidelity_threshold (float, optional): Fidelity threshold for
+                    filtering low-fidelity edges. Negative value means adaptive
+                    calculation (mean - std, clamped to [0.3, 0.9]).
+                    Defaults to -1.0 (adaptive).
                 extension_size (int, optional): Size of the lookahead set.
                     Defaults to 20.
                 weight (float, optional): Weight between front layer and lookahead
                     cost. Defaults to 0.5.
                 decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+                fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+                    0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
             )")
 
       .def("execute",
@@ -221,9 +234,19 @@ Returns:
                 None
             )")
 
-      .def("get_logic2phy", &SABRE::get_logic2phy,
+      .def("get_final_mapping", &SABRE::get_final_mapping,
            R"(
             Get the final logical-to-physical mapping after routing.
+
+            Returns:
+                list[int]: The index is logical qubit and value is physical qubit.
+            )")
+
+      .def("get_initial_mapping", &SABRE::get_initial_mapping,
+           R"(
+            Get the initial logical-to-physical mapping.
+
+            Must be called after execute().
 
             Returns:
                 list[int]: The index is logical qubit and value is physical qubit.
@@ -271,8 +294,9 @@ Returns:
         nb::arg("coupling_list"),
         nb::arg("edge_fidelities") = std::vector<double>{},
         nb::arg("single_qubit_fidelities") = std::vector<double>{},
-        nb::arg("fidelity_threshold") = 0.8, nb::arg("extension_size") = 20,
+        nb::arg("fidelity_threshold") = -1.0, nb::arg("extension_size") = 20,
         nb::arg("weight") = 0.5, nb::arg("decay") = 0.001,
+        nb::arg("fidelity_weight") = 0.5,
         R"(
         Execute SABRE routing.
 
@@ -284,12 +308,16 @@ Returns:
             single_qubit_fidelities (list[float], optional): Single-qubit
                 fidelity array. Empty means not used.
             fidelity_threshold (float, optional): Fidelity threshold for
-                filtering low-fidelity edges. <=0 means no filtering. Defaults to 0.8.
+                filtering low-fidelity edges. Negative value means adaptive
+                calculation (mean - std, clamped to [0.3, 0.9]).
+                Defaults to -1.0 (adaptive).
             extension_size (int, optional): Size of the lookahead set.
                 Defaults to 20.
             weight (float, optional): Weight between front layer and lookahead cost.
                 Defaults to 0.5.
             decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+            fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+                Defaults to 0.5.
 
         Returns:
             list[BaseOperation]: The routed physical operation sequence.
@@ -298,6 +326,7 @@ Returns:
   m.def("dense_layout_mapping", &qcos::dense_layout_mapping,
         nb::arg("gates_list"), nb::arg("coupling_list"),
         nb::arg("edge_fidelities"), nb::arg("num_logical"),
+        nb::arg("fidelity_weight") = 0.5,
         R"(
         Compute initial layout using DenseLayout + SABRE refinement.
 
@@ -311,6 +340,8 @@ Returns:
             edge_fidelities (list[float]): Edge fidelities corresponding to coupling_list.
                 Pass empty list to disable fidelity-aware scoring.
             num_logical (int): Number of logical qubits declared in the circuit.
+            fidelity_weight (float, optional): Fidelity weight in [0, 1] for subgraph scoring.
+                0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
 
         Returns:
             list[int]: The initial logical-to-physical mapping.

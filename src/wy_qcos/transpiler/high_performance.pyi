@@ -1758,10 +1758,11 @@ class SABRE:
         coupling_list: collections.abc.Sequence[tuple[int, int]],
         edge_fidelities: collections.abc.Sequence[float] = [],
         single_qubit_fidelities: collections.abc.Sequence[float] = [],
-        fidelity_threshold: float = 0.8,
+        fidelity_threshold: float = -1.0,
         extension_size: int = 20,
         weight: float = 0.5,
         decay: float = 0.001,
+        fidelity_weight: float = 0.5,
     ) -> None:
         """Construct a SABRE router.
 
@@ -1773,12 +1774,15 @@ class SABRE:
         single_qubit_fidelities (list[float], optional): Single-qubit
             fidelity array indexed by physical qubit ID. Empty means not used.
         fidelity_threshold (float, optional): Fidelity threshold for filtering
-            low-fidelity edges. <=0 means no filtering. Defaults to 0.8.
+            low-fidelity edges. Negative value means adaptive calculation
+            (mean - std, clamped to [0.3, 0.9]). Defaults to -1.0 (adaptive).
         extension_size (int, optional): Size of the lookahead set.
             Defaults to 20.
         weight (float, optional): Weight between front layer and lookahead
             cost. Defaults to 0.5.
         decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+        fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+            0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
         """
         ...
 
@@ -1796,8 +1800,18 @@ class SABRE:
         """
         ...
 
-    def get_logic2phy(self) -> list[int]:
+    def get_final_mapping(self) -> list[int]:
         """Get the final logical-to-physical mapping after routing.
+
+        Returns:
+        list[int]: The index is logical qubit and value is physical qubit.
+        """
+        ...
+
+    def get_initial_mapping(self) -> list[int]:
+        """Get the initial logical-to-physical mapping.
+
+        Must be called after execute().
 
         Returns:
         list[int]: The index is logical qubit and value is physical qubit.
@@ -2480,10 +2494,11 @@ def sabre_routing(
     coupling_list: collections.abc.Sequence[tuple[int, int]],
     edge_fidelities: collections.abc.Sequence[float] = [],
     single_qubit_fidelities: collections.abc.Sequence[float] = [],
-    fidelity_threshold: float = 0.8,
+    fidelity_threshold: float = -1.0,
     extension_size: int = 20,
     weight: float = 0.5,
     decay: float = 0.001,
+    fidelity_weight: float = 0.5,
 ) -> list[high_performance.BaseOperation]:
     """Execute SABRE routing.
 
@@ -2495,12 +2510,15 @@ def sabre_routing(
     single_qubit_fidelities (list[float], optional): Single-qubit fidelity
         array indexed by physical qubit ID. Empty means not used.
     fidelity_threshold (float, optional): Fidelity threshold for filtering
-        low-fidelity edges. <=0 means no filtering. Defaults to 0.8.
+        low-fidelity edges. Negative value means adaptive calculation
+        (mean - std, clamped to [0.3, 0.9]). Defaults to -1.0 (adaptive).
     extension_size (int, optional): Size of the lookahead set.
     Defaults to 20.
     weight (float, optional): Weight between front layer and lookahead cost.
     Defaults to 0.5.
     decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+    fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+        0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
 
     Returns:
     list[BaseOperation]: The routed physical operation sequence.
@@ -2538,6 +2556,8 @@ def transpile(
     opt_level: int = 1,
     edge_fidelities: collections.abc.Sequence[float] = [],
     single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    fidelity_threshold: float = -1.0,
+    fidelity_weight: float = 0.5,
 ) -> high_performance.TranspileResult:
     """All-in-one transpile function (sabre routing, single-circuit path).
 
@@ -2554,6 +2574,12 @@ def transpile(
         corresponding to coupling_list. Empty means not used.
     single_qubit_fidelities (list[float], optional): Single-qubit fidelity
         array indexed by physical qubit ID. Empty means not used.
+    fidelity_threshold (float, optional): Fidelity threshold; edges
+        below this value are filtered out. Negative value means adaptive
+        calculation (mean - std, clamped to [0.3, 0.9]).
+        Defaults to -1.0 (adaptive).
+    fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+        0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
 
     Returns:
     TranspileResult: Contains basis_gate_list, num_qubits, and timings.

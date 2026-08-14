@@ -18,6 +18,7 @@
 #include "mapping/sabre_routing.h"
 
 #include <algorithm>
+#include <cmath>
 #include <queue>
 #include <set>
 #include <stdexcept>
@@ -31,15 +32,64 @@
 
 namespace qcos {
 
+namespace {
+
+// 自适应保真度阈值的 clamp 范围
+// 上限: 芯片整体质量已足够好时, 保守不过滤, 避免误删高质量边
+// 下限: 芯片整体较差时, 防止过滤过严破坏耦合图连通性
+constexpr double kAdaptiveFidelityThresholdUpper = 0.9;
+constexpr double kAdaptiveFidelityThresholdLower = 0.3;
+
+/**
+ * @brief 自适应计算保真度阈值: mean - std, clamp [0.3, 0.9]
+ *
+ * 只对有效边 (保真度 > 0) 做统计, 排除损坏/无标定数据 (保真度 0)。
+ * 有效边数为 0 时返回 0.0 作为"不过滤"哨兵值
+ *
+ * @param edge_fidelities 边保真度数组 (可能含 0 值损坏边)
+ * @return double 自适应阈值, 0.0 表示不过滤
+ */
+double compute_adaptive_fidelity_threshold(
+    const std::vector<double>& edge_fidelities) {
+  // 只统计有效边 (保真度 > 0)
+  double sum = 0.0;
+  int valid_count = 0;
+  for (double fidelity : edge_fidelities) {
+    if (fidelity > 0.0) {
+      sum += fidelity;
+      ++valid_count;
+    }
+  }
+  if (valid_count == 0) return 0.0;
+
+  double mean = sum / valid_count;
+
+  double variance = 0.0;
+  for (double fidelity : edge_fidelities) {
+    if (fidelity > 0.0) {
+      variance += (fidelity - mean) * (fidelity - mean);
+    }
+  }
+  double std_dev = std::sqrt(variance / valid_count);
+
+  double threshold = mean - std_dev;
+  threshold = std::max(kAdaptiveFidelityThresholdLower, threshold);
+  threshold = std::min(kAdaptiveFidelityThresholdUpper, threshold);
+  return threshold;
+}
+
+}  // namespace
+
 std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities,
     const std::vector<double>& single_qubit_fidelities,
-    double fidelity_threshold, int extension_size, double weight,
-    double decay) {
+    double fidelity_threshold, int extension_size, double weight, double decay,
+    double fidelity_weight) {
   SABRE sabre(coupling_list, edge_fidelities, single_qubit_fidelities,
-              fidelity_threshold, extension_size, weight, decay);
+              fidelity_threshold, extension_size, weight, decay,
+              fidelity_weight);
   sabre.execute(gates_list);
   return sabre.get_physical_gates();
 }
@@ -48,14 +98,18 @@ SABRE::SABRE(const std::vector<std::pair<int, int>>& coupling_list,
              const std::vector<double>& edge_fidelities,
              const std::vector<double>& single_qubit_fidelities,
              double fidelity_threshold, int extension_size, double weight,
-             double decay)
+             double decay, double fidelity_weight)
     : coupling_list_(coupling_list),
       edge_fidelities_(edge_fidelities),
       single_qubit_fidelities_(single_qubit_fidelities),
-      fidelity_threshold_(fidelity_threshold),
+      fidelity_threshold_(
+          fidelity_threshold < 0.0
+              ? compute_adaptive_fidelity_threshold(edge_fidelities)
+              : fidelity_threshold),
       extension_size_(extension_size),
       weight_(weight),
-      decay_(decay) {
+      decay_(decay),
+      fidelity_weight_(fidelity_weight) {
   // 若提供了保真度数据且阈值 > 0, 则过滤
   if (!edge_fidelities_.empty() && fidelity_threshold_ > 0.0) {
     ChipCalibration chip(coupling_list_, edge_fidelities_,
@@ -119,13 +173,15 @@ void SABRE::execute(
 
   // 3. 计算初始映射并执行路由
   // DenseLayout 选区域 + SABRE 精化排列
-  std::vector<int> initial_l2p = dense_layout_mapping(
-      gate_ops, coupling_list_, edge_fidelities_, logic_qubit_num_);
+  std::vector<int> initial_l2p =
+      dense_layout_mapping(gate_ops, coupling_list_, edge_fidelities_,
+                           logic_qubit_num_, fidelity_weight_);
+  initial_l2p_ = initial_l2p;
 
   std::vector<GateOperation> routed_gate_ops =
       execute_routing(gate_ops, initial_l2p);
 
-  const std::vector<int>& logic2phy = get_logic2phy();
+  const std::vector<int>& final_mapping = get_final_mapping();
 
   // 4. 转换为 BaseOperation
   phy_exe_gates_.clear();
@@ -137,8 +193,8 @@ void SABRE::execute(
   // 5. 将 measure 门的逻辑位替换为物理位，保留原有 cbits
   for (const auto& measure_op : measure_ops) {
     int logic_q = measure_op->targets[0];
-    int physical_q = (logic_q < static_cast<int>(logic2phy.size()))
-                         ? logic2phy[logic_q]
+    int physical_q = (logic_q < static_cast<int>(final_mapping.size()))
+                         ? final_mapping[logic_q]
                          : logic_q;
     phy_exe_gates_.push_back(std::make_shared<Measure>(
         std::vector<int>{physical_q}, measure_op->cbits));
@@ -406,7 +462,7 @@ std::vector<GateOperation> SABRE::execute_routing(
         throw std::runtime_error(
             "SABRE routing stuck: no candidate SWAPs available. "
             "The coupling graph may be disconnected after edge filtering. "
-            "Try lowering distance_fidelity_threshold.");
+            "Try lowering fidelity_threshold.");
       }
       std::pair<int, int> best_swap = {-1, -1};
       double best_score = 0;

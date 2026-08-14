@@ -34,19 +34,25 @@ namespace qcos {
  * 2. SABRE 精化排列：以选出的子图为起点，通过 SABRE forward-backward routing
  * 优化排列
  *
- * 当 edge_fidelities 为空时，选区域阶段退化为纯密度优先策略；
- * 否则在密度优先的基础上，同时考虑边的保真度：
- * 子图的评分 = (内部边数, -错误得分)，优先选内部边多且错误率低的子图。
+ * 子图评分采用加权综合评分：
+ *   density_score  = edge_count / max_edge_count
+ *   fidelity_score = 子图内边平均保真度
+ *
+ * fidelity_weight=0.5 密度与保真度各占0.5的权重；
+ * fidelity_weight=0.0 退化为纯密度优先；
+ * fidelity_weight=1.0 退化为纯保真度优先。
  *
  * @param gates_list 逻辑门序列
  * @param coupling_list 物理耦合边列表（有向）
  * @param edge_fidelities 与 coupling_list 对应的边保真度
  * @param num_logical 电路声明的逻辑比特总数
+ * @param fidelity_weight 保真度权重，取值 [0, 1]，默认 0.5
  * @return std::vector<int> 逻辑到物理映射
  */
 std::vector<int> dense_layout_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<double>& edge_fidelities, int num_logical);
+    const std::vector<double>& edge_fidelities, int num_logical,
+    double fidelity_weight = 0.5);
 
 }  // namespace qcos
