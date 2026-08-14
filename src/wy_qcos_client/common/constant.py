@@ -141,6 +141,9 @@ class Constant:
     # Devices
     DEVICE_DUMMY = "dummy"
 
+    # Device Groups
+    DEVICE_GROUP_DN_ALL = "_all"
+
     # Transpiler
     TRANSPILER_CMSS = "cmss"
 
