@@ -107,6 +107,12 @@ class GetDeviceResponse(BaseModel):
     last_updated_at: str | None = Field(
         default=None, description="Device status last updated at"
     )
+    # metrics: availability rate and other device metrics
+    metrics: dict | None = Field(
+        default=None,
+        description="Device metrics including availability_hourly, "
+        "availability_last_hour, availability_history",
+    )
     # details info
     details: dict | None = Field(default=None, description="Details info")
 
@@ -267,6 +273,14 @@ class SetDeviceRequest(BaseModel):
         description="Max qubits: 'auto' to restore driver default, "
         "or a positive integer string. None means no change",
     )
+    # available qubits: "auto" or a positive integer string
+    # None means no change
+    available_qubits: str | None = Field(
+        default=None,
+        description="Available qubits: 'auto' to restore driver "
+        "default, or a positive integer string. "
+        "None means no change",
+    )
 
 
 class SetDeviceResponse(BaseModel):
@@ -285,3 +299,8 @@ class SetDeviceResponse(BaseModel):
     enable: bool = Field(description="Device enable flag after operation")
     # device max qubits after operation
     max_qubits: int = Field(description="Device max qubits after operation")
+    # device available qubits after operation
+    available_qubits: int | None = Field(
+        default=None,
+        description="Device available qubits after operation",
+    )
