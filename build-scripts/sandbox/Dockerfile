@@ -42,7 +42,7 @@ RUN set -e && \
     texlive-ctex texlive-fncychap texlive-wrapfig texlive-capt-of \
     texlive-framed texlive-upquote texlive-needspace texlive-tabulary \
     texlive-lastpage texlive-tocloft texlive-supertabular \
-    google-noto-sans-sc-fonts librsvg2-tools && \
+    google-noto-sans-sc-fonts librsvg2-tools boost-devel && \
     mktexlsr && fc-cache -fv && \
 # Install NPM packages: mermaid-cli, plantuml etc.
     registry_url="" && \
