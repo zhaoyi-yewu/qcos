@@ -26,6 +26,7 @@ from fastapi import Depends
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.library import Library
 from wy_qcos.db.utils.db_utils import get_repository
 from wy_qcos.db.repositories.job import JobRepository
 from .dependencies.authentication import auth
@@ -154,11 +155,20 @@ def debug_gc(
     uncollectable = len(gc.garbage)
     count_after = len(gc.get_objects())
 
+    # malloc_trim(0) asks glibc to return free heap pages to the OS.
+    # Only available on Linux with glibc; None on other platforms.
+    malloc_trim_ret = Library.malloc_trim(0)
+    if malloc_trim_ret is None:
+        logger.debug("malloc_trim skipped (not available)")
+    else:
+        logger.debug(f"malloc_trim(0) returned {malloc_trim_ret}")
+
     _response_info = {
         "collected": collected,
         "uncollectable": uncollectable,
         "count_before": count_before,
         "count_after": count_after,
+        "malloc_trim_ret": malloc_trim_ret,
     }
     response_info = schemas.DebugGcResponse.model_validate(_response_info)
     return response_info
@@ -191,39 +201,16 @@ def debug_tracemalloc(
 
     action = "snapshot"
     nframe = 25
+    sort_count = False
     if body is not None:
         if body.action is not None:
             action = body.action
         if body.nframe is not None:
             nframe = body.nframe
+        if body.sort_count is not None:
+            sort_count = body.sort_count
 
     stat_items = []
-    leak_probes = {}
-
-    # Probe suspected unbounded in-memory containers to validate leak
-    # hypothesis. UserManager.login_logs is a plain list that grows on
-    # every log_login_attempt but is never read or cleared (get/clear
-    # login_logs operate on the DB). SecurityManager.failed_attempts
-    # accumulates keys per distinct user_name without eviction.
-    try:
-        from wy_qcos.api.fastapi_server import app as _app
-
-        _state = getattr(_app, "state", None)
-        if _state is not None:
-            _um = getattr(_state, "_user_manager", None)
-            if _um is not None:
-                leak_probes["login_logs_len"] = len(
-                    getattr(_um, "login_logs", [])
-                )
-            _sm = getattr(_state, "_security_manager", None)
-            if _sm is not None and hasattr(_sm, "failed_attempts"):
-                _fa = _sm.failed_attempts
-                leak_probes["failed_attempts_keys"] = len(_fa)
-                leak_probes["failed_attempts_total"] = sum(
-                    len(v) for v in _fa.values()
-                )
-    except Exception as exc:  # pragma: no cover - probe must never break
-        logger.warning(f"leak probe failed: {exc}")
 
     if action == "stop":
         # stop tracing and release all traces
@@ -235,7 +222,6 @@ def debug_tracemalloc(
             "current": 0,
             "peak": peak,
             "top_stats": [],
-            "leak_probes": leak_probes,
         }
     elif action == "clear":
         # clear traces but keep tracing
@@ -247,7 +233,6 @@ def debug_tracemalloc(
             "current": current,
             "peak": peak,
             "top_stats": [],
-            "leak_probes": leak_probes,
         }
     else:
         # default: snapshot action
@@ -257,7 +242,14 @@ def debug_tracemalloc(
 
         current, peak = tracemalloc.get_traced_memory()
         snapshot = tracemalloc.take_snapshot()
+        # snapshot.statistics() returns stats sorted by size (descending)
+        # by default. When sort_count is requested, re-sort by count
+        # (descending) BEFORE applying the nframe limit so that the top
+        # entries by count are returned instead of the top entries by
+        # size truncated to nframe.
         top_stats = snapshot.statistics("lineno", cumulative=True)
+        if sort_count:
+            top_stats = sorted(top_stats, key=lambda s: s.count, reverse=True)
 
         # total traced blocks is the sum of all allocation counts
         traced_blocks = sum(stat.count for stat in top_stats)
@@ -277,7 +269,6 @@ def debug_tracemalloc(
             "current": current,
             "peak": peak,
             "top_stats": stat_items,
-            "leak_probes": leak_probes,
         }
 
     response_info = schemas.DebugTracemallocResponse.model_validate(

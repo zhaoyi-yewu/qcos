@@ -18,4 +18,5 @@
    aggregation-cutting
    user
    metrics
+   background-tasks
    api/index.rst

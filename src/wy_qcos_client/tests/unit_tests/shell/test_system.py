@@ -168,10 +168,11 @@ class TestTraceMem:
         mock_client = Mock(spec=Namespace)
         mock_client.action = "snapshot"
         mock_client.nframe = 25
+        mock_client.sort_count = False
         result = trace_mem.take_action(mock_client)
         assert result is not None
         mock_debug_tracemalloc.assert_called_once_with(
-            action="snapshot", nframe=25
+            action="snapshot", nframe=25, sort_count=False
         )
 
     @patch.object(CommandHelper, "get_table_list_data")
@@ -198,8 +199,9 @@ class TestTraceMem:
         mock_client = Mock(spec=Namespace)
         mock_client.action = "stop"
         mock_client.nframe = 25
+        mock_client.sort_count = False
         result = trace_mem.take_action(mock_client)
         assert result is not None
         mock_debug_tracemalloc.assert_called_once_with(
-            action="stop", nframe=25
+            action="stop", nframe=25, sort_count=False
         )

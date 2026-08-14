@@ -38,7 +38,7 @@ from prefect.client.schemas.filters import (
     FlowFilter,
     FlowFilterName,
 )
-from prefect.exceptions import ObjectNotFound
+from prefect.exceptions import ObjectAlreadyExists, ObjectNotFound
 from prefect.states import State
 from prefect.workers import ProcessWorker
 
@@ -337,13 +337,18 @@ class TaskFlowManager:
         """
         pools = await self._client.read_work_pools()
         if not any(pool.name == pool_name for pool in pools):
-            await self._client.create_work_pool(
-                work_pool=WorkPoolCreate(
-                    name=pool_name,
-                    type=Constant.DEFAULT_JOB_POOL_TYPE,
-                    concurrency_limit=concurrency_limit,
+            try:
+                await self._client.create_work_pool(
+                    work_pool=WorkPoolCreate(
+                        name=pool_name,
+                        type=Constant.DEFAULT_JOB_POOL_TYPE,
+                        concurrency_limit=concurrency_limit,
+                    )
                 )
-            )
+            except ObjectAlreadyExists:
+                logger.debug(
+                    f"Work pool '{pool_name}' already exists, skipping"
+                )
 
     async def create_queues(self, queue_names):
         """Create all work queues under work pool.
@@ -354,16 +359,29 @@ class TaskFlowManager:
             queue_names: queue names
         """
         logger.info(f"create_queues: {', '.join(queue_names)}")
-        queues = await self._client.read_work_queues()
+        # Prefect read_work_queues limits limit to 100 and is bounded by
+        # PREFECT_API_DEFAULT_LIMIT. Use pagination to fetch all queues so
+        # the existence check does not miss entries beyond the first page,
+        # which would otherwise trigger a 409 Conflict on duplicate
+        # creation.
+        queues = await self._read_all_work_queues()
+        existing_names = {queue.name for queue in queues}
         for pool_name in queue_names:
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
                 queue_name = f"{pool_name}_{priority}"
-                if not any(queue.name == queue_name for queue in queues):
+                if queue_name in existing_names:
+                    continue
+                try:
                     await self._client.create_work_queue(
                         name=queue_name,
                         work_pool_name=pool_name,
                         priority=priority,
                         concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY,
+                    )
+                except ObjectAlreadyExists:
+                    logger.debug(
+                        f"Work queue '{queue_name}' already exists "
+                        f"in pool '{pool_name}', skipping"
                     )
 
     async def create_deployments(self, deployment_configs):
@@ -526,6 +544,62 @@ class TaskFlowManager:
                     deployment_id=deploy_id,
                     parameters=args,
                 )
+
+    async def _read_all_work_queues(self):
+        """Fetch all work queues with pagination.
+
+        Prefect read_work_queues limits limit to 200 and is bounded by
+        PREFECT_API_DEFAULT_LIMIT. This helper loops over offset/page_size
+        to fetch all work queues so the existence check in create_queues
+        does not miss entries beyond the first page.
+
+        Returns:
+            list of work queue objects
+        """
+        all_queues = []
+        offset = 0
+        page_size = 200
+        while True:
+            page = await self._client.read_work_queues(
+                limit=page_size, offset=offset
+            )
+            all_queues.extend(page)
+            if len(page) < page_size:
+                break
+            offset += page_size
+        return all_queues
+
+    @staticmethod
+    def read_all_flow_runs(sync_client, flow_run_filter=None, page_size=200):
+        """Fetch all flow runs with pagination.
+
+        Prefect read_flow_runs is bounded by
+        PREFECT_API_DEFAULT_LIMIT (default 200). This helper loops over
+        offset/page_size to fetch all matching flow runs so that cleanup
+        and listing logic does not silently miss entries beyond the
+        first page.
+
+        Args:
+            sync_client: prefect SyncPrefectClient instance
+            flow_run_filter: optional FlowRunFilter to narrow results
+            page_size: number of flow runs per request page (default 200)
+
+        Returns:
+            list of FlowRun objects
+        """
+        all_flow_runs = []
+        offset = 0
+        while True:
+            page = sync_client.read_flow_runs(
+                flow_run_filter=flow_run_filter,
+                limit=page_size,
+                offset=offset,
+            )
+            all_flow_runs.extend(page)
+            if len(page) < page_size:
+                break
+            offset += page_size
+        return all_flow_runs
 
     @staticmethod
     def get_prefect_configs():
@@ -767,8 +841,8 @@ class TaskFlowManager:
 
         # get flow runs with flow_run_filter
 
-        flow_runs = self._sync_client.read_flow_runs(
-            flow_run_filter=flow_run_filter
+        flow_runs = self.read_all_flow_runs(
+            self._sync_client, flow_run_filter=flow_run_filter
         )
         if len(flow_runs) == 0:
             return None
@@ -1151,8 +1225,8 @@ class TaskFlowManager:
         flow_run_filter = FlowRunFilter(**flow_run_filter_kwargs)
 
         # get flow runs with flow_run_filter
-        flow_runs = self._sync_client.read_flow_runs(
-            flow_run_filter=flow_run_filter
+        flow_runs = self.read_all_flow_runs(
+            self._sync_client, flow_run_filter=flow_run_filter
         )
         return flow_runs
 

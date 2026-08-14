@@ -47,4 +47,4 @@
 
 # 依赖库兼容性
 
-参见requirements/目录依赖的Python第三方包版本，建议在容器环境或者venv虚拟环境下运行
+参见pyproject.toml和requirements/venv-configs.toml中定义的Python第三方包版本，建议在容器环境或者venv虚拟环境下运行

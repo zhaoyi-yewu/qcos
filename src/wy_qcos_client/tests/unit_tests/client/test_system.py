@@ -74,7 +74,7 @@ class TestClient:
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
             "debug_tracemalloc",
-            {"action": "snapshot", "nframe": 25},
+            {"action": "snapshot", "nframe": 25, "sort_count": False},
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -85,7 +85,7 @@ class TestClient:
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
             "debug_tracemalloc",
-            {"action": "snapshot", "nframe": 10},
+            {"action": "snapshot", "nframe": 10, "sort_count": False},
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -98,7 +98,7 @@ class TestClient:
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
             "debug_tracemalloc",
-            {"action": "stop", "nframe": 25},
+            {"action": "stop", "nframe": 25, "sort_count": False},
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -111,5 +111,18 @@ class TestClient:
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
             "debug_tracemalloc",
-            {"action": "clear", "nframe": 25},
+            {"action": "clear", "nframe": 25, "sort_count": False},
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_debug_tracemalloc_sort_count(self, mock_call_json_rpc):
+        mock_call_json_rpc.return_value = self.return_values
+        status_code, reason, text, result = client.debug_tracemalloc(
+            nframe=10, sort_count=True
+        )
+        assert result == "result"
+        mock_call_json_rpc.assert_called_once_with(
+            client.system_url,
+            "debug_tracemalloc",
+            {"action": "snapshot", "nframe": 10, "sort_count": True},
         )

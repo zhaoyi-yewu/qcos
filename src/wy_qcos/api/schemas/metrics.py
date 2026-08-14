@@ -93,3 +93,13 @@ class GetJobStatsResponse(BaseModel):
     deleting: int = Field(..., description="Number of deleting jobs")
     deleted: int = Field(..., description="Number of deleted jobs")
     unknown: int = Field(..., description="Number of unknown jobs")
+    submitted_job_rate_min: float = Field(
+        0.0,
+        description="Job submission rate in the last minute "
+        "(jobs per minute), based on created_at",
+    )
+    completed_job_rate_min: float = Field(
+        0.0,
+        description="Completed job rate in the last minute "
+        "(completed jobs per minute), based on created_at",
+    )

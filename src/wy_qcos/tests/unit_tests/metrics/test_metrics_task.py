@@ -166,6 +166,7 @@ class TestUpdateJobMetrics:
             1,  # deleted
             1,  # unknown
         ]
+        mock_job_repo.count_recent.side_effect = [3, 2]
         mock_session = MagicMock()
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
@@ -180,6 +181,9 @@ class TestUpdateJobMetrics:
                     assert data.total == 10
                     assert data.completed == 2
                     assert data.deleting == 1
+                    assert data.submitted_job_rate_min == 3.0
+                    assert data.completed_job_rate_min == 2.0
+                    assert mock_job_repo.count_recent.call_count == 2
 
     def test_empty(self):
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:

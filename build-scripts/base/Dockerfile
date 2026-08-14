@@ -60,7 +60,7 @@ RUN set -e && \
       telnet net-tools openssl util-linux vim findutils dos2unix wget rsync jq patch \
       gettext make cmake gcc gcc-g++ rust cargo postgresql docker sudo \
       python3 python3-pip python3-sphinx python3-requests python3-devel \
-      sqlite-devel bzip2-devel ncurses-devel gdbm-devel xz-devel \
+      sqlite-devel bzip2-devel ncurses-devel gdb gdbm-devel xz-devel \
       tk-devel tcl-devel libuuid-devel yp-tools ypbind readline-devel \
       libyaml-devel libffi-devel openssl-devel zlib-devel gtest-devel && \
     echo "LANG=C.UTF-8" > /etc/locale.conf && \

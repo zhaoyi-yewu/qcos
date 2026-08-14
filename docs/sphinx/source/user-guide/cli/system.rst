@@ -1,7 +1,7 @@
-系统命令
+系统管理命令
 ----------------------
 
-系统命令用于系统服务连通性测试和运行信息查询。
+系统管理命令用于系统配置、服务连通性测试和运行信息查询。
 
 连通性测试
 ***************
@@ -121,6 +121,7 @@
 
    # 内存分配追踪
    usage: qcos-cli trace-mem [-h] [--action {snapshot,stop,clear}] [--nframe NFRAME]
+                             [--sort-count]
 
    Trace memory allocations via tracemalloc.
 
@@ -128,6 +129,9 @@
      --action {snapshot,stop,clear}  Action: snapshot (default), stop, or clear
      --nframe NFRAME                 Number of top memory allocations to show
                                      (only for snapshot). Default: 25
+     --sort-count                    Sort top memory allocations by count
+                                     (descending) instead of by size. Only
+                                     for snapshot. Default: False
 
 典型场景示例
 ~~~~~~~~~~~~~~~
@@ -140,8 +144,16 @@
    # 2. 指定显示Top 10内存分配
    qcos-cli trace-mem --nframe 10
 
-   # 3. 清空追踪记录（保持追踪状态，重置统计基准）
+   # 3. 按分配次数（降序）排序展示Top内存分配
+   #    默认按分配大小排序，加上 --sort-count 后改为按分配次数排序
+   #    适用于定位频繁分配小块内存导致的内存碎片/性能问题
+   qcos-cli trace-mem --sort-count
+
+   # 3.1 按分配次数排序并显示Top 10
+   qcos-cli trace-mem --sort-count --nframe 10
+
+   # 4. 清空追踪记录（保持追踪状态，重置统计基准）
    qcos-cli trace-mem --action clear
 
-   # 4. 停止追踪并释放所有追踪记录（调试完成后关闭，消除性能开销）
+   # 5. 停止追踪并释放所有追踪记录（调试完成后关闭，消除性能开销）
    qcos-cli trace-mem --action stop

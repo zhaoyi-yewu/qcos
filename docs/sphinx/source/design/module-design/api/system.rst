@@ -75,8 +75,222 @@
                "error": {}
              }
 
+   * - **内存占用查询**
+     - **show_mem**
+
+       URI: /v1/system/show_mem
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "show_mem",
+               "params": {
+                 "body": {}
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "result": {
+                 "pid": 1234,
+                 "rss_mb": 256.5,
+                 "vms_mb": 512.0,
+                 "thread_count": 10,
+                 "num_objects": 50000,
+                 "cpu_percent": 5.5
+               },
+               "error": null
+             }
+
+   * - **手动垃圾回收**
+     - **debug_gc**
+
+       URI: /v1/system/debug_gc
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "debug_gc",
+               "params": {
+                 "body": {
+                   "generations": 2
+                 }
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "result": {
+                 "collected": 1500,
+                 "uncollectable": 0,
+                 "count_before": 50000,
+                 "count_after": 48500,
+                 "malloc_trim_ret": 1
+               },
+               "error": null
+             }
+
+   * - **内存分配追踪**
+     - **debug_tracemalloc**
+
+       URI: /v1/system/debug_tracemalloc
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "debug_tracemalloc",
+               "params": {
+                 "body": {
+                   "action": "snapshot",
+                   "nframe": 25,
+                   "sort_count": false
+                 }
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "result": {
+                 "tracing": true,
+                 "traced_blocks": 1024,
+                 "current": 2048,
+                 "peak": 4096,
+                 "top_stats": [
+                   {
+                     "location": "/path/to/file.py:42",
+                     "size": 1024,
+                     "count": 5
+                   }
+                 ]
+               },
+               "error": null
+             }
+
 系统参数详解
 ~~~~~~~~~~~~
+
+内存与调试接口
+^^^^^^^^^^^^^^
+
+**内存占用查询（show_mem）**
+
+返回 API 服务端进程的内存占用情况，需要管理员权限：
+
+.. list-table:: 字段说明
+   :widths: 25 15 60
+   :header-rows: 1
+   :align: left
+
+   * - 字段名
+     - 类型
+     - 说明
+   * - pid
+     - integer
+     - 进程 ID
+   * - rss_mb
+     - float
+     - 常驻内存集大小（MB）
+   * - vms_mb
+     - float
+     - 虚拟内存大小（MB）
+   * - thread_count
+     - integer
+     - 线程数
+   * - num_objects
+     - integer
+     - GC 跟踪对象总数
+   * - cpu_percent
+     - float
+     - CPU 使用率（%）
+
+**手动垃圾回收（debug_gc）**
+
+手动触发 Python 垃圾回收并执行 malloc_trim，用于调试内存问题，需要管理员权限：
+
+.. list-table:: 字段说明
+   :widths: 25 15 60
+   :header-rows: 1
+   :align: left
+
+   * - 字段名
+     - 类型
+     - 说明
+   * - collected
+     - integer
+     - 本次回收的对象数量
+   * - uncollectable
+     - integer
+     - 无法回收的对象数量（引用循环）
+   * - count_before
+     - integer
+     - 回收前 GC 跟踪对象总数
+   * - count_after
+     - integer
+     - 回收后 GC 跟踪对象总数
+   * - malloc_trim_ret
+     - integer
+     - malloc_trim 返回值（1成功/0失败/None）
+
+请求参数 ``generations`` 可选（0/1/2），默认 2（全量回收）。
+
+**内存分配追踪（debug_tracemalloc）**
+
+通过 tracemalloc 追踪 Python 内存分配，返回当前/峰值内存及 Top 内存分配统计，需要管理员权限：
+
+.. list-table:: 字段说明
+   :widths: 25 15 60
+   :header-rows: 1
+   :align: left
+
+   * - 字段名
+     - 类型
+     - 说明
+   * - tracing
+     - bool
+     - tracemalloc 是否正在追踪
+   * - traced_blocks
+     - integer
+     - 已追踪的内存块数量
+   * - current
+     - integer
+     - 当前已追踪内存（字节）
+   * - peak
+     - integer
+     - 峰值已追踪内存（字节）
+   * - top_stats
+     - array
+     - Top 内存分配统计列表
+
+请求参数：
+
+- ``action``：操作类型（snapshot/stop/clear），默认 snapshot
+- ``nframe``：显示 Top N 内存分配（仅 snapshot），默认 25
+- ``sort_count``：是否按分配次数排序（默认按大小排序）
+
+.. note::
+   tracemalloc 启动后会对每次内存分配产生额外开销，建议调试完成后用
+   ``action=stop`` 关闭。
 
 心跳检测 (Ping)
 ^^^^^^^^^^^^^^^
@@ -93,11 +307,17 @@
 
 ``system_info`` 接口返回系统运行状态：
 
-+------------------+---------+---------------------------------------------+
-| 字段名           | 类型    | 说明                                        |
-+==================+=========+=============================================+
-| total_jobs_count | integer | 系统中已完成的作业总数                      |
-+------------------+---------+---------------------------------------------+
+.. list-table:: 字段说明
+   :widths: 25 15 60
+   :header-rows: 1
+   :align: left
+
+   * - 字段名
+     - 类型
+     - 说明
+   * - total_jobs_count
+     - integer
+     - 系统中已完成的作业总数
 
 最佳实践建议
 ^^^^^^^^^^^^^^^^

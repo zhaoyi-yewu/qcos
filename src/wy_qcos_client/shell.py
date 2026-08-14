@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import sys
+from datetime import datetime
 
 import argcomplete
 from cliff import help
@@ -1244,6 +1245,9 @@ class ShowMem(ShowOne):
         json_results = CommandHelper.check_results(
             resource, "show_mem", status_code, reason, text
         )
+        # print timestamp (YYYY-MM-DD HH:MM:SS.xxx) before the report
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        print(f"[{now_str}]")
         print("Memory Usage: ")
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
@@ -1337,6 +1341,14 @@ class TraceMem(Lister):
             help="Number of top memory allocations to show "
             "(only for snapshot). Default: 25",
         )
+        parser.add_argument(
+            "--sort-count",
+            dest="sort_count",
+            action="store_true",
+            default=False,
+            help="Sort top memory allocations by count (descending). "
+            "By default allocations are sorted by size.",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1348,13 +1360,21 @@ class TraceMem(Lister):
         resource = self.group
         action = parsed_args.action
         nframe = parsed_args.nframe
+        sort_count = parsed_args.sort_count
 
+        # Sorting by count (when --sort-count is set) is performed
+        # server-side before the nframe limit is applied, so that the
+        # top entries by count are returned instead of the top entries
+        # by size truncated to nframe.
         status_code, reason, text, result = self.app.client.debug_tracemalloc(
-            action=action, nframe=nframe
+            action=action, nframe=nframe, sort_count=sort_count
         )
         json_results = CommandHelper.check_results(
             resource, "debug_tracemalloc", status_code, reason, text
         )
+        # print timestamp (YYYY-MM-DD HH:MM:SS.xxx) before the report
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        print(f"[{now_str}]")
         print("Tracemalloc: ")
         print(
             f"Tracing: {json_results['tracing']}, "
@@ -1364,9 +1384,12 @@ class TraceMem(Lister):
             f"Current: {json_results['current']} bytes, "
             f"Peak: {json_results['peak']} bytes"
         )
+        # top_stats are already sorted server-side (by size by default,
+        # or by count when --sort-count was requested).
+        top_stats = json_results.get("top_stats", [])
         header_list = ["location", "size", "count"]
         table_values = CommandHelper.get_table_list_data(
-            json_results["top_stats"], header_list
+            top_stats, header_list
         )
         return table_values
 

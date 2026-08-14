@@ -4,18 +4,20 @@
 # Global debug switch; when enabled, lowers global log level to DEBUG
 DEBUG = false
 
+# [GLOBAL CONFIG] authentication mode: "no" (default), "jwt", "virtual_instance"
+AUTH_MODE = "no"
 # [GLOBAL CONFIG] max jobs (all status), -1: unlimited
 MAX_JOBS = -1
 # [GLOBAL CONFIG] max queued+running jobs, -1: unlimited
 MAX_QUEUED_JOBS = -1
-# [GLOBAL CONFIG] authentication mode: "no" (default), "jwt", "virtual_instance"
-AUTH_MODE = "no"
-# [JOB CLEAN] job clean interval in minutes (default: 60)
-JOB_CLEAN_INTERVAL = 60
+# [JOB SCAN] job scan interval in minutes (default: 60)
+JOB_SCAN_INTERVAL = 60
 # job expiration days, jobs older than this will be auto-deleted, -1: never expire
 JOB_EXPIRE_DAYS = -1
 # completed flow-run expiration days, flow-runs older than this will be auto-deleted, -1: never expire
 FLOW_EXPIRE_DAYS = 1
+# periodic garbage collection interval in days: runs gc.collect (all 3 generations) + malloc_trim(0), -1: disabled
+GC_INTERVAL = 1
 # [GLOBAL CONFIG] default venv base dir
 # VENV_DIR = "/var/lib/qcos/venv"
 

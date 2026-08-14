@@ -1,4 +1,4 @@
-系统监控接口
+﻿系统监控接口
 ================
 
 系统监控接口用于查询系统健康状态、API 访问统计和作业统计信息，同时提供 Prometheus 格式的指标数据暴露端点。
@@ -107,8 +107,11 @@
                "queued": 3,
                "cancelling": 1,
                "cancelled": 1,
+               "deleting": 0,
                "deleted": 0,
-               "unknown": 0
+               "unknown": 0,
+               "submitted_job_rate_min": 2.5,
+               "completed_job_rate_min": 1.0
              },
              "error": null,
              "id": 1
@@ -141,6 +144,14 @@
    * - **last_day_requests**
      - int
      - 最近一天内收到的 API 请求数
-   * - **total/completed/failed/running/queued/cancelling/cancelled/deleted/unknown**
+   * - **total/completed/failed/running/queued/cancelling/cancelled/deleting/deleted/unknown**
      - int
      - 各状态作业计数
+   * - **submitted_job_rate_min**
+     - float
+     - 最近每分钟作业提交速率（job 条目数/分钟），基于最近 1 分钟内
+       created_at 的 job 数量统计
+   * - **completed_job_rate_min**
+     - float
+     - 最近每分钟已完成作业速率（completed job 数/分钟），基于最近 1
+       分钟内 created_at 且状态为 completed 的 job 数量统计

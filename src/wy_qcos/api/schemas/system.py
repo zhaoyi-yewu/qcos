@@ -120,6 +120,15 @@ class DebugGcResponse(BaseModel):
     count_after: int = Field(
         ..., description="Number of gc tracked objects after collection"
     )
+    # malloc_trim return value (1 success, 0 failure); None when
+    # malloc_trim is not available on the current platform
+    malloc_trim_ret: int | None = Field(
+        None,
+        description=(
+            "malloc_trim(0) return value: 1 success, 0 failure; "
+            "None when malloc_trim is not available"
+        ),
+    )
 
 
 class DebugTracemallocRequest(BaseModel):
@@ -136,6 +145,13 @@ class DebugTracemallocRequest(BaseModel):
     # number of top memory allocations to show
     nframe: int = Field(
         25, description="Number of top memory allocations to show"
+    )
+    # sort top memory allocations by count (descending) instead of by size
+    sort_count: bool = Field(
+        False,
+        description="Sort top memory allocations by count (descending) "
+        "instead of by size. Sorting is applied before limiting "
+        "to nframe.",
     )
 
 
@@ -175,9 +191,4 @@ class DebugTracemallocResponse(BaseModel):
     top_stats: list[TracemallocStatItem] = Field(
         default_factory=list,
         description="Top memory allocation statistics",
-    )
-    # leak probes: sizes of suspected unbounded in-memory containers
-    leak_probes: dict = Field(
-        default_factory=dict,
-        description="Sizes of suspected unbounded in-memory containers",
     )
