@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+﻿cmake_minimum_required(VERSION 3.11)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -29,6 +29,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_qpu_verifier.cpp
                             test_cmss_verifier.cpp
                             test_unitary_synthesis.cpp
+                            test_transpile.cpp
 )
 target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST} ${LIB_ANTLR4})
 
