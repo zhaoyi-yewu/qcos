@@ -119,6 +119,60 @@ TEST(QuafuVerifier, CheckQasmSyntax_CommentBeforeHeader) {
   EXPECT_TRUE(verifier.check_qasm_syntax(qasm));
 }
 
+// Measure 之后出现非 Measure 门 -> False
+TEST(QuafuVerifier, CheckQasmSyntax_GateAfterMeasure_ReturnsFalse) {
+  QuafuVerifier verifier(make_test_params());
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
+      "creg c[2];\n"
+      "h q[0];\n"
+      "measure q[0] -> c[0];\n"
+      "h q[1];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(
+      result.message,
+      "QASM syntax error: Measure gates must be at the end of the circuit");
+}
+
+// 同一比特被多次测量 -> False
+TEST(QuafuVerifier, CheckQasmSyntax_DuplicateMeasure_ReturnsFalse) {
+  QuafuVerifier verifier(make_test_params());
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[2];\n"
+      "creg c[2];\n"
+      "h q[0];\n"
+      "measure q[0] -> c[0];\n"
+      "measure q[0] -> c[1];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message,
+            "QASM syntax error: qubit 0 is measured more than once");
+}
+
+// 多比特各自测量一次且在末尾 -> True
+TEST(QuafuVerifier, CheckQasmSyntax_MultipleMeasureAtEnd_ReturnsTrue) {
+  QuafuVerifier verifier(make_test_params());
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[3];\n"
+      "creg c[3];\n"
+      "h q[0];\n"
+      "cz q[0],q[1];\n"
+      "measure q[0] -> c[0];\n"
+      "measure q[1] -> c[1];\n"
+      "measure q[2] -> c[2];\n";
+  EXPECT_TRUE(verifier.verify(qasm).passed);
+}
+
 // check_topology（通过 verify 测试，check_qasm_syntax 负责填充缓存）
 
 TEST(QuafuVerifier, CheckTopology_AllSingleQubit_FitsBits_ReturnsTrue) {

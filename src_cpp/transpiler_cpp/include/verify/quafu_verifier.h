@@ -52,6 +52,9 @@ class QuafuVerifier : public QPUVerifier {
   bool check_depth_and_gate_count() const override;
 
  private:
+  // 校验 Measure 规则：必须在电路末尾，每个比特最多一次
+  bool check_measure_rules() const;
+
   int max_qubits_;
   std::vector<std::pair<int, int>> coupling_list_;
   std::vector<double> edge_fidelities_;

@@ -195,10 +195,38 @@ bool QuafuVerifier::check_qasm_syntax(const std::string& qasm_string) const {
       }
     }
     parsed_num_qubits_ = static_cast<int>(used_qubits.size());
+    // Measure门校验
+    if (!check_measure_rules()) return false;
   } catch (const std::exception& exc) {
     std::cerr << "QASM parse error: " << exc.what() << std::endl;
     result_.add_failure("QASM syntax error: failed to parse circuit");
     return false;
+  }
+  return true;
+}
+
+bool QuafuVerifier::check_measure_rules() const {
+  // Measure 必须在电路末尾，每个比特最多一次
+  bool seen_measure = false;
+  std::set<int> measured_qubits;
+  for (const auto& op : parsed_operations_) {
+    if (op->operation_type == OperationType::MEASURE) {
+      seen_measure = true;
+      for (int target : op->targets) {
+        if (!measured_qubits.insert(target).second) {
+          result_.add_failure("QASM syntax error: qubit " +
+                              std::to_string(target) +
+                              " is measured more than once");
+          return false;
+        }
+      }
+    } else if (seen_measure) {
+      // Measure 之后出现了门操作
+      result_.add_failure(
+          "QASM syntax error: Measure gates must be at the end of the "
+          "circuit");
+      return false;
+    }
   }
   return true;
 }
