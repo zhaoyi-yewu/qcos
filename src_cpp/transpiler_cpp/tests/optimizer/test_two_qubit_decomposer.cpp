@@ -20,7 +20,9 @@
 #include <cmath>
 #include <complex>
 #include <memory>
+#include <random>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -1409,4 +1411,89 @@ TEST(TwoQubitBasisRoundtrip, GeneralUnitary_U0_CxRzRyU3) {
   expect_all_in_basis(gates, basis);
   auto reconstructed = reconstruct_2q(gates, 0, 1);
   EXPECT_TRUE(equal_up_to_global_phase(u, reconstructed, 1e-6));
+}
+
+// ========================================================================
+// Weyl Decomposition — Haar-Random Stress Test
+//
+// 用固定 seed 的 Haar-随机酉矩阵（复高斯 + Gram-Schmidt 正交化）批量
+// 验证 Weyl 分解的自洽重建。覆盖 a/b/c 全不为零的一般酉，确保对近简并
+// M2、不同 Weyl chamber 的输入均不产生退化 K 矩阵或 NaN。
+//
+// 复高斯随机数用 std::mt19937_64(固定 seed) 生成，确定性可复现。
+// ========================================================================
+
+// 生成一个 Haar-随机 4x4 酉矩阵：复高斯矩阵 -> Gram-Schmidt 正交化。
+static CMatrix haar_random_unitary(std::mt19937_64& rng) {
+  std::normal_distribution<double> dist(0.0, 1.0);
+  CMatrix A(4, std::vector<C>(4));
+  for (int i = 0; i < 4; ++i)
+    for (int j = 0; j < 4; ++j)
+      A[i][j] = C(dist(rng), dist(rng));
+
+  // Modified Gram-Schmidt，列正交化
+  CMatrix Q(4, std::vector<C>(4));
+  for (int j = 0; j < 4; ++j) {
+    for (int i = 0; i < 4; ++i) Q[i][j] = A[i][j];
+    for (int k = 0; k < j; ++k) {
+      C dot = C(0, 0);
+      for (int i = 0; i < 4; ++i) dot += std::conj(Q[i][k]) * Q[i][j];
+      for (int i = 0; i < 4; ++i) Q[i][j] -= dot * Q[i][k];
+    }
+    double norm = 0.0;
+    for (int i = 0; i < 4; ++i) norm += std::norm(Q[i][j]);
+    norm = std::sqrt(norm);
+    if (norm < 1e-15) continue;  // 极不可能，防御
+    for (int i = 0; i < 4; ++i) Q[i][j] /= norm;
+  }
+  return Q;
+}
+
+TEST(TwoQubitWeylStressTest, HaarRandom100_RebuildCorrectly) {
+  std::mt19937_64 rng(20260813);  // 固定 seed，确定性
+  int failures = 0;
+  for (int i = 0; i < 100; ++i) {
+    CMatrix u = haar_random_unitary(rng);
+    TwoQubitDecomp wd;
+    try {
+      wd = decompose_two_qubit(u);
+    } catch (std::exception& e) {
+      ADD_FAILURE() << "U" << i << " decompose_two_qubit threw: " << e.what();
+      ++failures;
+      continue;
+    }
+    CMatrix rebuilt = rebuild_from_weyl(wd);
+    if (!equal_up_to_global_phase(u, rebuilt, 1e-6)) {
+      ADD_FAILURE() << "U" << i << " rebuild mismatch (a=" << wd.cx
+                    << " b=" << wd.cy << " c=" << wd.cz << ")";
+      ++failures;
+    }
+  }
+  EXPECT_EQ(failures, 0) << failures << "/100 Haar-random unitaries failed";
+}
+
+TEST(TwoQubitWeylStressTest, HaarRandom_KMatricesWellConditioned) {
+  std::mt19937_64 rng(777);
+  int nan_count = 0;
+  for (int i = 0; i < 100; ++i) {
+    CMatrix u = haar_random_unitary(rng);
+    TwoQubitDecomp wd;
+    try {
+      wd = decompose_two_qubit(u);
+    } catch (std::exception&) {
+      continue;  // 对角化失败已由 rebuild 测试覆盖
+    }
+    // 检查 K 矩阵无 NaN/Inf
+    for (int r = 0; r < 2; ++r) {
+      for (int c = 0; c < 2; ++c) {
+        if (!std::isfinite(wd.k1[r][c].real()) ||
+            !std::isfinite(wd.k1[r][c].imag()) ||
+            !std::isfinite(wd.k2[r][c].real()) ||
+            !std::isfinite(wd.k2[r][c].imag())) {
+          ++nan_count;
+        }
+      }
+    }
+  }
+  EXPECT_EQ(nan_count, 0) << nan_count << " K-matrix entries were NaN/Inf";
 }
