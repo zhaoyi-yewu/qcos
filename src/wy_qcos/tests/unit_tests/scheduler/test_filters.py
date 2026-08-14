@@ -68,7 +68,6 @@ def make_spec(
 ):
     """Create a RequestSpec for testing."""
     return RequestSpec(
-        job_id="test-job",
         code_type=code_type,
         num_qubits=num_qubits,
         flavor_id=flavor_id,

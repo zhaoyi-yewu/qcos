@@ -99,11 +99,11 @@ from .system import (
     SystemInfoResponse,
     ShowMemRequest,
     ShowMemResponse,
-    DebugGcRequest,
-    DebugGcResponse,
-    DebugTracemallocRequest,
-    TracemallocStatItem,
-    DebugTracemallocResponse,
+    GcMemRequest,
+    GcMemResponse,
+    TraceMemRequest,
+    TraceMemStatItem,
+    TraceMemResponse,
 )
 from .metrics import (
     GetMetricsRequest,

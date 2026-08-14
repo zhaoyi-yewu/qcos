@@ -431,6 +431,8 @@ class Constant:
     JOB_STATUS_CANCELLED = "CANCELLED"
     JOB_STATUS_DELETING = "DELETING"
     JOB_STATUS_DELETED = "DELETED"
+    # Sum of all job statuses (used in job_count totals)
+    JOB_STATUS_TOTAL = "TOTAL"
     JOB_STATUSES = [
         JOB_STATUS_UNKNOWN,
         JOB_STATUS_QUEUED,

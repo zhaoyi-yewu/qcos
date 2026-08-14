@@ -49,80 +49,76 @@ class TestClient:
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_debug_gc_default(self, mock_call_json_rpc):
+    def test_gc_mem_default(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.debug_gc()
+        status_code, reason, text, result = client.gc_mem()
         assert result == "result"
         mock_call_json_rpc.assert_called_once_with(
-            client.system_url, "debug_gc", {"generations": 2}
+            client.system_url, "gc_mem", {"generations": 2}
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_debug_gc_custom_generations(self, mock_call_json_rpc):
+    def test_gc_mem_custom_generations(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.debug_gc(generations=0)
+        status_code, reason, text, result = client.gc_mem(generations=0)
         assert result == "result"
         mock_call_json_rpc.assert_called_once_with(
-            client.system_url, "debug_gc", {"generations": 0}
+            client.system_url, "gc_mem", {"generations": 0}
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_debug_tracemalloc_default(self, mock_call_json_rpc):
+    def test_trace_mem_default(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.debug_tracemalloc()
+        status_code, reason, text, result = client.trace_mem()
         assert result == "result"
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
-            "debug_tracemalloc",
+            "trace_mem",
             {"action": "snapshot", "nframe": 25, "sort_count": False},
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_debug_tracemalloc_custom_nframe(self, mock_call_json_rpc):
+    def test_trace_mem_custom_nframe(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.debug_tracemalloc(nframe=10)
+        status_code, reason, text, result = client.trace_mem(nframe=10)
         assert result == "result"
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
-            "debug_tracemalloc",
+            "trace_mem",
             {"action": "snapshot", "nframe": 10, "sort_count": False},
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_debug_tracemalloc_stop(self, mock_call_json_rpc):
+    def test_trace_mem_stop(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.debug_tracemalloc(
-            action="stop"
-        )
+        status_code, reason, text, result = client.trace_mem(action="stop")
         assert result == "result"
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
-            "debug_tracemalloc",
+            "trace_mem",
             {"action": "stop", "nframe": 25, "sort_count": False},
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_debug_tracemalloc_clear(self, mock_call_json_rpc):
+    def test_trace_mem_clear(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.debug_tracemalloc(
-            action="clear"
-        )
+        status_code, reason, text, result = client.trace_mem(action="clear")
         assert result == "result"
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
-            "debug_tracemalloc",
+            "trace_mem",
             {"action": "clear", "nframe": 25, "sort_count": False},
         )
 
     @patch.object(Client, "call_json_rpc")
-    def test_debug_tracemalloc_sort_count(self, mock_call_json_rpc):
+    def test_trace_mem_sort_count(self, mock_call_json_rpc):
         mock_call_json_rpc.return_value = self.return_values
-        status_code, reason, text, result = client.debug_tracemalloc(
+        status_code, reason, text, result = client.trace_mem(
             nframe=10, sort_count=True
         )
         assert result == "result"
         mock_call_json_rpc.assert_called_once_with(
             client.system_url,
-            "debug_tracemalloc",
+            "trace_mem",
             {"action": "snapshot", "nframe": 10, "sort_count": True},
         )

@@ -17,7 +17,7 @@
 
 import pytest
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.device import (
@@ -29,6 +29,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.device import (
     get_device_options,
     _get_device_info,
 )
+from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.api.schemas import (
     GetDeviceRequest,
     CalibrateDeviceRequest,
@@ -150,6 +151,49 @@ class TestDevice:
             ]
             == 0.8440000000000001
         )
+
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(Device, "get_driver")
+    def test_get_device_with_job_count(
+        self,
+        mock_get_driver,
+        mock_get_device,
+        mock_get_device_manager,
+    ):
+        """get_device should return job_count grouped by status."""
+        mock_get_driver.return_value = DriverDummy()
+        device = Device("dummy", DriverDummy())
+        device.status = Device.DEVICE_STATUS_ONLINE
+        device.details = {}
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_client = Mock(spec=GetDeviceRequest)
+        mock_client.name = "dummy"
+        mock_client.details = False
+
+        # Mock count_by_status: single GROUP BY query returning
+        # only statuses present in the database (QUEUED=3, RUNNING=1)
+        mock_repo = MagicMock(spec=JobRepository)
+        mock_repo.count_by_status.return_value = {
+            Constant.JOB_STATUS_QUEUED: 3,
+            Constant.JOB_STATUS_RUNNING: 1,
+        }
+
+        response_info = get_device(mock_client, None, job_repo=mock_repo)
+        assert response_info.job_count[Constant.JOB_STATUS_QUEUED] == 3
+        assert response_info.job_count[Constant.JOB_STATUS_RUNNING] == 1
+        assert response_info.job_count[Constant.JOB_STATUS_COMPLETED] == 0
+        # TOTAL = sum of all statuses (3 + 1 = 4)
+        assert response_info.job_count[Constant.JOB_STATUS_TOTAL] == 4
+        # All statuses in JOB_STATUSES are present
+        for status in Constant.JOB_STATUSES:
+            assert status in response_info.job_count
+        assert Constant.JOB_STATUS_TOTAL in response_info.job_count
+        # count_by_status called once (single GROUP BY query)
+        mock_repo.count_by_status.assert_called_once_with("dummy")
 
     @patch.object(TaskScheduler, "submit_manage_job")
     def test_calibrate(self, mock_submit_manage_job):

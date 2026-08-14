@@ -17,7 +17,8 @@
    usage: qcos-cli submit-job [-h] [--code-type {qasm,qasm2,qasm3,qubo}] [--job-id JOB_ID]
                               [--circuit-aggregation {None,internal,external}] [-n JOB_NAME] [--job-type {sampling,estimation}]
                               [--job-priority JOB_PRIORITY] [--description DESCRIPTION] [--shots SHOTS]
-                              [--backend BACKEND] [--driver-options DRIVER_OPTIONS] [--transpiler TRANSPILER]
+                              [--backend BACKEND] [--flavor FLAVOR] [--extra-specs EXTRA_SPECS]
+                              [--driver-options DRIVER_OPTIONS] [--transpiler TRANSPILER]
                               [--transpiler-options TRANSPILER_OPTIONS]
                               [--profiling [{all,code,queuing,scheduling,driver:parse,driver:transpile,driver:run,machine} ...]]
                               [--callbacks CALLBACKS] [-D] [--qec-options QEC_OPTIONS] -f SOURCE_CODE_FILES [SOURCE_CODE_FILES ...]
@@ -43,7 +44,18 @@
      --shots SHOTS
                            Shots
      --backend BACKEND
-                           Set backend device name. eg: dummy
+                           Set backend device name. eg: dummy. Mutually
+                           exclusive with --flavor; if not specified, auto
+                           scheduling is triggered (requires --flavor)
+     --flavor FLAVOR
+                           Flavor ID (UUID) or flavor name for auto
+                           scheduling. Mutually exclusive with --backend.
+                           A flavor name is resolved to flavor_id before
+                           submitting the job
+     --extra-specs EXTRA_SPECS
+                           Extra scheduling specifications (JSON string).
+                           Only allowed together with --flavor, not with
+                           --backend
      --driver-options DRIVER_OPTIONS
                            Set driver options
      --transpiler TRANSPILER
@@ -103,13 +115,22 @@
 
 - 自动调度 (不指定backend，由系统自动选择设备)
 
+.. note::
+
+   ``--backend`` 与 ``--flavor`` 互斥，二者必须指定其一。
+   ``--extra-specs`` 仅可与 ``--flavor`` 搭配使用，指定 ``--backend`` 时不可使用 ``--extra-specs``。
+   ``--flavor`` 可接受 flavor ID (UUID) 或 flavor 名称，名称会在提交前解析为 flavor_id。
+
 .. code-block:: shell
 
-   # 使用 extra_specs 自动调度
-   qcos-cli submit-job --code-type qasm --shots 10 --extra-specs '{"max_qubits": 100}' -f ./samples/qasm/2.0/simple-qasm.qasm
+   # 使用 extra_specs 自动调度 (需搭配 --flavor)
+   qcos-cli submit-job --code-type qasm --shots 10 --flavor 00000000-0000-4000-8000-000000000001 --extra-specs '{"max_qubits": 100}' -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 使用 flavor_id 自动调度
-   qcos-cli submit-job --code-type qasm --shots 10 --flavor-id 00000000-0000-4000-8000-000000000001 -f ./samples/qasm/2.0/simple-qasm.qasm
+   qcos-cli submit-job --code-type qasm --shots 10 --flavor 00000000-0000-4000-8000-000000000001 -f ./samples/qasm/2.0/simple-qasm.qasm
+
+   # 使用 flavor_name 自动调度 (自动解析为 flavor_id)
+   qcos-cli submit-job --code-type qasm --shots 10 --flavor g1.all -f ./samples/qasm/2.0/simple-qasm.qasm
 
 - Flavor管理 (预设调度策略)
 

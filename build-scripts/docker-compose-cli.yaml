@@ -21,9 +21,11 @@ services:
     restart: always
     stdin_open: True
     tty: True
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     tmpfs:
       - /tmp
-      - /var/tmp
     working_dir: /root
     environment:
       TZ: Asia/Shanghai

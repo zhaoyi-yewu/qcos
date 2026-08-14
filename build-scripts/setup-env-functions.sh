@@ -1,3 +1,4 @@
+#!/bin/bash
 # ----------------------------------------------------------------------
 # Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -12,24 +13,16 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-version: '3'
-services:
-  postgres:
-    container_name: postgres
-    image: ${REGISTRY}${POSTGRES_IMAGE_NAME}:${POSTGRES_IMAGE_VERSION}
-    restart: always
-    network_mode: "host"
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp
-    environment:
-      TZ: Asia/Shanghai
-      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
-    volumes:
-      - /etc/hosts:/etc/hosts
-      - /etc/qcos/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
-      - /var/run/postgresql:/var/run/postgresql
-      - /var/log/qcos:/var/log/qcos
-      - /var/qcos/db/postgresql:/var/lib/postgresql
+set -e
+
+# create temp docker-compose file and set readonly: false
+create_temp_docker_compose_file() {
+  local src_file="$1"
+  local dst_file="$2"
+  local new_name=".${src_file##*/}"
+  local new_path="${src_file%/*}/${new_name}"
+  cp -f ${src_file} ${dst_file}
+  if grep -E 'read_only:\s*([Tt][Rr][Uu][Ee])' ${dst_file} > /dev/null; then
+    sed -i 's/read_only:\s*[Tt][Rr][Uu][Ee]/read_only: false/' ${dst_file}
+  fi
+}

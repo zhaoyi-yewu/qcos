@@ -136,7 +136,9 @@ class TaskScheduler:
         Must be called after init_device_group_manager,
         init_flavor_manager, set_device_manager
         and set_db_engine. Reuses the standalone flavor_manager
-        and device_group_manager instances.
+        and device_group_manager instances. The db_engine is passed
+        so the scheduler can query job load info directly from the
+        qcos database.
         """
         from wy_qcos.scheduler import AutoScheduler
 
@@ -145,6 +147,7 @@ class TaskScheduler:
             task_manager=self._task_manager,
             flavor_manager=self._flavor_manager,
             device_group_manager=self._device_group_manager,
+            db_engine=self._db_engine,
         )
         logger.info("Auto scheduler initialized")
 

@@ -62,6 +62,15 @@
    # 获取设备 dummy 的详情
    qcos-cli get-device dummy
 
+返回结果中包含 ``job_count`` 字段，按作业状态（UNKNOWN、QUEUED、
+RUNNING、FAILED、COMPLETED、CANCELLING、CANCELLED、DELETING、
+DELETED）统计该设备上各状态的作业数量，数据来源于 qcos 数据库。
+
+.. code-block:: shell
+
+   # 以 JSON 格式输出，查看 job_count 明细
+   qcos-cli get-device dummy -f json
+
 设备校准
 ***************
 

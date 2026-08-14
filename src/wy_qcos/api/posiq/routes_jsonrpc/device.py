@@ -24,6 +24,8 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
 from wy_qcos.common.constant import Constant
+from wy_qcos.db.repositories.job import JobRepository
+from wy_qcos.db.utils.db_utils import get_repository
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth, validate_virtual_instance
 
@@ -31,13 +33,51 @@ logger = logging.getLogger(__name__)
 module_name = "DEVICE"
 
 
-def _get_device_info(device, auth_data=None, details=False):
+def _get_job_count(device_name, job_repo=None):
+    """Get job count grouped by job status for a device.
+
+    Uses a single GROUP BY query (count_by_status) instead of N
+    separate COUNT queries so the job table is scanned only once.
+
+    Args:
+        device_name: device name (matches job.backend column)
+        job_repo: JobRepository instance. When None or not a real
+            repository, returns empty dict to avoid blocking device
+            queries when the database is unavailable.
+
+    Returns:
+        dict mapping each job status in Constant.JOB_STATUSES to
+        its count for the given device, plus a TOTAL entry that
+        sums all statuses.
+    """
+    job_count = {status: 0 for status in Constant.JOB_STATUSES}
+    if not isinstance(job_repo, JobRepository):
+        job_count[Constant.JOB_STATUS_TOTAL] = 0
+        return job_count
+    try:
+        counts = job_repo.count_by_status(device_name)
+    except Exception as e:
+        logger.warning(f"Failed to get job counts for {device_name}: {e}")
+        job_count[Constant.JOB_STATUS_TOTAL] = 0
+        return job_count
+    # Fill in statuses present in the database; others stay 0
+    total = 0
+    for status, count in counts.items():
+        job_count[status] = count
+        total += count
+    job_count[Constant.JOB_STATUS_TOTAL] = total
+    return job_count
+
+
+def _get_device_info(device, auth_data=None, details=False, job_repo=None):
     """Get device info.
 
     Args:
         device: device
         auth_data: authentication data
         details: need detail information or not
+        job_repo: JobRepository instance for querying job counts.
+            When None, job_count is an empty dict.
 
     Returns:
         device_info
@@ -58,6 +98,7 @@ def _get_device_info(device, auth_data=None, details=False):
         "max_qubits": device.max_qubits,
         "details": device.details,
         "last_updated_at": last_updated_at,
+        "job_count": _get_job_count(device.name, job_repo),
     }
     if not details:
         _device_info.pop("details")
@@ -71,12 +112,14 @@ def _get_device_info(device, auth_data=None, details=False):
 def get_devices(
     body: schemas.GetDevicesRequest | None = None,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> dict[str, schemas.GetDeviceResponse]:
     """Get device dict request.
 
     Args:
         body(schemas.GetDevicesRequest): devices request
         auth_data: auth data
+        job_repo: JobRepository instance for querying job counts
 
     Returns:
         Get devices response
@@ -91,7 +134,7 @@ def get_devices(
         success, _ = validate_virtual_instance(auth_data, backend=device_name)
         if not success:
             continue
-        _response_info = _get_device_info(device, auth_data)
+        _response_info = _get_device_info(device, auth_data, job_repo=job_repo)
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
         )
@@ -105,12 +148,14 @@ def get_devices(
 def get_device(
     body: schemas.GetDeviceRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
 ) -> schemas.GetDeviceResponse:
     """Get device info request.
 
     Args:
         body(schemas.GetDeviceRequest): device name
         auth_data: auth data
+        job_repo: JobRepository instance for querying job counts
 
     Returns:
         Get device info response
@@ -134,7 +179,9 @@ def get_device(
             func_name,
             (False, f"Device: '{device_name}' is not found"),
         )
-    _response_info = _get_device_info(device, auth_data, body.details)
+    _response_info = _get_device_info(
+        device, auth_data, body.details, job_repo=job_repo
+    )
     response_info = schemas.GetDeviceResponse.model_validate(_response_info)
     return response_info
 

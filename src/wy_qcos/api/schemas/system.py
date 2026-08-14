@@ -88,10 +88,10 @@ class ShowMemResponse(BaseModel):
     )
 
 
-class DebugGcRequest(BaseModel):
-    """Debug GC Request.
+class GcMemRequest(BaseModel):
+    """GC Memory Request.
 
-    Pydantic Model for Debug GC Request.
+    Pydantic Model for GC Memory Request.
     """
 
     # gc generations to collect, default 2 (full collection)
@@ -100,10 +100,10 @@ class DebugGcRequest(BaseModel):
     )
 
 
-class DebugGcResponse(BaseModel):
-    """Debug GC Response.
+class GcMemResponse(BaseModel):
+    """GC Memory Response.
 
-    Pydantic Model for Debug GC Response.
+    Pydantic Model for GC Memory Response.
     """
 
     # number of collected objects
@@ -131,10 +131,10 @@ class DebugGcResponse(BaseModel):
     )
 
 
-class DebugTracemallocRequest(BaseModel):
-    """Debug Tracemalloc Request.
+class TraceMemRequest(BaseModel):
+    """Trace Mem Request.
 
-    Pydantic Model for Debug Tracemalloc Request.
+    Pydantic Model for Trace Mem Request.
     """
 
     # action: snapshot (take snapshot), stop (stop tracing),
@@ -155,8 +155,8 @@ class DebugTracemallocRequest(BaseModel):
     )
 
 
-class TracemallocStatItem(BaseModel):
-    """Tracemalloc Stat Item.
+class TraceMemStatItem(BaseModel):
+    """Trace Mem Stat Item.
 
     Pydantic Model for single tracemalloc stat item.
     """
@@ -169,10 +169,10 @@ class TracemallocStatItem(BaseModel):
     count: int = Field(..., description="Count of allocations")
 
 
-class DebugTracemallocResponse(BaseModel):
-    """Debug Tracemalloc Response.
+class TraceMemResponse(BaseModel):
+    """Trace Mem Response.
 
-    Pydantic Model for Debug Tracemalloc Response.
+    Pydantic Model for Trace Mem Response.
     """
 
     # whether tracemalloc is currently tracing
@@ -188,7 +188,7 @@ class DebugTracemallocResponse(BaseModel):
     # peak traced memory in bytes
     peak: int = Field(..., description="Peak traced memory in bytes")
     # top memory allocation statistics
-    top_stats: list[TracemallocStatItem] = Field(
+    top_stats: list[TraceMemStatItem] = Field(
         default_factory=list,
         description="Top memory allocation statistics",
     )

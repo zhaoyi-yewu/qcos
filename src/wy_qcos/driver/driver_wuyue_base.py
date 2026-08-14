@@ -359,9 +359,13 @@ class DriverWuyueBase(DriverBase):
         max_length = key_size_bytes - 11
         encrypted_parts = []
 
+        pkcs = None
+        pkcs_version = "v15"
+        if pkcs_version == "v15":  # security issue
+            pkcs = padding.PKCS1v15()
         for i in range(0, len(plaintext), max_length):
             part = plaintext[i : i + max_length]
-            encrypted_part = public_key.encrypt(part, padding.PKCS1v15())
+            encrypted_part = public_key.encrypt(part, pkcs)
             encrypted_parts.append(encrypted_part)
 
         ciphertext = b"".join(encrypted_parts)

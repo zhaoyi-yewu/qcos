@@ -18,12 +18,14 @@ services:
     container_name: prefect-server
     image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
     restart: always
+    command: /bin/sh -c 'prefect server start'
+    network_mode: "host"
+    read_only: true
     security_opt:
       - no-new-privileges:true
     tmpfs:
       - /tmp
-    command: /bin/sh -c 'prefect server start'
-    network_mode: "host"
+      - /var/tmp
     environment:
       TZ: Asia/Shanghai
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
@@ -52,18 +54,21 @@ services:
       # PREFECT_REDIS_EVENTS_HOST: "${REDIS_SERVER_PORT}"
       # PREFECT_REDIS_EVENTS_PORT: "${REDIS_SERVER_PORT}"
       # PREFECT_REDIS_EVENTS_DB: "1"
+      PREFECT_UI_STATIC_DIRECTORY: "/tmp/prefect_ui_static"
       PYTHONPATH: /root/qcos-project/src
     volumes:
       - /etc/hosts:/etc/hosts
       - /var/log/qcos:/var/log/qcos
       - /var/qcos:/var/qcos
       - /etc/qcos/prefect:/root/.prefect
+      - /var/prefect:/var/prefect
   redis:
     image: ${REGISTRY}${REDIS_IMAGE_NAME}:${REDIS_IMAGE_VERSION}
     container_name: redis
     restart: always
     network_mode: "host"
     command: redis-server --bind ${REDIS_SERVER_LISTEN_IP}
+    read_only: true
     security_opt:
       - no-new-privileges:true
     tmpfs:
@@ -75,6 +80,9 @@ services:
     restart: always
     stdin_open: True
     tty: True
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     tmpfs:
       - /tmp
       - /var/tmp

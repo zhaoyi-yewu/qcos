@@ -80,8 +80,7 @@ def submit_job(
     description = body.description
     shots = body.shots
     backend = body.backend
-    flavor_name = body.flavor_name
-    flavor_id = None
+    flavor_id = body.flavor_id
     extra_specs = body.extra_specs
     driver_options = body.driver_options
     transpiler_name = body.transpiler
@@ -92,6 +91,8 @@ def submit_job(
     dry_run = body.dry_run
     code_compression_level = body.code_compression_level
     tags = body.tags
+
+    extra_job_data_info = {}
 
     # validate: code_type
     code_type = code_type.lower()
@@ -249,39 +250,44 @@ def submit_job(
     device_manger = scheduler.get_device_manager()
     devices = device_manger.get_devices()
 
-    # resolve flavor_name to flavor_id for DB persistence
-    if flavor_name:
-        flavor_manager = scheduler.get_flavor_manager()
-        if flavor_manager is None:
-            jsonrpc_errors.handle_error_internal_server(
-                module_name,
-                func_name,
-                (False, "Flavor manager is not initialized"),
-            )
-        flavor_obj = flavor_manager.get_flavor_by_name(flavor_name)
-        if flavor_obj is None:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (False, f"Flavor not found by name: {flavor_name}"),
-            )
-        flavor_id = flavor_obj.id
-        body.flavor_id = flavor_id
+    # validate: backend / flavor_id / extra_specs constraints.
+    # Either backend or flavor_id must be specified (mutually
+    # exclusive). extra_specs is only allowed together with
+    # flavor_id; it must not be specified when backend is set.
+    if backend and flavor_id:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                "backend and flavor_id are mutually exclusive, "
+                "please specify only one of them",
+            ),
+        )
+    if backend and extra_specs:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                "extra_specs is only allowed together with "
+                "flavor_id, not with backend",
+            ),
+        )
+    if not backend and not flavor_id:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                "Either backend or flavor_id must be specified "
+                "for job submission",
+            ),
+        )
 
     # auto scheduling: if backend is not specified
+    job_scheduling_started_at = time.time()
     if not backend:
-        # must provide flavor_id or extra_specs for auto scheduling
-        if not flavor_id and not extra_specs:
-            jsonrpc_errors.handle_error_bad_requests(
-                module_name,
-                func_name,
-                (
-                    False,
-                    "backend is required, or provide flavor_id/"
-                    "extra_specs for auto scheduling",
-                ),
-            )
-
         # get auto scheduler
         auto_scheduler = scheduler.get_auto_scheduler()
         if auto_scheduler is None:
@@ -294,7 +300,6 @@ def submit_job(
         # build request spec
         flavor_id_str = str(flavor_id) if flavor_id else None
         request_spec = AutoScheduler.build_request_spec(
-            job_id=str(job_id) if job_id else "",
             code_type=code_type,
             num_qubits=0,
             flavor_id=flavor_id_str,
@@ -315,6 +320,14 @@ def submit_job(
             jsonrpc_errors.handle_error_internal_server(
                 module_name, func_name, (False, f"Auto scheduling failed: {e}")
             )
+
+    job_scheduling_ended_at = time.time()
+    job_schedule_duration = job_scheduling_ended_at - job_scheduling_started_at
+    extra_job_data_info = {
+        "job_schedule_started_at": job_scheduling_started_at,
+        "job_schedule_ended_at": job_scheduling_ended_at,
+        "job_schedule_duration": job_schedule_duration,
+    }
 
     # validate auth of virtual instance
     jsonrpc_errors.handle_error_bad_requests(
@@ -584,17 +597,6 @@ def submit_job(
     if not job_id:
         body.job_id = job_record.id
 
-    # auto schedule
-    job_scheduling_started_at = time.time()
-    # TODO(zhaoyi): auto schedule
-    job_scheduling_ended_at = time.time()
-    job_schedule_duration = job_scheduling_ended_at - job_scheduling_started_at
-    extra_job_data_info = {
-        "job_schedule_started_at": job_scheduling_started_at,
-        "job_schedule_ended_at": job_scheduling_ended_at,
-        "job_schedule_duration": job_schedule_duration,
-    }
-
     # submit job
     res = {}
     err = None
@@ -642,6 +644,7 @@ def submit_job(
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
         )
+
     # handle submit response - scheduler returned error
     if err:
         # Rollback DB transaction

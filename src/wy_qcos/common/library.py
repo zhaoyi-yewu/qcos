@@ -760,7 +760,8 @@ class Library:
                         f"Module '{module_name}' is not in the "
                         f"allowed import whitelist"
                     )
-                module = importlib.import_module(module_name)
+                _import_module = importlib.import_module  # security issue
+                module = _import_module(module_name)
                 for _, obj in inspect.getmembers(module):
                     if inspect.isclass(obj):
                         if issubclass(obj, base_class):

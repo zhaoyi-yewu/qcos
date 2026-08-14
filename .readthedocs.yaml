@@ -27,8 +27,6 @@ python:
       path: .
       extra_requirements:
         - docs
-    
-    - requirements: ./requirements/requirements-docs.txt
 
 formats:
   - pdf

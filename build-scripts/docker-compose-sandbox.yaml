@@ -15,13 +15,17 @@
 version: '3'
 services:
   qcos-sandbox:
-    container_name: qcos-sandbox
+    container_name: ${QCOS_SANDBOX_CONTAINER_NAME:-qcos-sandbox}
     image: ${QCOS_REGISTRY}${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION}
     network_mode: "host"
     restart: always
     stdin_open: True
     tty: True
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     tmpfs:
+      - /root
       - /tmp
       - /var/tmp
     working_dir: /root/qcos-project

@@ -55,6 +55,7 @@ build-scripts/.env
 build-scripts/images/
 build-scripts/output/
 build-scripts/cli/output/
+build-scripts/.*
 
 # others
 requirements/requirements/

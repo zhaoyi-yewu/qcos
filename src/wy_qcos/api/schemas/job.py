@@ -52,27 +52,25 @@ class SubmitJobRequest(UuidMixin):
     description: str | None = Field(
         default=None, description="Job description"
     )
-    # device name (optional, if empty triggers auto scheduling)
+    # device name (optional, if empty triggers auto scheduling).
+    # Either backend or flavor_id must be specified; they are
+    # mutually exclusive with extra_specs (extra_specs is only
+    # allowed together with flavor_id).
     backend: str | None = Field(
         default=None,
         description="Backend device name. "
-        "If empty, auto scheduling is triggered (requires "
-        "flavor_id or extra_specs)",
+        "Mutually exclusive with flavor_id. If empty, auto "
+        "scheduling is triggered (requires flavor_id or "
+        "extra_specs)",
     )
-    # Flavor name for auto scheduling (input). Looked up by the
-    # API layer and resolved to flavor_id before storing in DB.
-    flavor_name: str | None = Field(
-        default=None,
-        exclude=True,
-        description="Flavor name for auto scheduling. "
-        "Specifies preset hardware specs to match against devices. "
-        "Resolved to flavor_id before persisting to DB",
-    )
-    # Flavor ID for auto scheduling (resolved from flavor_name)
+    # Flavor ID for auto scheduling. Only flavor_id (UUID) is
+    # accepted at submit time; flavor_name is resolved client-side.
     flavor_id: UUID | None = Field(
         default=None,
-        description="Flavor ID for auto scheduling. "
-        "Specifies preset hardware specs to match against devices",
+        description="Flavor ID (UUID) for auto scheduling. "
+        "Specifies preset hardware specs to match against devices. "
+        "Mutually exclusive with backend; may be combined with "
+        "extra_specs",
     )
     # Extra scheduling specs
     extra_specs: dict | None = Field(

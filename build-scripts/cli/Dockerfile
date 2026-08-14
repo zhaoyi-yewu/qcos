@@ -85,7 +85,8 @@ RUN set -e && \
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
 
-RUN useradd -r -g root qcos
-USER root
+RUN useradd -u 1000 -g root -m qcos && \
+    echo "qcos ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/qcos
+USER qcos
 WORKDIR /root
 ENTRYPOINT ["/entrypoint.sh"]

@@ -24,7 +24,7 @@ from wy_qcos_client.client import Client
 from wy_qcos_client.shell import (
     QcosShell,
     CommandHelper,
-    DoGc,
+    GcMem,
     Ping,
     ShowMem,
     SystemInfo,
@@ -41,7 +41,7 @@ shell.client = Client()
 ping = Ping(shell, None)
 system_info = SystemInfo(shell, None)
 show_mem = ShowMem(shell, None)
-do_gc = DoGc(shell, None)
+do_gc = GcMem(shell, None)
 trace_mem = TraceMem(shell, None)
 
 
@@ -99,7 +99,7 @@ class TestShowMem:
         assert table_values is None
 
 
-class TestDoGc:
+class TestGcMem:
     def test_get_parser(self):
         parser = do_gc.get_parser("")
         assert parser is not None
@@ -110,9 +110,9 @@ class TestDoGc:
         assert actions["generations"].choices == [0, 1, 2]
 
     @patch.object(CommandHelper, "check_results")
-    @patch.object(Client, "debug_gc")
-    def test_take_action(self, mock_debug_gc, mock_check_results):
-        mock_debug_gc.return_value = iter([None, None, None, None])
+    @patch.object(Client, "gc_mem")
+    def test_take_action(self, mock_gc_mem, mock_check_results):
+        mock_gc_mem.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {
             "collected": 10,
             "uncollectable": 0,
@@ -123,7 +123,7 @@ class TestDoGc:
         mock_client.generations = 2
         # take_action prints output and returns None
         assert do_gc.take_action(mock_client) is None
-        mock_debug_gc.assert_called_once_with(generations=2)
+        mock_gc_mem.assert_called_once_with(generations=2)
 
 
 class TestTraceMem:
@@ -140,14 +140,14 @@ class TestTraceMem:
 
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
-    @patch.object(Client, "debug_tracemalloc")
+    @patch.object(Client, "trace_mem")
     def test_take_action_snapshot(
         self,
-        mock_debug_tracemalloc,
+        mock_trace_mem,
         mock_check_results,
         mock_get_table_list_data,
     ):
-        mock_debug_tracemalloc.return_value = iter([None, None, None, None])
+        mock_trace_mem.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {
             "tracing": True,
             "traced_blocks": 5,
@@ -171,20 +171,20 @@ class TestTraceMem:
         mock_client.sort_count = False
         result = trace_mem.take_action(mock_client)
         assert result is not None
-        mock_debug_tracemalloc.assert_called_once_with(
+        mock_trace_mem.assert_called_once_with(
             action="snapshot", nframe=25, sort_count=False
         )
 
     @patch.object(CommandHelper, "get_table_list_data")
     @patch.object(CommandHelper, "check_results")
-    @patch.object(Client, "debug_tracemalloc")
+    @patch.object(Client, "trace_mem")
     def test_take_action_stop(
         self,
-        mock_debug_tracemalloc,
+        mock_trace_mem,
         mock_check_results,
         mock_get_table_list_data,
     ):
-        mock_debug_tracemalloc.return_value = iter([None, None, None, None])
+        mock_trace_mem.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {
             "tracing": False,
             "traced_blocks": 0,
@@ -202,6 +202,6 @@ class TestTraceMem:
         mock_client.sort_count = False
         result = trace_mem.take_action(mock_client)
         assert result is not None
-        mock_debug_tracemalloc.assert_called_once_with(
+        mock_trace_mem.assert_called_once_with(
             action="stop", nframe=25, sort_count=False
         )

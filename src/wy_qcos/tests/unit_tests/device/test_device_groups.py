@@ -98,7 +98,6 @@ def make_device_state(name="dummy", **kwargs):
 def make_spec(flavor_specs=None, extra_specs=None, **kwargs):
     """Build a RequestSpec for filter testing."""
     return RequestSpec(
-        job_id=kwargs.get("job_id", "job-1"),
         code_type=kwargs.get("code_type", "qasm"),
         num_qubits=kwargs.get("num_qubits", 0),
         flavor_id=kwargs.get("flavor_id"),
