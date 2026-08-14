@@ -31,13 +31,45 @@ namespace qcos {
 namespace {
 
 /**
+ * @brief 从 coupling_list 推断物理比特总数（最大节点 ID + 1）
+ *
+ * 用于按物理 ID 索引数组 (邻接表、保真度映射等)。
+ */
+int count_physical_qubits(
+    const std::vector<std::pair<int, int>>& coupling_list) {
+  int max_id = -1;
+  for (const auto& edge : coupling_list) {
+    max_id = std::max(max_id, std::max(edge.first, edge.second));
+  }
+  return max_id + 1;
+}
+
+/**
+ * @brief 统计 coupling_list 中去重后的物理比特数
+ *
+ * 调用方 (SABRE) 已通过 select_largest_component 过滤为单连通分量,
+ * 因此去重节点数即为最大连通分量的实际可用比特数, 用于容量校验。
+ */
+int count_unique_physical_qubits(
+    const std::vector<std::pair<int, int>>& coupling_list) {
+  std::unordered_set<int> qubits;
+  for (const auto& edge : coupling_list) {
+    qubits.insert(edge.first);
+    qubits.insert(edge.second);
+  }
+  return static_cast<int>(qubits.size());
+}
+
+/**
  * @brief 校验 dense_layout_mapping 的输入参数
  * @throw std::invalid_argument 当参数不合法时
+ *
+ * 物理比特数用去重节点数 (而非 max_id+1), 排除不连通的孤立比特,
+ * 避免过滤后图分裂时校验失效导致后续 SABRE 死循环。
  */
 void validate_dense_layout_inputs(
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<double>& edge_fidelities, int num_logical,
-    int num_physical) {
+    const std::vector<double>& edge_fidelities, int num_logical) {
   if (coupling_list.empty()) {
     throw std::invalid_argument(
         "dense_layout_mapping: coupling_list is empty");
@@ -51,25 +83,15 @@ void validate_dense_layout_inputs(
         std::to_string(coupling_list.size()) + ")");
   }
 
-  if (num_logical > num_physical) {
-    throw std::invalid_argument(
-        "dense_layout_mapping: num_logical (" + std::to_string(num_logical) +
-        ") > num_physical (" + std::to_string(num_physical) +
-        "); if fidelity filtering is enabled, the largest connected "
-        "component may be too small, try lowering fidelity_threshold");
+  const int num_unique_physical = count_unique_physical_qubits(coupling_list);
+  if (num_logical > num_unique_physical) {
+    throw std::invalid_argument("dense_layout_mapping: num_logical (" +
+                                std::to_string(num_logical) +
+                                ") > available physical qubits (" +
+                                std::to_string(num_unique_physical) +
+                                "); if fidelity filtering is enabled, try "
+                                "lowering fidelity_threshold");
   }
-}
-
-/**
- * @brief 从 coupling_list 推断物理比特总数（最大节点 ID + 1）
- */
-int count_physical_qubits(
-    const std::vector<std::pair<int, int>>& coupling_list) {
-  int max_id = -1;
-  for (const auto& edge : coupling_list) {
-    max_id = std::max(max_id, std::max(edge.first, edge.second));
-  }
-  return max_id + 1;
 }
 
 /**
@@ -237,8 +259,7 @@ std::vector<int> dense_layout_mapping(
   const int num_physical = count_physical_qubits(coupling_list);
 
   // 在开头做严格校验
-  validate_dense_layout_inputs(coupling_list, edge_fidelities, num_logical,
-                               num_physical);
+  validate_dense_layout_inputs(coupling_list, edge_fidelities, num_logical);
 
   if (num_logical == 0) return {};
 

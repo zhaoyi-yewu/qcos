@@ -1781,8 +1781,8 @@ class SABRE:
         weight (float, optional): Weight between front layer and lookahead
             cost. Defaults to 0.5.
         decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
-        fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
-            0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
+        fidelity_weight (float, optional): DenseLayout fidelity weight in
+            [0, 1]. 0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
         """
         ...
 
