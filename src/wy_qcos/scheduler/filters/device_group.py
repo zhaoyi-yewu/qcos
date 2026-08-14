@@ -33,21 +33,21 @@ class DeviceGroupFilter(BaseFilter):
     'qc:device_groups' reference. If so, only devices that belong
     to the referenced group (by name or UUID) pass the filter.
 
-    The device_group_manager is set by AutoScheduler before
-    filtering.
+    The device_group_manager is set by AutoScheduler via
+    set_device_group_manager() during filter initialization.
     """
 
-    def __init__(self, device_group_manager=None):
+    def __init__(self):
         """Init DeviceGroupFilter.
 
-        Args:
-            device_group_manager: DeviceGroupManager instance for
-                looking up group members
+        The device_group_manager is injected later via
+        set_device_group_manager() by AutoScheduler, keeping the
+        initialization interface uniform across all filters.
         """
-        self._device_group_manager = device_group_manager
+        self._device_group_manager = None
 
     def set_device_group_manager(self, manager):
-        """Set device group manager.
+        """Set the device group manager on this filter.
 
         Args:
             manager: DeviceGroupManager instance
@@ -107,6 +107,12 @@ class DeviceGroupFilter(BaseFilter):
                 f"No devices found for groups: {', '.join(device_groups)}"
             )
             return False
+
+        logger.debug(
+            f"DeviceGroupFilter: device_name: {obj.name}. "
+            f"obj.name: {obj.name}, "
+            f"device_set: {device_set}"
+        )
 
         if Constant.DEVICE_GROUP_DN_ALL in device_set:
             return True

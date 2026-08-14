@@ -15,9 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
+
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from .base import BaseFilter
+
+logger = logging.getLogger(__name__)
 
 
 class CodeTypeFilter(BaseFilter):
@@ -28,6 +32,12 @@ class CodeTypeFilter(BaseFilter):
     """
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
+        logger.debug(
+            f"CodeTypeFilter: device_name: {obj.name}. "
+            f"obj.supported_code_types: {obj.supported_code_types}, "
+            f"spec.code_type: {spec.code_type}"
+        )
+
         if not spec.code_type:
             return True
         return spec.code_type in obj.supported_code_types

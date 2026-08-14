@@ -44,9 +44,11 @@ class DeviceState:
     # Dynamic load info (from Prefect)
     queued_job_count: int = 0
     running_job_count: int = 0
+    vendor_queued_job_count: int = 0
+    vendor_running_job_count: int = 0
     max_queued_jobs: int = -1
 
-    # Historical statistics (from DB)
+    # Historical statistics (from DB)  # TODO(zhaoyi): NOT IMPLEMENTED YET
     avg_exec_time_per_qubit: float = 0.0
 
     @classmethod
@@ -91,15 +93,21 @@ class DeviceState:
         self,
         queued_job_count: int,
         running_job_count: int,
+        vendor_queued_job_count: int,
+        vendor_running_job_count: int,
     ):
         """Set dynamic load info.
 
         Args:
             queued_job_count: queued job count
             running_job_count: running job count
+            vendor_queued_job_count: queued job count in vendor
+            vendor_running_job_count: running job count in vendor
         """
         self.queued_job_count = queued_job_count
         self.running_job_count = running_job_count
+        self.vendor_queued_job_count = vendor_queued_job_count
+        self.vendor_running_job_count = vendor_running_job_count
 
     def get_avg_1q_fidelity(self) -> float:
         """Get average 1-qubit gate fidelity from device details.

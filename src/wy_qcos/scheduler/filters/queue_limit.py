@@ -15,9 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
+
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from .base import BaseFilter
+
+logger = logging.getLogger(__name__)
 
 
 class QueueLimitFilter(BaseFilter):
@@ -28,6 +32,12 @@ class QueueLimitFilter(BaseFilter):
     """
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
+        logger.debug(
+            f"QueueLimitFilter: device_name: {obj.name}. "
+            f"obj.queued_job_count: {obj.queued_job_count}, "
+            f"obj.max_queued_jobs: {obj.max_queued_jobs}"
+        )
+
         if obj.max_queued_jobs < 0:
             # No limit
             return True
