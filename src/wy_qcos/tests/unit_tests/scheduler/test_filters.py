@@ -21,6 +21,10 @@ from wy_qcos.common.flavor_constant import FlavorConstant
 from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.filters.code_type import CodeTypeFilter
+from wy_qcos.scheduler.filters.device_availability import (
+    DeviceAvailabilityFilter,
+)
+from wy_qcos.scheduler.filters.device_name import DeviceNameFilter
 from wy_qcos.scheduler.filters.device_status import DeviceStatusFilter
 from wy_qcos.scheduler.filters.qubit_count import QubitCountFilter
 from wy_qcos.scheduler.filters.tech_type import TechTypeFilter
@@ -49,7 +53,7 @@ def make_device_state(
         status=status,
         enable=enable,
         max_qubits=max_qubits,
-        available_num_qubits=max_qubits,
+        available_qubits=max_qubits,
         tech_type=tech_type,
         supported_code_types=supported_code_types or ["qasm", "qasm2"],
         supported_basis_gates=None,
@@ -168,7 +172,7 @@ class TestTechTypeFilter:
 
     def test_is_enabled_when_tech_type_set(self):
         filter_obj = TechTypeFilter()
-        spec = make_spec(flavor_specs={"tech_type": "superconducting"})
+        spec = make_spec(flavor_specs={"qc:tech_types": "superconducting"})
         assert filter_obj.is_enabled(spec) is True
 
     def test_is_disabled_when_no_tech_type(self):
@@ -179,13 +183,29 @@ class TestTechTypeFilter:
     def test_filter_matching_tech_type(self):
         filter_obj = TechTypeFilter()
         device = make_device_state(tech_type="superconducting")
-        spec = make_spec(flavor_specs={"tech_type": "superconducting"})
+        spec = make_spec(flavor_specs={"qc:tech_types": "superconducting"})
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_non_matching_tech_type(self):
         filter_obj = TechTypeFilter()
         device = make_device_state(tech_type="ion_trap")
-        spec = make_spec(flavor_specs={"tech_type": "superconducting"})
+        spec = make_spec(flavor_specs={"qc:tech_types": "superconducting"})
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_filter_matching_one_of_multiple(self):
+        filter_obj = TechTypeFilter()
+        device = make_device_state(tech_type="ion_trap")
+        spec = make_spec(
+            flavor_specs={"qc:tech_types": "superconducting,ion_trap"}
+        )
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_filter_non_matching_one_of_multiple(self):
+        filter_obj = TechTypeFilter()
+        device = make_device_state(tech_type="neutral_atom")
+        spec = make_spec(
+            flavor_specs={"qc:tech_types": "superconducting,ion_trap"}
+        )
         assert filter_obj._filter_one(device, spec) is False
 
 
@@ -212,9 +232,11 @@ class TestGateFidelityFilter:
     def test_filter_2q_fidelity_meets_threshold(self):
         filter_obj = GateFidelityFilter()
         details = {
-            "double_qubit_prop": {
-                "q1": {"gate_fidelity": 0.998},
-                "q2": {"gate_fidelity": 0.999},
+            "calibration": {
+                "coupler_metrics": [
+                    {"qubits": [0, 1], "cz_fidelity": 0.998},
+                    {"qubits": [1, 2], "cz_fidelity": 0.999},
+                ]
             }
         }
         device = make_device_state(details=details)
@@ -225,9 +247,11 @@ class TestGateFidelityFilter:
     def test_filter_2q_fidelity_below_threshold(self):
         filter_obj = GateFidelityFilter()
         details = {
-            "double_qubit_prop": {
-                "q1": {"gate_fidelity": 0.98},
-                "q2": {"gate_fidelity": 0.99},
+            "calibration": {
+                "coupler_metrics": [
+                    {"qubits": [0, 1], "cz_fidelity": 0.98},
+                    {"qubits": [1, 2], "cz_fidelity": 0.99},
+                ]
             }
         }
         device = make_device_state(details=details)
@@ -238,9 +262,11 @@ class TestGateFidelityFilter:
     def test_filter_1q_fidelity_meets_threshold(self):
         filter_obj = GateFidelityFilter()
         details = {
-            "single_qubit_prop": {
-                "q1": {"single_qubit_gate_fidelity": 0.999},
-                "q2": {"single_qubit_gate_fidelity": 0.998},
+            "calibration": {
+                "qubit_metrics": [
+                    {"qubit_id": 0, "xeb_fidelity": 0.999},
+                    {"qubit_id": 1, "xeb_fidelity": 0.998},
+                ]
             }
         }
         device = make_device_state(details=details)
@@ -251,9 +277,11 @@ class TestGateFidelityFilter:
     def test_filter_1q_fidelity_below_threshold(self):
         filter_obj = GateFidelityFilter()
         details = {
-            "single_qubit_prop": {
-                "q1": {"single_qubit_gate_fidelity": 0.98},
-                "q2": {"single_qubit_gate_fidelity": 0.99},
+            "calibration": {
+                "qubit_metrics": [
+                    {"qubit_id": 0, "xeb_fidelity": 0.98},
+                    {"qubit_id": 1, "xeb_fidelity": 0.99},
+                ]
             }
         }
         device = make_device_state(details=details)
@@ -271,12 +299,14 @@ class TestGateFidelityFilter:
     def test_filter_both_1q_and_2q_pass(self):
         filter_obj = GateFidelityFilter()
         details = {
-            "single_qubit_prop": {
-                "q1": {"single_qubit_gate_fidelity": 0.999},
-            },
-            "double_qubit_prop": {
-                "q1": {"gate_fidelity": 0.998},
-            },
+            "calibration": {
+                "qubit_metrics": [
+                    {"qubit_id": 0, "xeb_fidelity": 0.999},
+                ],
+                "coupler_metrics": [
+                    {"qubits": [0, 1], "cz_fidelity": 0.998},
+                ],
+            }
         }
         device = make_device_state(details=details)
         key1 = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
@@ -287,12 +317,14 @@ class TestGateFidelityFilter:
     def test_filter_1q_pass_2q_fail(self):
         filter_obj = GateFidelityFilter()
         details = {
-            "single_qubit_prop": {
-                "q1": {"single_qubit_gate_fidelity": 0.999},
-            },
-            "double_qubit_prop": {
-                "q1": {"gate_fidelity": 0.98},
-            },
+            "calibration": {
+                "qubit_metrics": [
+                    {"qubit_id": 0, "xeb_fidelity": 0.999},
+                ],
+                "coupler_metrics": [
+                    {"qubits": [0, 1], "cz_fidelity": 0.98},
+                ],
+            }
         }
         device = make_device_state(details=details)
         key1 = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
@@ -377,3 +409,207 @@ class TestBaseFilterHandler:
         spec = make_spec(code_type="qasm")
         result = handler.get_filtered_objects(devices, spec)
         assert len(result) == 0
+
+
+class TestDeviceAvailabilityFilter:
+    """Tests for DeviceAvailabilityFilter."""
+
+    def _make_device(self, availability_total=0.0):
+        """Create a DeviceState with availability set."""
+        state = make_device_state()
+        state.set_availability(availability_total=availability_total)
+        return state
+
+    def test_not_enabled_when_no_threshold(self):
+        """Filter is disabled when device_availability not specified."""
+        filter_obj = DeviceAvailabilityFilter()
+        spec = make_spec()
+        assert filter_obj.is_enabled(spec) is False
+
+    def test_enabled_when_threshold_specified(self):
+        """Filter is enabled when device_availability is set."""
+        filter_obj = DeviceAvailabilityFilter()
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: 0.9}
+        )
+        assert filter_obj.is_enabled(spec) is True
+
+    def test_device_meets_threshold(self):
+        """Device with availability >= threshold passes."""
+        filter_obj = DeviceAvailabilityFilter()
+        device = self._make_device(availability_total=0.95)
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: 0.9}
+        )
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_device_below_threshold(self):
+        """Device with availability < threshold is filtered out."""
+        filter_obj = DeviceAvailabilityFilter()
+        device = self._make_device(availability_total=0.5)
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: 0.9}
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_device_no_availability_blocked_when_threshold_set(self):
+        """Device with availability_total=0.0 blocked when threshold set."""
+        filter_obj = DeviceAvailabilityFilter()
+        device = self._make_device(availability_total=0.0)
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: 0.9}
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_extra_specs_overrides_flavor(self):
+        """extra_specs device_availability overrides flavor."""
+        filter_obj = DeviceAvailabilityFilter()
+        device = self._make_device(availability_total=0.8)
+        spec = make_spec(
+            flavor_specs={FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: 0.9},
+            extra_specs={FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: 0.7},
+        )
+        # extra_specs (0.7) overrides flavor (0.9), device passes
+        assert filter_obj._filter_one(device, spec) is True
+
+
+class TestDeviceNameFilter:
+    """Tests for DeviceNameFilter (whitelist + blacklist)."""
+
+    # --- enable/disable ---
+
+    def test_is_disabled_when_no_devices_and_no_exclude(self):
+        filter_obj = DeviceNameFilter()
+        spec = make_spec()
+        assert filter_obj.is_enabled(spec) is False
+
+    def test_is_enabled_when_devices_set(self):
+        filter_obj = DeviceNameFilter()
+        spec = make_spec(flavor_specs={"qcos:devices": "dev1,dev2"})
+        assert filter_obj.is_enabled(spec) is True
+
+    def test_is_enabled_when_exclude_set(self):
+        filter_obj = DeviceNameFilter()
+        spec = make_spec(flavor_specs={"qcos:exclude_devices": "dev1"})
+        assert filter_obj.is_enabled(spec) is True
+
+    # --- whitelist ---
+
+    def test_device_in_whitelist(self):
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev1")
+        spec = make_spec(flavor_specs={"qcos:devices": "dev1,dev2"})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_device_not_in_whitelist(self):
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev3")
+        spec = make_spec(flavor_specs={"qcos:devices": "dev1,dev2"})
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_all_means_no_restriction(self):
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev_any")
+        spec = make_spec(flavor_specs={"qcos:devices": "all"})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_whitelist_only_disabled_returns_true(self):
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev1")
+        spec = make_spec()
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_extra_specs_overrides_flavor(self):
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev3")
+        spec = make_spec(
+            flavor_specs={"qcos:devices": "dev1,dev2"},
+            extra_specs={"qcos:devices": "dev3,dev4"},
+        )
+        assert filter_obj._filter_one(device, spec) is True
+
+    # --- blacklist ---
+
+    def test_device_in_blacklist(self):
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev1")
+        spec = make_spec(flavor_specs={"qcos:exclude_devices": "dev1,dev2"})
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_device_not_in_blacklist(self):
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev3")
+        spec = make_spec(flavor_specs={"qcos:exclude_devices": "dev1,dev2"})
+        assert filter_obj._filter_one(device, spec) is True
+
+    # --- whitelist + blacklist combined ---
+
+    def test_whitelist_passes_but_blacklist_excludes(self):
+        """Device in whitelist but also in blacklist is excluded."""
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev1")
+        spec = make_spec(
+            flavor_specs={
+                "qcos:devices": "dev1,dev2",
+                "qcos:exclude_devices": "dev1",
+            }
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_whitelist_and_blacklist_both_pass(self):
+        """Device in whitelist and not in blacklist passes."""
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev2")
+        spec = make_spec(
+            flavor_specs={
+                "qcos:devices": "dev1,dev2",
+                "qcos:exclude_devices": "dev1",
+            }
+        )
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_blacklist_overrides_whitelist_all(self):
+        """Even with devices=all, blacklist still excludes."""
+        filter_obj = DeviceNameFilter()
+        device = make_device_state(name="dev1")
+        spec = make_spec(
+            flavor_specs={
+                "qcos:devices": "all",
+                "qcos:exclude_devices": "dev1",
+            }
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+
+class TestCodeTypeFilterOverride:
+    """Tests for CodeTypeFilter qcos:code_types override."""
+
+    def test_code_types_override_matches(self):
+        filter_obj = CodeTypeFilter()
+        device = make_device_state(supported_code_types=["qasm", "qasm2"])
+        spec = make_spec(
+            code_type="qubo",
+            flavor_specs={"qcos:code_types": "qasm"},
+        )
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_code_types_override_no_match(self):
+        filter_obj = CodeTypeFilter()
+        device = make_device_state(supported_code_types=["qasm"])
+        spec = make_spec(
+            code_type="qasm",
+            flavor_specs={"qcos:code_types": "qubo"},
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_code_types_multiple_match_one(self):
+        filter_obj = CodeTypeFilter()
+        device = make_device_state(supported_code_types=["qasm2"])
+        spec = make_spec(flavor_specs={"qcos:code_types": "qasm,qasm2"})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_no_code_types_falls_back_to_job_code_type(self):
+        filter_obj = CodeTypeFilter()
+        device = make_device_state(supported_code_types=["qasm", "qasm2"])
+        spec = make_spec(code_type="qasm")
+        assert filter_obj._filter_one(device, spec) is True

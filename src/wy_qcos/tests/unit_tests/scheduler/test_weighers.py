@@ -25,6 +25,9 @@ from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.scheduler.weighers.device_load import DeviceLoadWeigher
 from wy_qcos.scheduler.weighers.exec_time import AvgExecTimeWeigher
+from wy_qcos.scheduler.weighers.device_availability import (
+    DeviceAvailabilityWeigher,
+)
 from wy_qcos.scheduler.weighers.base import BaseWeightHandler
 from wy_qcos.scheduler.weighers import DEFAULT_WEIGHERS
 from wy_qcos.scheduler.errors import NoValidDeviceError
@@ -36,6 +39,8 @@ def make_device_state(
     queued_job_count=0,
     running_job_count=0,
     avg_exec_time_per_qubit=0.0,
+    availability_total=0.0,
+    availability_hourly=0.0,
     status="online",
     enable=True,
     max_qubits=10,
@@ -49,7 +54,7 @@ def make_device_state(
         status=status,
         enable=enable,
         max_qubits=max_qubits,
-        available_num_qubits=max_qubits,
+        available_qubits=max_qubits,
         tech_type=tech_type,
         supported_code_types=supported_code_types or ["qasm"],
         supported_basis_gates=None,
@@ -58,6 +63,8 @@ def make_device_state(
         running_job_count=running_job_count,
         max_queued_jobs=-1,
         avg_exec_time_per_qubit=avg_exec_time_per_qubit,
+        availability_total=availability_total,
+        availability_hourly=availability_hourly,
     )
 
 
@@ -139,6 +146,44 @@ class TestAvgExecTimeWeigher:
         assert fast_weight > slow_weight
 
 
+class TestDeviceAvailabilityWeigher:
+    """Tests for DeviceAvailabilityWeigher."""
+
+    def test_weigh_zero_availability_returns_zero(self):
+        weigher = DeviceAvailabilityWeigher()
+        device = make_device_state(
+            availability_total=0.0, availability_hourly=0.0
+        )
+        spec = make_spec()
+        weight = weigher._weigh_object(device, spec)
+        assert weight == 0.0
+
+    def test_weigh_full_availability_returns_one(self):
+        weigher = DeviceAvailabilityWeigher()
+        device = make_device_state(availability_total=1.0)
+        spec = make_spec()
+        weight = weigher._weigh_object(device, spec)
+        assert weight == 1.0
+
+    def test_weigh_partial_availability_returns_rate(self):
+        weigher = DeviceAvailabilityWeigher()
+        device = make_device_state(availability_total=0.6)
+        spec = make_spec()
+        weight = weigher._weigh_object(device, spec)
+        assert weight == 0.6
+
+    def test_weigh_higher_availability_higher_weight(self):
+        weigher = DeviceAvailabilityWeigher()
+        stable_device = make_device_state(
+            name="stable", availability_total=0.9
+        )
+        flaky_device = make_device_state(name="flaky", availability_total=0.1)
+        spec = make_spec()
+        stable_weight = weigher._weigh_object(stable_device, spec)
+        flaky_weight = weigher._weigh_object(flaky_device, spec)
+        assert stable_weight > flaky_weight
+
+
 class TestBaseWeightHandler:
     """Tests for BaseWeightHandler."""
 
@@ -203,7 +248,7 @@ class TestAutoScheduler:
         device.details = {}
         driver = MagicMock()
         driver.get_max_qubits.return_value = 10
-        driver.available_num_qubits = 10
+        driver.get_available_qubits.return_value = 10
         driver.get_supported_code_types.return_value = ["qasm"]
         driver.get_supported_basis_gates.return_value = None
         device.get_driver.return_value = driver
@@ -215,10 +260,16 @@ class TestAutoScheduler:
         task_manager.get_flow_runs_with_filters.return_value = []
         flavor_manager = MagicMock()
 
-        scheduler = AutoScheduler(device_manager, task_manager, flavor_manager)
-        spec = make_spec(code_type="qasm")
-
-        result = scheduler.schedule(spec)
+        with patch.object(
+            AutoScheduler,
+            "_get_availability_rates",
+            return_value=(None, None),
+        ):
+            scheduler = AutoScheduler(
+                device_manager, task_manager, flavor_manager
+            )
+            spec = make_spec(code_type="qasm")
+            result = scheduler.schedule(spec)
         assert result == "device1"
 
     def test_schedule_multiple_devices_picks_least_busy(self):
@@ -236,7 +287,7 @@ class TestAutoScheduler:
             device.details = {}
             driver = MagicMock()
             driver.get_max_qubits.return_value = 20
-            driver.available_num_qubits = 20
+            driver.get_available_qubits.return_value = 20
             driver.get_supported_code_types.return_value = ["qasm"]
             driver.get_supported_basis_gates.return_value = None
             device.get_driver.return_value = driver
@@ -278,6 +329,11 @@ class TestAutoScheduler:
                 "wy_qcos.scheduler.auto_scheduler.JobRepository",
                 return_value=fake_repo,
             ),
+            patch.object(
+                AutoScheduler,
+                "_get_availability_rates",
+                return_value=(None, None),
+            ),
         ):
             scheduler = AutoScheduler(
                 device_manager,
@@ -301,7 +357,7 @@ class TestAutoScheduler:
         device.details = {}
         driver = MagicMock()
         driver.get_max_qubits.return_value = 10
-        driver.available_num_qubits = 10
+        driver.get_available_qubits.return_value = 10
         driver.get_supported_code_types.return_value = ["qasm"]
         driver.get_supported_basis_gates.return_value = None
         device.get_driver.return_value = driver
@@ -313,17 +369,23 @@ class TestAutoScheduler:
         task_manager.get_flow_runs_with_filters.return_value = []
         flavor_manager = MagicMock()
 
-        scheduler = AutoScheduler(device_manager, task_manager, flavor_manager)
-        spec = make_spec(code_type="qasm")
-
-        with pytest.raises(NoValidDeviceError):
-            scheduler.schedule(spec)
+        with patch.object(
+            AutoScheduler,
+            "_get_availability_rates",
+            return_value=(None, None),
+        ):
+            scheduler = AutoScheduler(
+                device_manager, task_manager, flavor_manager
+            )
+            spec = make_spec(code_type="qasm")
+            with pytest.raises(NoValidDeviceError):
+                scheduler.schedule(spec)
 
     def test_build_request_spec_with_flavor(self):
         flavor_manager = MagicMock()
         flavor_manager.get_flavor_specs.return_value = {
             FlavorConstant.FS_KEY_MIN_QUBITS: 16,
-            "tech_type": "superconducting",
+            FlavorConstant.FS_KEY_TECH_TYPES: "superconducting",
         }
 
         spec = AutoScheduler.build_request_spec(
