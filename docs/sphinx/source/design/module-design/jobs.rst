@@ -66,7 +66,7 @@ Filter 分为必须过滤器和可选过滤器，可选过滤器仅在相关参�
 
 - ``QubitCountFilter`` - 输入的量子比特数满足后端设备要求
 - ``TechTypeFilter`` - 设备技术类型匹配（来自 flavor.specs.tech_type）
-- ``GateFidelityFilter`` - 双比特门保真度满足阈值（来自 flavor.specs.gate_fidelity_2q_min）
+- ``GateFidelityFilter`` - 单、双比特门保真度满足阈值（来自 flavor.specs.gate_fidelity_Xq_min）
 
 Weigher权重器
 ^^^^^^^^^^^^^^^^^^^^
@@ -128,14 +128,23 @@ Flavor 通过 API 接口进行管理：
 
 配置
 ^^^^^^^^^^^^^^^^^^^^
-在 ``qcos.toml`` 中可通过 ``[scheduler]`` 配置段自定义启用的 Filter 和 Weigher 列表：
+在 ``qcos.toml`` 中可通过 ``[SCHEDULER]`` 配置段自定义启用的
+Filter 和 Weigher 列表。Filter/Weigher 名称须与
+``FILTER_REGISTRY`` / ``WEIGHER_REGISTRY`` 中注册的类名一致；
+未识别的名称会被跳过并告警，若全部未识别则回退到默认列表。
 
 .. code-block:: toml
 
-   [scheduler]
-   enable_auto_schedule = true
+   [SCHEDULER]
+   # enable auto scheduling (select device automatically when
+   # backend is not specified in submit_job)
+   ENABLE_AUTO_SCHEDULE = true
 
-   enabled_filters = [
+   # enabled filter class names; empty list uses all DEFAULT_FILTERS
+   # available filters: CodeTypeFilter, DeviceStatusFilter,
+   #   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
+   #   QueueLimitFilter, DeviceGroupFilter
+   ENABLED_FILTERS = [
        "CodeTypeFilter",
        "DeviceStatusFilter",
        "QubitCountFilter",
@@ -144,7 +153,9 @@ Flavor 通过 API 接口进行管理：
        "QueueLimitFilter",
    ]
 
-   enabled_weighers = [
+   # enabled weigher class names; empty list uses DEFAULT_WEIGHERS
+   # available weighers: DeviceLoadWeigher, AvgExecTimeWeigher
+   ENABLED_WEIGHERS = [
        "DeviceLoadWeigher",
        "AvgExecTimeWeigher",
    ]

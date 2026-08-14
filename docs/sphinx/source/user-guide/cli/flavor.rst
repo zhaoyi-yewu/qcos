@@ -236,3 +236,56 @@
 
    # 删除全部资源规格
    qcos-cli delete-flavors all -y
+
+property 字段说明
+*********************
+
+``--property`` 参数用于设置 Flavor 的 extra_properties，
+采用 ``namespace:key=value`` 格式，可多次指定。
+目前支持的字段如下：
+
+.. list-table:: property 支持字段
+   :widths: 30 40 30
+   :header-rows: 1
+   :align: left
+
+   * - 字段名
+     - 说明
+     - 示例值
+
+   * - ``qc:devices``
+     - 允许的设备名称列表（逗号分隔）
+     - ``"dummy,qutip_sim"``
+
+   * - ``qc:exclude_devices``
+     - 排除的设备名称列表（逗号分隔）
+     - ``"dummy"``
+
+   * - ``qc:device_availability`` 【暂不支持】
+     - 设备可用性要求
+     - ``0.99``
+
+   * - ``qc:code_types``
+     - 支持的代码类型
+     - ``"qasm2,qasm3"``
+
+   * - ``qc:tech_types``
+     - 量子技术路线类型
+     - ``"superconducting,ion_trap"``
+
+典型场景示例
+
+.. code-block:: shell
+
+   # 设置允许的设备列表
+   qcos-cli create-flavor my-flavor \
+       --property qc:devices="dummy,qutip_sim" \
+       --device-groups <device-group-uuid>
+
+   # 设置排除设备与代码类型
+   qcos-cli update-flavor my-flavor \
+       --property qc:exclude_devices="dummy" \
+       --property qc:code_types="qasm2,qasm3"
+
+   # 清空所有 property
+   qcos-cli update-flavor my-flavor --unset-extra-properties
