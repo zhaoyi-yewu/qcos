@@ -28,6 +28,7 @@ from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_base import DriverBase
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit as QCircuit
+from wy_qcos.transpiler.high_performance import OperationType
 
 
 class DriverLogicalQubitBase(DriverBase):
@@ -61,7 +62,10 @@ class DriverLogicalQubitBase(DriverBase):
             Constant.SINGLE_QUBIT_GATE_RZ,
             Constant.TWO_QUBIT_GATE_CZ,
         ]
-        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
+        self.supported_transpilers = [
+            Constant.TRANSPILER_CMSS,
+            Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
+        ]
         self.enable_circuit_aggregation = False
         self.optimized_circuit = None
         self.max_qubits = 17
@@ -226,7 +230,11 @@ class DriverLogicalQubitBase(DriverBase):
         measure_list = []
         for operation in transpile_results:
             gate_name = operation.name
-            if operation.operation_type == 2:
+            if (
+                operation.operation_type
+                == OperationType.DOUBLE_QUBIT_OPERATION
+                or operation.operation_type == 2
+            ):
                 method_mapping[gate_name](
                     operation.targets[0], operation.targets[1]
                 )
@@ -258,11 +266,7 @@ class DriverLogicalQubitBase(DriverBase):
             device info
         """
         try:
-            provider = LQCloudProvider(
-                api_key=self.token,
-                url=self.url,
-            )
-            cfg = provider.get_backend_config(self.qpu_name)
+            cfg = self.provider.get_backend_config(self.qpu_name)
             return True, None, cfg
         except Exception as e:
             return False, str(e) if str(e) else "request failed", None
