@@ -1,6 +1,6 @@
 /*
  * ----------------------------------------------------------------------
- * Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+ * Copyright(c) 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
  *
  * qcos is licensed under Mulan PSL v2.
  * You can use this software according to the terms and conditions
@@ -9,8 +9,8 @@
  *          http://license.coscl.org.cn/MulanPSL2
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
  *      WITHOUT WARRANTIES OF ANY KIND,
- * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
- * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ *      EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ *      MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  * ----------------------------------------------------------------------
  */
@@ -19,24 +19,20 @@
 
 #include <cmath>
 #include <complex>
-#include <fstream>
 #include <memory>
 #include <set>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include "circuit/dag_circuit.h"
 #include "circuit/gate_operation.h"
-#include "compiler/qasm_to_ir.hpp"
-#include "optimizer/gate_optimizer.h"
 #include "optimizer/unitary_synthesis.h"
 
 using namespace qcos;
 using C = std::complex<double>;
 
 // ========================================================================
-// Helper: reconstruct U from ZYZ decomposition and compare with original
+// Helpers
 // ========================================================================
 
 static CMatrix reconstruct_from_zyz(double theta, double phi, double lambda,
@@ -53,7 +49,6 @@ static CMatrix reconstruct_from_zyz(double theta, double phi, double lambda,
 static bool equal_up_to_global_phase(const CMatrix& a, const CMatrix& b,
                                      double tol = 1e-8) {
   if (a.size() != b.size() || a.empty()) return false;
-  // find the largest element in a to determine phase factor
   double max_abs = 0;
   C phase{1, 0};
   for (size_t i = 0; i < a.size(); ++i)
@@ -63,7 +58,7 @@ static bool equal_up_to_global_phase(const CMatrix& a, const CMatrix& b,
         phase = a[i][j] / b[i][j];
       }
     }
-  if (max_abs < tol) return true;  // both near zero
+  if (max_abs < tol) return true;
   CMatrix scaled = matrix_utils::scalar_multiply(phase, b);
   return matrix_utils::is_close(a, scaled, tol);
 }
@@ -121,8 +116,8 @@ static CMatrix ir_unitary(
           full[row][col] = match ? gate_mat[gr][gc] : C(0);
         }
       }
-      result = matrix_utils::multiply(full, result);
     }
+    result = matrix_utils::multiply(full, result);
   }
   return result;
 }
@@ -777,7 +772,6 @@ TEST(UnitarySynthesisTest, NoChangeOnEmptyDAG) {
 }
 
 TEST(UnitarySynthesisTest, IdentityBlockRemoved) {
-  // H H = I on qubit 0
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("h", {0}), create_gate("x", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
@@ -807,7 +801,7 @@ TEST(UnitarySynthesisTest, BasisGatesFromConstructor) {
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   std::set<std::string> basis = {"rz", "ry", "cx"};
   UnitarySynthesis synth(basis);
-  synth.run(dag);  // no second arg, should use constructor's basis
+  synth.run(dag);
   auto counts = dag.count_ops();
   for (const auto& [name, count] : counts) {
     EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
@@ -815,7 +809,6 @@ TEST(UnitarySynthesisTest, BasisGatesFromConstructor) {
 }
 
 TEST(UnitarySynthesisTest, MultiBlockOptimization) {
-  // Two separate identity blocks on different qubits
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("h", {0}),   // qubit 0: I
       create_gate("x", {1}), create_gate("x", {1})};  // qubit 1: I
@@ -823,7 +816,6 @@ TEST(UnitarySynthesisTest, MultiBlockOptimization) {
   UnitarySynthesis synth;
   int reduced = synth.run(dag);
   EXPECT_GE(reduced, 0);
-  // Both blocks should be removed
   EXPECT_LE(dag.size(), 4);
 }
 
@@ -858,9 +850,6 @@ TEST(UnitarySynthesisTest, MaxBlockSizeLimitsScope) {
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   UnitarySynthesis synth(std::nullopt, 1.0, 1);
   int reduced = synth.run(dag);
-  // 2-qubit block has 2 qubits > max_block_size=1, should be skipped
-  // But the block has 2 gates, min_block_size for collect = 2
-  // So the block {H, CX} has 2 qubits, skipped by max_block_size
   (void)reduced;
 }
 
@@ -879,7 +868,6 @@ TEST(ConsolidateBlocksTest, ConsolidateSingleQubitRun) {
 }
 
 TEST(ConsolidateBlocksTest, ConsolidateReducesGateCount) {
-  // H S T on qubit 0 → 3 gates consolidated to 1 U3
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("s", {0}), create_gate("t", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
@@ -903,10 +891,9 @@ TEST(ConsolidateBlocksTest, ConsolidateWithBasisGates) {
 }
 
 TEST(ConsolidateBlocksTest, DoesNotConsolidateSingleGate) {
-  // min_block_size = 2, so a single gate should not be touched
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}),
-      create_gate("x", {1})};  // isolated gates, no block
+      create_gate("x", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   int orig = dag.size();
   ConsolidateBlocks consolidator;
@@ -915,7 +902,6 @@ TEST(ConsolidateBlocksTest, DoesNotConsolidateSingleGate) {
 }
 
 TEST(ConsolidateBlocksTest, TwoQubitBlockConsolidation) {
-  // H + CX on qubits 0,1 → 2Q block → re-synthesize
   std::vector<std::shared_ptr<BaseOperation>> ir = {
       create_gate("h", {0}), create_gate("cx", {0, 1}), create_gate("h", {0}),
       create_gate("cx", {0, 1})};
@@ -1060,12 +1046,10 @@ TEST(EdgeCaseTest, ParameterizedGatesRoundtrip) {
 TEST(DecomposeUnitaryTest, SingleQubit_H_ToRzRy) {
   auto h_mat = matrix_utils::gate_to_matrix(create_gate("h", {0}));
   auto gates = decompose_unitary(h_mat, {"rz", "ry"});
-  // All gates should be in the basis set
   for (const auto& g : gates) {
     EXPECT_TRUE(g->name == "rz" || g->name == "ry")
         << "Unexpected gate: " << g->name;
   }
-  // Verify: reconstruct and compare
   CMatrix product = matrix_utils::identity(2);
   for (const auto& g : gates) {
     product = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), product);
@@ -1076,7 +1060,6 @@ TEST(DecomposeUnitaryTest, SingleQubit_H_ToRzRy) {
 TEST(DecomposeUnitaryTest, SingleQubit_DefaultQubit) {
   auto x_mat = matrix_utils::gate_to_matrix(create_gate("x", {0}));
   auto gates = decompose_unitary(x_mat, {"u3"});
-  // Default qubit should be 0
   for (const auto& g : gates) {
     ASSERT_EQ(g->targets.size(), 1u);
     EXPECT_EQ(g->targets[0], 0);
@@ -1147,7 +1130,6 @@ TEST(DecomposeUnitaryTest, TwoQubit_CustomQubits) {
 
 TEST(DecomposeUnitaryTest, TwoQubit_CXToCZCrossBasis) {
   auto cx_mat = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
-  // cx not in basis, but cz is
   auto gates = decompose_unitary(cx_mat, {"cz", "h", "rz", "ry"});
   EXPECT_GE(gates.size(), 1u);
   for (const auto& g : gates) {
@@ -1284,7 +1266,7 @@ TEST(DecomposeUnitary2QTest, AllKnownGates_Roundtrip) {
   struct TestCase {
     std::string name;
     std::vector<double> params;
-    bool expect_roundtrip;  // true = exact roundtrip, false = basis only
+    bool expect_roundtrip;
   };
   std::vector<TestCase> cases = {
       {"cx", {}, true},
@@ -1317,7 +1299,6 @@ TEST(DecomposeUnitary2QTest, AllKnownGates_Roundtrip) {
 }
 
 TEST(DecomposeUnitary2QTest, BellCircuit_BasisCompliance) {
-  // H(0) + CX(0,1): requires general KAK (K matrices not yet exact)
   auto h_mat = matrix_utils::gate_to_matrix(create_gate("h", {0}));
   auto cx_mat = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
   CMatrix h_full(4, std::vector<C>(4, C(0)));
@@ -1334,10 +1315,8 @@ TEST(DecomposeUnitary2QTest, BellCircuit_BasisCompliance) {
 }
 
 TEST(DecomposeUnitary2QTest, IBM_Basis_U3PlusCX) {
-  // IBM standard basis: u3 + cx
   auto cx_mat = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
   std::set<std::string> ibm_basis = {"u3", "cx"};
-
   auto gates = decompose_unitary(cx_mat, ibm_basis);
   expect_all_in_basis(gates, ibm_basis);
 }
@@ -1372,7 +1351,6 @@ TEST(DecomposeUnitary2QTest, TensorProduct_RX_RY_BasisCompliance) {
   std::set<std::string> basis = {"cx", "rz", "ry", "rx"};
   auto gates = decompose_unitary(tensor, basis);
   expect_all_in_basis(gates, basis);
-  // Tensor product should not use any CX
   for (const auto& g : gates) {
     EXPECT_NE(g->name, "cx");
   }
@@ -1540,7 +1518,6 @@ TEST(DecomposeUnitary1QTest, RGate_Roundtrip) {
 }
 
 TEST(DecomposeUnitary1QTest, U3Basis_ProducesOneGate) {
-  // When u3 is in basis, should produce exactly 1 gate
   auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
   auto gates = decompose_unitary(h, {"u3"});
   EXPECT_EQ(gates.size(), 1u);
@@ -1582,7 +1559,6 @@ TEST(DecomposeUnitaryErrorTest, Dimension5x5) {
 }
 
 TEST(DecomposeUnitaryErrorTest, Dimension8x8) {
-  // 3-qubit: not yet supported
   auto m8 = matrix_utils::identity(8);
   EXPECT_THROW(decompose_unitary(m8, {"rz"}), std::invalid_argument);
 }
@@ -1594,7 +1570,7 @@ TEST(DecomposeUnitaryErrorTest, NonUnitary2x2) {
 
 TEST(DecomposeUnitaryErrorTest, NonUnitary4x4) {
   CMatrix m = matrix_utils::identity(4);
-  m[0][1] = C(0.5);  // break unitarity
+  m[0][1] = C(0.5);
   EXPECT_THROW(decompose_unitary(m, {"cx"}), std::invalid_argument);
 }
 
@@ -1605,33 +1581,16 @@ TEST(DecomposeUnitaryErrorTest, ZeroMatrix) {
 
 // ========================================================================
 // Dangling pointer fix verification tests
-//
-// These tests verify that UnitarySynthesis::run() and ConsolidateBlocks::run()
-// correctly handle multiple blocks without crashing due to invalidated DAG
-// node pointers after replace_block_with_dag().
-//
-// Root cause (before fix):
-//   collect_all_matching_blocks() returns all blocks at once.
-//   After replace_block_with_dag() modifies the DAG for the first block,
-//   subsequent blocks' DAGOpNode* pointers become dangling.
-//   Accessing node->qargs on these dangling pointers caused at() to throw.
-//
-// Fix: while-loop that re-collects blocks after each replacement.
 // ========================================================================
 
-// Multiple independent 1Q blocks on different qubits.
-// Before the fix: replacing block on q0 invalidates node pointers for q1, q2.
 TEST(DanglingPointerFix, MultipleIndependent1QBlocks) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
-  // Block 1: H S T on qubit 0 (3 gates → should consolidate)
   ir.push_back(create_gate("h", {0}));
   ir.push_back(create_gate("s", {0}));
   ir.push_back(create_gate("t", {0}));
-  // Block 2: X Y Z on qubit 1 (3 gates → should consolidate)
   ir.push_back(create_gate("x", {1}));
   ir.push_back(create_gate("y", {1}));
   ir.push_back(create_gate("z", {1}));
-  // Block 3: H T S on qubit 2 (3 gates → should consolidate)
   ir.push_back(create_gate("h", {2}));
   ir.push_back(create_gate("t", {2}));
   ir.push_back(create_gate("s", {2}));
@@ -1639,15 +1598,12 @@ TEST(DanglingPointerFix, MultipleIndependent1QBlocks) {
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   EXPECT_EQ(dag.size(), 9);
 
-  // This would crash before the fix when processing block 2 or 3
   std::set<std::string> basis = {"rz", "ry", "cx"};
   UnitarySynthesis synth(basis);
   int reduced = synth.run(dag, basis);
 
-  // All 3 blocks should have been processed without exception
   EXPECT_GE(reduced, 0);
 
-  // Verify all remaining gates are in basis
   auto counts = dag.count_ops();
   for (const auto& [name, count] : counts) {
     EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
@@ -1659,13 +1615,10 @@ TEST(DanglingPointerFix, MultipleIndependent1QBlocks) {
 // pointers.
 TEST(DanglingPointerFix, MultipleIndependent2QBlocks) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
-  // Block 1: H(0) + CX(0,1) — Bell state on qubits 0,1
   ir.push_back(create_gate("h", {0}));
   ir.push_back(create_gate("cx", {0, 1}));
-  // Block 2: H(2) + CX(2,3) — Bell state on qubits 2,3
   ir.push_back(create_gate("h", {2}));
   ir.push_back(create_gate("cx", {2, 3}));
-  // Block 3: H(4) + CX(4,5) — Bell state on qubits 4,5
   ir.push_back(create_gate("h", {4}));
   ir.push_back(create_gate("cx", {4, 5}));
 
@@ -1674,26 +1627,19 @@ TEST(DanglingPointerFix, MultipleIndependent2QBlocks) {
 
   std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
   UnitarySynthesis synth(basis);
-  // Must not throw or crash (reduced can be negative for 2Q blocks)
   synth.run(dag, basis);
 }
 
-// Mixed 1Q and 2Q blocks interleaved on different qubits.
 TEST(DanglingPointerFix, Mixed1QAnd2QBlocks) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
-  // 1Q block on q0
   ir.push_back(create_gate("h", {0}));
   ir.push_back(create_gate("s", {0}));
-  // 2Q block on q1,q2
   ir.push_back(create_gate("cx", {1, 2}));
   ir.push_back(create_gate("h", {1}));
-  // 1Q block on q3
   ir.push_back(create_gate("t", {3}));
   ir.push_back(create_gate("h", {3}));
-  // 2Q block on q4,q5
   ir.push_back(create_gate("cz", {4, 5}));
   ir.push_back(create_gate("s", {4}));
-  // 1Q block on q6
   ir.push_back(create_gate("x", {6}));
   ir.push_back(create_gate("y", {6}));
 
@@ -1702,7 +1648,6 @@ TEST(DanglingPointerFix, Mixed1QAnd2QBlocks) {
 
   std::set<std::string> basis = {"cx", "cz", "rz", "ry"};
   UnitarySynthesis synth(basis);
-  // Must not throw — reduced can be negative for 2Q blocks
   synth.run(dag, basis);
 
   auto counts = dag.count_ops();
@@ -1711,18 +1656,14 @@ TEST(DanglingPointerFix, Mixed1QAnd2QBlocks) {
   }
 }
 
-// ConsolidateBlocks with multiple blocks — same dangling pointer scenario.
 TEST(DanglingPointerFix, ConsolidateMultipleBlocks) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
-  // Block 1 on q0
   ir.push_back(create_gate("h", {0}));
   ir.push_back(create_gate("s", {0}));
   ir.push_back(create_gate("t", {0}));
-  // Block 2 on q1
   ir.push_back(create_gate("x", {1}));
   ir.push_back(create_gate("y", {1}));
   ir.push_back(create_gate("z", {1}));
-  // Block 3 on q2,q3
   ir.push_back(create_gate("cx", {2, 3}));
   ir.push_back(create_gate("h", {2}));
 
@@ -1731,7 +1672,6 @@ TEST(DanglingPointerFix, ConsolidateMultipleBlocks) {
 
   std::set<std::string> basis = {"cx", "rz", "ry"};
   ConsolidateBlocks consolidator(basis);
-  // Must not throw
   consolidator.run(dag, basis);
 
   auto counts = dag.count_ops();
@@ -1740,11 +1680,9 @@ TEST(DanglingPointerFix, ConsolidateMultipleBlocks) {
   }
 }
 
-// Many blocks on many qubits — stress test.
 TEST(DanglingPointerFix, StressManyBlocks) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
   const int num_qubits = 10;
-  // Each qubit gets a 2-gate block
   for (int q = 0; q < num_qubits; ++q) {
     ir.push_back(create_gate("h", {q}));
     ir.push_back(create_gate("s", {q}));
@@ -1763,23 +1701,17 @@ TEST(DanglingPointerFix, StressManyBlocks) {
   }
 }
 
-// Blocks where some are skipped (e.g., too many qubits) and some are replaced.
-// Ensures we don't crash when skipping past blocks that would be invalidated.
 TEST(DanglingPointerFix, SkippedAndReplacedBlocksInterleaved) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
-  // Block on q0 (1Q, should be replaced)
   ir.push_back(create_gate("h", {0}));
   ir.push_back(create_gate("s", {0}));
-  // Block on q1 (1Q, should be replaced)
   ir.push_back(create_gate("t", {1}));
   ir.push_back(create_gate("h", {1}));
-  // Block on q2 (1Q, should be replaced)
   ir.push_back(create_gate("x", {2}));
   ir.push_back(create_gate("y", {2}));
 
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
-  // Use max_block_size=1: all 1Q blocks are within limit, should process all
   std::set<std::string> basis = {"rz", "ry"};
   UnitarySynthesis synth(basis, 1.0, 1);
   synth.run(dag, basis);
@@ -1803,16 +1735,14 @@ TEST(DanglingPointerFix, DAGRemainsValidAfterMultiBlockSynthesis) {
   UnitarySynthesis synth(basis);
   synth.run(dag, basis);
 
-  // DAG should still be traversable without crash
   auto ops = dag.topological_op_nodes();
   EXPECT_GT(ops.size(), 0u);
 
-  // Each op node should have valid qargs
   for (auto* node : ops) {
     EXPECT_FALSE(node->qargs.empty());
     for (int q : node->qargs) {
       EXPECT_GE(q, 0);
-      EXPECT_LT(q, 3);  // qubits 0, 1, 2
+      EXPECT_LT(q, 3);
     }
   }
 }

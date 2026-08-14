@@ -22,6 +22,10 @@ add_library(${LIB_TRANSPILER} STATIC
                             optimizer/phase_polynomial_merging.cpp
                             optimizer/collect_block.cpp
                             optimizer/gate_optimizer.cpp
+                            optimizer/matrix_utils.cpp
+                            optimizer/one_qubit_euler_decomposer.cpp
+                            optimizer/two_qubit_decomposer.cpp
+                            optimizer/basis_selector.cpp
                             optimizer/unitary_synthesis.cpp
                             decomposer/equivalence_graph.cpp
                             decomposer/rule_applier.cpp
