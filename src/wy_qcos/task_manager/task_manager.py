@@ -507,12 +507,17 @@ class TaskFlowManager:
                     if hasattr(worker.status, "value")
                     else str(worker.status)
                 )
+                # normalize to lowercase for consistent output
+                status_value = status_value.lower()
                 pid = self._get_worker_pid(worker.name)
-                # Prefect may still report ONLINE for a short period after
-                # the process is killed. If no matching process is found,
-                # correct the status to OFFLINE.
-                if status_value == WorkerStatus.ONLINE.value and pid is None:
-                    status_value = WorkerStatus.OFFLINE.value
+                # Prefect may still report ONLINE for a short period
+                # after the process is killed. If no matching process
+                # is found, correct the status to OFFLINE.
+                if (
+                    status_value == WorkerStatus.ONLINE.value.lower()
+                    and pid is None
+                ):
+                    status_value = WorkerStatus.OFFLINE.value.lower()
                 device_name, _ = self._parse_worker_name(worker.name)
                 results.append({
                     "worker_name": worker.name,
@@ -748,6 +753,14 @@ class TaskFlowManager:
         """
         device = self.device_manager.get_devices().get(device_name)
         if not device:
+            return False
+
+        # skip starting any worker for disabled devices
+        if not device.enable:
+            logger.warning(
+                f"Device '{device_name}' is disabled (enable=False), "
+                f"skip starting {worker_type} worker"
+            )
             return False
 
         # validate worker type is enabled for the device
