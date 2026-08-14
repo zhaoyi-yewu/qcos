@@ -176,6 +176,8 @@ class TestDevice:
 
         # Mock count_by_status: single GROUP BY query returning
         # only statuses present in the database (QUEUED=3, RUNNING=1)
+        # spec=JobRepository makes isinstance(mock_repo, JobRepository)
+        # return True so _get_job_count queries the repository.
         mock_repo = MagicMock(spec=JobRepository)
         mock_repo.count_by_status.return_value = {
             Constant.JOB_STATUS_QUEUED: 3,
@@ -183,15 +185,20 @@ class TestDevice:
         }
 
         response_info = get_device(mock_client, None, job_repo=mock_repo)
-        assert response_info.job_count[Constant.JOB_STATUS_QUEUED] == 3
-        assert response_info.job_count[Constant.JOB_STATUS_RUNNING] == 1
-        assert response_info.job_count[Constant.JOB_STATUS_COMPLETED] == 0
+        # _get_job_count normalizes keys to lowercase
+        assert response_info.job_count[Constant.JOB_STATUS_QUEUED.lower()] == 3
+        assert (
+            response_info.job_count[Constant.JOB_STATUS_RUNNING.lower()] == 1
+        )
+        assert (
+            response_info.job_count[Constant.JOB_STATUS_COMPLETED.lower()] == 0
+        )
         # TOTAL = sum of all statuses (3 + 1 = 4)
-        assert response_info.job_count[Constant.JOB_STATUS_TOTAL] == 4
-        # All statuses in JOB_STATUSES are present
+        assert response_info.job_count[Constant.JOB_STATUS_TOTAL.lower()] == 4
+        # All statuses in JOB_STATUSES are present (lowercase keys)
         for status in Constant.JOB_STATUSES:
-            assert status in response_info.job_count
-        assert Constant.JOB_STATUS_TOTAL in response_info.job_count
+            assert status.lower() in response_info.job_count
+        assert Constant.JOB_STATUS_TOTAL.lower() in response_info.job_count
         # count_by_status called once (single GROUP BY query)
         mock_repo.count_by_status.assert_called_once_with("dummy")
 

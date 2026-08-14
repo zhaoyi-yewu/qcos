@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import logging
-import time
 
 from fastapi import Depends
 
@@ -50,22 +49,22 @@ def _get_job_count(device_name, job_repo=None):
         its count for the given device, plus a TOTAL entry that
         sums all statuses.
     """
-    job_count = {status: 0 for status in Constant.JOB_STATUSES}
+    job_count = {status.lower(): 0 for status in Constant.JOB_STATUSES}
     if not isinstance(job_repo, JobRepository):
-        job_count[Constant.JOB_STATUS_TOTAL] = 0
+        job_count[Constant.JOB_STATUS_TOTAL.lower()] = 0
         return job_count
     try:
         counts = job_repo.count_by_status(device_name)
     except Exception as e:
         logger.warning(f"Failed to get job counts for {device_name}: {e}")
-        job_count[Constant.JOB_STATUS_TOTAL] = 0
+        job_count[Constant.JOB_STATUS_TOTAL.lower()] = 0
         return job_count
     # Fill in statuses present in the database; others stay 0
     total = 0
     for status, count in counts.items():
-        job_count[status] = count
+        job_count[status.lower()] = count
         total += count
-    job_count[Constant.JOB_STATUS_TOTAL] = total
+    job_count[Constant.JOB_STATUS_TOTAL.lower()] = total
     return job_count
 
 
@@ -82,11 +81,6 @@ def _get_device_info(device, auth_data=None, details=False, job_repo=None):
     Returns:
         device_info
     """
-    last_updated_at = None
-    if device.last_updated_at:
-        last_updated_at = time.strftime(
-            "%Y-%m-%d %H:%M:%S", time.localtime(last_updated_at)
-        )
     _device_info = {
         "name": device.name,
         "alias_name": device.alias_name,
@@ -96,9 +90,9 @@ def _get_device_info(device, auth_data=None, details=False, job_repo=None):
         "status": device.status,
         "tech_type": device.tech_type,
         "max_qubits": device.max_qubits,
-        "details": device.details,
-        "last_updated_at": last_updated_at,
         "job_count": _get_job_count(device.name, job_repo),
+        "last_updated_at": device.last_updated_at,
+        "details": device.details,
     }
     if not details:
         _device_info.pop("details")
