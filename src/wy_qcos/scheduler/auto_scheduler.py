@@ -16,9 +16,11 @@
 # ----------------------------------------------------------------------
 
 import logging
+import os
 from typing import Any
 
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.library import Library
 from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.db.utils.db_utils import create_db_session
 from wy_qcos.device.device_manager import DeviceManager
@@ -26,18 +28,15 @@ from wy_qcos.flavor.flavor_manager import FlavorManager
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.errors import NoValidDeviceError
 from wy_qcos.scheduler.filters import (
+    BaseFilter,
     BaseFilterHandler,
     DEFAULT_FILTERS,
-    FILTER_REGISTRY,
-)
-from wy_qcos.scheduler.filters.device_group import (
-    DeviceGroupFilter,
 )
 from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.scheduler.weighers import (
     BaseWeightHandler,
+    BaseWeigher,
     DEFAULT_WEIGHERS,
-    WEIGHER_REGISTRY,
 )
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 
@@ -79,18 +78,23 @@ class AutoScheduler:
                 job load info from the qcos database. When None,
                 load counts fall back to 0.
             filter_handler: filter handler (default uses
-                DEFAULT_FILTERS with DeviceGroupFilter injected)
+                DEFAULT_FILTERS; DeviceGroupFilter is included
+                when dynamically discovered)
             weight_handler: weight handler (default uses
                 DEFAULT_WEIGHERS)
             enabled_filters: list of filter class names to enable.
-                When provided, filters are resolved from
-                FILTER_REGISTRY by name. DeviceGroupFilter is always
-                injected when a device_group_manager is available.
-                When None or empty, DEFAULT_FILTERS are used.
+                When provided, filters are resolved from the
+                dynamically discovered filter classes (scanned
+                from scheduler/filters) by name. Duplicate names
+                are skipped. When None or empty, DEFAULT_FILTERS
+                are used. DeviceGroupFilter, when available in the
+                discovered registry, is appended (deduplicated) so
+                device group constraints are enforced.
             enabled_weighers: list of weigher class names to enable.
-                When provided, weighers are resolved from
-                WEIGHER_REGISTRY by name. When None or empty,
-                DEFAULT_WEIGHERS are used.
+                When provided, weighers are resolved from the
+                dynamically discovered weigher classes (scanned
+                from scheduler/weighers) by name. When None or
+                empty, DEFAULT_WEIGHERS are used.
             transpiler_manager: transpiler manager used to resolve
                 transpiler instances for supported code types.
                 When None, falls back to the driver's code types.
@@ -102,11 +106,21 @@ class AutoScheduler:
         self._db_engine = db_engine
         self._transpiler_manager = transpiler_manager
 
+        # dynamically discover filter/weigher classes by scanning
+        # the scheduler/filters and scheduler/weighers directories
+        # via Library.import_classes; the resulting name->class
+        # mappings are used by _resolve_filter_classes /
+        # _resolve_weigher_classes to resolve ENABLED_FILTERS /
+        # ENABLED_WEIGHERS names from config
+        self._filter_registry = self._load_filter_registry()
+        self._weigher_registry = self._load_weigher_registry()
+
         if filter_handler is None:
-            filter_classes = self._resolve_filter_classes(
-                enabled_filters, device_group_manager
+            filter_classes = self._resolve_filter_classes(enabled_filters)
+            filter_handler = BaseFilterHandler(
+                filter_classes,
+                device_group_manager=device_group_manager,
             )
-            filter_handler = BaseFilterHandler(filter_classes)
         self._filter_handler = filter_handler
 
         if weight_handler is None:
@@ -115,27 +129,76 @@ class AutoScheduler:
         self._weight_handler = weight_handler
 
     @staticmethod
-    def _resolve_filter_classes(enabled_filters, device_group_manager):
-        """Resolve filter classes from names in FILTER_REGISTRY.
+    def _load_filter_registry():
+        """Dynamically discover filter classes under scheduler/filters.
+
+        Uses Library.import_classes to scan the filters directory and
+        build a name->class mapping for all BaseFilter subclasses
+        (excluding the base classes themselves).
+
+        Returns:
+            dict mapping filter class name to filter class
+        """
+        scheduler_dir = os.path.dirname(__file__)
+        filters_dir = os.path.join(scheduler_dir, "filters")
+        classes, _ = Library.import_classes(
+            pkg_dir=filters_dir,
+            base_module_name="wy_qcos.scheduler",
+            base_dir=scheduler_dir,
+            base_class=BaseFilter,
+            excluded_class="^Base",
+        )
+        logger.info(f"Discovered filter classes: {list(classes.keys())}")
+        return classes
+
+    @staticmethod
+    def _load_weigher_registry():
+        """Dynamically discover weigher classes under scheduler/weighers.
+
+        Uses Library.import_classes to scan the weighers directory and
+        build a name->class mapping for all BaseWeigher subclasses
+        (excluding the base classes themselves).
+
+        Returns:
+            dict mapping weigher class name to weigher class
+        """
+        scheduler_dir = os.path.dirname(__file__)
+        weighers_dir = os.path.join(scheduler_dir, "weighers")
+        classes, _ = Library.import_classes(
+            pkg_dir=weighers_dir,
+            base_module_name="wy_qcos.scheduler",
+            base_dir=scheduler_dir,
+            base_class=BaseWeigher,
+            excluded_class="^Base",
+        )
+        logger.info(f"Discovered weigher classes: {list(classes.keys())}")
+        return classes
+
+    def _resolve_filter_classes(self, enabled_filters):
+        """Resolve filter classes from the discovered registry.
 
         Args:
             enabled_filters: list of filter class names; when None or
                 empty, DEFAULT_FILTERS are used
-            device_group_manager: device group manager used to
-                configure DeviceGroupFilter
 
         Returns:
-            list of filter classes/instances
+            list of filter classes; duplicates are skipped
         """
         if not enabled_filters:
             filter_classes = list(DEFAULT_FILTERS)
         else:
             filter_classes = []
             for name in enabled_filters:
-                cls = FILTER_REGISTRY.get(name)
+                cls = self._filter_registry.get(name)
                 if cls is None:
                     logger.warning(
                         f"Unknown filter '{name}' in enabled_filters, skipping"
+                    )
+                    continue
+                if cls in filter_classes:
+                    logger.warning(
+                        f"Duplicate filter '{name}' in "
+                        f"enabled_filters, skipping"
                     )
                     continue
                 filter_classes.append(cls)
@@ -146,11 +209,6 @@ class AutoScheduler:
                 )
                 filter_classes = list(DEFAULT_FILTERS)
 
-        # always inject DeviceGroupFilter when device_group_manager
-        # is available so device group constraints are enforced
-        if device_group_manager is not None:
-            filter_classes.append(DeviceGroupFilter(device_group_manager))
-
         filter_names = [
             getattr(c, "__name__", c.__class__.__name__)
             for c in filter_classes
@@ -158,9 +216,8 @@ class AutoScheduler:
         logger.info(f"AutoScheduler enabled filters: {filter_names}")
         return filter_classes
 
-    @staticmethod
-    def _resolve_weigher_classes(enabled_weighers):
-        """Resolve weigher classes from names in WEIGHER_REGISTRY.
+    def _resolve_weigher_classes(self, enabled_weighers):
+        """Resolve weigher classes from the discovered registry.
 
         Args:
             enabled_weighers: list of weigher class names; when None
@@ -174,10 +231,16 @@ class AutoScheduler:
         else:
             weigher_classes = []
             for name in enabled_weighers:
-                cls = WEIGHER_REGISTRY.get(name)
+                cls = self._weigher_registry.get(name)
                 if cls is None:
                     logger.warning(
                         f"Unknown weigher '{name}' in "
+                        f"enabled_weighers, skipping"
+                    )
+                    continue
+                if cls in weigher_classes:
+                    logger.warning(
+                        f"Duplicate weigher '{name}' in "
                         f"enabled_weighers, skipping"
                     )
                     continue
@@ -278,7 +341,9 @@ class AutoScheduler:
             # Populate dynamic load info
             queued = self._get_queued_count(device.get_name())
             running = self._get_running_count(device.get_name())
-            state.set_load_info(queued, running)
+            vendor_queued = 0
+            vendor_running = 0
+            state.set_load_info(queued, running, vendor_queued, vendor_running)
             device_states.append(state)
         return device_states
 

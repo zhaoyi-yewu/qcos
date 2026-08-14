@@ -36,14 +36,3 @@ DEFAULT_FILTERS = [
     QueueLimitFilter,
     GateFidelityFilter,
 ]
-
-# Filter registry for auto-discovery
-FILTER_REGISTRY = {
-    "CodeTypeFilter": CodeTypeFilter,
-    "DeviceStatusFilter": DeviceStatusFilter,
-    "DeviceGroupFilter": DeviceGroupFilter,
-    "QubitCountFilter": QubitCountFilter,
-    "TechTypeFilter": TechTypeFilter,
-    "GateFidelityFilter": GateFidelityFilter,
-    "QueueLimitFilter": QueueLimitFilter,
-}

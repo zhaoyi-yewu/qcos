@@ -334,8 +334,9 @@ class SchedulerSection(BaseModel):
     """SCHEDULER section configuration.
 
     Controls the auto scheduler behavior, including which filters and
-    weighers are enabled. Filter/weigher names must match the class names
-    registered in FILTER_REGISTRY / WEIGHER_REGISTRY.
+    weighers are enabled. Filter/weigher names must match the class
+    names discovered by AutoScheduler at startup by scanning the
+    scheduler/filters and scheduler/weighers directories.
     """
 
     model_config = ConfigDict(extra="forbid")

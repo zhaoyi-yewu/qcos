@@ -28,7 +28,25 @@ class BaseFilter:
 
     Subclasses must implement _filter_one() to decide whether a
     DeviceState passes the filter. Return True to keep the device.
+
+    All filters share a uniform initialization interface. The
+    set_device_group_manager() method is called by AutoScheduler
+    on every filter instance during initialization; filters that do
+    not need the device_group_manager simply ignore it (the default
+    no-op implementation here).
     """
+
+    def set_device_group_manager(self, manager):
+        """Set the device group manager on this filter.
+
+        Called by AutoScheduler on every filter instance during
+        initialization. Override in subclasses that need access to
+        the device group manager (e.g. DeviceGroupFilter).
+
+        Args:
+            manager: DeviceGroupManager instance
+        """
+        pass
 
     def filter_all(
         self, list_obj: list[DeviceState], spec: RequestSpec
@@ -76,17 +94,35 @@ class BaseFilterHandler:
     Inspired by OpenStack Nova FilterHandler.
     """
 
-    def __init__(self, filter_classes: list):
+    def __init__(
+        self,
+        filter_classes: list,
+        device_group_manager=None,
+    ):
         """Init filter handler.
+
+        All filter classes are instantiated uniformly (no special
+        constructor arguments). After instantiation, the
+        device_group_manager (when provided) is injected into every
+        filter instance via set_device_group_manager(), so filters
+        that need it (e.g. DeviceGroupFilter) can access it.
 
         Args:
             filter_classes: list of filter classes or instances.
                 Classes are instantiated; instances are used directly.
+            device_group_manager: device group manager injected
+                into every filter instance after instantiation.
+                Defaults to None (no injection).
         """
-        self._filters = [
-            cls if isinstance(cls, BaseFilter) else cls()
-            for cls in filter_classes
-        ]
+        self._filters = []
+        for cls in filter_classes:
+            if isinstance(cls, BaseFilter):
+                instance = cls
+            else:
+                instance = cls()
+            if device_group_manager is not None:
+                instance.set_device_group_manager(device_group_manager)
+            self._filters.append(instance)
 
     def get_filtered_objects(
         self, list_obj: list[DeviceState], spec: RequestSpec

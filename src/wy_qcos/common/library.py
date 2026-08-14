@@ -737,9 +737,12 @@ class Library:
 
         for module_loader, name, is_pkg in pkgutil.iter_modules([pkg_dir]):
             module_path = module_loader.path.replace(base_dir, "")
-            module_name = (
-                f"{base_module_name}{module_path.replace('/', '.')}.{name}"
+            # normalize path separators so module names use dots on
+            # both POSIX (/) and Windows (\) platforms
+            module_rel_path = module_path.replace(os.sep, ".").replace(
+                "/", "."
             )
+            module_name = f"{base_module_name}{module_rel_path}.{name}"
 
             if venv_loader:
                 sys.path = copy.deepcopy(orig_sys_path)
@@ -1963,7 +1966,7 @@ class Library:
     def mask_password(
         configs,
         password_replace="*" * 8,
-        keys_to_match=r"^(?:_.*|.*(password|secret|hidden|salt|.*connection_url).*)$",
+        keys_to_match=r"^(?:_.*|.*(password|secret|hidden|token|salt|.*connection_url).*)$",
     ):
         """Mask password and sensitive values.
 
