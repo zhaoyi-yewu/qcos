@@ -22,6 +22,7 @@
 
 - submit_job接口的backend参数改为可选，为空时触发自动调度
 - CLI中所有可追加参数（--property、--device、--role-name）从action="append"改为nargs="+"形式
+- 解决prefect-server内存泄露问题: 1. prefect升级到3.7.8; 2. 默认配置PREFECT_SERVER_DOCKET_URL为redis://IP:PORT/1
 
 ### 修复问题
 

@@ -82,7 +82,7 @@ dependencies = [
     "pg8000==1.31.5",
     "ply==3.11",
     "poetry==2.4.1",
-    "prefect==3.6.9; sys_platform == 'linux'",
+    "prefect==3.7.8; sys_platform == 'linux'",
     "prometheus-client==0.25.0",
     "psutil==7.2.2",
     "pulp==3.3.2",

@@ -58,7 +58,7 @@ spec:
           capabilities:
             drop:
             - ALL
-        command: ["prefect", "server", "start", "--host", ""]
+        command: ["prefect", "server", "start"]
         env:
         - name: TZ
           value: "Asia/Shanghai"
@@ -89,6 +89,30 @@ spec:
           value: "PT150S"
         - name: PREFECT_SERVER_EVENTS_RELATED_RESOURCE_CACHE_TTL
           value: "5000"
+        # prefect docket configs
+        - name: PREFECT_SERVER_DOCKET_URL
+          value: "redis://${REDIS_SERVER_IP}:${REDIS_SERVER_PORT}/1"
+        # prefect event messaging configs
+        #- name: PREFECT_SERVER_EVENTS_MESSAGING_BROKER
+        #  value: "prefect_redis.messaging"
+        #- name: PREFECT_SERVER_EVENTS_MESSAGING_CACHE
+        #  value: "prefect_redis.messaging"
+        #- name: PREFECT_SERVER_EVENTS_CAUSAL_ORDERING
+        #  value: "prefect_redis.causal_ordering"
+        #- name: PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE
+        #  value: "prefect_redis.lease_storage"
+        #- name: PREFECT_REDIS_MESSAGING_HOST
+        #  value: "${REDIS_SERVER_IP}"
+        #- name: PREFECT_REDIS_MESSAGING_PORT
+        #  value: "${REDIS_SERVER_PORT}"
+        #- name: PREFECT_REDIS_MESSAGING_DB
+        #  value: "1"
+        #- name: PREFECT_REDIS_EVENTS_HOST
+        #  value: "${REDIS_SERVER_IP}"
+        #- name: PREFECT_REDIS_EVENTS_PORT
+        #  value: "${REDIS_SERVER_PORT}"
+        #- name: PREFECT_REDIS_EVENTS_DB
+        #  value: "1"
         - name: PYTHONPATH
           value: "/root/qcos-project/src"
         resources:
@@ -174,6 +198,7 @@ spec:
           capabilities:
             drop:
             - ALL
+        command: ["redis-server", "--bind", "${REDIS_SERVER_LISTEN_IP}"]
         env:
         - name: TZ
           value: "Asia/Shanghai"
