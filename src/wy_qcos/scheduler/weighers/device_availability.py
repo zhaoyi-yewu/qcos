@@ -24,29 +24,34 @@ from .base import BaseWeigher
 logger = logging.getLogger(__name__)
 
 
-class DeviceLoadWeigher(BaseWeigher):
-    """Weigh devices by load (queue + running jobs).
+class DeviceAvailabilityWeigher(BaseWeigher):
+    """Weigh devices by availability rate.
 
-    Devices with fewer queued and running jobs get higher weight.
-    Weight = -(queued_job_count + running_job_count)
+    Combines two availability signals:
+
+    - ``availability_total``: historical aggregated rate (0.0-1.0),
+      sourced from ``device_availability_hourly`` plus current-hour counts.
+    - ``availability_hourly``: current-hour real-time rate
+      (0.0-1.0), sourced from the in-memory ``DeviceAvailabilityCollector``.
+
+    The weight is::
+
+        0.1 * availability_hourly + availability_total
+
+    multiplied by the weigher ``multiplier``. Higher weight = more
+    preferred. The overall rate dominates; the current-hour rate
+    acts as a small real-time bias.
     """
 
-    multiplier = 1.0
+    multiplier: float = 1.0
 
     def _weigh_object(self, obj: DeviceState, spec: RequestSpec) -> float:
-        total_jobs = (
-            obj.queued_job_count
-            + obj.running_job_count
-            + obj.vendor_queued_job_count
-            + obj.vendor_running_job_count
-        )
         logger.debug(
-            f"DeviceLoadWeigher: device_name: {obj.name}, "
-            f"multiplier: {self.multiplier}, weight: {float(-total_jobs)}. "
-            f"total_jobs: {total_jobs}, "
-            f"queued_job_count: {obj.queued_job_count}, "
-            f"running_job_count: {obj.running_job_count}, "
-            f"vendor_queued_job_count: {obj.vendor_queued_job_count}, "
-            f"vendor_running_job_count: {obj.vendor_running_job_count}"
+            f"DeviceAvailabilityWeigher: device_name: {obj.name}, "
+            f"multiplier: {self.multiplier}. "
+            f"availability_total: {obj.availability_total}, "
+            f"availability_hourly: {obj.availability_hourly}"
         )
-        return float(-total_jobs)
+        return float(0.1 * obj.availability_hourly) + float(
+            obj.availability_total
+        )

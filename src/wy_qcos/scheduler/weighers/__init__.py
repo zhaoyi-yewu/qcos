@@ -18,9 +18,11 @@
 from .base import BaseWeigher, BaseWeightHandler, WeightedDevice
 from .device_load import DeviceLoadWeigher
 from .exec_time import AvgExecTimeWeigher
+from .device_availability import DeviceAvailabilityWeigher
 
 # Default weigher order
 DEFAULT_WEIGHERS = [
     DeviceLoadWeigher,
     AvgExecTimeWeigher,
+    DeviceAvailabilityWeigher,
 ]

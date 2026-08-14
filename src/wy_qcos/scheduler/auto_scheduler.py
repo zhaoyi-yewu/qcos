@@ -78,8 +78,9 @@ class AutoScheduler:
                 job load info from the qcos database. When None,
                 load counts fall back to 0.
             filter_handler: filter handler (default uses
-                DEFAULT_FILTERS; DeviceGroupFilter is included
-                when dynamically discovered)
+                DEFAULT_FILTERS including DeviceGroupFilter;
+                device_group_manager is injected into every
+                filter via BaseFilterHandler)
             weight_handler: weight handler (default uses
                 DEFAULT_WEIGHERS)
             enabled_filters: list of filter class names to enable.
@@ -87,9 +88,7 @@ class AutoScheduler:
                 dynamically discovered filter classes (scanned
                 from scheduler/filters) by name. Duplicate names
                 are skipped. When None or empty, DEFAULT_FILTERS
-                are used. DeviceGroupFilter, when available in the
-                discovered registry, is appended (deduplicated) so
-                device group constraints are enforced.
+                are used (includes DeviceGroupFilter).
             enabled_weighers: list of weigher class names to enable.
                 When provided, weighers are resolved from the
                 dynamically discovered weigher classes (scanned
@@ -341,9 +340,18 @@ class AutoScheduler:
             # Populate dynamic load info
             queued = self._get_queued_count(device.get_name())
             running = self._get_running_count(device.get_name())
-            vendor_queued = 0
-            vendor_running = 0
+            vendor_job_count = device.details.get("vendor_job_count") or {}
+            vendor_queued = vendor_job_count.get("queued", 0)
+            vendor_running = vendor_job_count.get("running", 0)
             state.set_load_info(queued, running, vendor_queued, vendor_running)
+            # Populate availability rates from the in-memory collector
+            # when available, so DeviceAvailabilityWeigher and
+            # DeviceAvailabilityFilter can use them.
+            hourly, total = self._get_availability_rates(device.get_name())
+            state.set_availability(
+                availability_hourly=hourly,
+                availability_total=total,
+            )
             device_states.append(state)
         return device_states
 
@@ -412,6 +420,34 @@ class AutoScheduler:
                 f"Failed to get {job_status} count for {device_name}: {e}"
             )
             return 0
+
+    def _get_availability_rates(self, device_name: str):
+        """Get current-hour and overall availability rates for a device.
+
+        Delegates to DeviceAvailabilityCollector.compute_availability_rates
+        which merges historical hourly records with the current-hour
+        real-time counts.
+
+        Args:
+            device_name: device name
+
+        Returns:
+            (availability_hourly, availability_total) tuple; each value
+            is 0.0-1.0 or None when no data
+        """
+        try:
+            from wy_qcos.metrics.device_availability_collector import (
+                DeviceAvailabilityCollector,
+            )
+
+            return DeviceAvailabilityCollector.compute_availability_rates(
+                device_name, db_engine=self._db_engine
+            )
+        except Exception as e:
+            logger.debug(
+                f"Failed to get availability rates for {device_name}: {e}"
+            )
+            return (None, None)
 
     @staticmethod
     def build_request_spec(
