@@ -473,7 +473,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             )
 
             with Timer() as mapping_timer:
-                mapping_res, mapping_dict, _, _ = self.mapping(
+                mapping_res, mapping_dict, _, final_layout_dict = self.mapping(
                     qpu_cfg, dp_result_dict
                 )
             run_time.mapping_time = mapping_timer.elapsed
@@ -557,5 +557,6 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                 f" {optimize2_timer.elapsed:.4f}s\n",
             )
             mapping_dict = None
+            final_layout_dict = None
 
-        return basis_gate_list, mapping_dict
+        return basis_gate_list, mapping_dict, final_layout_dict

@@ -58,6 +58,6 @@ class TranspilerCmssQubo(TranspilerBase):
             supp_basis_gates: supported basis gates
 
         Returns:
-            transpiled quantum circuit
+            transpiled quantum circuit, mapping dict, final layout dict
         """
-        return parse_result, None
+        return parse_result, None, None

@@ -512,7 +512,7 @@ class TestTranspilerQiskit:
         transpiler = TranspilerQiskit()
         src_code_info = {"000": self.simple_data}
         parse_result = transpiler.parse(src_code_info)
-        transpiled_circuit = transpiler.transpile(
+        transpiled_circuit, _, _ = transpiler.transpile(
             parse_result, expected_basis_gates
         )
         assert len(transpiled_circuit) == 3
@@ -527,7 +527,7 @@ class TestTranspilerQiskit:
 
     @patch(TRANSPILE_METHOD_PATH)
     def test_transpiler_qiskit_noconfig(self, mock_transpile):
-        mock_transpile.return_value = None
+        mock_transpile.return_value = (None, None, None)
 
         etc_path = GLOBAL_CONFIGS["etc_dir"]
         qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"

@@ -125,7 +125,7 @@ class TranspilerQiskit(TranspilerBase):
             supp_basis_gates(list): supported basis gates
 
         Returns:
-            transpiled quantum circuit
+            (transpiled_circuit, mapping_dict, final_layout_dict)
         """
         # other basis gates
         gates_map = {
@@ -294,4 +294,4 @@ class TranspilerQiskit(TranspilerBase):
                 ],
             )
 
-        return transpiled_circuit
+        return transpiled_circuit, None, None

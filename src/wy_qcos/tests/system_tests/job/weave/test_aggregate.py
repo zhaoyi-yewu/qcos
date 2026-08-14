@@ -102,7 +102,7 @@ class TestAggregate:
                 self.assert_qutip_results(
                     result["results"][0],
                     1,
-                    {"0": Constant.DEFAULT_SHOTS},
+                    {"1": Constant.DEFAULT_SHOTS},
                 )
             else:
                 logger.warning(
@@ -194,12 +194,12 @@ class TestAggregate:
                 self.assert_qutip_results(
                     parent_circuit_result,
                     1,
-                    {"0": Constant.DEFAULT_SHOTS},
+                    {"1": Constant.DEFAULT_SHOTS},
                 )
                 self.assert_qutip_results(
                     sub_circuit_result,
                     2,
-                    {"00": Constant.DEFAULT_SHOTS},
+                    {"11": Constant.DEFAULT_SHOTS},
                 )
             else:
                 logger.warning(

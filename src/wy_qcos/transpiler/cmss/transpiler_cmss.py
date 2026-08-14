@@ -444,7 +444,7 @@ class TranspilerCmss(TranspilerBase):
                             basis_gate_list.extend(result)
                         else:
                             basis_gate_list.append(gate)
-                return basis_gate_list, None
+                return basis_gate_list, None, None
 
             with Timer() as decompose_ruler_timer:
                 decompose_rules_dict, _ = decomposer.get_decompose_rules(

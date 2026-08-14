@@ -200,6 +200,7 @@ class TestTranspilerCmdLine:
             mock_transpiler.transpile.return_value = (
                 [X([0])],
                 None,
+                None,
             )
 
             perf = CMSSTranspilerPerf()
@@ -227,6 +228,7 @@ class TestTranspilerCmdLine:
             mock_transpiler.transpile.return_value = (
                 [X([0])],
                 None,
+                None,
             )
 
             perf = CMSSTranspilerPerf()
@@ -253,6 +255,7 @@ class TestTranspilerCmdLine:
             mock_transpiler.parse.return_value = {"000": (1, ["x"])}
             mock_transpiler.transpile.return_value = (
                 [X([0])],
+                None,
                 None,
             )
             perf = CMSSTranspilerPerf()
@@ -470,7 +473,7 @@ class TestTranspilerCmdLine:
         mock_transpiler = MagicMock()
         mock_transpiler.transpiler_options = {}
         mock_transpiler.parse.return_value = {"000": (1, ["x"])}
-        mock_transpiler.transpile.return_value = ([X([0])], None)
+        mock_transpiler.transpile.return_value = ([X([0])], None, None)
         MockTranspiler.return_value = mock_transpiler
 
         perf = CMSSTranspilerPerf()
@@ -501,7 +504,7 @@ class TestTranspilerCmdLine:
         mock_transpiler = MagicMock()
         mock_transpiler.transpiler_options = {}
         mock_transpiler.parse.return_value = {"000": (1, ["x"])}
-        mock_transpiler.transpile.return_value = ([X([0])], None)
+        mock_transpiler.transpile.return_value = ([X([0])], None, None)
         MockTranspiler.return_value = mock_transpiler
 
         perf = CMSSTranspilerPerf()
@@ -531,7 +534,7 @@ class TestTranspilerCmdLine:
         mock_transpiler = MagicMock()
         mock_transpiler.transpiler_options = {}
         mock_transpiler.parse.return_value = {"000": (1, ["x"])}
-        mock_transpiler.transpile.return_value = ([X([0])], None)
+        mock_transpiler.transpile.return_value = ([X([0])], None, None)
         MockTranspiler.return_value = mock_transpiler
 
         orig_max_qubits = trans_cfg_inst.get_max_qubits()
@@ -567,6 +570,7 @@ class TestTranspilerCmdLine:
         mock_transpiler.parse.return_value = {"000": (3, ["x"])}
         mock_transpiler.transpile.return_value = (
             [X([0]), X([4])],
+            None,
             None,
         )
         MockTranspiler.return_value = mock_transpiler
@@ -643,7 +647,7 @@ class TestTranspilerCmdLine:
             transpiler.transpiler_options["sc_mapping_options"] = {
                 "routing_algorithm": "sabre"
             }
-            basis_gate_list, _ = transpiler.transpile(
+            basis_gate_list, _, _ = transpiler.transpile(
                 parse_result, basis_gates
             )
 
