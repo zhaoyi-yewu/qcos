@@ -132,6 +132,9 @@ def init_driver(
         # init driver
         driver.init_driver()
 
+        if driver_options:
+            driver.update_driver_params_from_options()
+
         if job_info:
             # init job
             job_data = job_info["data"]

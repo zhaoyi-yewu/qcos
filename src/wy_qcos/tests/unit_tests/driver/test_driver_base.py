@@ -19,6 +19,7 @@ from unittest.mock import patch
 
 import pytest
 
+from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.driver.driver_base import DriverBase
 
@@ -73,6 +74,96 @@ class TestDriverBase:
     def test_get_driver_options_schema(self):
         driver_options_schema = driver_base.get_driver_options_schema()
         assert driver_options_schema == driver_base.driver_options_schema
+
+    def test_driver_options_defaults_include_max_job_wait_time(self):
+        """Test driver_options defaults include max_job_wait_time."""
+        assert "max_job_wait_time" in driver_base.driver_options
+        assert (
+            driver_base.driver_options["max_job_wait_time"]
+            == Constant.DEFAULT_JOB_WAIT_TIME
+        )
+
+    def test_driver_options_defaults_include_job_query_interval(self):
+        """Test driver_options defaults include job_query_interval."""
+        assert "job_query_interval" in driver_base.driver_options
+        assert (
+            driver_base.driver_options["job_query_interval"]
+            == Constant.DEFAULT_JOB_QUERY_INTERVAL
+        )
+
+    def test_driver_options_schema_includes_max_job_wait_time(self):
+        """Test driver_options_schema includes max_job_wait_time."""
+        schema_keys = [
+            str(k) for k in driver_base.driver_options_schema.keys()
+        ]
+        assert any("max_job_wait_time" in key for key in schema_keys)
+
+    def test_driver_options_schema_includes_job_query_interval(self):
+        """Test driver_options_schema includes job_query_interval."""
+        schema_keys = [
+            str(k) for k in driver_base.driver_options_schema.keys()
+        ]
+        assert any("job_query_interval" in key for key in schema_keys)
+
+    def test_update_driver_options_saves_max_job_wait_time(self):
+        """Test update_driver_options saves max_job_wait_time to dict."""
+        new_driver = DriverBase()
+        new_driver.update_driver_options({"max_job_wait_time": 100})
+        assert new_driver.driver_options["max_job_wait_time"] == 100
+        # Instance attribute should not change until
+        # update_driver_params_from_options is called
+        assert new_driver.max_job_wait_time == Constant.DEFAULT_JOB_WAIT_TIME
+
+    def test_update_driver_options_saves_job_query_interval(self):
+        """Test update_driver_options saves job_query_interval to dict."""
+        new_driver = DriverBase()
+        new_driver.update_driver_options({"job_query_interval": 10})
+        assert new_driver.driver_options["job_query_interval"] == 10
+        # Instance attribute should not change until
+        # update_driver_params_from_options is called
+        assert (
+            new_driver.job_query_interval
+            == Constant.DEFAULT_JOB_QUERY_INTERVAL
+        )
+
+    def test_update_driver_params_from_options_max_job_wait_time(self):
+        """Test update_driver_params_from_options syncs max_job_wait_time."""
+        new_driver = DriverBase()
+        new_driver.update_driver_options({"max_job_wait_time": 100})
+        new_driver.update_driver_params_from_options()
+        assert new_driver.max_job_wait_time == 100
+        assert new_driver.driver_options["max_job_wait_time"] == 100
+
+    def test_update_driver_params_from_options_job_query_interval(self):
+        """Test update_driver_params_from_options syncs job_query_interval."""
+        new_driver = DriverBase()
+        new_driver.update_driver_options({"job_query_interval": 10})
+        new_driver.update_driver_params_from_options()
+        assert new_driver.job_query_interval == 10
+        assert new_driver.driver_options["job_query_interval"] == 10
+
+    def test_update_driver_params_from_options_both(self):
+        """Test update_driver_params_from_options syncs both attributes."""
+        new_driver = DriverBase()
+        new_driver.update_driver_options({
+            "max_job_wait_time": 200,
+            "job_query_interval": 20,
+        })
+        new_driver.update_driver_params_from_options()
+        assert new_driver.max_job_wait_time == 200
+        assert new_driver.job_query_interval == 20
+        assert new_driver.driver_options["max_job_wait_time"] == 200
+        assert new_driver.driver_options["job_query_interval"] == 20
+
+    def test_update_driver_params_from_options_keeps_defaults(self):
+        new_driver = DriverBase()
+        new_driver.update_driver_options({"enable_wirecut": True})
+        new_driver.update_driver_params_from_options()
+        assert new_driver.max_job_wait_time == Constant.DEFAULT_JOB_WAIT_TIME
+        assert (
+            new_driver.job_query_interval
+            == Constant.DEFAULT_JOB_QUERY_INTERVAL
+        )
 
     def test_update_driver_options(self):
         assert driver_base.update_driver_options(self.driver_options) is None

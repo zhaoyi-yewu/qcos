@@ -187,6 +187,113 @@ class TestJob:
         mock_job_repo.commit.assert_called_once()
 
     @pytest.mark.smoke
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    @patch.object(TaskScheduler, "submit")
+    def test_submit_job_with_driver_options_new_fields(
+        self,
+        mock_submit,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_submit.return_value = ({"flow_run_id": "flow-run-123"}, None)
+
+        mock_job_repo = Mock()
+        job_record_mock = Mock()
+        job_record_mock.id = self.job_id
+        job_record_mock.flow_run_id = None
+        mock_job_repo.create_job.return_value = (
+            True,
+            None,
+            job_record_mock,
+        )
+        mock_job_repo.commit.return_value = None
+        mock_job_repo.refresh.return_value = None
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = [
+            """
+        OPENQASM 2.0;
+        include "qelib1.inc";
+        qreg q[1];
+        creg c[1];
+        h q[0];
+        measure q->c;
+        """
+        ]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = "Test Job"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
+        mock_client.description = "Test description"
+        mock_client.shots = Constant.DEFAULT_SHOTS
+        mock_client.backend = "dummy"
+        mock_client.driver_options = {
+            "max_job_wait_time": 100,
+            "job_query_interval": 2,
+        }
+        mock_client.transpiler = Constant.TRANSPILER_CMSS
+        mock_client.transpiler_options = {}
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.flavor_name = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+
+        response = submit_job(mock_client, None, job_repo=mock_job_repo)
+
+        assert response is not None
+        assert response.job_status == Constant.JOB_STATUS_QUEUED
+        assert response.driver_options is not None
+        assert response.driver_options["max_job_wait_time"] == 100
+        assert response.driver_options["job_query_interval"] == 2
+        mock_submit.assert_called_once()
+        mock_job_repo.create_job.assert_called_once()
+        mock_job_repo.commit.assert_called_once()
+
+    @pytest.mark.smoke
     @patch.object(Library, "validate_values_enum")
     @patch.object(Library, "validate_schema")
     def test_submit_job_invalid_source_code(
