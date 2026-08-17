@@ -412,10 +412,10 @@ class TestTranspilerCmss:
         return basis_gate_list, mapping_dict, final_layout_dict, basis_gates
 
     def test_transpile_with_superconducting_chip(self):
-        """超导真机转译: DriverSpinQRpc (basis={h,rx,ry,rz,cz}) +
-        baihua_156 拓扑 + 含 ccx 的 w-state 电路, 走 sabre 路由.
+        """超导真机转译: DriverSpinQRpc + baihua_156 拓扑 + w-state 电路.
 
-        扩展方式: 复制本用例, 替换驱动/topology/qasm 常量即可.
+        basis={h,rx,ry,rz,cz}, 走 sabre 路由. 扩展方式: 复制本用例,
+        替换驱动/topology/qasm 常量即可.
         """
         basis_gate_list, mapping_dict, final_layout_dict, basis_gates = (
             self._run_transpile(
@@ -435,21 +435,20 @@ class TestTranspilerCmss:
         assert final_layout_dict is not None
         assert mapping_dict is not None
 
-    def test_transpile_with_neutral_atom_chip(self):
-        """中性原子真机转译: DriverWuyueHanyuan1 (basis={rx,ry,cz}) +
-        hanyuan1_100 拓扑 + 含 ccx 的 w-state 电路, 启用 enable_na_move
-        走 NARoute (支持 cz/move), 结果会引入 NA 特有的 move 门.
+    def test_transpile_with_neutral_atom_chip_single_qubit_qasm(self):
+        """中性原子真机转译: DriverHanyuan1 + hanyuan1_100 拓扑.
 
-        扩展方式: 复制本用例, 替换驱动/topology/qasm 常量即可.
+        basis={rx,ry,rz} 单比特门集, 含 simple-qasm 电路. 扩展方式:
+        复制本用例, 替换驱动/topology/qasm 常量即可.
         """
         basis_gate_list, mapping_dict, final_layout_dict, basis_gates = (
             self._run_transpile(
-                driver=DriverWuyueHanyuan1(),
+                driver=DriverHanyuan1(),
                 toml_rel_path="topology/hanyuan1_100.toml",
                 chip_name="hanyuan1_100",
-                qasm_rel_path="qasm/2.0/w-state.qasm",
+                qasm_rel_path="qasm/2.0/simple-qasm.qasm",
                 code_type=Constant.CODE_TYPE_QASM,
-                enable_na_move=True,
+                enable_na_move=False,
             )
         )
 
@@ -461,22 +460,21 @@ class TestTranspilerCmss:
         assert final_layout_dict is not None
         assert mapping_dict is not None
 
+    def test_transpile_with_neutral_atom_chip(self):
+        """中性原子真机转译: DriverWuyueHanyuan1 + hanyuan1_100 + w-state.
 
-    def test_transpile_with_neutral_atom_chip_single_qubit_qasm(self):
-        """中性原子真机转译: DriverHanyuan1 (basis={rx,ry,rz}) +
-        hanyuan1_100 拓扑 + 含 ccx 的 w-state 电路, 启用 enable_na_move
-        走 NARoute (支持 cz/move), 结果会引入 NA 特有的 move 门.
-
-        扩展方式: 复制本用例, 替换驱动/topology/qasm 常量即可.
+        basis={rx,ry,cz}, 启用 enable_na_move 走 NARoute (支持 cz/move),
+        结果会引入 NA 特有的 move 门. 扩展方式: 复制本用例, 替换
+        驱动/topology/qasm 常量即可.
         """
         basis_gate_list, mapping_dict, final_layout_dict, basis_gates = (
             self._run_transpile(
-                driver=DriverHanyuan1(),
+                driver=DriverWuyueHanyuan1(),
                 toml_rel_path="topology/hanyuan1_100.toml",
                 chip_name="hanyuan1_100",
-                qasm_rel_path="qasm/2.0/simple-qasm.qasm",
+                qasm_rel_path="qasm/2.0/w-state.qasm",
                 code_type=Constant.CODE_TYPE_QASM,
-                enable_na_move=False,
+                enable_na_move=True,
             )
         )
 

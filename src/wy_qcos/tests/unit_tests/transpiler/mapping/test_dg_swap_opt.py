@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -21,6 +21,7 @@ from unittest.mock import Mock
 import networkx as nx
 import pytest
 
+from wy_qcos.transpiler.cmss.mapping.utils import dg_swap_opt
 from wy_qcos.transpiler.cmss.mapping.utils.dg_swap_opt import (
     DGSwap,
     gate_depth,
@@ -30,6 +31,22 @@ from wy_qcos.transpiler.cmss.mapping.utils.dg_swap_opt import (
     hybridization4,
     swap_qubits_,
 )
+
+# 模块导入时 (collection 阶段, 早于任何测试执行) 捕获 gate_depth 的
+# 原始默认值. ``transpiler_cmss`` 转译时会整体覆盖 ``dg_swap_opt.gate_depth``
+# (中性原子场景还会因跳过 SWAP 分解而丢失 "swap" 键), 若不在测试前恢复,
+# 本模块直接下标访问 ``gate_depth[...]`` 会抛 KeyError.
+_DEFAULT_GATE_DEPTH = dg_swap_opt.gate_depth.copy()
+
+
+@pytest.fixture(autouse=True)
+def _restore_gate_depth():
+    """每个用例前恢复 ``dg_swap_opt.gate_depth`` 到原始默认值.
+
+    避免被其它测试 (如 NA transpile) 整体覆盖全局后污染本文件测试.
+    """
+    dg_swap_opt.gate_depth = _DEFAULT_GATE_DEPTH.copy()
+    yield
 
 
 class TestSwapQubits:

@@ -22,7 +22,25 @@ from unittest.mock import Mock
 from wy_qcos.transpiler.cmss.mapping.routing.mcts_routing import (
     MCTree,
 )
+from wy_qcos.transpiler.cmss.mapping.utils import dg_swap_opt
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
+
+# 模块导入时 (collection 阶段, 早于任何测试执行) 捕获 gate_depth 的
+# 原始默认值. ``MCTree`` 内部构造 ``DGSwap``, 而 ``DGSwap`` 通过模块级
+# 全局 ``dg_swap_opt.gate_depth`` 直接下标读取门深度.
+# ``transpiler_cmss`` 转译时会整体覆盖该全局 (中性原子场景还会因跳过
+# SWAP 分解而丢失 "swap" 键), 若不在测试前恢复, 本文件测试会抛 KeyError.
+_DEFAULT_GATE_DEPTH = dg_swap_opt.gate_depth.copy()
+
+
+@pytest.fixture(autouse=True)
+def _restore_gate_depth():
+    """每个用例前恢复 ``dg_swap_opt.gate_depth`` 到原始默认值.
+
+    避免被其它测试 (如 NA transpile) 整体覆盖全局后污染本文件测试.
+    """
+    dg_swap_opt.gate_depth = _DEFAULT_GATE_DEPTH.copy()
+    yield
 
 
 class TestMCTree:
