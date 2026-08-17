@@ -1055,7 +1055,10 @@ class EquivalenceGraph:
                         cost_map[rule.target.name] = new_cost
                         optimal_rules[rule.target.name] = rule
 
-        return {}
+        # Not every source gate could be reached from the target set.
+        # Return the partial rules so callers can distinguish gates that
+        # have a decomposition path from those that do not.
+        return optimal_rules
 
     def rule_edges(self) -> list[RuleEdge]:
         """Return all edges in the equivalence rule graph.
@@ -1206,7 +1209,10 @@ class EquivalenceGraph:
 
         rule = rule_map.get(gate.name)
         if rule is None:
-            raise ValueError(f"No rule for gate {gate.name}")
+            raise ValueError(
+                f"Cannot decompose gate '{gate.name}' into target basis "
+                f"{sorted(target_set)}: no decomposition rule found"
+            )
 
         # -------- Parameter binding --------
         param_map: dict[str, str] = {}
@@ -1312,6 +1318,7 @@ class EquivalenceGraph:
         table: dict[ParamGate, list[ParamGate]] = {}
         count_map: dict[str, int] = {}
 
+        missing: list[str] = []
         for name in effective_source:
             if name in target_set:
                 count_map[name] = 1
@@ -1319,7 +1326,8 @@ class EquivalenceGraph:
 
             rule = rule_map.get(name)
             if rule is None:
-                raise ValueError(f"No rule for gate {name}")
+                missing.append(name)
+                continue
 
             template_gate = rule.target
 
@@ -1337,4 +1345,34 @@ class EquivalenceGraph:
             table[template_gate] = expanded
             count_map[template_gate.name] = len(expanded) + 1
 
+        if missing:
+            target_display = sorted(target_set)
+            hint = self._missing_rule_hint(missing, target_set)
+            raise ValueError(
+                f"Cannot decompose gate(s) {missing} into target basis "
+                f"{target_display}. {hint}"
+            )
+
         return table, count_map
+
+    @staticmethod
+    def _missing_rule_hint(missing: list[str], target_set: set[str]) -> str:
+        """Return a targeted hint for undecomposable gates.
+
+        SWAP can only be decomposed through a two-qubit gate
+        (swap -> cx -> cz). When SWAP is among the missing gates and the
+        target basis lacks both ``cx`` and ``cz``, the root cause is the
+        missing two-qubit gate rather than each individual gate failing.
+        """
+        two_qubit = {"cx", "cz"}
+        if "swap" in missing and not (target_set & two_qubit):
+            return (
+                "SWAP decomposition requires a two-qubit gate (cx or cz) "
+                "in the target basis (swap -> cx -> cz), but neither is "
+                "present; either add cx/cz to the basis gate set or disable "
+                "mapping for this device"
+            )
+        return (
+            "no decomposition path from the target basis to these gate(s); "
+            "check that the basis gate set is complete"
+        )
