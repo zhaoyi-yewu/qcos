@@ -1265,6 +1265,8 @@ class EquivalenceGraph:
         self,
         source: list[str],
         target: list[str],
+        enable_mapping: bool = True,
+        is_neutral_atom: bool = False,
     ) -> tuple[
         dict[ParamGate, list[ParamGate]],
         dict[str, int],
@@ -1274,6 +1276,15 @@ class EquivalenceGraph:
         Args:
             source: Source gate names that may require decomposition.
             target: Target gate name set (basis gates).
+            enable_mapping: Whether mapping (routing) is enabled. Only when
+                mapping is enabled is the SWAP gate added to the source set,
+                since its decomposition depth is used by the mapping module.
+            is_neutral_atom: Whether the target device is a neutral-atom
+                system. Neutral-atom routing does not rely on SWAP insertion
+                and its basis gate set may lack a two-qubit gate to decompose
+                SWAP, so SWAP is skipped to avoid spurious "No rule for gate
+                swap" errors. SWAP is only added when mapping is enabled AND
+                the device is not a neutral-atom system.
 
         Returns:
             tuple[dict[ParamGate, list[ParamGate]], dict[str, int]]:
@@ -1282,9 +1293,16 @@ class EquivalenceGraph:
         Raises:
             ValueError: If decomposition rule missing.
         """
+        # Only require SWAP decomposition when mapping is enabled and the
+        # device is not a neutral-atom system. Neutral-atom routing does not
+        # insert SWAPs, and the basis gate set may lack a two-qubit gate to
+        # decompose SWAP (swap -> cx -> cz).
+        require_swap = enable_mapping and not is_neutral_atom
+        effective_source = source + ["swap"] if require_swap else source
+
         # Compute additional SWAP depth for the mapping module
         rule_map = self.get_optimal_decomposition_rule_dictionary(
-            source + ["swap"],
+            effective_source,
             target,
         )
 
@@ -1294,7 +1312,7 @@ class EquivalenceGraph:
         table: dict[ParamGate, list[ParamGate]] = {}
         count_map: dict[str, int] = {}
 
-        for name in source + ["swap"]:
+        for name in effective_source:
             if name in target_set:
                 count_map[name] = 1
                 continue

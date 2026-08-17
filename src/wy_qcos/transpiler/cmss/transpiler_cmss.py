@@ -314,6 +314,13 @@ class TranspilerCmss(TranspilerBase):
                 )
 
         enable_mapping = self.transpiler_options.get("enable_mapping", True)
+        # Neutral-atom routing does not insert SWAPs and its basis gate set
+        # may lack a two-qubit gate to decompose SWAP, so SWAP decomposition
+        # is skipped for neutral-atom systems (see build_full_decomposition_table).
+        is_neutral_atom = (
+            trans_cfg_inst.get_tech_type()
+            == Constant.TECH_TYPE_NEUTRAL_ATOM
+        )
         run_time: TranspileRuntime = self.transpiler_runtime
 
         # get optimization level
@@ -372,6 +379,8 @@ class TranspilerCmss(TranspilerBase):
                     decomposer.get_decompose_rules(
                         gate_name_list,
                         supp_basis_gates,
+                        enable_mapping=enable_mapping,
+                        is_neutral_atom=is_neutral_atom,
                     )
                 )
                 dg_swap_opt.gate_depth = gate_depth.copy()
@@ -450,6 +459,8 @@ class TranspilerCmss(TranspilerBase):
                 decompose_rules_dict, _ = decomposer.get_decompose_rules(
                     gate_name_list,
                     supp_basis_gates,
+                    enable_mapping=enable_mapping,
+                    is_neutral_atom=is_neutral_atom,
                 )
             run_time.decompose_rule_time = decompose_ruler_timer.elapsed
             log_perf(
