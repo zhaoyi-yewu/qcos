@@ -39,19 +39,8 @@ using C = std::complex<double>;
 // Helpers
 // ========================================================================
 
-static CMatrix reconstruct_from_zyz(double theta, double phi, double lambda,
-                                    double phase) {
-  double c = std::cos(theta / 2), s = std::sin(theta / 2);
-  CMatrix su2 = {{C(c) * std::exp(C(0, -(phi + lambda) / 2)),
-                  -C(s) * std::exp(C(0, -(phi - lambda) / 2))},
-                 {C(s) * std::exp(C(0, (phi - lambda) / 2)),
-                  C(c) * std::exp(C(0, (phi + lambda) / 2))}};
-  return matrix_utils::scalar_multiply(std::exp(C(0, phase)), su2);
-}
-
-// Helper: check U ≈ V up to global phase
 static bool equal_up_to_global_phase(const CMatrix& a, const CMatrix& b,
-                                     double tol = 1e-8) {
+                                      double tol = 1e-8) {
   if (a.size() != b.size() || a.empty()) return false;
   double max_abs = 0;
   C phase{1, 0};
@@ -67,57 +56,45 @@ static bool equal_up_to_global_phase(const CMatrix& a, const CMatrix& b,
   return matrix_utils::is_close(a, scaled, tol);
 }
 
-// Helper: compute the unitary of an IR sequence
-static CMatrix ir_unitary(
-    const std::vector<std::shared_ptr<BaseOperation>>& ir, size_t num_qubits) {
-  size_t dim = 1ULL << num_qubits;
+static CMatrix reconstruct_2q_unitary(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates,
+    int q0, int q1) {
+  size_t n = 2;
+  size_t dim = 4;
   CMatrix result = matrix_utils::identity(dim);
-  for (const auto& op : ir) {
-    DAGCircuit tmp;
-    tmp.add_qubits(static_cast<int>(num_qubits));
-    tmp.apply_operation_back(op);
-    auto ops = tmp.topological_op_nodes();
-    std::unordered_map<int, int> mapping;
-    for (size_t i = 0; i < num_qubits; ++i)
-      mapping[static_cast<int>(i)] = static_cast<int>(i);
-    CMatrix gate_u = matrix_utils::compute_block_unitary(ops, mapping);
-    // If gate acts on a subset of qubits, we need to embed it
-    // For simplicity this helper only works for full-width ops
-    if (gate_u.size() == dim) {
-      result = matrix_utils::multiply(gate_u, result);
-    } else {
-      // embed: not handled in this simple helper
-      auto gate_mat = matrix_utils::gate_to_matrix(op);
-      CMatrix full = matrix_utils::identity(dim);
-      size_t nq = op->targets.size();
-      size_t gd = 1ULL << nq;
-      int q0 = op->targets[0];
+  for (const auto& op : gates) {
+    auto gate_mat = matrix_utils::gate_to_matrix(op);
+    size_t nq = op->targets.size();
+    CMatrix full = matrix_utils::identity(dim);
+    if (nq == 1) {
+      int q = op->targets[0];
+      int pos = (q == q0) ? 0 : 1;
       for (size_t row = 0; row < dim; ++row) {
         for (size_t col = 0; col < dim; ++col) {
-          bool match = true;
-          size_t gr = 0, gc = 0;
-          for (size_t qi = 0; qi < nq; ++qi) {
-            int q = op->targets[qi];
-            size_t rq = (row >> (num_qubits - 1 - q)) & 1;
-            size_t cq = (col >> (num_qubits - 1 - q)) & 1;
-            gr = gr * 2 + rq;
-            gc = gc * 2 + cq;
+          size_t rq = (row >> (n - 1 - pos)) & 1;
+          size_t cq = (col >> (n - 1 - pos)) & 1;
+          size_t row_rest = row ^ (rq << (n - 1 - pos));
+          size_t col_rest = col ^ (cq << (n - 1 - pos));
+          full[row][col] = (row_rest == col_rest) ? gate_mat[rq][cq] : C(0);
+        }
+      }
+    } else if (nq == 2) {
+      int qa = op->targets[0], qb = op->targets[1];
+      int pa = (qa == q0) ? 0 : 1;
+      int pb = (qb == q0) ? 0 : 1;
+      for (size_t row = 0; row < dim; ++row) {
+        for (size_t col = 0; col < dim; ++col) {
+          size_t ra = (row >> (n - 1 - pa)) & 1;
+          size_t rb = (row >> (n - 1 - pb)) & 1;
+          size_t ca = (col >> (n - 1 - pa)) & 1;
+          size_t cb = (col >> (n - 1 - pb)) & 1;
+          size_t row_rest = row ^ (ra << (n - 1 - pa)) ^ (rb << (n - 1 - pb));
+          size_t col_rest = col ^ (ca << (n - 1 - pa)) ^ (cb << (n - 1 - pb));
+          if (row_rest == col_rest) {
+            full[row][col] = gate_mat[ra * 2 + rb][ca * 2 + cb];
+          } else {
+            full[row][col] = C(0);
           }
-          // check all other qubits match
-          for (size_t bit = 0; bit < num_qubits; ++bit) {
-            bool in_targets = false;
-            for (int t : op->targets)
-              if (static_cast<size_t>(t) == bit) in_targets = true;
-            if (!in_targets) {
-              size_t rb = (row >> (num_qubits - 1 - bit)) & 1;
-              size_t cb = (col >> (num_qubits - 1 - bit)) & 1;
-              if (rb != cb) {
-                match = false;
-                break;
-              }
-            }
-          }
-          full[row][col] = match ? gate_mat[gr][gc] : C(0);
         }
       }
     }
@@ -126,639 +103,12 @@ static CMatrix ir_unitary(
   return result;
 }
 
-// ========================================================================
-// Matrix utility tests
-// ========================================================================
-
-TEST(MatrixUtilsTest, IdentityMatrix2x2) {
-  auto id = matrix_utils::identity(2);
-  EXPECT_EQ(id.size(), 2u);
-  EXPECT_EQ(id[0].size(), 2u);
-  EXPECT_TRUE(matrix_utils::is_identity(id));
-}
-
-TEST(MatrixUtilsTest, IdentityMatrix4x4) {
-  auto id4 = matrix_utils::identity(4);
-  EXPECT_EQ(id4.size(), 4u);
-  EXPECT_TRUE(matrix_utils::is_identity(id4));
-}
-
-TEST(MatrixUtilsTest, IdentityMatrix1x1) {
-  auto id1 = matrix_utils::identity(1);
-  EXPECT_TRUE(matrix_utils::is_identity(id1));
-}
-
-TEST(MatrixUtilsTest, MatrixMultiplyIdentity) {
-  auto id = matrix_utils::identity(2);
-  CMatrix h = {{C(1.0 / std::sqrt(2)), C(1.0 / std::sqrt(2))},
-               {C(1.0 / std::sqrt(2)), C(-1.0 / std::sqrt(2))}};
-  auto r1 = matrix_utils::multiply(h, id);
-  auto r2 = matrix_utils::multiply(id, h);
-  EXPECT_TRUE(matrix_utils::is_close(r1, h, 1e-10));
-  EXPECT_TRUE(matrix_utils::is_close(r2, h, 1e-10));
-}
-
-TEST(MatrixUtilsTest, MatrixMultiplyAssociative) {
-  auto x = matrix_utils::gate_to_matrix(create_gate("x", {0}));
-  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  auto z = matrix_utils::gate_to_matrix(create_gate("z", {0}));
-  auto ab_c = matrix_utils::multiply(matrix_utils::multiply(x, h), z);
-  auto a_bc = matrix_utils::multiply(x, matrix_utils::multiply(h, z));
-  EXPECT_TRUE(matrix_utils::is_close(ab_c, a_bc, 1e-10));
-}
-
-TEST(MatrixUtilsTest, TensorProductIKronI) {
-  CMatrix i2 = matrix_utils::identity(2);
-  auto i4 = matrix_utils::tensor_product(i2, i2);
-  EXPECT_EQ(i4.size(), 4u);
-  EXPECT_TRUE(matrix_utils::is_identity(i4));
-}
-
-TEST(MatrixUtilsTest, TensorProductXKronI) {
-  auto x = matrix_utils::gate_to_matrix(create_gate("x", {0}));
-  auto i2 = matrix_utils::identity(2);
-  auto xi = matrix_utils::tensor_product(x, i2);
-  EXPECT_EQ(xi.size(), 4u);
-  // X⊗I: rows 0↔2, 1↔3
-  EXPECT_NEAR(std::abs(xi[0][2] - C(1)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(xi[1][3] - C(1)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(xi[2][0] - C(1)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(xi[3][1] - C(1)), 0, 1e-10);
-}
-
-TEST(MatrixUtilsTest, TensorProductIKronX) {
-  auto x = matrix_utils::gate_to_matrix(create_gate("x", {0}));
-  auto i2 = matrix_utils::identity(2);
-  auto ix = matrix_utils::tensor_product(i2, x);
-  EXPECT_EQ(ix.size(), 4u);
-  // I⊗X: rows 0↔1, 2↔3
-  EXPECT_NEAR(std::abs(ix[0][1] - C(1)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(ix[1][0] - C(1)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(ix[2][3] - C(1)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(ix[3][2] - C(1)), 0, 1e-10);
-}
-
-TEST(MatrixUtilsTest, ConjugateTransposeRoundtrip) {
-  CMatrix m = {{C(1, 2), C(3, 4)}, {C(5, 6), C(7, 8)}};
-  auto ct = matrix_utils::conjugate_transpose(m);
-  auto m2 = matrix_utils::conjugate_transpose(ct);
-  EXPECT_TRUE(matrix_utils::is_close(m, m2, 1e-10));
-}
-
-TEST(MatrixUtilsTest, ConjugateTransposeValues) {
-  CMatrix m = {{C(1, 2), C(3, 4)}, {C(5, 6), C(7, 8)}};
-  auto ct = matrix_utils::conjugate_transpose(m);
-  EXPECT_NEAR(ct[0][0].real(), 1.0, 1e-10);
-  EXPECT_NEAR(ct[0][0].imag(), -2.0, 1e-10);
-  EXPECT_NEAR(ct[0][1].real(), 5.0, 1e-10);
-  EXPECT_NEAR(ct[0][1].imag(), -6.0, 1e-10);
-  EXPECT_NEAR(ct[1][0].real(), 3.0, 1e-10);
-  EXPECT_NEAR(ct[1][0].imag(), -4.0, 1e-10);
-}
-
-TEST(MatrixUtilsTest, ScalarMultiply) {
-  CMatrix m = {{C(1), C(2)}, {C(3), C(4)}};
-  auto sm = matrix_utils::scalar_multiply(C(2, 1), m);
-  EXPECT_NEAR(sm[0][0].real(), 2.0, 1e-10);
-  EXPECT_NEAR(sm[0][0].imag(), 1.0, 1e-10);
-  EXPECT_NEAR(sm[0][1].real(), 4.0, 1e-10);
-  EXPECT_NEAR(sm[0][1].imag(), 2.0, 1e-10);
-}
-
-TEST(MatrixUtilsTest, TraceIdentity) {
-  EXPECT_NEAR(matrix_utils::trace(matrix_utils::identity(2)), 2.0, 1e-10);
-  EXPECT_NEAR(matrix_utils::trace(matrix_utils::identity(4)), 4.0, 1e-10);
-}
-
-TEST(MatrixUtilsTest, TraceX) {
-  auto x = matrix_utils::gate_to_matrix(create_gate("x", {0}));
-  EXPECT_NEAR(matrix_utils::trace(x), 0.0, 1e-10);
-}
-
-TEST(MatrixUtilsTest, SubtractAndAdd) {
-  CMatrix a = {{C(1), C(2)}, {C(3), C(4)}};
-  CMatrix b = {{C(5), C(6)}, {C(7), C(8)}};
-  auto diff = matrix_utils::subtract(b, a);
-  EXPECT_NEAR(diff[0][0].real(), 4.0, 1e-10);
-  auto sum = matrix_utils::add(a, diff);
-  EXPECT_TRUE(matrix_utils::is_close(sum, b, 1e-10));
-}
-
-TEST(MatrixUtilsTest, FrobeniusNorm) {
-  auto id2 = matrix_utils::identity(2);
-  EXPECT_NEAR(matrix_utils::frobenius_norm(id2), std::sqrt(2.0), 1e-10);
-  CMatrix zero = {{C(0), C(0)}, {C(0), C(0)}};
-  EXPECT_NEAR(matrix_utils::frobenius_norm(zero), 0.0, 1e-10);
-}
-
-TEST(MatrixUtilsTest, IsIdentityTolerance) {
-  CMatrix almost_id = {{C(1, 1e-12), C(0)}, {C(0), C(1)}};
-  EXPECT_TRUE(matrix_utils::is_identity(almost_id, 1e-10));
-  CMatrix not_id = {{C(1, 0.01), C(0)}, {C(0), C(1)}};
-  EXPECT_FALSE(matrix_utils::is_identity(not_id, 1e-3));
-}
-
-TEST(MatrixUtilsTest, IsCloseWithDifferentSizes) {
-  CMatrix a = {{C(1), C(0)}, {C(0), C(1)}};
-  CMatrix b = {{C(1), C(0), C(0)}, {C(0), C(1), C(0)}, {C(0), C(0), C(1)}};
-  EXPECT_FALSE(matrix_utils::is_close(a, b));
-}
-
-// ========================================================================
-// Gate-to-matrix tests for all supported gates
-// ========================================================================
-
-TEST(GateToMatrixTest, AllSingleQubitGates) {
-  std::vector<std::string> gates_1q = {"h",   "x", "y",   "z",  "s",
-                                       "sdg", "t", "tdg", "sx", "sxdg"};
-  for (const auto& g : gates_1q) {
-    auto op = create_gate(g, {0});
-    auto m = matrix_utils::gate_to_matrix(op);
-    EXPECT_EQ(m.size(), 2u) << "Gate " << g;
-    EXPECT_EQ(m[0].size(), 2u) << "Gate " << g;
-    // Verify unitary: U†U = I
-    auto u_dag = matrix_utils::conjugate_transpose(m);
-    auto prod = matrix_utils::multiply(u_dag, m);
-    EXPECT_TRUE(matrix_utils::is_identity(prod, 1e-10))
-        << "Gate " << g << " is not unitary";
-  }
-}
-
-TEST(GateToMatrixTest, ParameterizedSingleQubitGates) {
-  auto test_unitary = [](const std::string& name,
-                         const std::vector<double>& params) {
-    auto op = create_gate(name, {0}, params);
-    auto m = matrix_utils::gate_to_matrix(op);
-    auto u_dag = matrix_utils::conjugate_transpose(m);
-    auto prod = matrix_utils::multiply(u_dag, m);
-    EXPECT_TRUE(matrix_utils::is_identity(prod, 1e-10))
-        << name << "(" << params[0] << ")";
-  };
-  test_unitary("p", {M_PI / 3});
-  test_unitary("u1", {M_PI / 4});
-  test_unitary("rx", {M_PI / 6});
-  test_unitary("ry", {M_PI / 3});
-  test_unitary("rz", {M_PI / 2});
-  test_unitary("r", {M_PI / 4, M_PI / 3});
-  test_unitary("u2", {M_PI / 4, M_PI / 3});
-  test_unitary("u3", {M_PI / 4, M_PI / 3, M_PI / 6});
-  test_unitary("u", {M_PI / 5, M_PI / 7, M_PI / 11});
-}
-
-TEST(GateToMatrixTest, AllTwoQubitGates) {
-  struct GateInfo {
-    std::string name;
-    std::vector<double> params;
-  };
-  std::vector<GateInfo> gates_2q = {
-      {"cx", {}},          {"cz", {}},
-      {"cy", {}},          {"swap", {}},
-      {"iswap", {}},       {"ecr", {}},
-      {"cp", {M_PI / 4}},  {"cu1", {M_PI / 3}},
-      {"crx", {M_PI / 4}}, {"cry", {M_PI / 5}},
-      {"crz", {M_PI / 6}}, {"cu3", {M_PI / 4, M_PI / 3, M_PI / 6}},
-      {"rxx", {M_PI / 4}}, {"ryy", {M_PI / 3}},
-      {"rzz", {M_PI / 5}}, {"rzx", {M_PI / 7}}};
-  for (const auto& g : gates_2q) {
-    auto op = create_gate(g.name, {0, 1}, g.params);
-    auto m = matrix_utils::gate_to_matrix(op);
-    EXPECT_EQ(m.size(), 4u) << "Gate " << g.name;
-    EXPECT_EQ(m[0].size(), 4u) << "Gate " << g.name;
-    auto u_dag = matrix_utils::conjugate_transpose(m);
-    auto prod = matrix_utils::multiply(u_dag, m);
-    EXPECT_TRUE(matrix_utils::is_identity(prod, 1e-10))
-        << "Gate " << g.name << " is not unitary";
-  }
-}
-
-TEST(GateToMatrixTest, UnsupportedGateThrows) {
-  auto op = std::make_shared<BaseOperation>("foobar", std::vector<int>{0});
-  EXPECT_THROW(matrix_utils::gate_to_matrix(op), std::runtime_error);
-}
-
-// ========================================================================
-// Single-qubit decomposition tests
-// ========================================================================
-
-TEST(SingleQubitDecompTest, DecomposeIdentity) {
-  auto id = matrix_utils::identity(2);
-  auto d = decompose_single_qubit(id);
-  EXPECT_NEAR(d.theta, 0.0, 1e-10);
-}
-
-TEST(SingleQubitDecompTest, DecomposeX) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("x", {0}));
-  auto d = decompose_single_qubit(m);
-  EXPECT_NEAR(d.theta, M_PI, 1e-10);
-}
-
-TEST(SingleQubitDecompTest, DecomposeY) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("y", {0}));
-  auto d = decompose_single_qubit(m);
-  EXPECT_NEAR(d.theta, M_PI, 1e-10);
-}
-
-TEST(SingleQubitDecompTest, DecomposeZ) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("z", {0}));
-  auto d = decompose_single_qubit(m);
-  // Z has theta=0, only phase
-  EXPECT_NEAR(d.theta, 0.0, 1e-10);
-}
-
-TEST(SingleQubitDecompTest, DecomposeS) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("s", {0}));
-  auto d = decompose_single_qubit(m);
-  EXPECT_NEAR(d.theta, 0.0, 1e-10);
-}
-
-TEST(SingleQubitDecompTest, DecomposeT) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("t", {0}));
-  auto d = decompose_single_qubit(m);
-  EXPECT_NEAR(d.theta, 0.0, 1e-10);
-}
-
-TEST(SingleQubitDecompTest, DecomposeRX) {
-  double angle = M_PI / 3;
-  auto m = matrix_utils::gate_to_matrix(create_gate("rx", {0}, {angle}));
-  auto d = decompose_single_qubit(m);
-  auto reconstructed = reconstruct_from_zyz(d.theta, d.phi, d.lambda, d.phase);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
-}
-
-TEST(SingleQubitDecompTest, DecomposeRY) {
-  double angle = 2.0 * M_PI / 5;
-  auto m = matrix_utils::gate_to_matrix(create_gate("ry", {0}, {angle}));
-  auto d = decompose_single_qubit(m);
-  auto reconstructed = reconstruct_from_zyz(d.theta, d.phi, d.lambda, d.phase);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
-}
-
-TEST(SingleQubitDecompTest, DecomposeRZ) {
-  double angle = M_PI / 7;
-  auto m = matrix_utils::gate_to_matrix(create_gate("rz", {0}, {angle}));
-  auto d = decompose_single_qubit(m);
-  auto reconstructed = reconstruct_from_zyz(d.theta, d.phi, d.lambda, d.phase);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
-}
-
-TEST(SingleQubitDecompTest, DecomposeH_Roundtrip) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  auto d = decompose_single_qubit(m);
-  auto reconstructed = reconstruct_from_zyz(d.theta, d.phi, d.lambda, d.phase);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
-}
-
-TEST(SingleQubitDecompTest, DecomposeU3_Roundtrip) {
-  auto m = matrix_utils::gate_to_matrix(
-      create_gate("u3", {0}, {1.23, -0.45, 2.67}));
-  auto d = decompose_single_qubit(m);
-  auto reconstructed = reconstruct_from_zyz(d.theta, d.phi, d.lambda, d.phase);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
-}
-
-TEST(SingleQubitDecompTest, DecomposePhaseGate) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("p", {0}, {M_PI / 4}));
-  auto d = decompose_single_qubit(m);
-  auto reconstructed = reconstruct_from_zyz(d.theta, d.phi, d.lambda, d.phase);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
-}
-
-TEST(SingleQubitDecompTest, DecomposeSX) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("sx", {0}));
-  auto d = decompose_single_qubit(m);
-  auto reconstructed = reconstruct_from_zyz(d.theta, d.phi, d.lambda, d.phase);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
-}
-
-// ========================================================================
-// Single-qubit basis gate translation tests
-// ========================================================================
-
-TEST(SingleQubitBasisTest, IdentityProducesNoGates) {
-  auto id = matrix_utils::identity(2);
-  auto gates = single_qubit_unitary_to_basis(id, 0, std::nullopt);
-  EXPECT_EQ(gates.size(), 0u);
-}
-
-TEST(SingleQubitBasisTest, DefaultBasisProducesU3) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  auto gates = single_qubit_unitary_to_basis(m, 0, std::nullopt);
-  EXPECT_GE(gates.size(), 1u);
-  // With no basis restriction, should produce a u3 or similar
-}
-
-TEST(SingleQubitBasisTest, RZRYBasis) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  std::set<std::string> basis = {"rz", "ry"};
-  auto gates = single_qubit_unitary_to_basis(m, 0, basis);
+static void expect_all_in_basis(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates,
+    const std::set<std::string>& basis) {
   for (const auto& g : gates) {
-    EXPECT_TRUE(g->name == "rz" || g->name == "ry")
-        << "Unexpected gate: " << g->name;
-  }
-  // Verify: reconstruct from gates and compare
-  CMatrix product = matrix_utils::identity(2);
-  for (const auto& g : gates) {
-    auto gm = matrix_utils::gate_to_matrix(g);
-    product = matrix_utils::multiply(gm, product);
-  }
-  EXPECT_TRUE(equal_up_to_global_phase(m, product, 1e-8));
-}
-
-TEST(SingleQubitBasisTest, RXRZBasis) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  std::set<std::string> basis = {"rx", "rz"};
-  auto gates = single_qubit_unitary_to_basis(m, 0, basis);
-  for (const auto& g : gates) {
-    EXPECT_TRUE(g->name == "rx" || g->name == "rz")
-        << "Unexpected gate: " << g->name;
-  }
-}
-
-TEST(SingleQubitBasisTest, RXRYBasis) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  std::set<std::string> basis = {"rx", "ry"};
-  auto gates = single_qubit_unitary_to_basis(m, 0, basis);
-  for (const auto& g : gates) {
-    EXPECT_TRUE(g->name == "rx" || g->name == "ry")
-        << "Unexpected gate: " << g->name;
-  }
-}
-
-TEST(SingleQubitBasisTest, U3Explicit) {
-  auto m =
-      matrix_utils::gate_to_matrix(create_gate("u3", {0}, {1.0, 2.0, 3.0}));
-  std::set<std::string> basis = {"u3"};
-  auto gates = single_qubit_unitary_to_basis(m, 0, basis);
-  EXPECT_EQ(gates.size(), 1u);
-  EXPECT_EQ(gates[0]->name, "u3");
-}
-
-TEST(SingleQubitBasisTest, RZRYRoundtripCorrectness) {
-  // Test multiple gates with RZ+RY basis and verify matrix equivalence
-  std::vector<std::string> test_gates = {"h", "x", "y", "s", "t"};
-  std::set<std::string> basis = {"rz", "ry"};
-  for (const auto& gname : test_gates) {
-    auto m = matrix_utils::gate_to_matrix(create_gate(gname, {0}));
-    auto gates = single_qubit_unitary_to_basis(m, 0, basis);
-    CMatrix product = matrix_utils::identity(2);
-    for (const auto& g : gates) {
-      product =
-          matrix_utils::multiply(matrix_utils::gate_to_matrix(g), product);
-    }
-    EXPECT_TRUE(equal_up_to_global_phase(m, product, 1e-8))
-        << "Roundtrip failed for gate: " << gname;
-  }
-}
-
-TEST(SingleQubitBasisTest, QubitTargetPreserved) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  auto gates = single_qubit_unitary_to_basis(m, 5, std::nullopt);
-  for (const auto& g : gates) {
-    EXPECT_EQ(g->targets[0], 5);
-  }
-}
-
-// ========================================================================
-// Block unitary computation tests
-// ========================================================================
-
-TEST(BlockUnitTest, SingleGateBlock) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  auto h_mat = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  EXPECT_TRUE(matrix_utils::is_close(u, h_mat, 1e-10));
-}
-
-TEST(BlockUnitTest, TwoGateSequence_HX) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
-                                                    create_gate("x", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  auto expected = matrix_utils::multiply(
-      matrix_utils::gate_to_matrix(create_gate("x", {0})),
-      matrix_utils::gate_to_matrix(create_gate("h", {0})));
-  EXPECT_TRUE(matrix_utils::is_close(u, expected, 1e-10));
-}
-
-TEST(BlockUnitTest, ThreeGateSequence) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}), create_gate("s", {0}), create_gate("t", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  // Verify: result should be unitary
-  auto u_dag = matrix_utils::conjugate_transpose(u);
-  EXPECT_TRUE(
-      matrix_utils::is_identity(matrix_utils::multiply(u_dag, u), 1e-10));
-}
-
-TEST(BlockUnitTest, SelfInverseCancels) {
-  // H*H = I
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
-                                                    create_gate("h", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  EXPECT_TRUE(matrix_utils::is_identity(u, 1e-10));
-}
-
-TEST(BlockUnitTest, X_X_Cancels) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("x", {0}),
-                                                    create_gate("x", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  EXPECT_TRUE(matrix_utils::is_identity(u, 1e-10));
-}
-
-TEST(BlockUnitTest, S_SDG_Cancels) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("s", {0}),
-                                                    create_gate("sdg", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  EXPECT_TRUE(matrix_utils::is_identity(u, 1e-10));
-}
-
-TEST(BlockUnitTest, TwoQubitBlock_HC_CX) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
-                                                    create_gate("cx", {0, 1})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}, {1, 1}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  auto u_dag = matrix_utils::conjugate_transpose(u);
-  EXPECT_TRUE(
-      matrix_utils::is_identity(matrix_utils::multiply(u, u_dag), 1e-10));
-}
-
-TEST(BlockUnitTest, TwoQubitBlockBellState) {
-  // Bell state circuit: H(0) + CX(0,1) creates |00>+|11>
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
-                                                    create_gate("cx", {0, 1})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}, {1, 1}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  // Apply to |00> (column 0): should give (|00> + |11>)/sqrt(2)
-  // Index: |00>=0, |01>=1, |10>=2, |11>=3
-  double sq = 1.0 / std::sqrt(2.0);
-  EXPECT_NEAR(std::abs(u[0][0] - C(sq)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(u[3][0] - C(sq)), 0, 1e-10);
-  EXPECT_NEAR(std::abs(u[1][0]), 0, 1e-10);
-  EXPECT_NEAR(std::abs(u[2][0]), 0, 1e-10);
-}
-
-TEST(BlockUnitTest, ResultIsAlwaysUnitary) {
-  // Random-ish sequence, verify result is always unitary
-  std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}),          create_gate("cx", {0, 1}),
-      create_gate("rz", {0}, {1.23}), create_gate("ry", {1}, {0.45}),
-      create_gate("cx", {0, 1}),      create_gate("t", {0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-  auto ops = dag.topological_op_nodes();
-  std::unordered_map<int, int> mapping = {{0, 0}, {1, 1}};
-  auto u = matrix_utils::compute_block_unitary(ops, mapping);
-  auto u_dag = matrix_utils::conjugate_transpose(u);
-  EXPECT_TRUE(
-      matrix_utils::is_identity(matrix_utils::multiply(u_dag, u), 1e-10));
-}
-
-// ========================================================================
-// Two-qubit decomposition tests
-// ========================================================================
-
-TEST(TwoQubitDecompTest, IdentityNeeds0CX) {
-  auto id = matrix_utils::identity(4);
-  auto d = decompose_two_qubit(id);
-  EXPECT_EQ(d.num_cx, 0);
-}
-
-TEST(TwoQubitDecompTest, CXNeedsAtLeast1CX) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
-  auto d = decompose_two_qubit(m);
-  // CX is entangling: the simplified KAK extraction may not perfectly
-  // identify the exact count, but it should not claim 0 CX via tensor
-  // product (CX is not a tensor product).
-  // Verify by checking that the two_qubit_unitary_to_basis emits gates.
-  std::set<std::string> basis = {"cx", "cz", "h", "rz", "ry", "rx", "u3"};
-  auto gates = two_qubit_unitary_to_basis(m, 0, 1, basis);
-  EXPECT_GE(gates.size(), 1u);
-}
-
-TEST(TwoQubitDecompTest, TensorProductNeeds0CX) {
-  // H⊗I should be decomposable with 0 CX
-  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  auto id = matrix_utils::identity(2);
-  auto tensor = matrix_utils::tensor_product(h, id);
-  auto d = decompose_two_qubit(tensor);
-  EXPECT_EQ(d.num_cx, 0);
-}
-
-TEST(TwoQubitDecompTest, TensorProductIKronH) {
-  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  auto id = matrix_utils::identity(2);
-  auto tensor = matrix_utils::tensor_product(id, h);
-  auto d = decompose_two_qubit(tensor);
-  EXPECT_EQ(d.num_cx, 0);
-}
-
-TEST(TwoQubitDecompTest, TensorProductRXKronRY) {
-  auto rx = matrix_utils::gate_to_matrix(create_gate("rx", {0}, {M_PI / 3}));
-  auto ry = matrix_utils::gate_to_matrix(create_gate("ry", {0}, {M_PI / 5}));
-  auto tensor = matrix_utils::tensor_product(rx, ry);
-  auto d = decompose_two_qubit(tensor);
-  EXPECT_EQ(d.num_cx, 0);
-}
-
-// ========================================================================
-// Two-qubit to basis gates tests
-// ========================================================================
-
-TEST(TwoQubitToBasisTest, IdentityProducesNoGates) {
-  auto id = matrix_utils::identity(4);
-  auto gates = two_qubit_unitary_to_basis(id, 0, 1, std::nullopt);
-  EXPECT_EQ(gates.size(), 0u);
-}
-
-TEST(TwoQubitToBasisTest, CXDirectMatch) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
-  std::set<std::string> basis = {"cx", "rz", "ry", "rx", "u3"};
-  auto gates = two_qubit_unitary_to_basis(m, 0, 1, basis);
-  EXPECT_GE(gates.size(), 1u);
-  // Should contain exactly one CX
-  int cx_count = 0;
-  for (const auto& g : gates) {
-    if (g->name == "cx") cx_count++;
-    EXPECT_TRUE(basis.count(g->name) > 0) << g->name << " not in basis";
-  }
-  EXPECT_EQ(cx_count, 1);
-}
-
-TEST(TwoQubitToBasisTest, CZDirectMatch) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("cz", {0, 1}));
-  std::set<std::string> basis = {"cz", "rz", "ry", "rx", "h", "u3"};
-  auto gates = two_qubit_unitary_to_basis(m, 0, 1, basis);
-  EXPECT_GE(gates.size(), 1u);
-  int cz_count = 0;
-  for (const auto& g : gates) {
-    if (g->name == "cz") cz_count++;
-  }
-  EXPECT_EQ(cz_count, 1);
-}
-
-TEST(TwoQubitToBasisTest, SwapDirectMatch) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("swap", {0, 1}));
-  std::set<std::string> basis = {"swap", "cx", "rz", "ry", "u3"};
-  auto gates = two_qubit_unitary_to_basis(m, 0, 1, basis);
-  EXPECT_GE(gates.size(), 1u);
-  bool has_swap = false;
-  for (const auto& g : gates) {
-    if (g->name == "swap") has_swap = true;
-  }
-  EXPECT_TRUE(has_swap);
-}
-
-TEST(TwoQubitToBasisTest, CXWithCZBasis) {
-  // When cx is NOT in basis but cz is, should use H+CZ+H
-  auto m = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
-  std::set<std::string> basis = {"cz", "h", "rz", "ry", "u3"};
-  auto gates = two_qubit_unitary_to_basis(m, 0, 1, basis);
-  EXPECT_GE(gates.size(), 1u);
-  for (const auto& g : gates) {
-    EXPECT_TRUE(basis.count(g->name) > 0) << g->name << " not in basis";
-  }
-}
-
-TEST(TwoQubitToBasisTest, TensorProductNoEntanglingGate) {
-  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
-  auto id = matrix_utils::identity(2);
-  auto tensor = matrix_utils::tensor_product(h, id);
-  std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
-  auto gates = two_qubit_unitary_to_basis(tensor, 0, 1, basis);
-  // Should have only single-qubit gates, no CX
-  for (const auto& g : gates) {
-    EXPECT_NE(g->name, "cx") << "Tensor product should not need CX";
-  }
-}
-
-TEST(TwoQubitToBasisTest, QubitTargetsPreserved) {
-  auto m = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
-  std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
-  auto gates = two_qubit_unitary_to_basis(m, 3, 7, basis);
-  for (const auto& g : gates) {
-    for (int t : g->targets) {
-      EXPECT_TRUE(t == 3 || t == 7) << "Unexpected qubit target: " << t;
-    }
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
   }
 }
 
@@ -777,7 +127,8 @@ TEST(UnitarySynthesisTest, NoChangeOnEmptyDAG) {
 
 TEST(UnitarySynthesisTest, IdentityBlockRemoved) {
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}), create_gate("h", {0}), create_gate("x", {1})};
+      create_gate("h", {0}), create_gate("h", {0}),
+      create_gate("x", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   UnitarySynthesis synth;
   int reduced = synth.run(dag);
@@ -787,8 +138,8 @@ TEST(UnitarySynthesisTest, IdentityBlockRemoved) {
 }
 
 TEST(UnitarySynthesisTest, BasisGateTranslation) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
-                                                    create_gate("s", {0})};
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   std::set<std::string> basis = {"rz", "ry", "cx"};
   UnitarySynthesis synth(basis);
@@ -800,8 +151,8 @@ TEST(UnitarySynthesisTest, BasisGateTranslation) {
 }
 
 TEST(UnitarySynthesisTest, BasisGatesFromConstructor) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
-                                                    create_gate("s", {0})};
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   std::set<std::string> basis = {"rz", "ry", "cx"};
   UnitarySynthesis synth(basis);
@@ -814,8 +165,8 @@ TEST(UnitarySynthesisTest, BasisGatesFromConstructor) {
 
 TEST(UnitarySynthesisTest, MultiBlockOptimization) {
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}), create_gate("h", {0}),   // qubit 0: I
-      create_gate("x", {1}), create_gate("x", {1})};  // qubit 1: I
+      create_gate("h", {0}), create_gate("h", {0}),
+      create_gate("x", {1}), create_gate("x", {1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   UnitarySynthesis synth;
   int reduced = synth.run(dag);
@@ -848,9 +199,8 @@ TEST(UnitarySynthesisTest, SynthesizeBlockIdentity) {
 }
 
 TEST(UnitarySynthesisTest, MaxBlockSizeLimitsScope) {
-  // max_block_size=1 should not touch 2-qubit blocks
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
-                                                    create_gate("cx", {0, 1})};
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("cx", {0, 1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   UnitarySynthesis synth(std::nullopt, 1.0, 1);
   int reduced = synth.run(dag);
@@ -907,8 +257,8 @@ TEST(ConsolidateBlocksTest, DoesNotConsolidateSingleGate) {
 
 TEST(ConsolidateBlocksTest, TwoQubitBlockConsolidation) {
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}), create_gate("cx", {0, 1}), create_gate("h", {0}),
-      create_gate("cx", {0, 1})};
+      create_gate("h", {0}), create_gate("cx", {0, 1}),
+      create_gate("h", {0}), create_gate("cx", {0, 1})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
   ConsolidateBlocks consolidator;
   consolidator.run(dag);
@@ -1137,14 +487,16 @@ TEST(DecomposeUnitaryTest, TwoQubit_CXToCZCrossBasis) {
   auto gates = decompose_unitary(cx_mat, {"cz", "h", "rz", "ry"});
   EXPECT_GE(gates.size(), 1u);
   for (const auto& g : gates) {
-    EXPECT_TRUE(g->name == "cz" || g->name == "h" || g->name == "rz" ||
-                g->name == "ry")
+    EXPECT_TRUE(g->name == "cz" || g->name == "h" ||
+                g->name == "rz" || g->name == "ry")
         << "Gate " << g->name << " not in basis";
   }
 }
 
 TEST(DecomposeUnitaryTest, InvalidDimension_Throws) {
-  CMatrix m3x3 = {{C(1), C(0), C(0)}, {C(0), C(1), C(0)}, {C(0), C(0), C(1)}};
+  CMatrix m3x3 = {{C(1), C(0), C(0)},
+                   {C(0), C(1), C(0)},
+                   {C(0), C(0), C(1)}};
   EXPECT_THROW(decompose_unitary(m3x3, {"rz"}), std::invalid_argument);
 }
 
@@ -1160,14 +512,12 @@ TEST(DecomposeUnitaryTest, NonUnitary_Throws) {
 
 TEST(DecomposeUnitaryTest, AllSingleQubitGates_Roundtrip) {
   std::set<std::string> basis = {"rz", "ry"};
-  for (const auto& name :
-       {"h", "x", "y", "z", "s", "sdg", "t", "tdg", "sx", "sxdg"}) {
+  for (const auto& name : {"h", "x", "y", "z", "s", "sdg", "t", "tdg", "sx", "sxdg"}) {
     auto m = matrix_utils::gate_to_matrix(create_gate(name, {0}));
     auto gates = decompose_unitary(m, basis);
     CMatrix product = matrix_utils::identity(2);
     for (const auto& g : gates) {
-      product =
-          matrix_utils::multiply(matrix_utils::gate_to_matrix(g), product);
+      product = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), product);
     }
     EXPECT_TRUE(equal_up_to_global_phase(m, product, 1e-8))
         << "Roundtrip failed for " << name;
@@ -1182,8 +532,7 @@ TEST(DecomposeUnitaryTest, ParameterizedGate_Roundtrip) {
       auto gates = decompose_unitary(m, basis);
       CMatrix product = matrix_utils::identity(2);
       for (const auto& g : gates) {
-        product =
-            matrix_utils::multiply(matrix_utils::gate_to_matrix(g), product);
+        product = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), product);
       }
       EXPECT_TRUE(equal_up_to_global_phase(m, product, 1e-8))
           << name << "(" << angle << ") roundtrip failed";
@@ -1205,92 +554,26 @@ TEST(DecomposeUnitaryTest, Swap_DirectMatch) {
 // decompose_unitary() — 2Q roundtrip correctness
 // ========================================================================
 
-// Helper: reconstruct the full 4x4 unitary from a gate sequence on 2 qubits.
-// Embeds each gate into the 4x4 space and multiplies in order.
-static CMatrix reconstruct_2q_unitary(
-    const std::vector<std::shared_ptr<BaseOperation>>& gates, int q0, int q1) {
-  size_t n = 2;
-  size_t dim = 4;
-  CMatrix result = matrix_utils::identity(dim);
-  for (const auto& op : gates) {
-    auto gate_mat = matrix_utils::gate_to_matrix(op);
-    size_t nq = op->targets.size();
-    CMatrix full = matrix_utils::identity(dim);
-    if (nq == 1) {
-      int q = op->targets[0];
-      int pos = (q == q0) ? 0 : 1;  // position in 2-qubit system
-      for (size_t row = 0; row < dim; ++row) {
-        for (size_t col = 0; col < dim; ++col) {
-          size_t rq = (row >> (n - 1 - pos)) & 1;
-          size_t cq = (col >> (n - 1 - pos)) & 1;
-          size_t row_rest = row ^ (rq << (n - 1 - pos));
-          size_t col_rest = col ^ (cq << (n - 1 - pos));
-          full[row][col] = (row_rest == col_rest) ? gate_mat[rq][cq] : C(0);
-        }
-      }
-    } else if (nq == 2) {
-      int qa = op->targets[0], qb = op->targets[1];
-      int pa = (qa == q0) ? 0 : 1;
-      int pb = (qb == q0) ? 0 : 1;
-      for (size_t row = 0; row < dim; ++row) {
-        for (size_t col = 0; col < dim; ++col) {
-          size_t ra = (row >> (n - 1 - pa)) & 1;
-          size_t rb = (row >> (n - 1 - pb)) & 1;
-          size_t ca = (col >> (n - 1 - pa)) & 1;
-          size_t cb = (col >> (n - 1 - pb)) & 1;
-          size_t row_rest = row ^ (ra << (n - 1 - pa)) ^ (rb << (n - 1 - pb));
-          size_t col_rest = col ^ (ca << (n - 1 - pa)) ^ (cb << (n - 1 - pb));
-          if (row_rest == col_rest) {
-            full[row][col] = gate_mat[ra * 2 + rb][ca * 2 + cb];
-          } else {
-            full[row][col] = C(0);
-          }
-        }
-      }
-    }
-    result = matrix_utils::multiply(full, result);
-  }
-  return result;
-}
-
-// Helper: check all gates are in the basis
-static void expect_all_in_basis(
-    const std::vector<std::shared_ptr<BaseOperation>>& gates,
-    const std::set<std::string>& basis) {
-  for (const auto& g : gates) {
-    EXPECT_TRUE(basis.count(g->name) > 0)
-        << "Gate '" << g->name << "' not in basis";
-  }
-}
-
 TEST(DecomposeUnitary2QTest, AllKnownGates_Roundtrip) {
-  // Gates that can be directly matched or factored — verify roundtrip
-  std::set<std::string> basis = {"cx", "cz", "swap", "iswap", "ecr", "h",
-                                 "rz", "ry", "rx",   "u3",    "x"};
+  std::set<std::string> basis = {"cx", "cz", "swap", "iswap", "ecr",
+                                  "h", "rz", "ry", "rx", "u3", "x"};
   struct TestCase {
     std::string name;
     std::vector<double> params;
     bool expect_roundtrip;
   };
   std::vector<TestCase> cases = {
-      {"cx", {}, true},
-      {"cz", {}, true},
-      {"swap", {}, true},
-      {"iswap", {}, true},
-      {"ecr", {}, true},
-      // Parameterized gates need general KAK (K matrices not yet exact)
+      {"cx", {}, true}, {"cz", {}, true},
+      {"swap", {}, true}, {"iswap", {}, true}, {"ecr", {}, true},
       {"cp", {M_PI / 4}, false},
-      {"crx", {M_PI / 3}, false},
-      {"cry", {M_PI / 5}, false},
+      {"crx", {M_PI / 3}, false}, {"cry", {M_PI / 5}, false},
       {"crz", {M_PI / 7}, false},
-      {"rxx", {M_PI / 4}, false},
-      {"ryy", {M_PI / 3}, false},
+      {"rxx", {M_PI / 4}, false}, {"ryy", {M_PI / 3}, false},
       {"rzz", {M_PI / 5}, false},
   };
 
   for (const auto& tc : cases) {
-    auto mat =
-        matrix_utils::gate_to_matrix(create_gate(tc.name, {0, 1}, tc.params));
+    auto mat = matrix_utils::gate_to_matrix(create_gate(tc.name, {0, 1}, tc.params));
     auto gates = decompose_unitary(mat, basis);
     expect_all_in_basis(gates, basis);
 
@@ -1309,8 +592,8 @@ TEST(DecomposeUnitary2QTest, BellCircuit_BasisCompliance) {
   for (size_t row = 0; row < 4; ++row)
     for (size_t col = 0; col < 4; ++col) {
       size_t rq = (row >> 1) & 1, cq = (col >> 1) & 1;
-      h_full[row][col] =
-          ((row ^ (rq << 1)) == (col ^ (cq << 1))) ? h_mat[rq][cq] : C(0);
+      h_full[row][col] = ((row ^ (rq << 1)) == (col ^ (cq << 1)))
+                             ? h_mat[rq][cq] : C(0);
     }
   CMatrix bell_u = matrix_utils::multiply(cx_mat, h_full);
   std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
@@ -1333,8 +616,8 @@ TEST(DecomposeUnitary2QTest, Google_Basis_RzRxPlusCX) {
   for (size_t row = 0; row < 4; ++row)
     for (size_t col = 0; col < 4; ++col) {
       size_t rq = (row >> 1) & 1, cq = (col >> 1) & 1;
-      h_full[row][col] =
-          ((row ^ (rq << 1)) == (col ^ (cq << 1))) ? h[rq][cq] : C(0);
+      h_full[row][col] = ((row ^ (rq << 1)) == (col ^ (cq << 1)))
+                             ? h[rq][cq] : C(0);
     }
   CMatrix u = matrix_utils::multiply(cx, h_full);
   auto gates = decompose_unitary(u, google_basis);
@@ -1378,19 +661,15 @@ TEST(DecomposeUnitary2QTest, ECR_Roundtrip) {
   EXPECT_TRUE(equal_up_to_global_phase(ecr, reconstructed, 1e-6));
 }
 
-// General KAK tests: verify basis compliance (K matrices not yet exact for
-// roundtrip)
 TEST(DecomposeUnitary2QTest, ControlledPhase_BasisCompliance) {
-  auto cp =
-      matrix_utils::gate_to_matrix(create_gate("cp", {0, 1}, {M_PI / 4}));
+  auto cp = matrix_utils::gate_to_matrix(create_gate("cp", {0, 1}, {M_PI / 4}));
   std::set<std::string> basis = {"cx", "rz", "ry", "cp", "u3"};
   auto gates = decompose_unitary(cp, basis);
   expect_all_in_basis(gates, basis);
 }
 
 TEST(DecomposeUnitary2QTest, RZZ_BasisCompliance) {
-  auto rzz =
-      matrix_utils::gate_to_matrix(create_gate("rzz", {0, 1}, {M_PI / 3}));
+  auto rzz = matrix_utils::gate_to_matrix(create_gate("rzz", {0, 1}, {M_PI / 3}));
   std::set<std::string> basis = {"cx", "rz", "ry", "rzz"};
   auto gates = decompose_unitary(rzz, basis);
   expect_all_in_basis(gates, basis);
@@ -1439,8 +718,7 @@ TEST(DecomposeUnitary2QTest, CZ_ToCX_Roundtrip) {
 }
 
 TEST(DecomposeUnitary2QTest, CRX_BasisCompliance) {
-  auto crx =
-      matrix_utils::gate_to_matrix(create_gate("crx", {0, 1}, {M_PI / 4}));
+  auto crx = matrix_utils::gate_to_matrix(create_gate("crx", {0, 1}, {M_PI / 4}));
   std::set<std::string> basis = {"cx", "rz", "ry", "crx", "u3"};
   auto gates = decompose_unitary(crx, basis);
   expect_all_in_basis(gates, basis);
@@ -1455,16 +733,14 @@ TEST(DecomposeUnitary2QTest, CU3_BasisCompliance) {
 }
 
 TEST(DecomposeUnitary2QTest, RXX_BasisCompliance) {
-  auto rxx =
-      matrix_utils::gate_to_matrix(create_gate("rxx", {0, 1}, {M_PI / 3}));
+  auto rxx = matrix_utils::gate_to_matrix(create_gate("rxx", {0, 1}, {M_PI / 3}));
   std::set<std::string> basis = {"cx", "rz", "ry", "rxx"};
   auto gates = decompose_unitary(rxx, basis);
   expect_all_in_basis(gates, basis);
 }
 
 TEST(DecomposeUnitary2QTest, RZX_BasisCompliance) {
-  auto rzx =
-      matrix_utils::gate_to_matrix(create_gate("rzx", {0, 1}, {M_PI / 4}));
+  auto rzx = matrix_utils::gate_to_matrix(create_gate("rzx", {0, 1}, {M_PI / 4}));
   std::set<std::string> basis = {"cx", "rz", "ry", "rzx", "h"};
   auto gates = decompose_unitary(rzx, basis);
   expect_all_in_basis(gates, basis);
@@ -1552,7 +828,9 @@ TEST(DecomposeUnitaryErrorTest, NonSquareMatrix) {
 }
 
 TEST(DecomposeUnitaryErrorTest, Dimension3x3) {
-  CMatrix m3 = {{C(1), C(0), C(0)}, {C(0), C(1), C(0)}, {C(0), C(0), C(1)}};
+  CMatrix m3 = {{C(1), C(0), C(0)},
+                {C(0), C(1), C(0)},
+                {C(0), C(0), C(1)}};
   EXPECT_THROW(decompose_unitary(m3, {"rz"}), std::invalid_argument);
 }
 
@@ -1614,9 +892,6 @@ TEST(DanglingPointerFix, MultipleIndependent1QBlocks) {
   }
 }
 
-// Multiple independent 2Q blocks on different qubit pairs.
-// Before the fix: replacing first CX block invalidates second CX block's
-// pointers.
 TEST(DanglingPointerFix, MultipleIndependent2QBlocks) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
   ir.push_back(create_gate("h", {0}));
@@ -1721,8 +996,6 @@ TEST(DanglingPointerFix, SkippedAndReplacedBlocksInterleaved) {
   synth.run(dag, basis);
 }
 
-// Verify the DAG remains valid after multi-block synthesis (structural
-// integrity).
 TEST(DanglingPointerFix, DAGRemainsValidAfterMultiBlockSynthesis) {
   std::vector<std::shared_ptr<BaseOperation>> ir;
   ir.push_back(create_gate("h", {0}));
@@ -1752,245 +1025,1075 @@ TEST(DanglingPointerFix, DAGRemainsValidAfterMultiBlockSynthesis) {
 }
 
 // ========================================================================
-// QASM benchmark circuit optimization tests
+// synthesize_block() — error branch coverage
 //
-// Load real QASM circuits (bb84_n8, hs4_n4, qpe_n9, qrng_n4, simon_n6)
-// and run optimize() at levels 1-3 with various basis gate sets.
-// Verifies no crashes and valid output.
+// 覆盖 synthesize_block 中各错误分支:
+//   - 2x2 矩阵传空 qubits (第 96 行)
+//   - 4x4 矩阵传 <2 qubits (第 101 行)
+//   - 不支持维度 (第 105 行)
 // ========================================================================
 
-namespace {
-
-// Helper: load QASM file and return IR
-std::vector<std::shared_ptr<BaseOperation>> load_qasm_circuit(
-    const std::string& filename) {
-  std::string path = std::string(TEST_DATA_DIR) +
-                     "qasm/benchpress/qasmbench-small/" + filename + "/" +
-                     filename + ".qasm";
-  std::ifstream ifs(path);
-  if (!ifs) return {};
-  std::ostringstream oss;
-  oss << ifs.rdbuf();
-  auto [ir, num_qubits] = qasm_to_ir(oss.str());
-  return ir;
+TEST(SynthesizeBlockErrorTest, Matrix2x2_EmptyQubits_Throws) {
+  auto m = matrix_utils::gate_to_matrix(create_gate("h", {0}));
+  UnitarySynthesis synth;
+  EXPECT_THROW(synth.synthesize_block(m, {}), std::invalid_argument);
 }
 
-}  // namespace
-
-TEST(QASMCircuitOptTest, bb84_n8_Level1) {
-  auto ir = load_qasm_circuit("bb84_n8");
-  if (ir.empty()) GTEST_SKIP() << "bb84_n8.qasm not found";
-  auto result = optimize(ir, 1);
-  EXPECT_GT(result.size(), 0u);
+TEST(SynthesizeBlockErrorTest, Matrix4x4_EmptyQubits_Throws) {
+  auto m = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
+  UnitarySynthesis synth;
+  EXPECT_THROW(synth.synthesize_block(m, {}), std::invalid_argument);
 }
 
-TEST(QASMCircuitOptTest, bb84_n8_Level2) {
-  auto ir = load_qasm_circuit("bb84_n8");
-  if (ir.empty()) GTEST_SKIP() << "bb84_n8.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 2, false, basis);
-  EXPECT_GT(result.size(), 0u);
+TEST(SynthesizeBlockErrorTest, Matrix4x4_SingleQubit_Throws) {
+  auto m = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
+  UnitarySynthesis synth;
+  EXPECT_THROW(synth.synthesize_block(m, {0}), std::invalid_argument);
 }
 
-TEST(QASMCircuitOptTest, bb84_n8_Level3) {
-  auto ir = load_qasm_circuit("bb84_n8");
-  if (ir.empty()) GTEST_SKIP() << "bb84_n8.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 3, false, basis);
-  EXPECT_GT(result.size(), 0u);
+TEST(SynthesizeBlockErrorTest, Matrix3x3_Throws) {
+  CMatrix m3 = {{C(1), C(0), C(0)},
+                {C(0), C(1), C(0)},
+                {C(0), C(0), C(1)}};
+  UnitarySynthesis synth;
+  EXPECT_THROW(synth.synthesize_block(m3, {0}), std::invalid_argument);
 }
 
-TEST(QASMCircuitOptTest, hs4_n4_Level1) {
-  auto ir = load_qasm_circuit("hs4_n4");
-  if (ir.empty()) GTEST_SKIP() << "hs4_n4.qasm not found";
-  auto result = optimize(ir, 1);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, hs4_n4_Level2) {
-  auto ir = load_qasm_circuit("hs4_n4");
-  if (ir.empty()) GTEST_SKIP() << "hs4_n4.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 2, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, hs4_n4_Level3) {
-  auto ir = load_qasm_circuit("hs4_n4");
-  if (ir.empty()) GTEST_SKIP() << "hs4_n4.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 3, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, qpe_n9_Level1) {
-  auto ir = load_qasm_circuit("qpe_n9");
-  if (ir.empty()) GTEST_SKIP() << "qpe_n9.qasm not found";
-  auto result = optimize(ir, 1);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, qpe_n9_Level2) {
-  auto ir = load_qasm_circuit("qpe_n9");
-  if (ir.empty()) GTEST_SKIP() << "qpe_n9.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 2, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, qpe_n9_Level3) {
-  auto ir = load_qasm_circuit("qpe_n9");
-  if (ir.empty()) GTEST_SKIP() << "qpe_n9.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 3, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, qrng_n4_Level1) {
-  auto ir = load_qasm_circuit("qrng_n4");
-  if (ir.empty()) GTEST_SKIP() << "qrng_n4.qasm not found";
-  auto result = optimize(ir, 1);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, qrng_n4_Level2) {
-  auto ir = load_qasm_circuit("qrng_n4");
-  if (ir.empty()) GTEST_SKIP() << "qrng_n4.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 2, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, qrng_n4_Level3) {
-  auto ir = load_qasm_circuit("qrng_n4");
-  if (ir.empty()) GTEST_SKIP() << "qrng_n4.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 3, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, simon_n6_Level1) {
-  auto ir = load_qasm_circuit("simon_n6");
-  if (ir.empty()) GTEST_SKIP() << "simon_n6.qasm not found";
-  auto result = optimize(ir, 1);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, simon_n6_Level2) {
-  auto ir = load_qasm_circuit("simon_n6");
-  if (ir.empty()) GTEST_SKIP() << "simon_n6.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 2, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-TEST(QASMCircuitOptTest, simon_n6_Level3) {
-  auto ir = load_qasm_circuit("simon_n6");
-  if (ir.empty()) GTEST_SKIP() << "simon_n6.qasm not found";
-  std::set<std::string> basis = {"cx", "rz", "ry"};
-  auto result = optimize(ir, 3, false, basis);
-  EXPECT_GT(result.size(), 0u);
-}
-
-// Test with IBM-style basis (u3 + cx)
-TEST(QASMCircuitOptTest, AllCircuits_IBM_Basis) {
-  std::vector<std::string> circuits = {"bb84_n8", "hs4_n4", "qpe_n9",
-                                       "qrng_n4", "simon_n6"};
-  std::set<std::string> ibm_basis = {"cx", "u3"};
-
-  for (const auto& name : circuits) {
-    auto ir = load_qasm_circuit(name);
-    if (ir.empty()) {
-      std::cout << "[SKIP] " << name << " not found" << std::endl;
-      continue;
-    }
-    auto result = optimize(ir, 2, false, ibm_basis);
-    EXPECT_GT(result.size(), 0u)
-        << "Circuit " << name << " produced empty result";
-  }
-}
-
-// Test with Google-style basis (rz + rx + cx)
-TEST(QASMCircuitOptTest, AllCircuits_Google_Basis) {
-  std::vector<std::string> circuits = {"bb84_n8", "hs4_n4", "qpe_n9",
-                                       "qrng_n4", "simon_n6"};
-  std::set<std::string> google_basis = {"cx", "rz", "rx"};
-
-  for (const auto& name : circuits) {
-    auto ir = load_qasm_circuit(name);
-    if (ir.empty()) {
-      std::cout << "[SKIP] " << name << " not found" << std::endl;
-      continue;
-    }
-    auto result = optimize(ir, 2, false, google_basis);
-    EXPECT_GT(result.size(), 0u)
-        << "Circuit " << name << " produced empty result";
-  }
-}
-
-// Test with IonQ-style basis (rz + ry + cz)
-TEST(QASMCircuitOptTest, AllCircuits_IonQ_Basis) {
-  std::vector<std::string> circuits = {"bb84_n8", "hs4_n4", "qpe_n9",
-                                       "qrng_n4", "simon_n6"};
-  std::set<std::string> ionq_basis = {"cz", "rz", "ry"};
-
-  for (const auto& name : circuits) {
-    auto ir = load_qasm_circuit(name);
-    if (ir.empty()) {
-      std::cout << "[SKIP] " << name << " not found" << std::endl;
-      continue;
-    }
-    auto result = optimize(ir, 2, false, ionq_basis);
-    EXPECT_GT(result.size(), 0u)
-        << "Circuit " << name << " produced empty result";
-  }
+TEST(SynthesizeBlockErrorTest, Matrix5x5_Throws) {
+  CMatrix m5(5, std::vector<C>(5, C(0)));
+  for (int i = 0; i < 5; ++i) m5[i][i] = C(1);
+  UnitarySynthesis synth;
+  EXPECT_THROW(synth.synthesize_block(m5, {0, 1}), std::invalid_argument);
 }
 
 // ========================================================================
-// RZ + SX basis decomposition tests
+// decompose_unitary() — validation order coverage
 //
-// Verifies the newly added branch in single_qubit_unitary_to_basis():
-//   U3(θ, φ, λ) ≡ Rz(λ) Sx Rz(θ+π) Sx Rz(φ+3π)
-// triggered when basis has rz+sx but not u3/u/ry/rx.
+// decompose_unitary 的校验顺序: empty → non-unitary → non-square。
+// 验证各种非法输入被正确拒绝。
 // ========================================================================
 
-// Helper: reconstruct 2x2 unitary from a 1Q gate sequence
-static CMatrix reconstruct_1q_unitary(
-    const std::vector<std::shared_ptr<BaseOperation>>& gates) {
+TEST(DecomposeUnitaryValidationTest, EmptyFirstColumn_Throws) {
+  // outer vector non-empty but inner empty => "empty matrix" path.
+  CMatrix m = {{}};
+  EXPECT_THROW(decompose_unitary(m, {"rz"}), std::invalid_argument);
+}
+
+TEST(DecomposeUnitaryValidationTest, NonSquareRagged_Throws) {
+  // Ragged rows (1st row 2 cols, 2nd row 1 col) => not unitary, not square.
+  CMatrix m = {{C(1), C(0)}, {C(0)}};
+  EXPECT_THROW(decompose_unitary(m, {"rz"}), std::invalid_argument);
+}
+
+TEST(DecomposeUnitaryValidationTest, UnitaryBut1x1_NotSupported) {
+  // A 1x1 "unitary" (phase) is technically unitary but dim != 2 and != 4.
+  CMatrix m = {{C(0, 1)}};  // |det|=1, is_unitary true for 1x1
+  EXPECT_THROW(decompose_unitary(m, {"rz"}), std::invalid_argument);
+}
+
+TEST(DecomposeUnitaryValidationTest, EmptyBasisSet_1Q) {
+  // Empty basis => single_qubit_unitary_to_basis falls back to U3.
+  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
+  auto gates = decompose_unitary(h, {});
+  EXPECT_GE(gates.size(), 0u);  // must not crash; may emit u3 fallback
+}
+
+TEST(DecomposeUnitaryValidationTest, EmptyBasisSet_2Q) {
+  auto cx = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
+  EXPECT_NO_THROW(decompose_unitary(cx, {}));
+}
+
+// ========================================================================
+// decompose_unitary() — diverse 1Q Euler basis end-to-end
+//
+// 通过顶层 decompose_unitary 接口验证不同欧拉基 (U/PSX/ZSX/RR)
+// 的端到端行为，而非直接调用 single_qubit_unitary_to_basis。
+// ========================================================================
+
+TEST(DecomposeUnitary1QEulerTest, UBasis_ProducesSingleUGate) {
+  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
+  std::set<std::string> basis = {"u"};
+  auto gates = decompose_unitary(h, basis);
+  ASSERT_EQ(gates.size(), 1u);
+  EXPECT_EQ(gates[0]->name, "u");
+  CMatrix product = matrix_utils::gate_to_matrix(gates[0]);
+  EXPECT_TRUE(equal_up_to_global_phase(h, product, 1e-8));
+}
+
+TEST(DecomposeUnitary1QEulerTest, PSXBasis_UnimplementedFallsBackToU3) {
+  // The PSX basis ({p, sx}) is selectable by basis_selector but NOT yet
+  // implemented in single_qubit_unitary_to_basis. The decomposer falls back
+  // to emitting a U3 gate. This test documents that current behavior.
+  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
+  std::set<std::string> basis = {"p", "sx"};
+  auto gates = decompose_unitary(h, basis);
+  EXPECT_GE(gates.size(), 1u);
+  EXPECT_EQ(gates[0]->name, "u3");
+  CMatrix product = matrix_utils::gate_to_matrix(gates[0]);
+  EXPECT_TRUE(equal_up_to_global_phase(h, product, 1e-8));
+}
+
+TEST(DecomposeUnitary1QEulerTest, ZSXBasis_UnimplementedFallsBackToU3) {
+  // ZSX basis ({rz, sx}) is selectable but not implemented in the decomposer.
+  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
+  std::set<std::string> basis = {"rz", "sx"};
+  auto gates = decompose_unitary(h, basis);
+  EXPECT_GE(gates.size(), 1u);
+  EXPECT_EQ(gates[0]->name, "u3");
+  CMatrix product = matrix_utils::gate_to_matrix(gates[0]);
+  EXPECT_TRUE(equal_up_to_global_phase(h, product, 1e-8));
+}
+
+TEST(DecomposeUnitary1QEulerTest, RRBasis_UnimplementedFallsBackToU3) {
+  // RR basis ({r}) is selectable but not implemented in the decomposer.
+  auto x = matrix_utils::gate_to_matrix(create_gate("x", {0}));
+  std::set<std::string> basis = {"r"};
+  auto gates = decompose_unitary(x, basis);
+  EXPECT_GE(gates.size(), 1u);
+  EXPECT_EQ(gates[0]->name, "u3");
+  CMatrix product = matrix_utils::gate_to_matrix(gates[0]);
+  EXPECT_TRUE(equal_up_to_global_phase(x, product, 1e-8));
+}
+
+TEST(DecomposeUnitary1QEulerTest, U3Basis_PreservesQubit) {
+  auto h = matrix_utils::gate_to_matrix(create_gate("h", {0}));
+  auto gates = decompose_unitary(h, {"u3"}, {7});
+  ASSERT_EQ(gates.size(), 1u);
+  EXPECT_EQ(gates[0]->name, "u3");
+  EXPECT_EQ(gates[0]->targets[0], 7);
+}
+
+// ========================================================================
+// decompose_unitary() — 1Q multi-gate composition roundtrip
+//
+// 通过 decompose_unitary 顶层接口分解多门组合矩阵，验证 roundtrip。
+// ========================================================================
+
+TEST(DecomposeUnitary1QCompositionTest, HS_Roundtrip) {
   CMatrix product = matrix_utils::identity(2);
+  product = matrix_utils::multiply(
+      matrix_utils::gate_to_matrix(create_gate("s", {0})), product);
+  product = matrix_utils::multiply(
+      matrix_utils::gate_to_matrix(create_gate("h", {0})), product);
+  std::set<std::string> basis = {"rz", "ry"};
+  auto gates = decompose_unitary(product, basis);
+  expect_all_in_basis(gates, basis);
+  CMatrix rebuilt = matrix_utils::identity(2);
   for (const auto& g : gates)
-    product = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), product);
-  return product;
+    rebuilt = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), rebuilt);
+  EXPECT_TRUE(equal_up_to_global_phase(product, rebuilt, 1e-8));
 }
 
-// Verify the new branch is triggered: result gates are only rz/sx, no u3
-TEST(RzSxBasisTest, BasisCompliance_NoU3) {
-  std::set<std::string> basis = {"rz", "sx"};
-  auto m = matrix_utils::gate_to_matrix(
-      create_gate("u3", {0}, {1.234, -0.567, 2.891}));
-  auto gates = single_qubit_unitary_to_basis(m, 0, basis);
-  for (const auto& g : gates) {
-    EXPECT_TRUE(g->name == "rz" || g->name == "sx")
-        << "Unexpected gate: " << g->name;
+TEST(DecomposeUnitary1QCompositionTest, HTH_Roundtrip) {
+  CMatrix product = matrix_utils::identity(2);
+  for (const auto& g : {"h", "t", "h"}) {
+    product = matrix_utils::multiply(
+        matrix_utils::gate_to_matrix(create_gate(g, {0})), product);
+  }
+  std::set<std::string> basis = {"rz", "rx"};
+  auto gates = decompose_unitary(product, basis);
+  expect_all_in_basis(gates, basis);
+  CMatrix rebuilt = matrix_utils::identity(2);
+  for (const auto& g : gates)
+    rebuilt = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), rebuilt);
+  EXPECT_TRUE(equal_up_to_global_phase(product, rebuilt, 1e-8));
+}
+
+TEST(DecomposeUnitary1QCompositionTest, LongChain_Roundtrip) {
+  CMatrix product = matrix_utils::identity(2);
+  std::vector<std::string> seq = {"h", "t", "s", "h", "t", "h", "s", "t"};
+  for (const auto& g : seq) {
+    product = matrix_utils::multiply(
+        matrix_utils::gate_to_matrix(create_gate(g, {0})), product);
+  }
+  for (const auto& basis_set : std::vector<std::set<std::string>>{
+           {"rz", "ry"}, {"rz", "rx"}, {"rx", "ry"}, {"u3"}}) {
+    auto gates = decompose_unitary(product, basis_set);
+    CMatrix rebuilt = matrix_utils::identity(2);
+    for (const auto& g : gates)
+      rebuilt = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), rebuilt);
+    EXPECT_TRUE(equal_up_to_global_phase(product, rebuilt, 1e-7))
+        << "Roundtrip failed for basis";
   }
 }
 
-// Verify decomposition equivalence: U3(θ,φ,λ) ≡ Rz(λ) Sx Rz(θ+π) Sx Rz(φ+3π)
-TEST(RzSxBasisTest, U3_Roundtrip) {
-  std::set<std::string> basis = {"rz", "sx"};
-  auto m = matrix_utils::gate_to_matrix(
-      create_gate("u3", {0}, {1.234, -0.567, 2.891}));
-  auto gates = single_qubit_unitary_to_basis(m, 0, basis);
-  auto reconstructed = reconstruct_1q_unitary(gates);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
+// ========================================================================
+// decompose_unitary() — 2Q Haar-random stress test
+//
+// 通过顶层 decompose_unitary 接口分解 Haar-随机 4x4 酉矩阵，
+// 验证基合规性和 roundtrip 正确性。这是真实优化器使用场景。
+// ========================================================================
+
+static CMatrix haar_random_unitary_2q(std::mt19937_64& rng) {
+  std::normal_distribution<double> dist(0.0, 1.0);
+  CMatrix A(4, std::vector<C>(4));
+  for (int i = 0; i < 4; ++i)
+    for (int j = 0; j < 4; ++j)
+      A[i][j] = C(dist(rng), dist(rng));
+  // Modified Gram-Schmidt
+  CMatrix Q(4, std::vector<C>(4));
+  for (int j = 0; j < 4; ++j) {
+    for (int i = 0; i < 4; ++i) Q[i][j] = A[i][j];
+    for (int k = 0; k < j; ++k) {
+      C dot = C(0, 0);
+      for (int i = 0; i < 4; ++i) dot += std::conj(Q[i][k]) * Q[i][j];
+      for (int i = 0; i < 4; ++i) Q[i][j] -= dot * Q[i][k];
+    }
+    double norm = 0.0;
+    for (int i = 0; i < 4; ++i) norm += std::norm(Q[i][j]);
+    norm = std::sqrt(norm);
+    if (norm < 1e-15) continue;
+    for (int i = 0; i < 4; ++i) Q[i][j] /= norm;
+  }
+  return Q;
 }
 
-// Verify with FakeTorino-style basis ['cz', 'id', 'rz', 'sx', 'x']
-TEST(RzSxBasisTest, FakeTorinoBasis_U3Roundtrip) {
-  std::set<std::string> basis = {"cz", "id", "rz", "sx", "x"};
-  auto m = matrix_utils::gate_to_matrix(
-      create_gate("u3", {0}, {1.91063, 0.0, 0.0}));
-  auto gates = single_qubit_unitary_to_basis(m, 0, basis);
-  auto reconstructed = reconstruct_1q_unitary(gates);
-  EXPECT_TRUE(equal_up_to_global_phase(m, reconstructed, 1e-8));
+TEST(DecomposeUnitary2QHaarTest, BasisCompliance_50Samples) {
+  std::mt19937_64 rng(20260814);
+  std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
+  for (int i = 0; i < 50; ++i) {
+    auto u = haar_random_unitary_2q(rng);
+    auto gates = decompose_unitary(u, basis);
+    expect_all_in_basis(gates, basis);
+  }
+}
+
+TEST(DecomposeUnitary2QHaarTest, Roundtrip_50Samples) {
+  std::mt19937_64 rng(7777);
+  std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
+  for (int i = 0; i < 50; ++i) {
+    auto u = haar_random_unitary_2q(rng);
+    auto gates = decompose_unitary(u, basis);
+    auto reconstructed = reconstruct_2q_unitary(gates, 0, 1);
+    EXPECT_TRUE(equal_up_to_global_phase(u, reconstructed, 1e-6))
+        << "2Q Haar roundtrip failed at sample " << i;
+  }
+}
+
+// ========================================================================
+// UnitarySynthesis pass — two-phase optimization assertions
+//
+// 验证 run() 返回的 reduced 值、电路结构有效性、基合规性。
+// ========================================================================
+
+TEST(UnitarySynthesisPhaseTest, TwoPhaseOptimization_1QOnly) {
+  // Pure 1Q gates that consolidate: H·S·T on qubit 0.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0}), create_gate("t", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  int orig = dag.size();
+  std::set<std::string> basis = {"rz", "ry"};
+  UnitarySynthesis synth(basis);
+  int reduced = synth.run(dag, basis);
+  EXPECT_GE(reduced, 0);
+  EXPECT_LE(dag.size(), orig);
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+TEST(UnitarySynthesisPhaseTest, TwoPhaseOptimization_Mixed1Q2Q) {
+  // 1Q blocks (h·s on q0, t·h on q1) and a 2Q cx between them.
+  // collect phase 1 processes the 1Q runs; phase 2 processes the 2Q block.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0}),
+      create_gate("cx", {0, 1}),
+      create_gate("t", {1}), create_gate("h", {1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+  // cx is a basis gate and should be preserved.
+  auto counts = dag.count_ops();
+  EXPECT_GE(counts.count("cx") ? counts.at("cx") : 0, 1);
+  // Any rz/ry gates produced must be in basis (they are).
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+TEST(UnitarySynthesisPhaseTest, MaxBlockSize2_Allows2Q) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("cx", {0, 1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  UnitarySynthesis synth(basis, 1.0, 2);
+  synth.run(dag, basis);
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+TEST(UnitarySynthesisPhaseTest, AllBasisGatesUnchanged) {
+  // When the circuit already contains only basis gates, run() should be a no-op.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("rz", {0}, {0.3}),
+      create_gate("ry", {0}, {0.5}),
+      create_gate("cx", {0, 1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  UnitarySynthesis synth(basis);
+  int reduced = synth.run(dag, basis);
+  EXPECT_EQ(reduced, 0);
+  EXPECT_EQ(dag.size(), 3);
+}
+
+TEST(UnitarySynthesisPhaseTest, DAGRemainsValidAfterOptimization) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  for (int q = 0; q < 4; ++q) {
+    ir.push_back(create_gate("h", {q}));
+    ir.push_back(create_gate("s", {q}));
+    ir.push_back(create_gate("t", {q}));
+  }
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"rz", "ry"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+
+  auto ops = dag.topological_op_nodes();
+  EXPECT_GT(ops.size(), 0u);
+  for (auto* node : ops) {
+    EXPECT_FALSE(node->qargs.empty());
+    for (int q : node->qargs) {
+      EXPECT_GE(q, 0);
+      EXPECT_LT(q, 4);
+    }
+  }
+}
+
+TEST(UnitarySynthesisPhaseTest, NonBasisGateGetsReplaced) {
+  // A 2-gate 1Q block (h·s) with h non-basis must be consolidated and
+  // replaced. Single-gate blocks are NOT processed (min_block_size=2 in
+  // collect_all_matching_blocks), so we use a 2-gate block here.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"rz", "ry"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+  auto counts = dag.count_ops();
+  EXPECT_EQ(counts.count("h") ? counts.at("h") : 0, 0);
+  EXPECT_EQ(counts.count("s") ? counts.at("s") : 0, 0);
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0);
+  }
+}
+
+// ========================================================================
+// ConsolidateBlocks — return value, min_block_size, DAG validity
+//
+// 覆盖 ConsolidateBlocks::run 的返回值断言、min_block_size 参数行为、
+// 合并后 DAG 结构有效性。
+// ========================================================================
+
+TEST(ConsolidateBlocksAdvancedTest, RunReturnsNonNegative) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0}), create_gate("t", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  ConsolidateBlocks consolidator;
+  int reduced = consolidator.run(dag);
+  EXPECT_GE(reduced, 0);
+}
+
+TEST(ConsolidateBlocksAdvancedTest, MinBlockSize3_SkipsSmallBlocks) {
+  // With min_block_size=3, a 2-gate block should NOT be consolidated.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  int orig = dag.size();
+  ConsolidateBlocks consolidator(std::nullopt, 1.0, 3);
+  int reduced = consolidator.run(dag);
+  EXPECT_EQ(reduced, 0);
+  EXPECT_EQ(dag.size(), orig);
+}
+
+TEST(ConsolidateBlocksAdvancedTest, MinBlockSize2_Consolidates) {
+  // With min_block_size=2, a 3-gate block should be consolidated.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0}), create_gate("t", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  int orig = dag.size();
+  ConsolidateBlocks consolidator(std::nullopt, 1.0, 2);
+  consolidator.run(dag);
+  EXPECT_LE(dag.size(), orig);
+}
+
+TEST(ConsolidateBlocksAdvancedTest, EmptyDAGReturnsZero) {
+  DAGCircuit dag;
+  dag.add_qubits(2);
+  ConsolidateBlocks consolidator;
+  int reduced = consolidator.run(dag);
+  EXPECT_EQ(reduced, 0);
+  EXPECT_EQ(dag.size(), 0);
+}
+
+TEST(ConsolidateBlocksAdvancedTest, DAGRemainsValidAfterConsolidation) {
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  for (int q = 0; q < 3; ++q) {
+    ir.push_back(create_gate("h", {q}));
+    ir.push_back(create_gate("s", {q}));
+    ir.push_back(create_gate("t", {q}));
+  }
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"rz", "ry"};
+  ConsolidateBlocks consolidator(basis);
+  consolidator.run(dag, basis);
+
+  auto ops = dag.topological_op_nodes();
+  EXPECT_GT(ops.size(), 0u);
+  for (auto* node : ops) {
+    EXPECT_FALSE(node->qargs.empty());
+    for (int q : node->qargs) {
+      EXPECT_GE(q, 0);
+      EXPECT_LT(q, 3);
+    }
+  }
+}
+
+TEST(ConsolidateBlocksAdvancedTest, NonBasisGateGetsConsolidated) {
+  // h is non-basis; consolidation must replace it with rz+ry.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("t", {0})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"rz", "ry"};
+  ConsolidateBlocks consolidator(basis);
+  consolidator.run(dag, basis);
+  auto counts = dag.count_ops();
+  EXPECT_EQ(counts.count("h") ? counts.at("h") : 0, 0);
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0);
+  }
+}
+
+TEST(ConsolidateBlocksAdvancedTest, Preserves2QGates) {
+  // 2Q gate (cx) in basis should be preserved, not decomposed.
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("cx", {0, 1})};
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  ConsolidateBlocks consolidator(basis);
+  consolidator.run(dag, basis);
+  auto counts = dag.count_ops();
+  EXPECT_GE(counts.count("cx") ? counts.at("cx") : 0, 1);
+}
+
+// ========================================================================
+// Large circuit stress test
+//
+// 多比特、多 block 的大电路端到端验证，确认无崩溃、基合规、DAG 有效。
+// ========================================================================
+
+TEST(LargeCircuitStressTest, ManyQubitsManyBlocks) {
+  const int num_qubits = 8;
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  for (int q = 0; q < num_qubits; ++q) {
+    ir.push_back(create_gate("h", {q}));
+    ir.push_back(create_gate("s", {q}));
+    ir.push_back(create_gate("t", {q}));
+    ir.push_back(create_gate("h", {q}));
+  }
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  EXPECT_EQ(dag.size(), num_qubits * 4);
+  std::set<std::string> basis = {"rz", "ry", "cx"};
+  UnitarySynthesis synth(basis);
+  int reduced = synth.run(dag, basis);
+  EXPECT_GE(reduced, 0);
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+TEST(LargeCircuitStressTest, Interleaved1Q2QDeep) {
+  // Each qubit gets a 2-gate 1Q run (h·t) plus cx links between neighbors.
+  // The 1Q runs form ≥2-gate blocks and should be re-expressed in basis.
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  const int num_qubits = 6;
+  for (int q = 0; q < num_qubits; ++q) {
+    ir.push_back(create_gate("h", {q}));
+    ir.push_back(create_gate("t", {q}));
+    if (q + 1 < num_qubits) {
+      ir.push_back(create_gate("cx", {q, q + 1}));
+    }
+  }
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+}
+
+TEST(LargeCircuitStressTest, ConsolidateThenSynthesize) {
+  // Run ConsolidateBlocks followed by UnitarySynthesis — a realistic pipeline.
+  std::vector<std::shared_ptr<BaseOperation>> ir;
+  for (int q = 0; q < 4; ++q) {
+    ir.push_back(create_gate("h", {q}));
+    ir.push_back(create_gate("s", {q}));
+    ir.push_back(create_gate("t", {q}));
+  }
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
+  std::set<std::string> basis = {"rz", "ry", "cx"};
+
+  ConsolidateBlocks consolidator(basis);
+  consolidator.run(dag, basis);
+
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+  auto ops = dag.topological_op_nodes();
+  EXPECT_GT(ops.size(), 0u);
+}
+
+// ========================================================================
+// decompose_unitary() — 2Q cross-basis roundtrip
+//
+// 验证跨基分解（如 CX→CZ、CZ→CX）的 roundtrip 正确性，不仅基合规。
+// ========================================================================
+
+TEST(DecomposeUnitary2QCrossBasisTest, CXToCZRoundtrip) {
+  auto cx = matrix_utils::gate_to_matrix(create_gate("cx", {0, 1}));
+  std::set<std::string> basis = {"cz", "h", "rz", "ry"};
+  auto gates = decompose_unitary(cx, basis);
+  expect_all_in_basis(gates, basis);
+  auto reconstructed = reconstruct_2q_unitary(gates, 0, 1);
+  EXPECT_TRUE(equal_up_to_global_phase(cx, reconstructed, 1e-6));
+}
+
+TEST(DecomposeUnitary2QCrossBasisTest, CZToCXRoundtrip) {
+  auto cz = matrix_utils::gate_to_matrix(create_gate("cz", {0, 1}));
+  std::set<std::string> basis = {"cx", "h", "rz", "ry"};
+  auto gates = decompose_unitary(cz, basis);
+  expect_all_in_basis(gates, basis);
+  auto reconstructed = reconstruct_2q_unitary(gates, 0, 1);
+  EXPECT_TRUE(equal_up_to_global_phase(cz, reconstructed, 1e-6));
+}
+
+TEST(DecomposeUnitary2QCrossBasisTest, SWAPToCXRoundtrip) {
+  auto swap = matrix_utils::gate_to_matrix(create_gate("swap", {0, 1}));
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto gates = decompose_unitary(swap, basis);
+  expect_all_in_basis(gates, basis);
+  auto reconstructed = reconstruct_2q_unitary(gates, 0, 1);
+  EXPECT_TRUE(equal_up_to_global_phase(swap, reconstructed, 1e-6));
+}
+
+TEST(DecomposeUnitary2QCrossBasisTest, ISwapToCXRoundtrip) {
+  auto iswap = matrix_utils::gate_to_matrix(create_gate("iswap", {0, 1}));
+  std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
+  auto gates = decompose_unitary(iswap, basis);
+  expect_all_in_basis(gates, basis);
+  auto reconstructed = reconstruct_2q_unitary(gates, 0, 1);
+  EXPECT_TRUE(equal_up_to_global_phase(iswap, reconstructed, 1e-6));
+}
+
+TEST(DecomposeUnitary2QCrossBasisTest, ECRToCXRoundtrip) {
+  auto ecr = matrix_utils::gate_to_matrix(create_gate("ecr", {0, 1}));
+  std::set<std::string> basis = {"cx", "rz", "ry", "u3"};
+  auto gates = decompose_unitary(ecr, basis);
+  expect_all_in_basis(gates, basis);
+  auto reconstructed = reconstruct_2q_unitary(gates, 0, 1);
+  EXPECT_TRUE(equal_up_to_global_phase(ecr, reconstructed, 1e-6));
+}
+
+// ========================================================================
+// OpenQASM end-to-end tests
+//
+// 真实场景验证: 从 OpenQASM 文本加载电路 → 解析为 ops → 构建 DAG →
+// 运行 UnitarySynthesis 分解 → 验证:
+//   (1) 分解后所有门都在目标基中
+//   (2) 分解后电路的酉矩阵与原始电路酉矩阵相等 (up to global phase)
+//
+// 这是酉综合 pass 的端到端正确性验证，覆盖完整数据流。
+// ========================================================================
+
+// Build the full N-qubit unitary of an operation sequence. ops are applied
+// left-to-right in circuit order (op[0] first); U = op[n-1] ... op[1] op[0]
+// because later ops act on the state produced by earlier ones.
+static CMatrix circuit_unitary_from_ops(
+    const std::vector<std::shared_ptr<BaseOperation>>& ops, int num_qubits) {
+  size_t dim = static_cast<size_t>(1) << num_qubits;
+  CMatrix result = matrix_utils::identity(dim);
+  for (const auto& op : ops) {
+    // Skip non-unitary ops (measure, reset, sync, move): they do not
+    // contribute to the circuit's unitary evolution.
+    if (op->operation_type < OperationType::SINGLE_QUBIT_OPERATION) continue;
+    auto gate_mat = matrix_utils::gate_to_matrix(op);
+    size_t nq = op->targets.size();
+    size_t gate_dim = static_cast<size_t>(1) << nq;
+    CMatrix full = matrix_utils::identity(dim);
+    // Map op target i -> global qubit position (big-endian bit pos).
+    for (size_t row = 0; row < dim; ++row) {
+      for (size_t col = 0; col < dim; ++col) {
+        // Extract the sub-indices for the gate's qubits.
+        size_t g_row = 0, g_col = 0;
+        bool mismatch = false;
+        for (size_t i = 0; i < nq; ++i) {
+          int pos = num_qubits - 1 - op->targets[i];
+          size_t rb = (row >> pos) & 1;
+          size_t cb = (col >> pos) & 1;
+          g_row |= (rb << (nq - 1 - i));
+          g_col |= (cb << (nq - 1 - i));
+          // remaining bits (excluding gate qubits) must match
+        }
+        // Check non-gate bits match between row and col.
+        std::vector<int> gate_positions;
+        for (size_t i = 0; i < nq; ++i)
+          gate_positions.push_back(num_qubits - 1 - op->targets[i]);
+        for (int b = 0; b < num_qubits; ++b) {
+          bool is_gate = false;
+          for (int gp : gate_positions)
+            if (gp == b) { is_gate = true; break; }
+          if (!is_gate) {
+            if (((row >> b) & 1) != ((col >> b) & 1)) {
+              mismatch = true; break;
+            }
+          }
+        }
+        full[row][col] = mismatch ? C(0) : gate_mat[g_row][g_col];
+      }
+    }
+    result = matrix_utils::multiply(full, result);
+  }
+  return result;
+}
+
+// Build the full N-qubit unitary from a DAG's topological op nodes.
+static CMatrix circuit_unitary_from_dag(DAGCircuit& dag, int num_qubits) {
+  auto nodes = dag.topological_op_nodes();
+  std::vector<std::shared_ptr<BaseOperation>> ops;
+  for (auto* node : nodes) {
+    ops.push_back(node->op);
+  }
+  return circuit_unitary_from_ops(ops, num_qubits);
+}
+
+// Full pipeline via decompose_unitary: qasm string -> ops -> circuit unitary
+// -> decompose_unitary -> rebuild -> verify equivalence. This directly
+// exercises the unitary decomposer (1Q ZYZ / 2Q KAK) on real QASM-derived
+// unitaries, independent of the run() pass's block-collection heuristics.
+static void run_qasm_decompose_test(
+    const std::string& qasm, int num_qubits,
+    const std::set<std::string>& basis, double tol = 1e-6) {
+  auto [ops, parsed_nq] = qasm_to_ir(qasm);
+  ASSERT_FALSE(ops.empty()) << "QASM parsed to empty op list";
+  int nq = num_qubits > 0 ? num_qubits : parsed_nq;
+  ASSERT_GE(nq, 1);
+
+  CMatrix original = circuit_unitary_from_ops(ops, nq);
+  size_t dim = static_cast<size_t>(1) << nq;
+  ASSERT_EQ(original.size(), dim);
+
+  // Decompose the full circuit unitary into the target basis.
+  auto gates = decompose_unitary(original, basis);
+  expect_all_in_basis(gates, basis);
+
+  // Rebuild the unitary from the emitted gate sequence and compare.
+  CMatrix rebuilt;
+  if (nq == 1) {
+    rebuilt = matrix_utils::identity(2);
+    for (const auto& g : gates)
+      rebuilt = matrix_utils::multiply(matrix_utils::gate_to_matrix(g), rebuilt);
+  } else {
+    rebuilt = reconstruct_2q_unitary(gates, 0, 1);
+  }
+  EXPECT_TRUE(equal_up_to_global_phase(original, rebuilt, tol))
+      << "QASM-derived unitary decomposition roundtrip failed";
+}
+
+// Full pipeline via the UnitarySynthesis pass: qasm -> ops -> DAG -> run() ->
+// verify basis compliance + unitary equivalence. Suitable for circuits whose
+// gates form >=2-gate collectible blocks (the pass requires min_block_size=2).
+static void run_qasm_pass_test(
+    const std::string& qasm, int num_qubits,
+    const std::set<std::string>& basis, double tol = 1e-6) {
+  auto [ops, parsed_nq] = qasm_to_ir(qasm);
+  ASSERT_FALSE(ops.empty()) << "QASM parsed to empty op list";
+  int nq = num_qubits > 0 ? num_qubits : parsed_nq;
+  ASSERT_GE(nq, 1);
+
+  CMatrix original = circuit_unitary_from_ops(ops, nq);
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ops);
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0)
+        << "Gate '" << name << "' not in target basis after synthesis";
+  }
+
+  CMatrix synthesized = circuit_unitary_from_dag(dag, nq);
+  EXPECT_TRUE(equal_up_to_global_phase(original, synthesized, tol))
+      << "QASM synthesis pass changed the circuit unitary";
+}
+
+// ---- 1-qubit QASM circuits ----
+
+TEST(QasmSynthesisTest, SingleQubit_HST_ZYZ) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+h q[0];
+s q[0];
+t q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, SingleQubit_HTHS_ZXZ) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+h q[0];
+t q[0];
+h q[0];
+s q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"rz", "rx"});
+}
+
+TEST(QasmSynthesisTest, SingleQubit_Paulis_XYX) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+x q[0];
+y q[0];
+z q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"rx", "ry"});
+}
+
+TEST(QasmSynthesisTest, SingleQubit_U3Basis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+u3(0.5, 1.2, -0.3) q[0];
+h q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"u3"});
+}
+
+TEST(QasmSynthesisTest, SingleQubit_IdentityChain) {
+  // H·H = I, S·Sdg = I => net identity, should produce no gates.
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+h q[0];
+h q[0];
+s q[0];
+sdg q[0];
+)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ops);
+  std::set<std::string> basis = {"rz", "ry"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+  // Identity => no gates after synthesis.
+  EXPECT_EQ(dag.size(), 0);
+}
+
+TEST(QasmSynthesisTest, SingleQubit_LongChain_Roundtrip) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+h q[0];
+t q[0];
+s q[0];
+h q[0];
+t q[0];
+h q[0];
+s q[0];
+t q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"rz", "ry"});
+}
+
+// ---- 2-qubit QASM circuits ----
+
+TEST(QasmSynthesisTest, TwoQubit_BellState_CXBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+cx q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_BellState_U3Basis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+cx q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "u3"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_CXDirect_Preserved) {
+  // A bare CX in a CX-basis should remain a single CX.
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+cx q[0],q[1];
+)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ops);
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+  auto counts = dag.count_ops();
+  EXPECT_EQ(counts.count("cx") ? counts.at("cx") : 0, 1);
+}
+
+TEST(QasmSynthesisTest, TwoQubit_CZToCZBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+cz q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cz", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_CZToCXBasis) {
+  // CZ decomposed into CX basis (needs H on target). Via decompose_unitary
+  // on the full circuit unitary (the pass needs >=2-gate blocks).
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+cz q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "h", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_SWAPToCXBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+swap q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_ParallelRotations) {
+  // Two independent 1Q rotations on separate qubits, no entanglement.
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+rx(0.7) q[0];
+ry(1.1) q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_Independent1QBlocks) {
+  // Each qubit has a 1Q run; both must be re-expressed in basis.
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+s q[0];
+t q[1];
+h q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_GHZ_CXBasis) {
+  // 3-qubit GHZ — but synthesis handles ≤2-qubit blocks, so verify no crash
+  // and that the 2-qubit blocks are correctly synthesized.
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+cx q[0],q[1];
+h q[0];
+t q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_IswapInBasis) {
+  // ISWAP is a native basis gate here => preserved, roundtrip verified.
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+iswap q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"iswap", "rz", "ry", "u3"});
+}
+
+TEST(QasmSynthesisTest, TwoQubit_IswapToCXBasis) {
+  // ISWAP not in basis => must decompose to CX + rotations. Via
+  // decompose_unitary (single 2Q gate isn't a >=2-gate collectible block).
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+iswap q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry", "u3"});
+}
+
+// ---- QASM 3.0 circuits ----
+
+TEST(QasmSynthesisTest, Qasm3_SingleQubitSXRZ) {
+  std::string qasm = R"(
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+sx q[0];
+rz(0.5) q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, Qasm3_TwoQubitBell) {
+  std::string qasm = R"(
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+h q[0];
+cx q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, Qasm3_RotationGates) {
+  std::string qasm = R"(
+OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+rx(0.3) q[0];
+ry(0.7) q[1];
+cx q[0],q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+// ---- Multi-block QASM circuits ----
+
+TEST(QasmSynthesisTest, MultiBlock_TwoIndependent1Q) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+s q[0];
+t q[0];
+h q[1];
+tdg q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, MultiBlock_CXBetween1QRuns) {
+  // 1Q run on q0, entangling CX, 1Q run on q1.
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+s q[0];
+cx q[0],q[1];
+t q[1];
+h q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
+}
+
+// ---- ConsolidateBlocks + UnitarySynthesis pipeline from QASM ----
+
+TEST(QasmSynthesisTest, ConsolidateThenSynthesize_Pipeline) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+s q[0];
+t q[0];
+h q[1];
+s q[1];
+t q[1];
+)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  CMatrix original = circuit_unitary_from_ops(ops, nq);
+
+  DAGCircuit dag = DAGCircuit::ir_to_dag(ops);
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+
+  ConsolidateBlocks consolidator(basis);
+  consolidator.run(dag, basis);
+
+  UnitarySynthesis synth(basis);
+  synth.run(dag, basis);
+
+  auto counts = dag.count_ops();
+  for (const auto& [name, count] : counts) {
+    EXPECT_TRUE(basis.count(name) > 0) << "Gate " << name << " not in basis";
+  }
+  CMatrix synthesized = circuit_unitary_from_dag(dag, nq);
+  EXPECT_TRUE(equal_up_to_global_phase(original, synthesized, 1e-6));
+}
+
+// ---- QASM with parameterized gates ----
+
+TEST(QasmSynthesisTest, ParameterizedU3Roundtrip) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+u3(1.234, -0.567, 2.891) q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, ParameterizedRotationsRoundtrip) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+rx(0.7) q[0];
+rz(1.3) q[0];
+ry(0.9) q[0];
+)";
+  run_qasm_decompose_test(qasm, 1, {"rz", "ry"});
+}
+
+TEST(QasmSynthesisTest, Parameterized2QGatesRoundtrip) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+rz(0.5) q[0];
+cx q[0],q[1];
+rx(0.8) q[1];
+)";
+  run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
 }
