@@ -16,13 +16,20 @@
 # ----------------------------------------------------------------------
 import pytest
 import types
+from pathlib import Path
 from unittest.mock import patch
 
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.library import Library
 from wy_qcos.common.cmss.gate_operation import create_gate
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.cmss.mapping.empty_mapping import EmptyRoute
 from wy_qcos.transpiler.cmss.transpiler_cmss import TranspilerCmss
+from wy_qcos.driver.spinq.spinq_rpc.driver_spinq_rpc import DriverSpinQRpc
+from wy_qcos.driver.cascoldatom.driver_wuyue_hanyuan1 import (
+    DriverWuyueHanyuan1,
+)
+from wy_qcos.driver.cascoldatom.driver_hanyuan1 import DriverHanyuan1
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_gate_ir
 from wy_qcos.tests.unit_tests.transpiler.comm import validate_non_gate_ir
 from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS, SAMPLES
@@ -34,6 +41,7 @@ class TestTranspilerCmss:
     @classmethod
     def setup_class(cls):
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
         cls.simple_data = """
         OPENQASM 2.0;
         include "qelib1.inc";
@@ -277,3 +285,179 @@ class TestTranspilerCmss:
             [2],
         ]
         assert second_ops[0].targets == [0, 1]
+
+    # ------------------------------------------------------------------
+    # 真机 + openqasm 文件转译测试
+    # ------------------------------------------------------------------
+    # basis_gates 与 tech_type 直接从真机驱动读取
+    # (driver.get_supported_basis_gates() / get_tech_type()),
+    # 与 engine/job_engine.py 的真实调用路径一致, 不在测试里硬编码门集.
+    # 每个测试用例固定一组配置 (驱动 + 拓扑 + qasm), 需要扩展时
+    # 复制用例并替换常量即可.
+
+    @classmethod
+    def _load_qpu_cfg(cls, chip_name, toml_rel_path):
+        """从 etc 下的 toml 拓扑配置加载指定芯片的 qpu_configs.
+
+        Args:
+            chip_name: toml 中的 section 名(芯片名).
+            toml_rel_path: 相对 etc_dir 的 toml 路径.
+
+        Returns:
+            qpu_configs 字典. 文件缺失时返回 None.
+        """
+        config_file = Path(f"{cls.etc_dir}/{toml_rel_path}")
+        if not config_file.exists():
+            return None
+        _, _, toml_doc = Library.read_toml_file(str(config_file))
+        return toml_doc.unwrap()[chip_name]["transpiler"]["qpu_configs"]
+
+    @staticmethod
+    def _read_qasm(samples_dir, qasm_rel_path):
+        """读取 samples 下的 qasm 文件, 缺失时跳过测试."""
+        qasm_file = Path(f"{samples_dir}/{qasm_rel_path}")
+        if not qasm_file.exists():
+            pytest.skip(f"qasm file not found: {qasm_rel_path}")
+        qasm_data = Library.read_file(str(qasm_file))
+        assert qasm_data is not None
+        return qasm_data
+
+    @staticmethod
+    def _assert_transpile_result(basis_gate_list, allowed_gate_names):
+        """校验转译结果: 非空、门名合法、target 为非负整数、measure 在末尾."""
+        assert basis_gate_list is not None
+        assert len(basis_gate_list) > 0, "transpile result is empty"
+
+        for gate in basis_gate_list:
+            assert gate.name in allowed_gate_names, (
+                f"gate '{gate.name}' not in allowed gates "
+                f"{allowed_gate_names}"
+            )
+            for target in gate.targets:
+                assert isinstance(target, int) and target >= 0, (
+                    f"target {target} of {gate.name} is not a "
+                    f"non-negative int"
+                )
+
+        seen_measure = False
+        for gate in basis_gate_list:
+            if gate.name == "measure":
+                seen_measure = True
+            elif seen_measure:
+                assert False, (
+                    f"non-measure gate '{gate.name}' appears after "
+                    f"a measure gate"
+                )
+
+    def _run_transpile(
+        self,
+        driver,
+        toml_rel_path,
+        chip_name,
+        qasm_rel_path,
+        code_type,
+        *,
+        enable_na_move=False,
+        sc_mapping_options=None,
+    ):
+        """通用的"读驱动门集 -> 加载拓扑 -> 转译 -> 校验"流程.
+
+        Args:
+            driver: 真机驱动实例, basis_gates/tech_type 从其读取.
+            toml_rel_path: 相对 etc_dir 的拓扑 toml 路径.
+            chip_name: toml 中的芯片 section 名.
+            qasm_rel_path: 相对 samples_dir 的 qasm 路径.
+            code_type: qasm 代码类型.
+            enable_na_move: 是否启用 NA move (NARoute).
+            sc_mapping_options: 超导路由选项, 默认 None.
+
+        Returns:
+            (basis_gate_list, mapping_dict, final_layout_dict).
+        """
+        basis_gates = driver.get_supported_basis_gates()
+        tech_type = driver.get_tech_type()
+
+        qpu_cfg = self._load_qpu_cfg(chip_name, toml_rel_path)
+        if qpu_cfg is None:
+            pytest.skip(f"topology config not found: {toml_rel_path}")
+        qasm_data = self._read_qasm(self.samples_dir, qasm_rel_path)
+
+        orig_state = (
+            trans_cfg_inst.get_qpu_cfg(),
+            trans_cfg_inst.get_tech_type(),
+            trans_cfg_inst.get_max_qubits(),
+        )
+        trans_cfg_inst.set_qpu_cfg(qpu_cfg)
+        trans_cfg_inst.set_tech_type(tech_type)
+        trans_cfg_inst.set_max_qubits(qpu_cfg["qubits"])
+
+        try:
+            transpiler = TranspilerCmss(enable_na_move=enable_na_move)
+            if sc_mapping_options is not None:
+                transpiler.transpiler_options["sc_mapping_options"] = (
+                    sc_mapping_options
+                )
+
+            parse_result = transpiler.parse(
+                {"000": qasm_data}, code_type
+            )
+            basis_gate_list, mapping_dict, final_layout_dict = (
+                transpiler.transpile(parse_result, basis_gates)
+            )
+        finally:
+            trans_cfg_inst.set_qpu_cfg(orig_state[0])
+            trans_cfg_inst.set_tech_type(orig_state[1])
+            trans_cfg_inst.set_max_qubits(orig_state[2])
+
+        return basis_gate_list, mapping_dict, final_layout_dict, basis_gates
+
+    def test_transpile_with_superconducting_chip(self):
+        """超导真机转译: DriverSpinQRpc (basis={h,rx,ry,rz,cz}) +
+        baihua_156 拓扑 + 含 ccx 的 w-state 电路, 走 sabre 路由.
+
+        扩展方式: 复制本用例, 替换驱动/topology/qasm 常量即可.
+        """
+        basis_gate_list, mapping_dict, final_layout_dict, basis_gates = (
+            self._run_transpile(
+                driver=DriverSpinQRpc(),
+                toml_rel_path="topology/baihua_156.toml",
+                chip_name="baihua_156",
+                qasm_rel_path="qasm/2.0/w-state.qasm",
+                code_type=Constant.CODE_TYPE_QASM,
+                sc_mapping_options={"routing_algorithm": "sabre"},
+            )
+        )
+
+        allowed_gate_names = set(basis_gates) | {"measure"}
+        self._assert_transpile_result(
+            basis_gate_list, allowed_gate_names
+        )
+        assert final_layout_dict is not None
+        assert mapping_dict is not None
+
+    def test_transpile_with_neutral_atom_chip(self):
+        """中性原子真机转译: DriverWuyueHanyuan1 (basis={rx,ry,cz}) +
+        hanyuan1_100 拓扑 + 含 ccx 的 w-state 电路, 启用 enable_na_move
+        走 NARoute (支持 cz/move), 结果会引入 NA 特有的 move 门.
+
+        扩展方式: 复制本用例, 替换驱动/topology/qasm 常量即可.
+        """
+        basis_gate_list, mapping_dict, final_layout_dict, basis_gates = (
+            self._run_transpile(
+                driver=DriverWuyueHanyuan1(),
+                toml_rel_path="topology/hanyuan1_100.toml",
+                chip_name="hanyuan1_100",
+                qasm_rel_path="qasm/2.0/w-state.qasm",
+                code_type=Constant.CODE_TYPE_QASM,
+                enable_na_move=True,
+            )
+        )
+
+        # NA 路由会引入 move 门, 故允许集合为 basis ∪ {measure, move}.
+        allowed_gate_names = set(basis_gates) | {"measure", "move"}
+        self._assert_transpile_result(
+            basis_gate_list, allowed_gate_names
+        )
+        assert final_layout_dict is not None
+        assert mapping_dict is not None
+
