@@ -82,7 +82,7 @@ std::vector<std::shared_ptr<BaseOperation>> make_task2_gates() {
 
 TEST(NaMappingTest, PrepareDataBuildsGraph) {
   auto cfg = make_test_qpu_config();
-  NARoute na;
+  NADefaultRoute na;
   na.prepare_data(5, make_simple_gates(), cfg);
   // prepare_data does not build logical_to_storage (matching the Python impl;
   // the mapping is built in get_init_mapping).
@@ -91,7 +91,7 @@ TEST(NaMappingTest, PrepareDataBuildsGraph) {
 
 TEST(NaMappingTest, ExecuteWithOrderSimple) {
   auto cfg = make_test_qpu_config();
-  NARoute na;
+  NADefaultRoute na;
   na.prepare_data(1, make_simple_gates(), cfg);
   auto [res, layout] = na.execute_with_order();
   EXPECT_FALSE(res.empty());
@@ -102,7 +102,7 @@ TEST(NaMappingTest, ExecuteWithOrderSimple) {
 
 TEST(NaMappingTest, ExecuteWithOrderTwoQubit) {
   auto cfg = make_test_qpu_config();
-  NARoute na;
+  NADefaultRoute na;
   na.prepare_data(4, make_task2_gates(), cfg);
   auto [res, layout] = na.execute_with_order();
   EXPECT_FALSE(res.empty());
@@ -113,7 +113,7 @@ TEST(NaMappingTest, ExecuteWithOrderTwoQubit) {
 
 TEST(NaMappingTest, ExecuteWithOptSimple) {
   auto cfg = make_test_qpu_config();
-  NARoute na;
+  NADefaultRoute na;
   na.prepare_data(1, make_simple_gates(), cfg);
   auto res = na.execute_with_opt();
   EXPECT_FALSE(res.empty());
@@ -123,7 +123,7 @@ TEST(NaMappingTest, ExecuteWithOptSimple) {
 
 TEST(NaMappingTest, ExecuteWithOptTwoQubit) {
   auto cfg = make_test_qpu_config();
-  NARoute na;
+  NADefaultRoute na;
   na.prepare_data(4, make_task2_gates(), cfg);
   auto res = na.execute_with_opt();
   EXPECT_FALSE(res.empty());
@@ -144,4 +144,81 @@ TEST(NaMappingTest, SingleRouteExecute) {
   auto [res, layout] = na.execute_with_order();
   EXPECT_EQ(res.size(), 4u);
   EXPECT_TRUE(layout.empty());
+}
+
+// ---------------------------------------------------------------------------
+// Unified na_mapping() entry point: dispatch by (na_support_move,
+// na_mapping_type), mirroring the Python MappingFactory.
+// ---------------------------------------------------------------------------
+
+TEST(NaMappingTest, UnifiedSingleRoute) {
+  // na_support_move=false -> NASingleRoute path: single-qubit gates only,
+  // never inserts MOVE ops.
+  auto cfg = make_test_qpu_config();
+  auto res = na_mapping(make_simple_gates(), cfg, /*qbit_num=*/1,
+                        /*na_support_move=*/false, "default", /*optimize=*/false);
+  EXPECT_FALSE(res.empty());
+  EXPECT_EQ(res.front()->name, "x");
+  EXPECT_EQ(res.back()->name, "measure");
+  for (const auto& op : res) {
+    EXPECT_NE(op->name, "move");
+  }
+}
+
+TEST(NaMappingTest, UnifiedSingleRouteOptimizeFallback) {
+  // NASingleRoute has no overlap optimization, so execute_with_opt falls back
+  // to execute_with_order; the result must still be valid.
+  auto cfg = make_test_qpu_config();
+  auto res = na_mapping(make_simple_gates(), cfg, /*qbit_num=*/1,
+                        /*na_support_move=*/false, "default", /*optimize=*/true);
+  EXPECT_FALSE(res.empty());
+  EXPECT_EQ(res.front()->name, "x");
+  EXPECT_EQ(res.back()->name, "measure");
+}
+
+TEST(NaMappingTest, UnifiedDefaultRouteTwoQubit) {
+  // na_support_move=true, na_mapping_type="default" -> NADefaultRoute path:
+  // two-qubit gates require shuttling, so MOVE ops must be inserted.
+  auto cfg = make_test_qpu_config();
+  auto res = na_mapping(make_task2_gates(), cfg, /*qbit_num=*/4,
+                        /*na_support_move=*/true, "default", /*optimize=*/false);
+  EXPECT_FALSE(res.empty());
+  EXPECT_EQ(res.front()->name, "x");
+  EXPECT_EQ(res.back()->name, "measure");
+  bool has_move = false;
+  for (const auto& op : res) {
+    if (op->name == "move") {
+      has_move = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(has_move);
+}
+
+TEST(NaMappingTest, UnifiedDefaultRouteOptimize) {
+  auto cfg = make_test_qpu_config();
+  auto res = na_mapping(make_task2_gates(), cfg, /*qbit_num=*/4,
+                        /*na_support_move=*/true, "default", /*optimize=*/true);
+  EXPECT_FALSE(res.empty());
+  EXPECT_EQ(res.front()->name, "x");
+  EXPECT_EQ(res.back()->name, "measure");
+}
+
+TEST(NaMappingTest, UnifiedSingleRouteRejectsTwoQubitGates) {
+  // Same two-qubit input, but na_support_move=false dispatches to
+  // NASingleRoute, which rejects multi-qubit gates -> must throw.
+  auto cfg = make_test_qpu_config();
+  EXPECT_THROW(
+      na_mapping(make_task2_gates(), cfg, /*qbit_num=*/4,
+                 /*na_support_move=*/false, "default", /*optimize=*/false),
+      std::runtime_error);
+}
+
+TEST(NaMappingTest, UnifiedUnsupportedMappingTypeThrows) {
+  // ZAC/ZAP are not implemented in the C++ backend yet.
+  auto cfg = make_test_qpu_config();
+  EXPECT_THROW(
+      na_mapping(make_simple_gates(), cfg, /*qbit_num=*/1,
+                 /*na_support_move=*/true, "ZAP", /*optimize=*/false),
+      std::invalid_argument);
 }

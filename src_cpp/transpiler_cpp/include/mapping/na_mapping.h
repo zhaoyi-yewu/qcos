@@ -102,31 +102,49 @@ struct NADagNode {
 };
 
 /**
- * @class NASingleRoute
- * @brief Neutral-atom single-qubit routing (single-qubit gates only).
+ * @class NARoute
+ * @brief Abstract base class for neutral-atom mapping/routing strategies.
  *
- * Mirrors the Python-side NASingleRoute. Maps logical qubits to the storage
- * area by ascending readout error and emits the gate sequence grouped by qubit.
+ * Mirrors the common interface shared by the Python-side NASingleRoute and
+ * NARoute. Concrete subclasses (NASingleRoute for single-qubit-only layouts,
+ * NADefaultRoute for full MOVE-aware two-qubit routing) implement
+ * prepare_data() and execute_with_order(). The default execute_with_opt()
+ * falls back to execute_with_order() so that strategies without an overlap
+ * optimization (e.g. NASingleRoute) still expose a uniform entry point.
+ *
+ * Use the free function na_mapping() to obtain a router instance selected by
+ * the (na_support_move, na_mapping_type) parameters, analogous to the Python
+ * MappingFactory.get_mapper_by_type() dispatch.
  */
-class NASingleRoute {
+class NARoute {
  public:
-  NASingleRoute() = default;
+  virtual ~NARoute() = default;
 
   /**
-   * @brief Configure qpu_config/gates/qbit_num and build the logical-to-storage
-   *        mapping.
+   * @brief Configure qpu_config/gates/qbit_num and build the coupling graph.
    */
-  void prepare_data(int qbit_num,
-                    const std::vector<std::shared_ptr<BaseOperation>>& gates,
-                    const NAQpuConfig& qpu_config);
+  virtual void prepare_data(int qbit_num,
+                            const std::vector<std::shared_ptr<BaseOperation>>& gates,
+                            const NAQpuConfig& qpu_config) = 0;
 
   /**
    * @brief Iterate over gates and map logical qubits to physical qubits.
    * @return (mapped gate list, final_layout); final_layout is always empty.
    */
-  std::pair<std::vector<std::shared_ptr<BaseOperation>>,
-            std::unordered_map<int, int>>
-  execute_with_order();
+  virtual std::pair<std::vector<std::shared_ptr<BaseOperation>>,
+                   std::unordered_map<int, int>>
+  execute_with_order() = 0;
+
+  /**
+   * @brief Execute gates in topological order with simple overlap optimization.
+   *
+   * The base implementation falls back to execute_with_order() and returns
+   * only the mapped gate list; subclasses with a real overlap optimization
+   * (e.g. NADefaultRoute) override this.
+   *
+   * @return The mapped gate list.
+   */
+  virtual std::vector<std::shared_ptr<BaseOperation>> execute_with_opt();
 
   /// Logical qubit -> storage-area position.
   std::unordered_map<int, std::string> logical_to_storage;
@@ -139,24 +157,55 @@ class NASingleRoute {
 };
 
 /**
- * @class NARoute
+ * @class NASingleRoute
+ * @brief Neutral-atom single-qubit routing (single-qubit gates only).
+ *
+ * Mirrors the Python-side NASingleRoute. Maps logical qubits to the storage
+ * area by ascending readout error and emits the gate sequence grouped by qubit.
+ * Inherits the common NARoute interface; execute_with_opt() uses the base
+ * fallback (equivalent to execute_with_order()).
+ */
+class NASingleRoute : public NARoute {
+ public:
+  NASingleRoute() = default;
+
+  /**
+   * @brief Configure qpu_config/gates/qbit_num and build the logical-to-storage
+   *        mapping.
+   */
+  void prepare_data(int qbit_num,
+                    const std::vector<std::shared_ptr<BaseOperation>>& gates,
+                    const NAQpuConfig& qpu_config) override;
+
+  /**
+   * @brief Iterate over gates and map logical qubits to physical qubits.
+   * @return (mapped gate list, final_layout); final_layout is always empty.
+   */
+  std::pair<std::vector<std::shared_ptr<BaseOperation>>,
+            std::unordered_map<int, int>>
+  execute_with_order() override;
+};
+
+/**
+ * @class NADefaultRoute
  * @brief Neutral-atom routing (single/two-qubit gates + MOVE operations).
  *
- * Mirrors the Python-side NARoute. Moves atoms between the operate area and
- * the storage area so that the two qubits of a two-qubit gate end up on
- * adjacent sites before execution. Supports in-order execution
- * (execute_with_order) and overlap-optimized execution (execute_with_opt).
+ * Mirrors the Python-side NARoute (the "default" na_mapping_type). Moves atoms
+ * between the operate area and the storage area so that the two qubits of a
+ * two-qubit gate end up on adjacent sites before execution. Supports in-order
+ * execution (execute_with_order) and overlap-optimized execution
+ * (execute_with_opt).
  */
-class NARoute {
+class NADefaultRoute : public NARoute {
  public:
-  NARoute() = default;
+  NADefaultRoute() = default;
 
   /**
    * @brief Configure qpu_config/gates/qbit_num and build the coupling graph.
    */
   void prepare_data(int qbit_num,
                     const std::vector<std::shared_ptr<BaseOperation>>& gates,
-                    const NAQpuConfig& qpu_config);
+                    const NAQpuConfig& qpu_config) override;
 
   /**
    * @brief Execute gates in order, without optimization.
@@ -164,13 +213,13 @@ class NARoute {
    */
   std::pair<std::vector<std::shared_ptr<BaseOperation>>,
             std::unordered_map<int, int>>
-  execute_with_order();
+  execute_with_order() override;
 
   /**
    * @brief Execute gates in topological order with simple overlap optimization.
    * @return The mapped gate list.
    */
-  std::vector<std::shared_ptr<BaseOperation>> execute_with_opt();
+  std::vector<std::shared_ptr<BaseOperation>> execute_with_opt() override;
 
   /**
    * @brief Build the DAG. Returns (DAG node list, measure ops, original-idx ->
@@ -246,8 +295,6 @@ class NARoute {
   /// Pick an executable node from the current front layer.
   std::pair<int, std::vector<int>> get_max_common();
 
-  /// Logical qubit -> storage-area position.
-  std::unordered_map<int, std::string> logical_to_storage;
   /// Logical qubit -> operate-area position (empty string when unmapped).
   std::unordered_map<int, std::string> logical_to_op;
   /// Operate-area position -> logical qubit (-1 when unmapped).
@@ -256,11 +303,6 @@ class NARoute {
   std::unordered_map<int, int> initial_layout;
 
  private:
-  NAQpuConfig qpu_config_;
-  NAGraph ag_;
-  std::vector<std::shared_ptr<BaseOperation>> gates_;
-  int qbit_num_ = 0;
-
   std::vector<NADagNode> dag_;
   std::vector<NADagNode> dag_opt_;
   std::vector<std::shared_ptr<BaseOperation>> measure_;
@@ -305,5 +347,35 @@ class NARoute {
   /// of its successors (mirrors rustworkx's remove_node).
   void remove_dag_opt_node(int idx);
 };
+
+/**
+ * @brief Unified neutral-atom mapping entry point (analogous to sabre_routing).
+ *
+ * Selects a concrete NARoute strategy from the parameters and runs it, so the
+ * caller does not need to know the subclass hierarchy. The dispatch mirrors the
+ * Python-side MappingFactory.get_mapper_by_type():
+ *   - na_support_move == false  -> NASingleRoute (single-qubit-only layout).
+ *   - na_support_move == true && na_mapping_type == "default" -> NADefaultRoute
+ *     (full two-qubit routing with MOVE shuttling).
+ *   - na_support_move == true with any other na_mapping_type is rejected
+ *     (ZAC/ZAP are not implemented in the C++ backend yet).
+ *
+ * @param gates_list Logical operation sequence (targets are logical qubits).
+ * @param qpu_config Neutral-atom QPU topology configuration.
+ * @param qbit_num Number of logical qubits.
+ * @param na_support_move Whether the device supports MOVE + two-qubit gates.
+ *        Defaults to false (NASingleRoute).
+ * @param na_mapping_type NA mapping algorithm type; only "default" is supported
+ *        in C++. Defaults to "default".
+ * @param optimize Whether to enable overlap optimization (execute_with_opt);
+ *        strategies without one fall back to execute_with_order. Defaults to
+ *        false.
+ * @return The mapped operation sequence with physical qubit targets (and MOVE
+ *         ops inserted when na_support_move is true).
+ */
+std::vector<std::shared_ptr<BaseOperation>> na_mapping(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
+    const NAQpuConfig& qpu_config, int qbit_num, bool na_support_move = false,
+    const std::string& na_mapping_type = "default", bool optimize = false);
 
 }  // namespace qcos

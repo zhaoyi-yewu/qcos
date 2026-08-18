@@ -131,15 +131,16 @@ TranspileResult transpile_from_qasm(
  * circuit).
  *
  * Same pipeline as transpile(sabre); only the routing stage is replaced by
- * NARoute, which inserts MOVE operations between the operate area and the
- * storage area so that two-qubit gates act on adjacent sites.
+ * na_mapping(), which selects a concrete NARoute strategy from na_mapping_type
+ * (with MOVE support enabled) and inserts MOVE operations between the operate
+ * area and the storage area so that two-qubit gates act on adjacent sites.
  *
  * Internal pipeline:
  *   1. QASM parse -> convert_qasm_string_to_qcos_operations
  *   2. Optimize #1 (opt_level capped at 1) -> optimize
  *   3. Decompose into 1q/2q gates -> decompose_gates_to_1q2q
  *   4. Build decompose rules -> Decomposer::get_decompose_rules
- *   5. NA mapping -> NARoute.prepare_data + execute_with_order
+ *   5. NA mapping -> na_mapping(na_support_move=true, na_mapping_type)
  *   6. Apply decompose rules -> Decomposer::apply_decompose_rules
  *   7. Optimize #2 (full opt_level + basis_gates) -> optimize
  *
@@ -147,12 +148,15 @@ TranspileResult transpile_from_qasm(
  * @param supp_basis_gates Supported basis-gate name list.
  * @param qpu_config Neutral-atom QPU topology configuration.
  * @param opt_level Optimization level (0-3); defaults to 1.
+ * @param na_mapping_type NA mapping algorithm type; only "default" is supported
+ *        by the C++ backend (NADefaultRoute). Defaults to "default".
  * @return TranspileResult containing the final gate list, qubit count, and
  *         per-stage timings.
  */
 TranspileResult transpile_na(const std::string& qasm_string,
                              const std::vector<std::string>& supp_basis_gates,
-                             const NAQpuConfig& qpu_config, int opt_level = 1);
+                             const NAQpuConfig& qpu_config, int opt_level = 1,
+                             const std::string& na_mapping_type = "default");
 
 /**
  * @brief Transpile a pre-parsed IR (no QASM parsing step).

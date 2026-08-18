@@ -157,19 +157,22 @@ void bind_transpile(nb::module_& m) {
       "transpile_na",
       [](const std::string& qasm_string,
          const std::vector<std::string>& supp_basis_gates,
-         const nb::dict& qpu_cfg, int opt_level) {
+         const nb::dict& qpu_cfg, int opt_level,
+         const std::string& na_mapping_type) {
         auto cfg = parse_na_qpu_config(qpu_cfg);
         nb::gil_scoped_release release;
-        return transpile_na(qasm_string, supp_basis_gates, cfg, opt_level);
+        return transpile_na(qasm_string, supp_basis_gates, cfg, opt_level,
+                            na_mapping_type);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"), nb::arg("qpu_cfg"),
-      nb::arg("opt_level") = 1,
+      nb::arg("opt_level") = 1, nb::arg("na_mapping_type") = "default",
       R"(
         All-in-one transpile function (neutral-atom NA mapping, single-circuit path).
 
-        Same pipeline as ``transpile`` (sabre) but the routing stage uses
-        NARoute, inserting MOVE operations between the storage and operate
-        areas so that two-qubit gates act on adjacent sites.
+        Same pipeline as ``transpile`` (sabre) but the routing stage dispatches
+        via ``na_mapping`` using ``na_mapping_type`` (with MOVE support enabled),
+        inserting MOVE operations between the storage and operate areas so that
+        two-qubit gates act on adjacent sites.
 
         Args:
             qasm_string (str): QASM circuit string.
@@ -178,6 +181,8 @@ void bind_transpile(nb::module_& m) {
                 ``storage_area``, ``operate_area``, ``coupler_map`` and
                 ``readout_error``.
             opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+            na_mapping_type (str, optional): NA mapping algorithm type; only
+                "default" is supported by the C++ backend. Defaults to "default".
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.

@@ -123,12 +123,17 @@ qcos::NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
  * @param qpu_cfg QPU config dict
  * (storage_area/operate_area/coupler_map/readout_error).
  * @param qbit_num Number of logical qubits.
+ * @param na_support_move Whether the device supports MOVE + two-qubit gates;
+ *        false selects NASingleRoute, true selects NADefaultRoute.
+ * @param na_mapping_type NA mapping algorithm type; only "default" is supported
+ *        by the C++ backend.
  * @param optimize Whether to enable overlap optimization (execute_with_opt).
  * @return nb::tuple (mapped_ops, final_layout)
  */
 nb::tuple bind_na_routing(
     const std::vector<qcos::BaseOperation*>& gates_list_raw,
-    const nb::dict& qpu_cfg, int qbit_num, bool optimize) {
+    const nb::dict& qpu_cfg, int qbit_num, bool na_support_move,
+    const std::string& na_mapping_type, bool optimize) {
   std::vector<std::shared_ptr<qcos::BaseOperation>> gates_list;
   gates_list.reserve(gates_list_raw.size());
   for (auto* op : gates_list_raw) {
@@ -140,27 +145,41 @@ nb::tuple bind_na_routing(
 
   auto cfg = parse_na_qpu_config(qpu_cfg);
 
+  auto res = qcos::na_mapping(gates_list, cfg, qbit_num, na_support_move,
+                              na_mapping_type, optimize);
+
   nb::module_ gate_module =
       nb::module_::import_("wy_qcos.common.cmss.gate_operation");
   nb::object create_gate = gate_module.attr("create_gate");
 
   nb::list mapped_ir;
-  if (optimize) {
-    qcos::NARoute router;
-    router.prepare_data(qbit_num, gates_list, cfg);
-    auto res = router.execute_with_opt();
-    for (auto& op : res) {
-      mapped_ir.append(create_gate(op->name, op->targets, op->arg_value));
-    }
-  } else {
-    qcos::NARoute router;
-    router.prepare_data(qbit_num, gates_list, cfg);
-    auto [res, layout] = router.execute_with_order();
-    for (auto& op : res) {
-      mapped_ir.append(create_gate(op->name, op->targets, op->arg_value));
-    }
+  for (auto& op : res) {
+    mapped_ir.append(create_gate(op->name, op->targets, op->arg_value));
   }
   return nb::make_tuple(mapped_ir, nb::dict());
+}
+
+/**
+ * @brief Python entry point for NA default routing.
+ *
+ * Thin wrapper around na_mapping() fixed to the "default" strategy
+ * (NADefaultRoute), exposing only the inputs a single-circuit neutral-atom
+ * mapping needs. Equivalent to na_routing(..., na_support_move=True,
+ * na_mapping_type="default", optimize=...).
+ *
+ * @param gates_list_raw Python-side BaseOperation list.
+ * @param qpu_cfg QPU config dict
+ * (storage_area/operate_area/coupler_map/readout_error).
+ * @param qbit_num Number of logical qubits.
+ * @param optimize Whether to enable overlap optimization (execute_with_opt).
+ * @return nb::tuple (mapped_ops, final_layout); final_layout is always empty.
+ */
+nb::tuple bind_cpp_na_default_routing(
+    const std::vector<qcos::BaseOperation*>& gates_list_raw,
+    const nb::dict& qpu_cfg, int qbit_num, bool optimize) {
+  return bind_na_routing(gates_list_raw, qpu_cfg, qbit_num,
+                         /*na_support_move=*/true,
+                         /*na_mapping_type=*/"default", optimize);
 }
 
 }  // namespace
@@ -392,13 +411,56 @@ Returns:
         )");
 
   m.def("na_routing", &bind_na_routing, nb::arg("gates_list"),
-        nb::arg("qpu_cfg"), nb::arg("qbit_num"), nb::arg("optimize") = false,
+        nb::arg("qpu_cfg"), nb::arg("qbit_num"),
+        nb::arg("na_support_move") = false,
+        nb::arg("na_mapping_type") = "default", nb::arg("optimize") = false,
         R"(
-        Execute neutral atom routing with MOVE operations.
+        Execute neutral atom routing.
 
-        Maps logical gates onto a neutral-atom architecture that has separate
-        storage and operate areas, inserting MOVE operations to shuttle atoms
-        between the two so that two-qubit gates act on adjacent sites.
+        Dispatches to a concrete NARoute strategy based on na_support_move and
+        na_mapping_type, mirroring the Python-side MappingFactory dispatch:
+
+        * na_support_move=False -> NASingleRoute: single-qubit-only layout that
+          maps logical qubits to the storage area by ascending readout error.
+        * na_support_move=True, na_mapping_type="default" -> NADefaultRoute:
+          full two-qubit routing that inserts MOVE operations to shuttle atoms
+          between the storage and operate areas so two-qubit gates act on
+          adjacent sites.
+
+        Args:
+            gates_list (list[BaseOperation]): Logical operation sequence.
+                Each operation's targets are logical qubit indices.
+            qpu_cfg (dict): QPU configuration with keys ``storage_area``,
+                ``operate_area``, ``coupler_map`` and ``readout_error``.
+            qbit_num (int): Number of logical qubits.
+            na_support_move (bool, optional): Whether the device supports MOVE
+                + two-qubit gates. False selects NASingleRoute; True selects
+                NADefaultRoute (requires na_mapping_type="default"). Defaults to
+                False.
+            na_mapping_type (str, optional): NA mapping algorithm type; only
+                "default" is supported by the C++ backend. Defaults to
+                "default".
+            optimize (bool, optional): Whether to enable the overlap
+                optimization (``execute_with_opt``). Strategies without one fall
+                back to ``execute_with_order``. Defaults to False.
+
+        Returns:
+            tuple[list[BaseOperation], dict]: The mapped operation sequence
+            (with MOVE operations and physical qubit targets when
+            na_support_move is True) and an empty final layout dict.
+        )");
+
+  m.def("cpp_na_default_routing", &bind_cpp_na_default_routing,
+        nb::arg("gates_list"), nb::arg("qpu_cfg"), nb::arg("qbit_num"),
+        nb::arg("optimize") = false,
+        R"(
+        Execute neutral-atom default routing (NADefaultRoute).
+
+        Thin wrapper around ``na_routing`` fixed to the "default" NA mapping
+        strategy with MOVE support enabled, exposing only the inputs a
+        single-circuit neutral-atom mapping needs. Inserts MOVE operations to
+        shuttle atoms between the storage and operate areas so that two-qubit
+        gates act on adjacent sites.
 
         Args:
             gates_list (list[BaseOperation]): Logical operation sequence.
