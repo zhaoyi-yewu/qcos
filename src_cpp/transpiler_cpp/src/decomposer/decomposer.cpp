@@ -84,12 +84,15 @@ Decomposer::Decomposer() {
  */
 std::pair<Decomposer::DecompositionTable, Decomposer::UsageStats>
 Decomposer::get_decompose_rules(const std::vector<std::string>& source,
-                                const std::vector<std::string>& target) {
+                                const std::vector<std::string>& target,
+                                bool enable_mapping,
+                                bool is_neutral_atom) {
   if (!graph_) {
     throw std::runtime_error("EquivalenceGraph not initialized");
   }
 
-  return graph_->build_full_decomposition_table(source, target);
+  return graph_->build_full_decomposition_table(
+      source, target, enable_mapping, is_neutral_atom);
 }
 
 // ==========================================

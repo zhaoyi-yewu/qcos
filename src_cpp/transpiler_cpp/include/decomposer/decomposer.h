@@ -89,6 +89,12 @@ class Decomposer {
    *
    * @param source Primitive gate set
    * @param target Target gate set
+   * @param enable_mapping Whether mapping (routing) is enabled. Only
+   *   when mapping is enabled is the SWAP gate added to the source
+   *   set (its decomposition depth is used by the mapping module).
+   * @param is_neutral_atom Whether the target device is a neutral-atom
+   *   system. SWAP decomposition is skipped for neutral-atom systems
+   *   (see ``build_full_decomposition_table``).
    *
    * @return Pair of:
    * - decomposition table
@@ -96,7 +102,9 @@ class Decomposer {
    */
   std::pair<DecompositionTable, UsageStats> get_decompose_rules(
       const std::vector<std::string>& source,
-      const std::vector<std::string>& target);
+      const std::vector<std::string>& target,
+      bool enable_mapping = true,
+      bool is_neutral_atom = false);
 
   /**
    * @brief Apply decomposition rules to a quantum circuit.

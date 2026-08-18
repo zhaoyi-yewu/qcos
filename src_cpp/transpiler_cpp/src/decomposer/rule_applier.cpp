@@ -17,6 +17,7 @@
 
 #include "decomposer/rule_applier.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
@@ -24,6 +25,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+#include <vector>
 
 namespace qcos {
 
@@ -613,7 +615,19 @@ std::vector<std::shared_ptr<BaseOperation>> RuleApplier::apply_path(
     // ---- Missing decomposition rule ----
 
     if (!rule_dict.count(gate->name)) {
-      throw std::runtime_error("No rule for gate: " + gate->name);
+      std::vector<std::string> target_sorted(
+          target_set.begin(), target_set.end());
+      std::sort(target_sorted.begin(), target_sorted.end());
+      std::ostringstream target_ss;
+      for (size_t i = 0; i < target_sorted.size(); ++i) {
+        if (i) target_ss << ", ";
+        target_ss << target_sorted[i];
+      }
+      std::ostringstream msg;
+      msg << "Cannot decompose gate '" << gate->name
+          << "' into target basis [" << target_ss.str()
+          << "]: no decomposition rule found";
+      throw std::runtime_error(msg.str());
     }
 
     const auto& rule = rule_dict.at(gate->name);

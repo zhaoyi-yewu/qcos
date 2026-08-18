@@ -376,3 +376,24 @@ TEST(TranspileNa, TimingsConsistency) {
   // parse_time should be non-negative (NA also parses QASM)
   EXPECT_GE(t.parse_time, 0.0);
 }
+
+// Hanyuan-style neutral-atom driver: single-qubit basis only
+// {rx, ry, rz}, no two-qubit gate to decompose SWAP. A single-qubit
+// circuit (h + measure) must transpile without raising a
+// "Cannot decompose gate(s) ['swap']" error, since NA routing skips
+// SWAP insertion (see build_full_decomposition_table).
+TEST(TranspileNa, HanyuanSingleQubitBasis) {
+  const std::vector<std::string> kHanyuanBasis = {"rx", "ry", "rz"};
+  auto cfg = make_na_qpu_config();
+  auto result = transpile_na(kSingleQubitQasm, kHanyuanBasis, cfg);
+  EXPECT_EQ(result.num_qubits, 1);
+  EXPECT_FALSE(result.basis_gate_list.empty());
+  // Every output gate must be in the hanyuan basis (plus measure).
+  std::set<std::string> allowed(kHanyuanBasis.begin(),
+                                kHanyuanBasis.end());
+  allowed.insert("measure");
+  for (const auto& op : result.basis_gate_list) {
+    EXPECT_TRUE(allowed.count(op->name))
+        << "Unexpected gate: " << op->name;
+  }
+}
