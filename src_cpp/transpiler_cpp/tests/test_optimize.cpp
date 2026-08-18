@@ -9,12 +9,19 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <complex>
+#include <fstream>
 #include <memory>
+#include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "circuit/gate_operation.h"
+#include "compiler/qasm_to_ir.hpp"
 #include "optimizer/gate_optimizer.h"
+#include "optimizer/matrix_utils.h"
 
 using namespace qcos;
 
@@ -123,4 +130,246 @@ TEST(OptimizeBoundaryTest, DifferentQargsNoCancel) {
     auto result = optimize(ir, level);
     EXPECT_EQ(result.size(), 2u);
   }
+}
+
+// ======== optimize() 酉矩阵合成正确性测试 ========
+//
+// 核心断言:optimize() 在 opt_level>=3 调用 UnitarySynthesis 后,
+// 优化前后电路的整体酉矩阵必须等价(允许全局相位差),且输出门全在 basis 内。
+
+namespace {
+
+using C = std::complex<double>;
+
+// 将 op 序列累乘为 nq 比特上的整体酉矩阵。
+// 跳过 measure/barrier 等非量子门(不参与酉),1Q 门按其 target 张量提升为 2^n 维。
+CMatrix ops_unitary(const std::vector<std::shared_ptr<BaseOperation>>& ops,
+                    int nq) {
+  size_t dim = static_cast<size_t>(1) << nq;
+  CMatrix result = matrix_utils::identity(dim);
+  for (const auto& op : ops) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;  // skip measure/barrier
+    auto gm = matrix_utils::gate_to_matrix(op);
+    size_t nqg = op->targets.size();
+    if (nqg == static_cast<size_t>(nq)) {
+      result = matrix_utils::multiply(gm, result);
+      continue;
+    }
+    // 把单比特门提升到 nq 空间:对非作用位做 I,作用位做 gm。
+    CMatrix full = matrix_utils::identity(dim);
+    size_t gd = gm.size();  // 门维度 2^nqg
+    for (size_t row = 0; row < dim; ++row) {
+      for (size_t col = 0; col < dim; ++col) {
+        // 取出 row/col 在门作用位上的子索引,其余位必须相同
+        size_t g_row = 0, g_col = 0;
+        bool rest_match = true;
+        for (size_t b = 0; b < static_cast<size_t>(nq); ++b) {
+          size_t bit = (row >> (nq - 1 - b)) & 1;
+          size_t cbit = (col >> (nq - 1 - b)) & 1;
+          // 判断位 b 是否是门作用位
+          bool is_gate_q = false;
+          size_t gp = 0;
+          for (size_t t = 0; t < op->targets.size(); ++t) {
+            if (op->targets[t] == static_cast<int>(b)) {
+              is_gate_q = true;
+              gp = t;
+              break;
+            }
+          }
+          if (is_gate_q) {
+            g_row |= (bit << (op->targets.size() - 1 - gp));
+            g_col |= (cbit << (op->targets.size() - 1 - gp));
+          } else if (bit != cbit) {
+            rest_match = false;
+          }
+        }
+        full[row][col] = rest_match ? gm[g_row][g_col] : C(0);
+      }
+    }
+    result = matrix_utils::multiply(full, result);
+  }
+  return result;
+}
+
+// 校验优化结果:门全在 basis 内,且酉矩阵与原电路等价(允许全局相位)。
+void expect_synthesis_correct(
+    const std::vector<std::shared_ptr<BaseOperation>>& ir, int nq,
+    int opt_level, const std::set<std::string>& basis, double tol = 1e-6) {
+  CMatrix original = ops_unitary(ir, nq);
+  auto result = optimize(ir, opt_level, false, basis);
+  for (const auto& g : result) {
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
+  }
+  CMatrix synthesized = ops_unitary(result, nq);
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, tol))
+      << "optimize() changed the circuit unitary after synthesis";
+}
+
+}  // namespace
+
+// 1Q: H+S+T 在 rz+ry basis 下合成后须酉等价。
+TEST(OptimizeUnitarySynthesisTest, SingleQubit_RoundtripZRYBasis) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("s", {0}), create_gate("t", {0})};
+  expect_synthesis_correct(ir, 1, 3, {"rz", "ry"});
+}
+
+// 2Q: Bell 态电路在 cx+rz+ry basis 下合成后须酉等价。
+TEST(OptimizeUnitarySynthesisTest, TwoQubit_BellStateCXBasis) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("cx", {0, 1})};
+  expect_synthesis_correct(ir, 2, 3, {"cx", "rz", "ry"});
+}
+
+// 2Q: cz 原生门电路在 u3+cz basis 下走纯酉合成短路径,须酉等价。
+TEST(OptimizeUnitarySynthesisTest, TwoQubit_U3CZPureSynthesisPath) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("cz", {0, 1}),
+      create_gate("t", {1})};
+  expect_synthesis_correct(ir, 2, 3, {"u3", "cz"});
+}
+
+// 交叉校验:opt_level=0 不优化(不走合成),前后酉严格相等。
+// 用作 ops_unitary helper 的正确性基线。
+TEST(OptimizeUnitarySynthesisTest, Level0IsIdentityForHelper) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("h", {0}), create_gate("cx", {0, 1})};
+  CMatrix original = ops_unitary(ir, 2);
+  auto result = optimize(ir, 0);
+  ASSERT_EQ(result.size(), ir.size());
+  CMatrix after = ops_unitary(result, 2);
+  EXPECT_TRUE(matrix_utils::is_close(original, after, 1e-10));
+}
+
+// ======== optimize() 酉矩阵合成 — OpenQASM 文件输入测试 ========
+//
+// 从 samples 读取真实 QASM 文件 → qasm_to_ir → optimize(level=3) → 校验
+// 合成后电路酉矩阵与原电路等价(允许全局相位),且输出门全在 basis 内。
+
+namespace {
+
+std::string read_qasm_file(const std::string& rel_path) {
+  std::string path = std::string(TEST_DATA_DIR) + rel_path;
+  std::ifstream ifs(path);
+  if (!ifs.is_open()) {
+    ADD_FAILURE() << "Cannot open QASM file: " << path;
+    return "";
+  }
+  std::stringstream ss;
+  ss << ifs.rdbuf();
+  return ss.str();
+}
+
+// 解析 QASM 文本为 (ops, nq),ops 中含 measure;optimize() 会剥离 measure。
+std::pair<std::vector<std::shared_ptr<BaseOperation>>, int>
+qasm_to_ops(const std::string& qasm_str) {
+  auto [ops, nq] = qasm_to_ir(qasm_str);
+  return {ops, nq};
+}
+
+// 从 QASM 文件解析电路,跑 level=3 optimize,断言酉等价(+ 可选基合规)。
+// barrier 会阻断块收集,使部分门无法进入合成块而被原样保留,故含 barrier
+// 的电路可传 check_basis=false 只校验酉等价。
+void expect_qasm_synthesis_correct(const std::string& rel_path,
+                                   const std::set<std::string>& basis,
+                                   double tol = 1e-6,
+                                   bool check_basis = true) {
+  std::string qasm = read_qasm_file(rel_path);
+  ASSERT_FALSE(qasm.empty()) << "Empty QASM: " << rel_path;
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_FALSE(ops.empty()) << "QASM parsed to empty op list: " << rel_path;
+  ASSERT_GE(nq, 1);
+
+  CMatrix original = ops_unitary(ops, nq);
+  auto result = optimize(ops, 3, false, basis);
+  // measure/barrier 等非量子门不参与合成,会被 optimize 保留到末尾,
+  // 不应出现在 basis 中,故基合规只校验量子门。
+  if (check_basis) {
+    for (const auto& g : result) {
+      if (!dynamic_cast<const GateOperation*>(g.get())) continue;
+      EXPECT_TRUE(basis.count(g->name) > 0)
+          << "Gate '" << g->name << "' not in basis";
+    }
+  }
+  CMatrix synthesized = ops_unitary(result, nq);
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, tol))
+      << "optimize() changed QASM circuit unitary after synthesis: "
+      << rel_path;
+}
+
+}  // namespace
+
+// samples/qasm/2.0/simple-qasm-2q-2sg-1dg.qasm (x;h;cz) 在 u3+cz basis 下
+// 走纯酉合成短路径,须酉等价 + 基合规。
+TEST(OptimizeQasmSynthesisTest, File_2q_2sg_1dg_U3CZBasis) {
+  expect_qasm_synthesis_correct("qasm/2.0/simple-qasm-2q-2sg-1dg.qasm",
+                                {"u3", "cz"});
+}
+
+// 同一电路在 cx+rz+ry basis 下走完整 pass + level=3 合成,须酉等价。
+TEST(OptimizeQasmSynthesisTest, File_2q_2sg_1dg_CXZRYBasis) {
+  expect_qasm_synthesis_correct("qasm/2.0/simple-qasm-2q-2sg-1dg.qasm",
+                                {"cx", "rz", "ry"});
+}
+
+// samples/qasm/2.0/rb.qasm — 随机基准序列(h;cz;s;z + barrier/measure)。
+// barrier 阻断合成块收集,故只校验酉等价(合成后功能正确),不强制基合规。
+TEST(OptimizeQasmSynthesisTest, File_RB_CXZRYBasis) {
+  expect_qasm_synthesis_correct("qasm/2.0/rb.qasm", {"cx", "rz", "ry"}, 1e-6,
+                                /*check_basis=*/false);
+}
+
+// 同一 RB 电路在 u3+cz basis 下走纯酉合成短路径,须酉等价。
+TEST(OptimizeQasmSynthesisTest, File_RB_U3CZBasis) {
+  expect_qasm_synthesis_correct("qasm/2.0/rb.qasm", {"u3", "cz"}, 1e-6,
+                                /*check_basis=*/false);
+}
+
+// 内联 QASM:1Q 的 H-T-H-S 序列,rz+ry basis 合成后须酉等价。
+// 用内联字符串补充一条不依赖样本文件的用例。
+TEST(OptimizeQasmSynthesisTest, Inline_1q_HTHS_ZRYBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[1];
+h q[0];
+t q[0];
+h q[0];
+s q[0];
+)";
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_EQ(nq, 1);
+  ASSERT_FALSE(ops.empty());
+  CMatrix original = ops_unitary(ops, 1);
+  std::set<std::string> basis = {"rz", "ry"};
+  auto result = optimize(ops, 3, false, basis);
+  for (const auto& g : result) {
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
+  }
+  CMatrix synthesized = ops_unitary(result, 1);
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, 1e-6));
+}
+
+// 内联 QASM:2Q Bell 态(h;cx)在 u3+cz basis 下走纯酉合成短路径。
+TEST(OptimizeQasmSynthesisTest, Inline_2q_Bell_U3CZBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+cx q[0], q[1];
+)";
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_EQ(nq, 2);
+  CMatrix original = ops_unitary(ops, 2);
+  std::set<std::string> basis = {"u3", "cz"};
+  auto result = optimize(ops, 3, false, basis);
+  for (const auto& g : result) {
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
+  }
+  CMatrix synthesized = ops_unitary(result, 2);
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, 1e-6));
 }
