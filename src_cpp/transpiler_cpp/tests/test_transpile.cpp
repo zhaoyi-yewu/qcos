@@ -17,8 +17,10 @@
 
 #include <gtest/gtest.h>
 
+#include <fstream>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -37,13 +39,58 @@ const std::vector<std::pair<int, int>> kLinear4 = {{0, 1}, {1, 0}, {1, 2},
 
 // 2x2 grid topology:
 //  0 - 1
-//  |   |
 //  2 - 3
 const std::vector<std::pair<int, int>> kGrid4 = {
     {0, 1}, {1, 0}, {0, 2}, {2, 0}, {1, 3}, {3, 1}, {2, 3}, {3, 2}};
 
 // Common basis gates for tests
 const std::vector<std::string> kBasisGates = {"cx", "rz", "sx", "x"};
+
+// Hanyuan-style neutral-atom basis: single-qubit gates only, no
+// two-qubit gate to decompose SWAP.
+const std::vector<std::string> kHanyuanBasis = {"rx", "ry", "rz"};
+
+// Wuyue-Hanyuan basis: single-qubit gates + cz two-qubit gate.
+const std::vector<std::string> kWuyueHanyuanBasis = {"rx", "ry", "cz"};
+
+// Read a qasm file under samples/ into a string. Returns an empty
+// string if the file cannot be opened (callers should GTEST_SKIP()).
+std::string read_qasm_file(const std::string& rel_path) {
+  std::string path = std::string(TEST_DATA_DIR) + rel_path;
+  std::ifstream file(path);
+  if (!file.is_open()) {
+    return "";
+  }
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  return buffer.str();
+}
+
+// Read a qasm file, skipping the test if the file is missing. This is
+// the preferred entry point for sample-file-driven tests so they
+// degrade gracefully when a sample is absent.
+std::string read_qasm_or_skip(const std::string& rel_path) {
+  auto content = read_qasm_file(rel_path);
+  if (content.empty()) {
+    ADD_FAILURE() << "qasm sample not found: " << rel_path;
+  }
+  return content;
+}
+
+// Assert that every gate in a transpile result is within the allowed
+// set (basis gates + the passed-through non-gate operations). Returns
+// the number of gates whose name matches a predicate.
+void assertGatesInBasis(
+    const TranspileResult& result,
+    const std::vector<std::string>& basis_gates,
+    const std::set<std::string>& extra_allowed = {"measure"}) {
+  std::set<std::string> allowed(basis_gates.begin(), basis_gates.end());
+  allowed.insert(extra_allowed.begin(), extra_allowed.end());
+  for (const auto& op : result.basis_gate_list) {
+    EXPECT_TRUE(allowed.count(op->name))
+        << "Unexpected gate '" << op->name << "' in result";
+  }
+}
 
 // Bell state: 2 qubits, H + CNOT
 const std::string kBellQasm = R"(
@@ -383,17 +430,125 @@ TEST(TranspileNa, TimingsConsistency) {
 // "Cannot decompose gate(s) ['swap']" error, since NA routing skips
 // SWAP insertion (see build_full_decomposition_table).
 TEST(TranspileNa, HanyuanSingleQubitBasis) {
-  const std::vector<std::string> kHanyuanBasis = {"rx", "ry", "rz"};
   auto cfg = make_na_qpu_config();
   auto result = transpile_na(kSingleQubitQasm, kHanyuanBasis, cfg);
   EXPECT_EQ(result.num_qubits, 1);
   EXPECT_FALSE(result.basis_gate_list.empty());
-  // Every output gate must be in the hanyuan basis (plus measure).
-  std::set<std::string> allowed(kHanyuanBasis.begin(),
-                                kHanyuanBasis.end());
-  allowed.insert("measure");
+  assertGatesInBasis(result, kHanyuanBasis);
+}
+
+// Hanyuan basis with a two-qubit gate (cz) should still transpile a
+// Bell state, and the result may include NA-specific move gates.
+TEST(TranspileNa, WuyueHanyuanBasisBell) {
+  auto cfg = make_na_qpu_config();
+  auto result = transpile_na(kBellQasm, kWuyueHanyuanBasis, cfg);
+  EXPECT_EQ(result.num_qubits, 2);
+  EXPECT_FALSE(result.basis_gate_list.empty());
+  assertGatesInBasis(result, kWuyueHanyuanBasis, {"measure", "move"});
+}
+
+// A purely single-qubit circuit on the hanyuan basis: only rx/ry/rz
+// should appear in the output (h decomposes into rotations).
+TEST(TranspileNa, HanyuanSingleQubitNoMoveGate) {
+  auto cfg = make_na_qpu_config();
+  auto result = transpile_na(kSingleQubitQasm, kHanyuanBasis, cfg);
+  bool has_move = false;
   for (const auto& op : result.basis_gate_list) {
-    EXPECT_TRUE(allowed.count(op->name))
-        << "Unexpected gate: " << op->name;
+    if (op->name == "move") has_move = true;
   }
+  // Single-qubit circuit needs no atom movement.
+  EXPECT_FALSE(has_move);
+}
+
+// ---------------------------------------------------------------------------
+// transpile_na — file-driven tests (for issue reproduction)
+// ---------------------------------------------------------------------------
+
+// Read a single-qubit qasm file (h/x + measure) from samples/ and
+// transpile on the hanyuan basis. This is the minimal reproduction for
+// the "Cannot decompose gate(s) ['swap']" regression: the hanyuan
+// basis lacks a two-qubit gate, so SWAP decomposition must be skipped.
+TEST(TranspileNaFromFile, HanyuanSingleQubitBasis) {
+  auto qasm = read_qasm_or_skip("qasm/2.0/simple-qasm-1-bit.qasm");
+  auto cfg = make_na_qpu_config();
+  auto result = transpile_na(qasm, kHanyuanBasis, cfg);
+  EXPECT_EQ(result.num_qubits, 1);
+  EXPECT_FALSE(result.basis_gate_list.empty());
+  assertGatesInBasis(result, kHanyuanBasis);
+}
+
+// Read a 2-qubit qasm file from samples/ and transpile on a basis that
+// contains a two-qubit gate. The result may include move gates.
+TEST(TranspileNaFromFile, TwoQubitBasisWithCz) {
+  auto qasm = read_qasm_or_skip("qasm/2.0/simple-qasm.qasm");
+  auto cfg = make_na_qpu_config();
+  auto result = transpile_na(qasm, kWuyueHanyuanBasis, cfg);
+  EXPECT_EQ(result.num_qubits, 2);
+  EXPECT_FALSE(result.basis_gate_list.empty());
+  assertGatesInBasis(result, kWuyueHanyuanBasis, {"measure", "move"});
+}
+
+// ---------------------------------------------------------------------------
+// transpile_from_qasm — file-driven tests (for issue reproduction)
+// ---------------------------------------------------------------------------
+
+// Read a GHZ-style qasm file from samples/ and transpile on the
+// superconducting basis with a linear chain topology.
+TEST(TranspileFromQasmFile, Ghz4OnLinearChain) {
+  auto qasm = read_qasm_or_skip("qasm/2.0/w-state.qasm");
+  auto result = transpile_from_qasm(qasm, kBasisGates, 1, kLinear4);
+  EXPECT_FALSE(result.basis_gate_list.empty());
+  assertGatesInBasis(result, kBasisGates);
+}
+
+// Same file on a 2x2 grid topology.
+TEST(TranspileFromQasmFile, Ghz4OnGrid) {
+  auto qasm = read_qasm_or_skip("qasm/2.0/w-state.qasm");
+  auto result = transpile_from_qasm(qasm, kBasisGates, 1, kGrid4);
+  EXPECT_FALSE(result.basis_gate_list.empty());
+  assertGatesInBasis(result, kBasisGates);
+}
+
+// A non-trivial file must transpile without error. This guards against
+// regressions in the decomposer / router on realistic inputs
+// (randomized benchmarking sequence with cz/barrier/s gates).
+TEST(TranspileFromQasmFile, RandomizedBenchmarking) {
+  auto qasm = read_qasm_or_skip("qasm/2.0/rb.qasm");
+  auto result = transpile_from_qasm(qasm, kBasisGates, 1, kGrid4);
+  EXPECT_EQ(result.num_qubits, 2);
+  EXPECT_FALSE(result.basis_gate_list.empty());
+  assertGatesInBasis(result, kBasisGates);
+}
+
+// ---------------------------------------------------------------------------
+// Error-message tests
+// ---------------------------------------------------------------------------
+
+// When the superconducting basis lacks both cx and cz, SWAP cannot be
+// decomposed (swap -> cx -> cz). The decomposer must raise a clear
+// error that names SWAP and explains the root cause, rather than
+// failing on an unrelated single-qubit gate first.
+TEST(TranspileDecomposeError, SwapNeedsTwoQubitGate) {
+  // Source contains single-qubit gates that DO decompose (x -> rx),
+  // plus an implicit SWAP requirement (enable_mapping=true, SC path).
+  // The hanyuan basis {rx,ry,rz} lacks a two-qubit gate, so SWAP is
+  // the only undecomposable gate.
+  auto [ir_ops, num_qubits] = qasm_to_ir(kSingleQubitQasm);
+  // Use a single-qubit circuit so routing is trivial; the decomposer
+  // is still asked (via transpile_from_ir) to build SWAP rules.
+  EXPECT_THROW(
+      {
+        try {
+          transpile_from_ir(ir_ops, num_qubits, kHanyuanBasis, 1,
+                            kLinear4);
+        } catch (const std::runtime_error& e) {
+          EXPECT_NE(std::string(e.what()).find("swap"), std::string::npos)
+              << "Error should mention swap: " << e.what();
+          EXPECT_NE(std::string(e.what()).find("cx or cz"),
+                    std::string::npos)
+              << "Error should mention cx or cz: " << e.what();
+          throw;
+        }
+      },
+      std::runtime_error);
 }
