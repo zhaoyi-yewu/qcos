@@ -29,9 +29,9 @@ Covers:
 - ExcludeDeviceFilter: qcos:exclude_devices blacklist excludes devices
 - TechTypeFilter: qc:tech_types restricts by technology type
 
-Uses dummy, dummy1, dummy2 devices and set-device to modify
+Uses qutip_sim, qutip_sim1, qutip_sim2 devices and set-device to modify
 enable/status/max_qubits at runtime. Creates a device group and
-flavor referencing all dummy devices for auto scheduling.
+flavor referencing all qutip_sim devices for auto scheduling.
 """
 
 import json
@@ -46,10 +46,14 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS, SAMPLES
 
 logger = logging.getLogger(__name__)
 
-DEVICE_DUMMY = "dummy"
-DEVICE_DUMMY1 = "dummy1"
-DEVICE_DUMMY2 = "dummy2"
-ALL_DUMMY_DEVICES = [DEVICE_DUMMY, DEVICE_DUMMY1, DEVICE_DUMMY2]
+DEVICE_QUTIP_SIM = "qutip_sim"
+DEVICE_QUTIP_SIM1 = "qutip_sim1"
+DEVICE_QUTIP_SIM2 = "qutip_sim2"
+ALL_QUTIP_SIM_DEVICES = [
+    DEVICE_QUTIP_SIM,
+    DEVICE_QUTIP_SIM1,
+    DEVICE_QUTIP_SIM2,
+]
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -87,11 +91,11 @@ class TestJob:
             cls.admin_client, cls.test_device_group_names
         )
 
-        # ensure all dummy devices are enabled and online
-        for dev in ALL_DUMMY_DEVICES:
+        # ensure all qutip_sim devices are enabled and online
+        for dev in ALL_QUTIP_SIM_DEVICES:
             cls.admin_client.set_device(dev, enable=True, status="online")
 
-        # create or reuse a device group with all dummy devices
+        # create or reuse a device group with all qutip_sim devices
         cls.device_group_id = cls._ensure_device_group()
 
         # create or reuse a flavor referencing the device group
@@ -100,7 +104,7 @@ class TestJob:
     @classmethod
     def teardown_class(cls):
         """Clean up test environment."""
-        for dev in ALL_DUMMY_DEVICES:
+        for dev in ALL_QUTIP_SIM_DEVICES:
             cls.admin_client.set_device(dev, enable=True, status="online")
         # cleanup jobs first, then flavors, then device groups
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
@@ -111,7 +115,7 @@ class TestJob:
 
     @classmethod
     def _ensure_device_group(cls):
-        """Create or find a device group with all dummy devices.
+        """Create or find a device group with all qutip_sim devices.
 
         Returns:
             device group UUID
@@ -127,7 +131,7 @@ class TestJob:
         status_code, _, text, _ = cls.admin_client.create_device_group(
             name="test_auto_scheduler_group",
             description="ST auto scheduler device group",
-            device_names=ALL_DUMMY_DEVICES,
+            device_names=ALL_QUTIP_SIM_DEVICES,
         )
         resp = json.loads(text)
         return resp["result"]["id"]
@@ -162,8 +166,8 @@ class TestJob:
         return resp["result"]["id"]
 
     def _restore_devices(self):
-        """Restore all dummy devices to default state."""
-        for dev in ALL_DUMMY_DEVICES:
+        """Restore all qutip_sim devices to default state."""
+        for dev in ALL_QUTIP_SIM_DEVICES:
             self.admin_client.set_device(dev, enable=True, status="online")
 
     def _make_auto_job_info(
@@ -298,7 +302,7 @@ class TestJob:
 
     @pytest.mark.smoke
     def test_auto_schedule_basic(self):
-        """Auto scheduling selects an enabled online dummy device."""
+        """Auto scheduling selects an enabled online qutip_sim device."""
         self._restore_devices()
         job_info = self._make_auto_job_info(
             "test_auto_schedule_basic",
@@ -323,18 +327,18 @@ class TestJob:
             )
         assert success is True
         backend = job_results["result"]["backend"]
-        assert backend in ALL_DUMMY_DEVICES
+        assert backend in ALL_QUTIP_SIM_DEVICES
 
     @pytest.mark.smoke
     def test_device_status_filter_disabled(self):
         """Disabled devices are filtered out by DeviceStatusFilter.
 
-        Disable dummy and dummy2, only dummy1 remains enabled.
-        Auto scheduling should select dummy1.
+        Disable qutip_sim and qutip_sim2, only qutip_sim1 remains enabled.
+        Auto scheduling should select qutip_sim1.
         """
         self._restore_devices()
-        self.admin_client.set_device(DEVICE_DUMMY, enable=False)
-        self.admin_client.set_device(DEVICE_DUMMY2, enable=False)
+        self.admin_client.set_device(DEVICE_QUTIP_SIM, enable=False)
+        self.admin_client.set_device(DEVICE_QUTIP_SIM2, enable=False)
         try:
             job_info = self._make_auto_job_info(
                 "test_device_status_filter_disabled",
@@ -360,7 +364,7 @@ class TestJob:
                 )
             assert success is True
             backend = job_results["result"]["backend"]
-            assert backend == DEVICE_DUMMY1
+            assert backend == DEVICE_QUTIP_SIM1
         finally:
             self._restore_devices()
 
@@ -368,12 +372,12 @@ class TestJob:
     def test_device_status_filter_offline(self):
         """Offline devices are filtered out by DeviceStatusFilter.
 
-        Set dummy and dummy2 to offline, only dummy1 remains online.
-        Auto scheduling should select dummy1.
+        Set qutip_sim and qutip_sim2 to offline, only qutip_sim1 remains online
+        Auto scheduling should select qutip_sim1.
         """
         self._restore_devices()
-        self.admin_client.set_device(DEVICE_DUMMY, status="offline")
-        self.admin_client.set_device(DEVICE_DUMMY2, status="offline")
+        self.admin_client.set_device(DEVICE_QUTIP_SIM, status="offline")
+        self.admin_client.set_device(DEVICE_QUTIP_SIM2, status="offline")
         try:
             job_info = self._make_auto_job_info(
                 "test_device_status_filter_offline",
@@ -399,20 +403,20 @@ class TestJob:
                 )
             assert success is True
             backend = job_results["result"]["backend"]
-            assert backend == DEVICE_DUMMY1
+            assert backend == DEVICE_QUTIP_SIM1
         finally:
             self._restore_devices()
 
     def test_qubit_count_filter(self):
         """QubitCountFilter filters devices with insufficient qubits.
 
-        Set dummy1 max_qubits to 1 (too small for 2-qubit job),
-        dummy2 max_qubits to 1 (too small).
-        Only dummy with default max_qubits can handle the job.
+        Set qutip_sim1 max_qubits to 1 (too small for 2-qubit job),
+        qutip_sim2 max_qubits to 1 (too small).
+        Only qutip_sim with default max_qubits can handle the job.
         """
         self._restore_devices()
-        self.admin_client.set_device(DEVICE_DUMMY1, max_qubits="1")
-        self.admin_client.set_device(DEVICE_DUMMY2, max_qubits="1")
+        self.admin_client.set_device(DEVICE_QUTIP_SIM1, max_qubits="1")
+        self.admin_client.set_device(DEVICE_QUTIP_SIM2, max_qubits="1")
         try:
             job_info = self._make_auto_job_info(
                 "test_qubit_count_filter",
@@ -438,23 +442,23 @@ class TestJob:
                 )
             assert success is True
             backend = job_results["result"]["backend"]
-            assert backend == DEVICE_DUMMY
+            assert backend == DEVICE_QUTIP_SIM
         finally:
-            self.admin_client.set_device(DEVICE_DUMMY1, max_qubits="auto")
-            self.admin_client.set_device(DEVICE_DUMMY2, max_qubits="auto")
+            self.admin_client.set_device(DEVICE_QUTIP_SIM1, max_qubits="auto")
+            self.admin_client.set_device(DEVICE_QUTIP_SIM2, max_qubits="auto")
             self._restore_devices()
 
     def test_device_load_weigher(self):
         """DeviceLoadWeigher prefers the least busy device.
 
-        Submit a long-running job to dummy to make it busy,
-        then auto-schedule should prefer dummy1 or dummy2.
+        Submit a long-running job to qutip_sim to make it busy,
+        then auto-schedule should prefer qutip_sim1 or qutip_sim2.
         """
         self._restore_devices()
         busy_job_info = self._make_auto_job_info(
             "test_device_load_weigher_busy",
             driver_options={"sleep": 30},
-            backend=DEVICE_DUMMY,
+            backend=DEVICE_QUTIP_SIM,
             flavor_id=None,
         )
         StLibrary.submit_job(self.admin_client, busy_job_info)
@@ -484,7 +488,7 @@ class TestJob:
                 )
             assert success is True
             backend = job_results["result"]["backend"]
-            assert backend in [DEVICE_DUMMY1, DEVICE_DUMMY2]
+            assert backend in [DEVICE_QUTIP_SIM1, DEVICE_QUTIP_SIM2]
         finally:
             success, err_msg, job_results = StLibrary.wait_and_get_job_result(
                 self.admin_client,
@@ -510,7 +514,7 @@ class TestJob:
     def test_all_devices_disabled(self):
         """When all devices are disabled, auto scheduling fails."""
         self._restore_devices()
-        for dev in ALL_DUMMY_DEVICES:
+        for dev in ALL_QUTIP_SIM_DEVICES:
             self.admin_client.set_device(dev, enable=False)
         try:
             job_info = self._make_auto_job_info(
@@ -529,14 +533,14 @@ class TestJob:
     def test_device_name_filter_whitelist(self):
         """DeviceNameFilter restricts to a whitelist via extra_specs.
 
-        Use extra_specs qcos:devices to whitelist only dummy1.
-        Auto scheduling should select dummy1.
+        Use extra_specs qcos:devices to whitelist only qutip_sim1.
+        Auto scheduling should select qutip_sim1.
         """
         self._restore_devices()
         job_info = self._make_auto_job_info(
             "test_device_name_filter_whitelist",
             flavor_id=self.flavor_id,
-            extra_specs={"qcos:devices": DEVICE_DUMMY1},
+            extra_specs={"qcos:devices": DEVICE_QUTIP_SIM1},
         )
         StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
@@ -557,20 +561,21 @@ class TestJob:
             )
         assert success is True
         backend = job_results["result"]["backend"]
-        assert backend == DEVICE_DUMMY1
+        assert backend == DEVICE_QUTIP_SIM1
 
     def test_exclude_device_filter_blacklist(self):
         """ExcludeDeviceFilter excludes devices via extra_specs.
 
-        Use extra_specs qcos:exclude_devices to blacklist dummy and
-        dummy1. Auto scheduling should select dummy2.
+        Use extra_specs qcos:exclude_devices to blacklist qutip_sim and
+        qutip_sim1. Auto scheduling should select qutip_sim2.
         """
         self._restore_devices()
         job_info = self._make_auto_job_info(
             "test_exclude_device_filter_blacklist",
             flavor_id=self.flavor_id,
             extra_specs={
-                "qcos:exclude_devices": f"{DEVICE_DUMMY},{DEVICE_DUMMY1}"
+                "qcos:exclude_devices": f"{DEVICE_QUTIP_SIM},"
+                f"{DEVICE_QUTIP_SIM1}"
             },
         )
         StLibrary.submit_job(self.admin_client, job_info)
@@ -592,20 +597,22 @@ class TestJob:
             )
         assert success is True
         backend = job_results["result"]["backend"]
-        assert backend == DEVICE_DUMMY2
+        assert backend == DEVICE_QUTIP_SIM2
 
     def test_tech_type_filter(self):
         """TechTypeFilter restricts by technology type via extra_specs.
 
-        Dummy devices are neutral_atom. Use extra_specs
-        qc:tech_types to whitelist neutral_atom so all dummy devices
+        qutip_sim devices are neutral_atom. Use extra_specs
+        qc:tech_types to whitelist neutral_atom so all qutip_sim devices
         remain eligible. Auto scheduling should select one of them.
         """
         self._restore_devices()
         job_info = self._make_auto_job_info(
             "test_tech_type_filter",
             flavor_id=self.flavor_id,
-            extra_specs={"qc:tech_types": Constant.TECH_TYPE_NEUTRAL_ATOM},
+            extra_specs={
+                "qc:tech_types": Constant.TECH_TYPE_GENERIC_SIMULATOR
+            },
         )
         StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
@@ -626,4 +633,4 @@ class TestJob:
             )
         assert success is True
         backend = job_results["result"]["backend"]
-        assert backend in ALL_DUMMY_DEVICES
+        assert backend in ALL_QUTIP_SIM_DEVICES

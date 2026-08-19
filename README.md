@@ -1,16 +1,16 @@
 # WUYUEQbit量子计算操作系统（QCOS）介绍
 
-[![qcos](https://img.shields.io/docker/v/qcos/qcos/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos)](https://hub.docker.com/r/qcos/qcos-sandbox)
-[![qcos-cli](https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos-cli)](https://hub.docker.com/r/qcos/qcos-sandbox)
-[![qcos-sandbox](https://img.shields.io/docker/v/qcos/qcos-sandbox/latest?logo=docker&logoColor=2496ED&labelColor=white&label=qcos-sandbox)](https://hub.docker.com/r/qcos/qcos-sandbox)
+[<img alt="qcos" width="100" height="20" src="https://img.shields.io/docker/v/qcos/qcos/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
+[<img alt="qcos-cli" width="115" height="20" src="https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-cli"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
+[<img alt="qcos-sandbox" width="150" height="20" src="https://img.shields.io/docker/v/qcos/qcos-sandbox/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-sandbox"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
 
-[![PyPI - Version](https://img.shields.io/pypi/v/wy-qcos?logo=pypi&logoColor=white)](https://pypi.org/project/wy-qcos)
-[![PyPI - Wheel](https://img.shields.io/pypi/wheel/wy-qcos?logo=python&logoColor=white)](https://pypi.org/project/wy-qcos)
-[![JENKINS CICD](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins/cicd)](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
-[![GITHUB CICD](https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&logoColor=white&labelColor=blue&label=github/cicd)](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
-[![Codecov](https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg)](https://codecov.io/github/zhaoyi-yewu/qcos)
-[![Documentation Status](https://app.readthedocs.org/projects/qcos/badge/?version=latest&style=plastic)](https://qcos.readthedocs.io/zh-cn/latest/)
-[![License](https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative)](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
+[<img alt="PyPI - Version" width="95" height="20" src="https://img.shields.io/pypi/v/wy-qcos?logo=pypi&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
+[<img alt="PyPI - Wheel" width="90" height="20" src="https://img.shields.io/pypi/wheel/wy-qcos?logo=python&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
+[<img alt="JENKINS CICD" width="140" height="20" src="http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins/cicd"/>](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
+[<img alt="GITHUB CICD" width="130" height="20" src="https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&amp;logoColor=white&amp;labelColor=blue&amp;label=github/cicd"/>](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
+[<img alt="Codecov" width="110" height="20" src="https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg"/>](https://codecov.io/github/zhaoyi-yewu/qcos)
+[<img alt="Documentation Status" width="86" height="18" src="https://app.readthedocs.org/projects/qcos/badge/?version=latest&amp;style=plastic"/>](https://qcos.readthedocs.io/zh-cn/latest/)
+[<img alt="License" width="150" height="20" src="https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative"/>](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
 
 WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 

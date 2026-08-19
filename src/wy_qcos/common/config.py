@@ -499,7 +499,6 @@ class Config:
                 f"Error in config file: {config_file}. Reason: {err_msg}"
             )
         config_values = config_values.unwrap()
-
         if extra_config:
             # Load extra configs
             for section, options in config_values.items():
