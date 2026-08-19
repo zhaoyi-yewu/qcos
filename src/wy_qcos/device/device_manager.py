@@ -107,7 +107,8 @@ class DeviceManager:
                         device.set_max_qubits(device_max_qubits)
                     if max_queued_jobs is not None:
                         device.set_max_queued_jobs(max_queued_jobs)
-                    device.set_enable_device_monitor(enable_device_monitor)
+                    if enable_device_monitor is not None:
+                        device.set_enable_device_monitor(enable_device_monitor)
 
                     # validate default device config schemas
                     success, err_msgs = Library.validate_schema(
