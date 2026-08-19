@@ -156,7 +156,7 @@ bool QuafuVerifier::check_topology() const {
     return false;
   }
 
-  // target_bits 越界检查 + 去重 + 数量校验（基类公共逻辑）
+  // target_bits 越界检查 + 查重 + 数量校验（基类公共逻辑）
   if (!check_target_bits_range_and_count()) return false;
 
   // 全是单比特门，有足够比特即可

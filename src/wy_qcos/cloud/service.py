@@ -135,6 +135,10 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
         "拓扑校验错误：目标比特{}超出拓扑物理比特范围[0,{})",
     ),
     (
+        re.compile(r"^Topology error: duplicate target_bits$"),
+        "拓扑校验错误：自定义比特重复输入",
+    ),
+    (
         re.compile(
             r"^Topology error: target qubits number mismatch with circuit$"
         ),
