@@ -25,7 +25,8 @@ measurement probabilities.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -36,7 +37,6 @@ from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.utils import (
     counts_to_probabilities,
-    counts_to_samples,
     clip_and_normalize,
     expectation_from_probabilities,
     marginal_samples,
@@ -49,13 +49,14 @@ MAX_GLOBAL_MATRIX_QUBITS = 15
 
 
 def build_local_confusion_matrix(
-    per_qubit_confusion: Dict[int, np.ndarray],
+    per_qubit_confusion: dict[int, np.ndarray],
     target_qubits: Sequence[int],
 ) -> np.ndarray:
     """Build Kronecker product of per-qubit confusion matrices.
 
     Args:
-        per_qubit_confusion: Mapping from qubit index to its 2x2 confusion matrix.
+        per_qubit_confusion: Mapping from qubit index to its 2x2
+            confusion matrix.
         target_qubits: Qubit indices to tensor together.
 
     Returns:
@@ -96,12 +97,13 @@ def mitigate_readout(
 
 
 def build_confusion_matrix_from_counts(
-    counts_list: List[Dict[str, int]], num_qubits: int
+    counts_list: list[dict[str, int]], num_qubits: int
 ) -> np.ndarray:
     """Build confusion matrix from calibration measurement counts.
 
     Each entry in counts_list corresponds to one prepared basis state.
-    Column i of the matrix = probability distribution when state i was prepared.
+    Column i of the matrix = probability distribution when state i
+    was prepared.
 
     Args:
         counts_list: List of measurement count dicts, one per prepared state.
@@ -171,11 +173,11 @@ def expectation_from_samples_unbiased(
 def mitigate_observable_from_samples(
     samples: np.ndarray,
     support: Sequence[int],
-    per_qubit: Dict[int, np.ndarray],
+    per_qubit: dict[int, np.ndarray],
     target_qubits_group: Sequence[int],
     marginal_max_support: int = 10,
 ) -> float:
-    """Compute readout-mitigated observable from samples with adaptive strategy.
+    """Compute readout-mitigated observable (adaptive strategy).
 
     Uses exact marginal mitigation for small support (<=threshold),
     and the unbiased estimator for large support.
@@ -225,9 +227,9 @@ class ReadoutMitigation(MitigationBase):
         super().__init__("readout")
         self._calibration_shots = calibration_shots
         self._cache_ttl = cache_ttl
-        self._calibration_data: Optional[Dict[str, Any]] = None
+        self._calibration_data: dict[str, Any] | None = None
 
-    def set_config(self, config: Dict[str, Any]) -> None:
+    def set_config(self, config: dict[str, Any]) -> None:
         super().set_config(config)
         self._calibration_shots = config.get(
             "calibration_shots", self._calibration_shots
@@ -237,12 +239,12 @@ class ReadoutMitigation(MitigationBase):
     def needs_calibration(self) -> bool:
         return True
 
-    def validate_device(self, device_config: Dict[str, Any]) -> tuple:
+    def validate_device(self, device_config: dict[str, Any]) -> tuple:
         return (True, None)
 
     def build_calibration_circuits(
-        self, target_qubits: List[int]
-    ) -> List[Dict[str, Any]]:
+        self, target_qubits: list[int]
+    ) -> list[dict[str, Any]]:
         """Build per-qubit calibration circuits.
 
         For each qubit, generates two circuits:
@@ -279,9 +281,9 @@ class ReadoutMitigation(MitigationBase):
 
     def process_calibration_results(
         self,
-        calibration_results: Dict[int, Dict[str, Dict[str, int]]],
-        target_qubits: List[int],
-    ) -> Dict[str, Any]:
+        calibration_results: dict[int, dict[str, dict[str, int]]],
+        target_qubits: list[int],
+    ) -> dict[str, Any]:
         """Process calibration measurement results into confusion matrices.
 
         Args:
@@ -291,7 +293,7 @@ class ReadoutMitigation(MitigationBase):
         Returns:
             Calibration data with per-qubit confusion matrices.
         """
-        per_qubit_confusion: Dict[int, np.ndarray] = {}
+        per_qubit_confusion: dict[int, np.ndarray] = {}
         for q in target_qubits:
             if q in calibration_results:
                 counts_0 = calibration_results[q].get("0", {})
@@ -307,10 +309,10 @@ class ReadoutMitigation(MitigationBase):
 
     def postprocess(
         self,
-        results: Dict[str, Dict[str, int]],
-        calibration: Optional[Dict[str, Any]] = None,
+        results: dict[str, dict[str, int]],
+        calibration: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Apply readout mitigation to measurement results.
 
         Args:

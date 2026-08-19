@@ -19,13 +19,10 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Type
 
 from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
 from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
-from wy_qcos.error_mitigation.dd_mitigation import DDMitigation
-from wy_qcos.error_mitigation.clifford_fitting import CliffordFitting
 
 
 class MitigationFactory:
@@ -39,19 +36,16 @@ class MitigationFactory:
         >>> rem = factory.create("readout", calibration_shots=8192)
     """
 
-    _registry: Dict[str, Type[MitigationBase]] = {}
+    _registry: dict[str, type[MitigationBase]] = {}
 
     def __init__(self):
         self._registry = {
             "readout": ReadoutMitigation,
             "rem": ReadoutMitigation,
             "zne": ZNEMitigation,
-            "dd": DDMitigation,
-            "clifford_fitting": CliffordFitting,
-            "clifford": CliffordFitting,
         }
 
-    def register(self, name: str, cls: Type[MitigationBase]) -> None:
+    def register(self, name: str, cls: type[MitigationBase]) -> None:
         """Register a mitigation class.
 
         Args:
@@ -87,6 +81,6 @@ class MitigationFactory:
         cls = self._registry[name]
         return cls(**kwargs)
 
-    def list_available(self) -> List[str]:
+    def list_available(self) -> list[str]:
         """List registered mitigation technique names."""
         return sorted(set(self._registry.keys()))

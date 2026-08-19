@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
 import numpy as np
 
 from wy_qcos.error_mitigation.utils import (

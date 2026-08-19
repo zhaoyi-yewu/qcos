@@ -109,8 +109,7 @@ def apply_zne_cz_scaling(
     """
     if scale < 1 or scale % 2 == 0:
         raise ValueError(
-            "ZNE scale factor must be a positive odd integer, "
-            f"got {scale}"
+            f"ZNE scale factor must be a positive odd integer, got {scale}"
         )
     if scale == 1:
         return circuit
@@ -152,9 +151,7 @@ def apply_zne_cz_folding(
     """
     scale = float(scale)
     if scale < 1.0:
-        raise ValueError(
-            f"ZNE scale factor must be >= 1, got {scale}"
-        )
+        raise ValueError(f"ZNE scale factor must be >= 1, got {scale}")
     if abs(scale - 1.0) < 1e-12:
         return circuit
     ops = list(circuit.get_operations())
@@ -233,7 +230,7 @@ def _entropy(probs: np.ndarray) -> float:
     p = p[p > 1e-12]
     if p.size == 0:
         return 0.0
-    return float(-np.sum(p * np.log2(p)))
+    return float(-np.sum(p * np.log2(p)))  # type: ignore[operator]
 
 
 def _prune_scale_points(
@@ -268,8 +265,7 @@ def _prune_scale_points(
         # Saturation: top point ~ maximally mixed -> no signal left.
         if hi_peak < 1.5 * uniform_peak:
             logger.info(
-                "ZNE pruning scale=%.4g: near-uniform (peak=%.4f), "
-                "dropping",
+                "ZNE pruning scale=%.4g: near-uniform (peak=%.4f), dropping",
                 pruned[-1][0],
                 hi_peak,
             )
@@ -470,8 +466,6 @@ def _probs_to_counts(
     return result
 
 
-
-
 class ZNEMitigation(MitigationBase):
     """Zero-noise extrapolation mitigation technique.
 
@@ -522,9 +516,7 @@ class ZNEMitigation(MitigationBase):
         """
         super().__init__("zne")
         if scale_factors is not None:
-            self._scale_factors = tuple(
-                float(s) for s in scale_factors
-            )
+            self._scale_factors = tuple(float(s) for s in scale_factors)
         elif scale_factor is not None:
             self._scale_factors = (1.0, float(scale_factor))
         else:
@@ -604,18 +596,12 @@ class ZNEMitigation(MitigationBase):
         variants: list[dict[str, Any]] = []
         for scale in self._scale_factors:
             scaled = apply_zne_cz_folding(circuit, float(scale))
-            achieved = (
-                count_cz_gates(scaled) / cz_count
-                if cz_count
-                else 1.0
-            )
-            variants.append(
-                {
-                    "label": f"zne_s{achieved:g}",
-                    "circuit": scaled,
-                    "scale_factor": float(scale),
-                }
-            )
+            achieved = count_cz_gates(scaled) / cz_count if cz_count else 1.0
+            variants.append({
+                "label": f"zne_s{achieved:g}",
+                "circuit": scaled,
+                "scale_factor": float(scale),
+            })
             logger.info(
                 "ZNE variant zne_s%.4g: %d CZ -> %d CZ (scale %.3f)",
                 achieved,
@@ -633,9 +619,7 @@ class ZNEMitigation(MitigationBase):
         if label == "original":
             return 1.0
         if label == "scaled":
-            return (
-                float(self._scale_factor) if self._scale_factor else 3.0
-            )
+            return float(self._scale_factor) if self._scale_factor else 3.0
         return None
 
     def postprocess(
@@ -724,19 +708,13 @@ class ZNEMitigation(MitigationBase):
         extrapolated = extrapolate_to_zero(
             scales, probs_matrix, method, self._polynomial_degree
         )
-        extrapolated = np.asarray(
-            extrapolated, dtype=float
-        ).ravel()
+        extrapolated = np.asarray(extrapolated, dtype=float).ravel()
 
-        neg_mass = float(-np.sum(np.minimum(extrapolated, 0.0)))
+        neg_mass = float(-np.sum(np.minimum(extrapolated, 0.0)))  # type: ignore[operator]
         finite = bool(np.all(np.isfinite(extrapolated)))
         used_fallback = False
-        if (
-            not finite
-            or (
-                self._enable_fallback
-                and neg_mass > self._fallback_threshold
-            )
+        if not finite or (
+            self._enable_fallback and neg_mass > self._fallback_threshold
         ):
             logger.warning(
                 "ZNE extrapolation unstable (method=%s, "

@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
 import numpy as np
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
@@ -144,7 +143,7 @@ class TestMitigationManagerTransform:
         mgr.configure({"zne": {"enabled": True}})
         qc = make_test_circuit()
         variants = mgr.transform_circuit(qc)
-        assert len(variants) == 2
+        assert len(variants) == 3
         labels = [v["label"] for v in variants]
         assert "original" in labels
         assert "scaled" in labels

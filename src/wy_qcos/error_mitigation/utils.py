@@ -19,13 +19,13 @@
 
 from __future__ import annotations
 
-from typing import Dict, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
 
 def counts_to_probabilities(
-    counts: Dict[str, int], num_qubits: int
+    counts: dict[str, int], num_qubits: int
 ) -> np.ndarray:
     """Convert measurement counts to a probability vector.
 
@@ -48,7 +48,7 @@ def counts_to_probabilities(
     return probs / total
 
 
-def counts_to_samples(counts: Dict[str, int], num_qubits: int) -> np.ndarray:
+def counts_to_samples(counts: dict[str, int], num_qubits: int) -> np.ndarray:
     """Expand counts into a sample array.
 
     Args:

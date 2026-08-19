@@ -20,15 +20,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.mitigation_factory import MitigationFactory
 from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
 from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
-from wy_qcos.error_mitigation.dd_mitigation import DDMitigation
-from wy_qcos.error_mitigation.clifford_fitting import CliffordFitting
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +49,10 @@ class MitigationManager:
 
     def __init__(self):
         self._factory = MitigationFactory()
-        self._techniques: Dict[str, MitigationBase] = {}
-        self._calibration_data: Dict[str, Any] = {}
+        self._techniques: dict[str, MitigationBase] = {}
+        self._calibration_data: dict[str, Any] = {}
 
-    def configure(self, error_mitigation_config: Dict[str, Any]) -> None:
+    def configure(self, error_mitigation_config: dict[str, Any]) -> None:
         """Configure mitigation techniques from user request.
 
         Args:
@@ -80,7 +78,7 @@ class MitigationManager:
                     "Failed to create mitigation '%s': %s", name, exc
                 )
 
-    def validate_device(self, device_config: Dict[str, Any]) -> tuple:
+    def validate_device(self, device_config: dict[str, Any]) -> tuple:
         """Validate all enabled techniques against device capabilities.
 
         Args:
@@ -103,15 +101,15 @@ class MitigationManager:
         """Whether any mitigation technique is enabled."""
         return len(self._techniques) > 0
 
-    def get_technique(self, name: str) -> Optional[MitigationBase]:
+    def get_technique(self, name: str) -> MitigationBase | None:
         """Get a specific technique by name."""
         return self._techniques.get(name)
 
-    def get_enabled_names(self) -> List[str]:
+    def get_enabled_names(self) -> list[str]:
         """Get names of all enabled techniques."""
         return list(self._techniques.keys())
 
-    def needs_calibration(self) -> List[str]:
+    def needs_calibration(self) -> list[str]:
         """Get names of techniques that need calibration."""
         return [
             name
@@ -122,8 +120,8 @@ class MitigationManager:
     def get_calibration_circuits(
         self,
         circuit: QuantumCircuit,
-        target_qubits: Optional[List[int]] = None,
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        target_qubits: list[int] | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
         """Generate calibration circuits for all techniques that need them.
 
         Args:
@@ -133,26 +131,17 @@ class MitigationManager:
         Returns:
             Dict mapping technique name to list of calibration circuits.
         """
-        all_circuits: Dict[str, List[Dict[str, Any]]] = {}
+        all_circuits: dict[str, list[dict[str, Any]]] = {}
 
         rem = self._techniques.get("readout") or self._techniques.get("rem")
         if rem and isinstance(rem, ReadoutMitigation):
             qubits = target_qubits or list(range(circuit.num_qubits))
             all_circuits["readout"] = rem.build_calibration_circuits(qubits)
 
-        clifford = self._techniques.get(
-            "clifford_fitting"
-        ) or self._techniques.get("clifford")
-        if clifford and isinstance(clifford, CliffordFitting):
-            all_circuits["clifford"] = [
-                {"circuit": qc, "shots": clifford._config.get("shots", 4096)}
-                for qc in clifford.generate_calibration_circuits(circuit)
-            ]
-
         return all_circuits
 
     def store_calibration_data(
-        self, technique_name: str, data: Dict[str, Any]
+        self, technique_name: str, data: dict[str, Any]
     ) -> None:
         """Store calibration results for a technique.
 
@@ -164,7 +153,7 @@ class MitigationManager:
 
     def transform_circuit(
         self, circuit: QuantumCircuit
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Apply circuit-level transformations (DD, ZNE).
 
         Execution order: DD first, then ZNE on the DD-modified circuit.
@@ -175,32 +164,29 @@ class MitigationManager:
         Returns:
             List of circuit variants to execute.
         """
-        current_variants = [
+        current_variants: list[dict[str, Any]] = [
             {"label": "original", "circuit": circuit, "scale_factor": 1}
         ]
 
-        dd = self._techniques.get("dd")
-        if dd and isinstance(dd, DDMitigation) and dd.enabled:
-            dd_variants = dd.transform_circuit(circuit)
-            if dd_variants:
-                current_variants = dd_variants
-
         zne = self._techniques.get("zne")
         if zne and isinstance(zne, ZNEMitigation) and zne.enabled:
-            expanded = []
+            expanded: list[dict[str, Any]] = []
             for variant in current_variants:
                 zne_variants = zne.transform_circuit(variant["circuit"])
-                expanded.extend(zne_variants)
+                for zv in zne_variants:
+                    sf = zv.get("scale_factor", 1)
+                    zv["label"] = "original" if sf == 1 else "scaled"
+                    expanded.append(zv)
             current_variants = expanded
 
         return current_variants
 
     def postprocess_results(
         self,
-        variant_results: Dict[str, Dict[str, int]],
+        variant_results: dict[str, dict[str, int]],
         num_qubits: int,
-        target_qubits: Optional[List[int]] = None,
-    ) -> Dict[str, Any]:
+        target_qubits: list[int] | None = None,
+    ) -> dict[str, Any]:
         """Apply result-level post-processing in cascade order.
 
         Order: REM -> ZNE -> Clifford.
@@ -214,7 +200,7 @@ class MitigationManager:
             Final mitigated results with full metadata.
         """
         current_results = dict(variant_results)
-        pipeline_metadata = {
+        pipeline_metadata: dict[str, Any] = {
             "techniques_applied": [],
             "raw_results": dict(variant_results),
             "pipeline_steps": [],
@@ -248,25 +234,6 @@ class MitigationManager:
             pipeline_metadata["pipeline_steps"].append({
                 "technique": "zne",
                 "metadata": zne_output.get("metadata"),
-            })
-
-        clifford = self._techniques.get(
-            "clifford_fitting"
-        ) or self._techniques.get("clifford")
-        if (
-            clifford
-            and isinstance(clifford, CliffordFitting)
-            and clifford.enabled
-        ):
-            calib = self._calibration_data.get("clifford_fitting", {})
-            clifford_output = clifford.postprocess(
-                current_results, calibration=calib
-            )
-            current_results = clifford_output.get("results", current_results)
-            pipeline_metadata["techniques_applied"].append("clifford_fitting")
-            pipeline_metadata["pipeline_steps"].append({
-                "technique": "clifford_fitting",
-                "metadata": clifford_output.get("metadata"),
             })
 
         return {
