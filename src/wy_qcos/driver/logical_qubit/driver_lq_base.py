@@ -252,12 +252,11 @@ class DriverLogicalQubitBase(DriverBase):
                 )
             else:
                 method_mapping[gate_name](operation.targets[0])
-        cbits = 0
         qc.barrier()
         for key, value in phys_to_logical.items():
             if key in measure_list:
+                cbits = phys_to_logical[key]
                 qc.measure(key, cbits)
-                cbits += 1
         return qc
 
     def get_device_info(self):
@@ -388,8 +387,6 @@ class DriverLogicalQubitBase(DriverBase):
         src_code = data["source_code"]
         final_layout = data["final_layout_dict"]
         final_layout_dict = list(final_layout.values())[0]
-        n_logical = max(final_layout_dict.keys()) + 1
-        [int(final_layout_dict[k]) for k in range(n_logical)]
         phys_to_logical = {
             int(p): int(l) for l, p in final_layout_dict.items()
         }
@@ -501,7 +498,7 @@ class DriverLogicalQubitBase(DriverBase):
             task = self.backend.run(
                 qc,
                 shots=shots,
-                enable_readout_correction=enable_readout_correction,
+                readout_correction=enable_readout_correction,
             )
             return True, None, task
         except Exception as e:
