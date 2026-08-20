@@ -48,6 +48,7 @@ class TestWirecut:
 
     @pytest.mark.smoke
     def test_submit_job_wirecut(self):
+        """Wirecut batch should fail when only part of it can be mapped."""
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_weave_wirecut",
@@ -76,14 +77,12 @@ class TestWirecut:
             )
             if success:
                 result = job_results["result"]
-                assert result["job_status"] == Constant.JOB_STATUS_COMPLETED
+                assert result["job_status"] == Constant.JOB_STATUS_FAILED
                 assert len(result["results"]) == 1
                 circuit_result = result["results"][0]
-                assert circuit_result["num_qubits"] == 3
-                assert circuit_result["results"]
-                assert all(
-                    len(bitstring) == 3
-                    for bitstring in circuit_result["results"].keys()
+                assert (
+                    "Wirecut batch result count does not match subcircuits"
+                    in circuit_result["error"]["message"]
                 )
             else:
                 logger.warning(
