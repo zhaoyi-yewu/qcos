@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import json
-import uuid
 
 from loguru import logger
 from schema import Optional
@@ -433,7 +432,7 @@ class DriverCetcBase(DriverGateBase):
             "version": "1.1",
             "circuit-type": "simple",
             "computerType": self.computer_type,
-            "instanceId": str(uuid.uuid4()),
+            "instanceId": str(job_id),
             "measure-position": list(range(num_qubits)),
             "projectName": str(job_id),
             "quantum-num": num_qubits,
