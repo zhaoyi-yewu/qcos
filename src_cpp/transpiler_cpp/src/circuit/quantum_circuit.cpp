@@ -33,10 +33,9 @@ QuantumCircuit::QuantumCircuit(int num_qubits, int num_clbits,
   }
 }
 
-std::unique_ptr<QuantumCircuit> QuantumCircuit::from_ir(
+std::shared_ptr<QuantumCircuit> QuantumCircuit::from_ir(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int num_qubits) {
-  auto circuit = num_qubits > 0 ? std::make_unique<QuantumCircuit>(num_qubits)
-                                : std::make_unique<QuantumCircuit>();
+  auto circuit = std::make_shared<QuantumCircuit>(num_qubits);
   circuit->append_operations(ir);
   return circuit;
 }

@@ -44,9 +44,9 @@ class QuantumCircuit {
    * @brief 由 IR 序列构造量子线路
    * @param ir 操作 IR 序列
    * @param num_qubits 可选显式量子位数量
-   * @return std::unique_ptr<QuantumCircuit> 新建线路对象
+   * @return std::shared_ptr<QuantumCircuit> 新建线路对象
    */
-  static std::unique_ptr<QuantumCircuit> from_ir(
+  static std::shared_ptr<QuantumCircuit> from_ir(
       const std::vector<std::shared_ptr<BaseOperation>>& ir,
       int num_qubits = 0);
 

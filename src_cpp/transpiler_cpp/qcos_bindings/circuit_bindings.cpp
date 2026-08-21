@@ -20,6 +20,7 @@
 #include <nanobind/stl/complex.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/unique_ptr.h>
 #include <nanobind/stl/vector.h>
 
 #include "circuit/base_operation.h"
@@ -566,7 +567,7 @@ void bind_circuits(nb::module_& m) {
                     ", size=" + std::to_string(self.size()) + ")";
            })
       .def("__deepcopy__", [](const QuantumCircuit& self, nb::dict) {
-        auto copy = std::make_unique<QuantumCircuit>(
+        auto copy = std::make_shared<QuantumCircuit>(
             self.num_qubits(), self.num_clbits(), self.global_phase());
         copy->append_operations(self.get_operations());
         return copy;

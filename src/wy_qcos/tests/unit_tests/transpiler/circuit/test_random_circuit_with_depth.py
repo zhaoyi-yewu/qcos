@@ -60,16 +60,21 @@ class TestRandomCircuitWithDepth:
             )
         assert "Invalid max_operands" in str(e.value)
 
-    def test_invalid_gate_type_negative(self):
+    def test_invalid_gate_type_without_custom_gates(self):
         rcg = RandomCircuitGen()
         with pytest.raises(CircuitException) as e:
-            rcg.random_circuit_with_depth(num_qubits=5, depth=5, gate_type=-1)
-        assert "Invalid gate_type" in str(e.value)
+            rcg.random_circuit_with_depth(
+                num_qubits=5,
+                depth=5,
+                gate_type=2,
+                custom_gates=["unknown_gate"],
+            )
+        assert "Unknown gate name" in str(e.value)
 
     def test_invalid_gate_type_out_of_range(self):
         rcg = RandomCircuitGen()
         with pytest.raises(CircuitException) as e:
-            rcg.random_circuit_with_depth(num_qubits=5, depth=5, gate_type=3)
+            rcg.random_circuit_with_depth(num_qubits=5, depth=5, gate_type=-2)
         assert "Invalid gate_type" in str(e.value)
 
     def test_invalid_density_zero(self):
@@ -328,3 +333,66 @@ class TestRandomCircuitWithDepth:
         assert rcg.num_qubits == 4
         assert rcg.depth >= 5
         assert rcg.size == len(ir)
+
+    def test_custom_gates_single_qubit(self):
+        rcg = RandomCircuitGen()
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=5,
+            depth=8,
+            gate_type=2,
+            custom_gates=["x", "h", "y"],
+            seed=42,
+        )
+        assert isinstance(ir, list)
+        allowed = {"x", "h", "y"}
+        assert set(_gate_names(ir)).issubset(allowed)
+
+    def test_custom_gates_mixed_qubits(self):
+        rcg = RandomCircuitGen()
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=5,
+            depth=8,
+            gate_type=2,
+            custom_gates=["x", "h", "cx", "cz"],
+            seed=42,
+        )
+        assert isinstance(ir, list)
+        allowed = {"x", "h", "cx", "cz"}
+        assert set(_gate_names(ir)).issubset(allowed)
+
+    def test_custom_gates_unknown_gate_error(self):
+        rcg = RandomCircuitGen()
+        with pytest.raises(CircuitException) as e:
+            rcg.random_circuit_with_depth(
+                num_qubits=5,
+                depth=5,
+                gate_type=2,
+                custom_gates=["x", "unknown_gate"],
+            )
+        assert "Unknown gate name" in str(e.value)
+
+    def test_custom_gates_with_reset(self):
+        rcg = RandomCircuitGen()
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=4,
+            depth=6,
+            gate_type=2,
+            custom_gates=["x", "h", "cx"],
+            reset=True,
+            seed=42,
+        )
+        names = _gate_names(ir)
+        assert "reset" in names
+
+    def test_custom_gates_with_measure(self):
+        rcg = RandomCircuitGen()
+        ir = rcg.random_circuit_with_depth(
+            num_qubits=4,
+            depth=6,
+            gate_type=2,
+            custom_gates=["x", "h", "cx"],
+            measure=True,
+            seed=42,
+        )
+        names = _gate_names(ir)
+        assert names.count("measure") == 4
