@@ -17,6 +17,9 @@
 
 #include "circuit/base_operation.h"
 
+#include <algorithm>
+#include <cctype>
+
 namespace qcos {
 
 BaseOperation::BaseOperation(std::string_view name_, std::vector<int> targets_,
@@ -79,7 +82,7 @@ std::string BaseOperation::to_openqasm(const std::string& qubit_prefix) const {
     std::ostringstream arg_oss;
     arg_oss << "(";
     for (size_t i = 0; i < arg_value.size(); ++i) {
-      if (i > 0) arg_oss << ", ";
+      if (i > 0) arg_oss << ",";
 
       double value = arg_value[i];
       if (std::abs(value - M_PI) < 1e-10) {
@@ -105,13 +108,21 @@ std::string BaseOperation::to_openqasm(const std::string& qubit_prefix) const {
   // Build the qubit target part (e.g., q[0], q[1])
   std::ostringstream targets_oss;
   for (size_t i = 0; i < targets.size(); ++i) {
-    if (i > 0) targets_oss << ", ";
+    if (i > 0) targets_oss << ",";
     targets_oss << qubit_prefix << "[" << targets[i] << "]";
   }
   std::string targets_str = targets_oss.str();
 
+  // Convert sync to barrier
+  std::string qasm_name = name;
+  std::transform(qasm_name.begin(), qasm_name.end(), qasm_name.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  if (qasm_name == "sync") {
+    qasm_name = "barrier";
+  }
+
   // Construct the full OpenQASM instruction
-  return name + arg_str + " " + targets_str + ";";
+  return qasm_name + arg_str + " " + targets_str + ";";
 }
 
 }  // namespace qcos

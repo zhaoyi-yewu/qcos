@@ -48,8 +48,8 @@ sx q[2];
 sxdg q[3];
 p(1.57079632679) q[4];
 u1(1.57079632679) q[5];
-u2(1.57079632679, 3.14159265359) q[0];
-u3(1.57079632679, 0.78539816339, 0.39269908169) q[1];"""
+u2(1.57079632679,3.14159265359) q[0];
+u3(1.57079632679,0.78539816339,0.39269908169) q[1];"""
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
         assert tree is not None
@@ -80,21 +80,21 @@ qubit[7] q;
 bit[7] c;
 """
         body = """
-cx q[0], q[1];
-cy q[1], q[2];
-cz q[2], q[3];
-ch q[3], q[4];
-swap q[4], q[5];
-crx(1.57079632679) q[5], q[6];
-cry(1.57079632679) q[0], q[1];
-crz(1.0471975512) q[1], q[2];
-cu1(0.78539816339) q[2], q[3];
-cp(0.62831853072) q[3], q[4];
-cu3(1.57079632679, 0.78539816339, 0.39269908169) q[4], q[5];
-csx q[5], q[6];
-cu(1.57079632679, 0.78539816339, 0.39269908169, 0.19634954079) q[0], q[1];
-rxx(1.57079632679) q[1], q[2];
-rzz(1.0471975512) q[2], q[3];"""
+cx q[0],q[1];
+cy q[1],q[2];
+cz q[2],q[3];
+ch q[3],q[4];
+swap q[4],q[5];
+crx(1.57079632679) q[5],q[6];
+cry(1.57079632679) q[0],q[1];
+crz(1.0471975512) q[1],q[2];
+cu1(0.78539816339) q[2],q[3];
+cp(0.62831853072) q[3],q[4];
+cu3(1.57079632679,0.78539816339,0.39269908169) q[4],q[5];
+csx q[5],q[6];
+cu(1.57079632679,0.78539816339,0.39269908169,0.19634954079) q[0],q[1];
+rxx(1.57079632679) q[1],q[2];
+rzz(1.0471975512) q[2],q[3];"""
 
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
@@ -126,9 +126,9 @@ qubit[3] q;
 bit[3] c;
 """
         body = """
-ccx q[0], q[1], q[2];
-cswap q[0], q[1], q[2];
-rccx q[0], q[1], q[2];"""
+ccx q[0],q[1],q[2];
+cswap q[0],q[1],q[2];
+rccx q[0],q[1],q[2];"""
 
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
@@ -160,9 +160,9 @@ qubit[4] q;
 bit[4] c;
 """
         body = """
-rc3x q[0], q[1], q[2], q[3];
-c3x q[0], q[1], q[2], q[3];
-c3sqrtx q[0], q[1], q[2], q[3];"""
+rc3x q[0],q[1],q[2],q[3];
+c3x q[0],q[1],q[2],q[3];
+c3sqrtx q[0],q[1],q[2],q[3];"""
 
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
@@ -194,7 +194,7 @@ qubit[5] q;
 bit[5] c;
 """
         body = """
-c4x q[0], q[1], q[2], q[3], q[4];"""
+c4x q[0],q[1],q[2],q[3],q[4];"""
 
         openqasm2_data = openqasm2_header + body
         tree = get_abs_tree(openqasm2_data)
