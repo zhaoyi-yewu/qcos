@@ -15,9 +15,14 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import os
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
-from setuptools import setup, find_packages
+from setuptools import Extension, find_packages, setup
+from setuptools.command.build_ext import build_ext as _build_ext
 
 
 def get_files(base_dirs, dest_dir_prefix="",
@@ -96,8 +101,86 @@ data_files.extend(db_migration_files)
 data_files.append(("tests", ["src/wy_qcos/tests/pytest.ini"]))
 data_files.append(("share/wy_qcos/cicd/", ["cicd/run-tests.sh"]))
 data_files.append(("share/wy_qcos/scripts/", ["build-scripts/db-manager.sh"]))
+
+
+# Build the C++ extension (high_performance) via CMake. Declaring it as an
+# Extension makes setuptools treat the .so as a real compiled extension, so the
+# wheel gets a correct platform/ABI tag (e.g. cp314-cp314-macosx_..._x86_64)
+# instead of py3-none-any. No package_data / MANIFEST.in needed.
+_PROJECT_ROOT = Path(__file__).parent.resolve()
+_CPP_SOURCE_DIR = _PROJECT_ROOT / "src_cpp" / "transpiler_cpp"
+
+
+class CMakeExtension(Extension):
+    """Extension built by CMake."""
+
+    def __init__(self, name):
+        super().__init__(name, sources=[])
+
+
+class CMakeBuildExt(_build_ext):
+    """Run CMake configure/build for the extension."""
+
+    def build_extension(self, ext):
+        ext_path = Path(self.get_ext_fullpath(ext.name))
+        ext_path.parent.mkdir(parents=True, exist_ok=True)
+
+        build_dir = Path(self.build_temp) / "cmake_high_performance"
+        build_dir.mkdir(parents=True, exist_ok=True)
+
+        subprocess.check_call(
+            [
+                "cmake",
+                "-S",
+                str(_CPP_SOURCE_DIR),
+                "-B",
+                str(build_dir),
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+                "-DUSE_PYQCOS=ON",
+                f"-DPython_EXECUTABLE={sys.executable}",
+            ]
+        )
+        subprocess.check_call(
+            [
+                "cmake",
+                "--build",
+                str(build_dir),
+                "--target",
+                "high_performance",
+                "--config",
+                "Release",
+                "--parallel",
+                str(self._parallel_jobs()),
+            ]
+        )
+
+        built = self._find_built_so()
+        shutil.copyfile(str(built), str(ext_path))
+
+    @staticmethod
+    def _find_built_so():
+        dist_dir = _CPP_SOURCE_DIR / "dist"
+        candidates = sorted(dist_dir.rglob("high_performance*.so"))
+        if not candidates:
+            raise RuntimeError(
+                f"high_performance .so not found under {dist_dir} "
+                "(did the CMake build succeed?)"
+            )
+        return candidates[0]
+
+    @staticmethod
+    def _parallel_jobs():
+        n = os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL")
+        if n and n.isdigit():
+            return int(n)
+        return os.cpu_count() or 1
+
+
 setup(
     packages=find_packages(where="src"),
     include_package_data=True,
-    data_files=data_files
+    ext_modules=[CMakeExtension("wy_qcos.transpiler.high_performance")],
+    cmdclass={"build_ext": CMakeBuildExt},
+    data_files=data_files,
 )
