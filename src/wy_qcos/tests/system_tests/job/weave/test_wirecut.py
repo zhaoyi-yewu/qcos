@@ -65,7 +65,10 @@ class TestWirecut:
                 "max_qubits": 2,
             },
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": {"enable_na_move": True},
+            "transpiler_options": {
+                "enable_mapping": True,
+                "enable_na_move": True,
+            },
             "profiling": None,
             "callbacks": None,
             "dry_run": True,

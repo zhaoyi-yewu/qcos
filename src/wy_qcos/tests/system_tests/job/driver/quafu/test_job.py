@@ -87,7 +87,7 @@ class TestJob:
             "shots": 1024,
             "circuit_aggregation": None,
             "driver_options": None,
-            "transpiler": Constant.TRANSPILER_DUMMY,
+            "transpiler": Constant.TRANSPILER_CMSS,
             "transpiler_options": None,
             "profiling": None,
             "callbacks": None,
