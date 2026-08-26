@@ -453,6 +453,10 @@ class AutoScheduler:
     def build_request_spec(
         code_type: str = "",
         num_qubits: int = 0,
+        shots: int | None = None,
+        circuit_aggregation: str | None = None,
+        driver_options: dict | None = None,
+        transpiler_options: dict | None = None,
         flavor_id: str | None = None,
         extra_specs: dict | None = None,
         flavor_manager: FlavorManager | None = None,
@@ -462,6 +466,12 @@ class AutoScheduler:
         Args:
             code_type: code type (qasm, qasm2, qasm3, qubo)
             num_qubits: number of qubits in source code
+            shots: number of shots from the job request
+            circuit_aggregation: circuit aggregation type from the job
+                request (None, "None", "internal", or "external")
+            driver_options: driver options dict from the job request
+            transpiler_options: transpiler options dict from the job
+                request
             flavor_id: flavor UUID string
             extra_specs: extra scheduling specs
             flavor_manager: flavor manager for looking up flavor specs
@@ -476,6 +486,10 @@ class AutoScheduler:
         return RequestSpec(
             code_type=code_type if code_type else None,
             num_qubits=num_qubits,
+            shots=shots,
+            circuit_aggregation=circuit_aggregation,
+            driver_options=driver_options,
+            transpiler_options=transpiler_options,
             flavor_id=flavor_id,
             flavor_specs=flavor_specs,
             extra_specs=extra_specs or {},

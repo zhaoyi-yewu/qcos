@@ -40,6 +40,14 @@ class DeviceState:
     supported_code_types: list[str] = field(default_factory=list)
     supported_basis_gates: list[str] | None = None
     details: dict = field(default_factory=dict)
+    # input constrains from driver (e.g. job_shots schema)
+    input_constrains: dict = field(default_factory=dict)
+    # whether the driver supports circuit aggregation
+    enable_circuit_aggregation: bool = False
+    # driver_options schema from the driver
+    driver_options_schema: dict | None = None
+    # transpiler_options schema from the driver
+    transpiler_options_schema: dict | None = None
 
     # Dynamic load info (from Prefect)
     queued_job_count: int = 0
@@ -91,6 +99,16 @@ class DeviceState:
             supported_basis_gates=driver.get_supported_basis_gates(),
             details=device.details or {},
             max_queued_jobs=device.get_max_queued_jobs(),
+            input_constrains=getattr(driver, "input_constrains", {}) or {},
+            enable_circuit_aggregation=getattr(
+                driver, "enable_circuit_aggregation", False
+            ),
+            driver_options_schema=getattr(
+                driver, "driver_options_schema", None
+            ),
+            transpiler_options_schema=getattr(
+                driver, "transpiler_options_schema", None
+            ),
         )
 
     def set_load_info(
