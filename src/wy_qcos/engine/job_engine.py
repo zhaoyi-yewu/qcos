@@ -185,12 +185,13 @@ def init_driver(
 
 
 @task(persist_result=False)
-def init_transpiler(transpiler_class_info, transpiler_options):
+def init_transpiler(transpiler_class_info, transpiler_options, driver):
     """Init transpiler instance.
 
     Args:
         transpiler_class_info: transpiler class info
         transpiler_options: transpiler options
+        driver: driver
 
     Returns:
         transpiler
@@ -215,6 +216,25 @@ def init_transpiler(transpiler_class_info, transpiler_options):
 
         transpiler_class = getattr(transpiler_module, transpiler_class_name)
         transpiler = transpiler_class()
+
+        # Fill in default values from driver.transpiler_options_schema
+        # for keys missing in transpiler_options. Only Optional markers
+        # with a default value are applied; keys without a default are
+        # left untouched.
+        if transpiler_options is None:
+            transpiler_options = {}
+        schema_dict = driver.transpiler_options_schema
+        schema = Library.convert_schema(schema_dict)
+        if schema:
+            for key, _validator in schema.items():
+                key_name = getattr(key, "schema", key)
+                if not isinstance(key_name, str):
+                    continue
+                if key_name in transpiler_options:
+                    continue
+                default = getattr(key, "default", None)
+                if hasattr(key, "default"):
+                    transpiler_options[key_name] = default
         if transpiler_options:
             transpiler.update_transpiler_options(transpiler_options)
         return {"transpiler": transpiler, "error": None}
@@ -358,9 +378,40 @@ def driver_run(job_info, driver, num_qubits, data):
                 qec_options=qec_options,
             )
 
+        # post run
+        post_run(driver)
+
+        # done
+        driver.set_progress_by_task(driver.TASK_STAGE_COMPLETE)
+
         return format_run_results(driver, job_id, data["index"])
     except Exception as e:
         return {"results": None, "metadata": {}, "error": ValueError(str(e))}
+
+
+def post_run(driver):
+    """Post run task.
+
+    Args:
+        driver: device driver
+    """
+    sleep = driver.driver_options.get("sleep", None)
+    if sleep:
+        current_progress = driver.get_progress()
+        progress_range = 100 - current_progress
+
+        sleep_count = 1
+        while sleep_count <= sleep:
+            logger.info(f"sleep: {sleep_count} / {sleep}")
+
+            # Calculate progress within wait_task to complete range
+            progress_ratio = sleep_count / sleep
+            new_progress = int(
+                current_progress + progress_ratio * progress_range
+            )
+            driver.set_progress(new_progress)
+            sleep_count += 1
+            time.sleep(1)
 
 
 def driver_cancel(job_id, driver):
@@ -1111,6 +1162,7 @@ def run_code(
         future_transpiler = init_transpiler.submit(
             job_info["transpiler"],
             job_data.get("transpiler_options", None),
+            driver,
         )
         transpiler_task_result = future_transpiler.result()
         # init transpiler: error handling
