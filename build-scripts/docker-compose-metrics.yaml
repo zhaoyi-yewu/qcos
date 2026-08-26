@@ -25,8 +25,7 @@ services:
     tmpfs:
       - /tmp
     volumes:
-      - /etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - /etc/prometheus/rules:/etc/prometheus/rules
+      - /etc/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -35,7 +34,7 @@ services:
       - '--web.enable-lifecycle'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.listen-address=:${PROMETHEUS_PORT:-9090}'
+      - '--web.listen-address=:${PROMETHEUS_lPORT:-9090}'
     environment:
       - METRICS_TARGET=${METRICS_TARGET:-host.docker.internal:19400}
   alertmanager:
@@ -50,12 +49,11 @@ services:
       - /tmp
     volumes:
       - /etc/alertmanager/:/etc/alertmanager/
-      - /etc/alertmanager-data:/alertmanager-data
-
+      - alertmanager-data:/alertmanager-data
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager-data'
-      - '--web.listen-address=:${ALERTMANAGER_PORT:-9093}'
+      - '--web.listen-address=:${ALERTMANAGER_LISTEN_PORT:-9093}'
     depends_on:
       - prometheus
     logging:
@@ -77,7 +75,7 @@ services:
       - grafana-data:/var/lib/grafana
       - /etc/grafana/provisioning:/etc/grafana/provisioning
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-123456}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-http://localhost:3000}
       - TZ=Asia/Shanghai
@@ -86,6 +84,8 @@ services:
 
 volumes:
   prometheus-data:
+    driver: local
+  alertmanager-data:
     driver: local
   grafana-data:
     driver: local
