@@ -29,6 +29,7 @@ function usage {
     echo "  -s, --sandbox Build sandbox image"
     echo "  -q, --qcos    Build QCOS image"
     echo "  -c, --cli     Build QCOS cli image"
+    echo "  -w, --webui   Build QCOS webui image"
     echo "  -a, --all     Build all images"
     echo "  -t, --tag     image tag/version"
     echo "  -n, --no-save Don't export/save images"
@@ -36,7 +37,7 @@ function usage {
     echo ""
 }
 
-opts=$(getopt -o bsqcat:nh --long base,sandbox,qcos,cli,all,tag:,no-save,help -- "$@")
+opts=$(getopt -o bsqcwat:nh --long base,sandbox,qcos,cli,webui,all,tag:,no-save,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -47,6 +48,7 @@ base=false
 sandbox=false
 qcos=false
 cli=false
+webui=false
 all=false
 save=true
 
@@ -57,6 +59,7 @@ while true; do
     -s | --sandbox ) sandbox=true;  shift ;;
     -q | --qcos )  qcos=true;  shift ;;
     -c | --cli )   cli=true;   shift ;;
+    -w | --webui ) webui=true;   shift ;;
     -a | --all )   all=true;   shift ;;
     -t | --tag )   tag="$2";   shift 2;;
     -n | --no-save ) save=false;   shift ;;
@@ -88,8 +91,9 @@ OUTPUT_QCOS_BASE_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_BASE_IMAGE_NAME}-amd64-${
 OUTPUT_SANDBOX_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-sandbox-amd64-${image_tag}.tar.xz
 OUTPUT_QCOS_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-amd64-${image_tag}.tar.xz
 OUTPUT_QCOS_CLI_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-cli-amd64-${image_tag}.tar.xz
+OUTPUT_QCOS_WEBUI_IMAGE_PATH=${OUTPUT_IMAGE_DIR}/${QCOS_IMAGE_NAME}-webui-amd64-${image_tag}.tar.xz
 
-if [ "${all,,}" = false -a "${base,,}" = false -a "${sandbox,,}" = false -a "${qcos,,}" = false -a "${cli,,}" = false ]; then
+if [ "${all,,}" = false -a "${base,,}" = false -a "${sandbox,,}" = false -a "${qcos,,}" = false -a "${cli,,}" = false -a "${webui,,}" = false ]; then
   qcos=true
 fi
 
@@ -243,6 +247,29 @@ function build_cli_image {
   fi
 }
 
+function build_webui_image {
+  QCOS_WEBUI_CONTAINER_NAME=${QCOS_CONTAINER_NAME}-webui
+
+  echo -e "\nBuilding docker image: ${QCOS_WEBUI_IMAGE_NAME}:${image_tag}"
+
+  # build docker image: qcos-webui
+  cd ${BUILD_SCRIPTS_DIR}
+  cp -rf ./webui/Dockerfile .build-context/
+  DOCKER_BUILDKIT=0 docker build --no-cache --rm --network host \
+    --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
+    --build-arg CONTAINER_NAME=${QCOS_WEBUI_CONTAINER_NAME} \
+    --build-arg QCOS_WEBUI_IMAGE_VERSION=${image_tag} \
+    --build-arg DEV=${DEV} \
+    --build-arg NPM_MIRROR=${NPM_MIRROR} \
+    -t ${QCOS_WEBUI_IMAGE_NAME}:${image_tag} .build-context
+
+  # save image
+  if [ "${save,,}" = true ];then
+    echo -e "\nExporting docker image: ${OUTPUT_QCOS_WEBUI_IMAGE_PATH}"
+    docker save ${QCOS_WEBUI_IMAGE_NAME}:${image_tag} | xz -c --fast -T 0 > ${OUTPUT_QCOS_WEBUI_IMAGE_PATH}
+  fi
+}
+
 function build_image {
   rm -rf ${TEMP_PKG_DIR}
   mkdir -p ${TEMP_PKG_DIR}
@@ -258,6 +285,7 @@ function build_image {
   if [ "${all,,}" = true ];then
     cli=true
     qcos=true
+    webui=true
   fi
 
   if [ "${base,,}" = true ];then
@@ -292,6 +320,10 @@ function build_image {
     build_cli_image
   fi
 
+  if [ "${webui,,}" = true ];then
+    build_webui_image
+  fi
+
   # print info of exported images
   echo
   if [ "${base,,}" = true ];then
@@ -320,6 +352,13 @@ function build_image {
       echo -e "\nExported qcos docker image: ${OUTPUT_QCOS_IMAGE_PATH}"
     else
       echo -e "\nExported qcos docker image: skipped"
+    fi
+  fi
+  if [ "${webui,,}" = true ];then
+    if [ "${save,,}" = true ];then
+      echo -e "\nExported qcos-webui docker image: ${OUTPUT_QCOS_WEBUI_IMAGE_PATH}"
+    else
+      echo -e "\nExported qcos-webui docker image: skipped"
     fi
   fi
 }

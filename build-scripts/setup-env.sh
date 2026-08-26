@@ -70,4 +70,5 @@ if [ "${DEV,,}" = "true" ]; then
   export QCOS_IMAGE_VERSION="dev"
   export QCOS_CONTAINER_NAME="${QCOS_CONTAINER_NAME}-dev"
   export SANDBOX_IMAGE_VERSION="dev"
+  export QCOS_WEBUI_IMAGE_NAME="${QCOS_WEBUI_IMAGE_NAME}-dev"
 fi
