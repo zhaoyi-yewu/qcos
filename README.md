@@ -6,11 +6,11 @@
 
 [<img alt="PyPI - Version" width="95" height="20" src="https://img.shields.io/pypi/v/wy-qcos?logo=pypi&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
 [<img alt="PyPI - Wheel" width="90" height="20" src="https://img.shields.io/pypi/wheel/wy-qcos?logo=python&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
-[<img alt="JENKINS CICD" width="140" height="20" src="http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins/cicd"/>](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
-[<img alt="GITHUB CICD" width="130" height="20" src="https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&amp;logoColor=white&amp;labelColor=blue&amp;label=github/cicd"/>](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
 [<img alt="Codecov" width="110" height="20" src="https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg"/>](https://codecov.io/github/zhaoyi-yewu/qcos)
 [<img alt="Documentation Status" width="86" height="18" src="https://app.readthedocs.org/projects/qcos/badge/?version=latest&amp;style=plastic"/>](https://qcos.readthedocs.io/zh-cn/latest/)
 [<img alt="License" width="150" height="20" src="https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative"/>](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
+[<img alt="GITHUB CICD" width="130" height="20" src="https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&amp;logoColor=white&amp;labelColor=blue&amp;label=github/cicd"/>](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
+[<img alt="JENKINS CICD" width="140" height="20" src="http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins/cicd"/>](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
 
 WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 
@@ -21,14 +21,16 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 ## 2. 功能特性
 
 | 类别 | 功能 |
-|:---------|:--------------------------------------------------------------------------------------|
+|:------|:-------------------------------------------------------|
 | 交互方式 | 命令行、API、SDK、GUI（规划） |
-| 系统服务 | 配置管理、日志管理、用户管理、监控告警、运维调试 |
+| 用户管理 | 多租户隔离、多用户、RBAC（基于角色的）API 权限控制、JWT登录认证 |
 | 设备管理 | 校准操作（规划）、设备配置/查询、设备可用率统计 |
 | 作业管理 | 作业提交、取消、删除、状态查询、结果查询、自动调度 |
-| 调度策略 | Flavor预设策略、设备分组、自动调度（Filter+Weigher）、extra_specs动态约束 |
+| 自动调度 | Flavor预设调度策略、设备分组、过滤器Filter、权重器Weigher、extra_specs动态约束 |
 | 量子引擎 | QASM解析、逻辑门分解、量子比特映射、编译优化、线路聚合、线路拆分、量子纠错QEC（规划） |
 | 驱动插件 | 各类超导、中性原子、离子阱、光量子以及模拟器等，详见量子硬件兼容性说明 |
+| 系统服务 | 配置管理、日志管理、监控告警、运维调试 |
+| 监控告警 | 支持Prometheus指标采集、Alertmanager告警分发及Grafana 可视化面板 |
 
 ## 3. 安装使用
 
