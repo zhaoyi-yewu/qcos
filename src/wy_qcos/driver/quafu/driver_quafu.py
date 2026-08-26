@@ -18,6 +18,7 @@
 
 from loguru import logger
 from quark import Task
+from schema import And, Optional, Schema
 
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
@@ -56,7 +57,7 @@ class DriverQuafu(DriverGateBase):
             "Shenglian",
         ]
         self.chip_name = None
-        self.transpiler = Constant.TRANSPILER_DUMMY
+        self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_H,
@@ -69,7 +70,23 @@ class DriverQuafu(DriverGateBase):
         self.max_qubits = 84
         self.default_data_type = DriverBase.DATA_TYPE_QASM2
         self.supported_code_types = [Constant.CODE_TYPE_QASM]
-        self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
+        self.supported_transpilers = [
+            Constant.TRANSPILER_CMSS,
+            Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
+        ]
+        # input constrains for scheduling
+        self.input_constrains["job_shots"] = Schema(
+            And(
+                int,
+                lambda x: 1024 <= x <= 102400,  # min: 1024, max: 102400
+                lambda x: x % 1024 == 0,  # must be multiple of 1024
+            )
+        )
+        # enable_mapping: true, false are all allowed
+        self.transpiler_options_schema["enable_mapping"] = (
+            Optional("enable_mapping", default=False),
+            bool,
+        )
 
     def init_driver(self):
         """Init driver."""
@@ -250,7 +267,6 @@ class DriverQuafu(DriverGateBase):
 
         # 6. Save results and set driver status to ONLINE
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     @classmethod
     def shots_to_repeat(cls, shots):

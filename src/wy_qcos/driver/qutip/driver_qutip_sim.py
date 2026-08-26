@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import time
 import numpy as np
 from loguru import logger
 
@@ -70,7 +69,6 @@ class DriverQutipSim(DriverGateBase):
         self.enable_circuit_aggregation = True
         self.max_qubits = 10
         self.driver_options_schema.update({
-            Optional("sleep"): int,
             Optional("max_qubits"): int,
         })
 
@@ -236,15 +234,6 @@ class DriverQutipSim(DriverGateBase):
         probabilities = result.get_probabilities()
         count_probs = self.convert_result(zip(states, probabilities), shots)
 
-        sleep = self.driver_options.get("sleep", None)
-        if sleep:
-            self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-            sleep_count = 1
-            while sleep_count <= sleep:
-                logger.info(f"sleep: {sleep_count} / {sleep}")
-                time.sleep(1)
-                sleep_count += 1
-
         self.set_results(
             job_id,
             data_index,
@@ -252,7 +241,6 @@ class DriverQutipSim(DriverGateBase):
             result_type=Constant.RESULT_TYPE_SAMPLING,
         )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def cancel(self, job_id):
         """Cancel running job in driver.

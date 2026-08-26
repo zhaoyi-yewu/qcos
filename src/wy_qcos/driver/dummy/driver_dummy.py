@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 import copy
-import time
 
 from loguru import logger
 from schema import Optional, Or
@@ -56,11 +55,16 @@ class DriverDummy(DriverGateBase):
         # pylint: disable=duplicate-code
         self.extra_configs = {}
         self.driver_options_schema.update({
-            Optional("sleep"): int,
             Optional("enable_wirecut"): bool,
             Optional("max_qubits"): int,
             Optional("wirecut_qubit_width"): int,
         })
+        # transpiler_option schema for specific driver
+        # enable_mapping: only true is allowed
+        self.transpiler_options_schema["enable_mapping"] = (
+            Optional("enable_mapping", default=True),
+            bool,
+        )
 
     def init_driver(self):
         """Init driver."""
@@ -156,32 +160,6 @@ class DriverDummy(DriverGateBase):
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
 
-        # handle extra_configs
-        sleep = self.driver_options.get("sleep", None)
-        if sleep:
-            self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-            # Get progress range: TASK_STAGE_WAIT_TASK to TASK_STAGE_COMPLETE
-            wait_task_progress = self.task_stages.get(
-                self.TASK_STAGE_WAIT_TASK, 50
-            )
-            complete_progress = self.task_stages.get(
-                self.TASK_STAGE_COMPLETE, 100
-            )
-            progress_range = complete_progress - wait_task_progress
-
-            sleep_count = 1
-            while sleep_count <= sleep:
-                logger.info(f"sleep: {sleep_count} / {sleep}")
-
-                # Calculate progress within wait_task to complete range
-                progress_ratio = sleep_count / sleep
-                current_progress = int(
-                    wait_task_progress + progress_ratio * progress_range
-                )
-                self.set_progress(current_progress)
-                sleep_count += 1
-                time.sleep(1)
-
         # dummy driver results
         result = self.get_fake_results(num_qubits, shots, data)
         self.set_results(
@@ -192,7 +170,6 @@ class DriverDummy(DriverGateBase):
             result_type=Constant.RESULT_TYPE_SAMPLING,
         )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def cancel(self, job_id):
         """Cancel running job in driver.

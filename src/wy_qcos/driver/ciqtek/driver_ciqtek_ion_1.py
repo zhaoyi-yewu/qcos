@@ -202,7 +202,6 @@ class DriverCiqtekIon1(DriverGateBase):
             result_type=Constant.RESULT_TYPE_SAMPLING,
         )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def get_access_token(self, app_id, app_secret):
         """Get access token.

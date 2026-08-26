@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 from loguru import logger
+from schema import Optional
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.device.device import Device
@@ -44,6 +45,33 @@ class DriverGateBase(DriverBase):
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC
         # supported basis gates, subclasses should override this
         self.supported_basis_gates = []
+        # transpiler_option schema for specific driver
+        self.transpiler_options_schema = {
+            "optimization_level": (
+                Optional(
+                    "optimization_level",
+                    default=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+                ),
+                int,
+            ),
+            "enable_na_move": (
+                Optional("enable_na_move", default=False),
+                bool,
+            ),
+            "na_mapping_type": (Optional("na_mapping_type"), str),
+            "enable_mapping": (
+                Optional("enable_mapping", default=False),
+                bool,
+            ),
+            "sc_mapping_options": (
+                Optional("sc_mapping_options", default=False),
+                dict,
+            ),
+            "enable_wirecut": (
+                Optional("enable_wirecut", default=False),
+                bool,
+            ),
+        }
 
     def init_driver(self):
         """Init driver."""

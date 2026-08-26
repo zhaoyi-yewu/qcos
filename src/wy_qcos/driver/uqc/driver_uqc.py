@@ -252,7 +252,6 @@ class DriverUQCMatrix2(DriverGateBase):
 
         # 6. Save results and set driver status to ONLINE
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def check_task_status(self, task_id, expect_task_status):
         """Check task status.

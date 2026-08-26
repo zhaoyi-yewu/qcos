@@ -155,6 +155,7 @@ class DriverBase:
         }
         # driver_options schema
         self.driver_options_schema = {
+            Optional("sleep"): int,
             Optional("enable_wirecut"): bool,
             Optional("wirecut_qubit_width"): int,
             Optional("max_job_wait_time"): int,
@@ -171,6 +172,15 @@ class DriverBase:
                 }
             },
         }
+
+        # transpiler_option schema for specific driver
+        self.transpiler_options_schema = {}
+
+        # constrains for scheduling
+        self.input_constrains = {
+            "job_shots": None,
+        }
+
         self.max_job_wait_time = Constant.DEFAULT_JOB_WAIT_TIME  # 7 days
         self.job_query_interval = Constant.DEFAULT_JOB_QUERY_INTERVAL
 
