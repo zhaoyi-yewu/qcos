@@ -30,16 +30,6 @@ mkdir -p /var/qcos/db/postgresql
 mkdir -p /var/qcos/backup/database
 mkdir -p /etc/qcos/postgres
 mkdir -p /var/prefect/
-mkdir -p /etc/prometheus
-cp -r ${QCOS_LOCAL_SRC_DIR}/etc/prometheus /etc/prometheus
-mkdir -p /etc/grafana/
-cp -r ${QCOS_LOCAL_SRC_DIR}/etc/grafana /etc/grafana
-mkdir -p /etc/alertmanager
-cp -r ${QCOS_LOCAL_SRC_DIR}/etc/alertmanager /etc/alertmanager
-if [ -n "${SMTP_HOST}" ] && [ -n "${ALERT_RECEIVE_EMAIL}" ]; then
-  export SMTP_HOST SMTP_PORT SMTP_FROM SMTP_AUTH_USER SMTP_AUTH_PASSWORD ALERT_RECEIVE_EMAIL
-  envsubst < /etc/alertmanager/alertmanager.yml > /etc/alertmanager/alertmanager.yml.tmp && mv /etc/alertmanager/alertmanager.yml.tmp /etc/alertmanager/alertmanager.yml
-fi
 
 # copy postgresql config files
 rm -rf /etc/qcos/prefect/profiles.toml
@@ -137,14 +127,4 @@ else
   docker-compose -f ${new_docker_compose_file} down
   docker-compose -f ${new_docker_compose_file} up -d
   echo "Run QCOS bash: docker exec -it qcos-dev bash"
-fi
-
-# start metrics
-docker_compose_file="./docker-compose-metrics.yaml"
-new_docker_compose_file="./.docker-compose-metrics.yaml"
-create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
-
-docker-compose -f ${new_docker_compose_file} down
-if [ "${ENABLE_METRICS,,}" = "true" ]; then
-  docker-compose -f ${new_docker_compose_file} up -d
 fi
