@@ -62,6 +62,24 @@ Filter 分为必须过滤器和可选过滤器，可选过滤器仅在相关参�
 - ``DeviceAvailabilityFilter`` - 设备可用率满足阈值（来自 ``qc:device_availability``）
 - ``DeviceNameFilter`` - 设备名白名单/黑名单（来自 ``qcos:devices`` / ``qcos:exclude_devices``）
 - ``CodeTypeFilter``（覆盖模式）- 当 ``qcos:code_types`` 指定时，覆盖 job 的 code_type
+- ``InputConstraintsFilter`` - 校验作业输入参数是否满足驱动的约束 schema，
+  包含四项检查：
+
+  * **job_shots**：通过 ``Library.validate_schema`` 校验作业的
+    ``shots`` 是否满足驱动声明的
+    ``input_constrains`` 中 job_shots 的 schema。当 shots 为 None
+    或驱动未声明约束时放行。
+  * **circuit_aggregation**：校验作业的 ``circuit_aggregation``
+    是否匹配驱动的 ``enable_circuit_aggregation`` 能力。当驱动
+    支持聚合时任何值放行；不支持时仅 None 或 "None" 放行。
+  * **driver_options**：通过 ``Library.validate_schema`` 校验作业的
+    ``driver_options`` 是否满足驱动声明的 ``driver_options_schema``。
+    当 driver_options 为 None 或驱动未声明 schema 时放行。
+  * **transpiler_options**：通过 ``Library.validate_schema`` 校验
+    作业的 ``transpiler_options`` 是否满足驱动声明的
+    ``transpiler_options_schema``（经 ``Library.convert_schema``
+    转换）。当 transpiler_options 为 None 或驱动未声明 schema
+    时放行。
 
 Weigher权重器
 ^^^^^^^^^^^^^^^^^^^^
@@ -200,16 +218,19 @@ Filter 和 Weigher 列表。AutoScheduler 在初始化时会通过
    ENABLE_AUTO_SCHEDULE = true
 
    # enabled filter class names; empty list uses all DEFAULT_FILTERS
-   # available filters: CodeTypeFilter, DeviceStatusFilter,
+   # available filters:
+   #   CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
    #   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
-   #   QueueLimitFilter, DeviceAvailabilityFilter, DeviceNameFilter,
-   #   DeviceGroupFilter
+   #   QueueLimitFilter, InputConstraintsFilter,
+   #   DeviceAvailabilityFilter, DeviceNameFilter, DeviceGroupFilter
    ENABLED_FILTERS = [
        "CodeTypeFilter",
+       "InputConstraintsFilter",
        "DeviceStatusFilter",
        "TechTypeFilter",
        "QubitCountFilter",
        "QueueLimitFilter",
+       "InputConstraintsFilter",
        "GateFidelityFilter",
        "DeviceAvailabilityFilter",
        "DeviceNameFilter",
