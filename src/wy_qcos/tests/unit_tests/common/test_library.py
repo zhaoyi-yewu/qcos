@@ -1973,3 +1973,55 @@ class TestLibrary:
         """Test get_max_qubits_from_source_code without code_type."""
         source_code = ["qreg q[3];", "qubit[7] q;"]
         assert Library.get_max_qubits_from_source_code(source_code) == 7
+
+    # ========== Schema Conversion ==========
+
+    @pytest.mark.smoke
+    def test_convert_schema_basic(self):
+        """Test convert_schema with driver-format dict (Optional, type)."""
+        from schema import Optional
+
+        schema_dict = {
+            "optimization_level": (
+                Optional("optimization_level", default=1),
+                int,
+            ),
+            "enable_mapping": (
+                Optional("enable_mapping", default=False),
+                bool,
+            ),
+        }
+        result = Library.convert_schema(schema_dict)
+        assert len(result) == 2
+        # keys should be Optional markers
+        for key in result:
+            assert hasattr(key, "schema")
+            assert hasattr(key, "default")
+
+    def test_convert_schema_empty(self):
+        """Test convert_schema with empty dict."""
+        assert Library.convert_schema({}) == {}
+
+    def test_convert_schema_preserves_keys(self):
+        """Test convert_schema preserves the Optional marker as key."""
+        from schema import Optional
+
+        opt = Optional("foo", default=42)
+        schema_dict = {"foo": (opt, int)}
+        result = Library.convert_schema(schema_dict)
+        key = list(result.keys())[0]
+        assert key is opt
+        assert result[opt] is int
+
+    def test_convert_schema_values(self):
+        """Test convert_schema maps values correctly."""
+        from schema import Optional
+
+        schema_dict = {
+            "a": (Optional("a"), int),
+            "b": (Optional("b"), str),
+        }
+        result = Library.convert_schema(schema_dict)
+        values = list(result.values())
+        assert int in values
+        assert str in values

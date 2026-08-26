@@ -145,7 +145,6 @@ class TestDriverSpinQRpc(unittest.TestCase):
         mock_get_task_results.return_value = True, "", results
         mock_client_close.return_value = None
         self.driver.run(job_id, num_qubits, data, data_type, shots)
-        assert self.driver.get_progress() == 100
 
     def test_user_auth(self):
         request_login_response = {

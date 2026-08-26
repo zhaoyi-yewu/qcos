@@ -45,6 +45,10 @@ def make_device_state(
     queued_job_count=0,
     running_job_count=0,
     max_queued_jobs=-1,
+    input_constrains=None,
+    enable_circuit_aggregation=False,
+    driver_options_schema=None,
+    transpiler_options_schema=None,
 ):
     """Create a DeviceState for testing."""
     return DeviceState(
@@ -61,12 +65,20 @@ def make_device_state(
         queued_job_count=queued_job_count,
         running_job_count=running_job_count,
         max_queued_jobs=max_queued_jobs,
+        input_constrains=input_constrains or {},
+        enable_circuit_aggregation=enable_circuit_aggregation,
+        driver_options_schema=driver_options_schema,
+        transpiler_options_schema=transpiler_options_schema,
     )
 
 
 def make_spec(
     code_type="qasm",
     num_qubits=0,
+    shots=None,
+    circuit_aggregation=None,
+    driver_options=None,
+    transpiler_options=None,
     flavor_specs=None,
     extra_specs=None,
     flavor_id=None,
@@ -75,6 +87,10 @@ def make_spec(
     return RequestSpec(
         code_type=code_type,
         num_qubits=num_qubits,
+        shots=shots,
+        circuit_aggregation=circuit_aggregation,
+        driver_options=driver_options,
+        transpiler_options=transpiler_options,
         flavor_id=flavor_id,
         flavor_specs=flavor_specs or {},
         extra_specs=extra_specs or {},
@@ -613,3 +629,369 @@ class TestCodeTypeFilterOverride:
         device = make_device_state(supported_code_types=["qasm", "qasm2"])
         spec = make_spec(code_type="qasm")
         assert filter_obj._filter_one(device, spec) is True
+
+
+class TestInputConstraintsFilter:
+    """Tests for InputConstraintsFilter."""
+
+    def test_shots_none_passes(self):
+        """Shots is None: always passes."""
+        from schema import And, Schema
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            input_constrains={
+                "job_shots": Schema(And(int, lambda x: 1024 <= x <= 102400))
+            }
+        )
+        spec = make_spec(shots=None)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_no_constraint_passes(self):
+        """Driver declares no job_shots constraint: passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(input_constrains={})
+        spec = make_spec(shots=100)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_constraint_none_passes(self):
+        """job_shots constraint value is None: passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(input_constrains={"job_shots": None})
+        spec = make_spec(shots=100)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_shots_valid_passes(self):
+        """Shots satisfy the schema: passes."""
+        from schema import And, Schema
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            input_constrains={
+                "job_shots": Schema(
+                    And(
+                        int,
+                        lambda x: 1024 <= x <= 102400,
+                        lambda x: x % 1024 == 0,
+                    )
+                )
+            }
+        )
+        spec = make_spec(shots=2048)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_shots_invalid_filtered(self):
+        """Shots violate the schema: filtered out."""
+        from schema import And, Schema
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            input_constrains={
+                "job_shots": Schema(
+                    And(
+                        int,
+                        lambda x: 1024 <= x <= 102400,
+                        lambda x: x % 1024 == 0,
+                    )
+                )
+            }
+        )
+        spec = make_spec(shots=100)
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_shots_out_of_range_filtered(self):
+        """Shots in range but not multiple of 1024: filtered out."""
+        from schema import And, Schema
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            input_constrains={
+                "job_shots": Schema(
+                    And(
+                        int,
+                        lambda x: 1024 <= x <= 102400,
+                        lambda x: x % 1024 == 0,
+                    )
+                )
+            }
+        )
+        spec = make_spec(shots=2000)
+        assert filter_obj._filter_one(device, spec) is False
+
+
+class TestInputConstraintsCircuitAggregation:
+    """Tests for InputConstraintsFilter circuit_aggregation check."""
+
+    def test_aggregation_enabled_any_value_passes(self):
+        """enable_circuit_aggregation=True: any value passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(enable_circuit_aggregation=True)
+        spec = make_spec(circuit_aggregation="internal")
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_aggregation_disabled_none_passes(self):
+        """enable_circuit_aggregation=False: None passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(enable_circuit_aggregation=False)
+        spec = make_spec(circuit_aggregation=None)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_aggregation_disabled_none_string_passes(self):
+        """enable_circuit_aggregation=False: 'None' string passes."""
+        from wy_qcos.common.constant import Constant
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(enable_circuit_aggregation=False)
+        spec = make_spec(circuit_aggregation=Constant.AGGREGATION_TYPE_NONE)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_aggregation_disabled_internal_filtered(self):
+        """enable_circuit_aggregation=False: 'internal' filtered out."""
+        from wy_qcos.common.constant import Constant
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(enable_circuit_aggregation=False)
+        spec = make_spec(
+            circuit_aggregation=Constant.AGGREGATION_TYPE_INTERNAL
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_aggregation_disabled_external_filtered(self):
+        """enable_circuit_aggregation=False: 'external' filtered out."""
+        from wy_qcos.common.constant import Constant
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(enable_circuit_aggregation=False)
+        spec = make_spec(
+            circuit_aggregation=Constant.AGGREGATION_TYPE_EXTERNAL
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+
+class TestInputConstraintsDriverOptions:
+    """Tests for InputConstraintsFilter driver_options check."""
+
+    def test_driver_options_none_passes(self):
+        """driver_options is None: passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(driver_options_schema={"sleep": int})
+        spec = make_spec(driver_options=None)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_no_schema_passes(self):
+        """Driver declares no driver_options_schema: passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(driver_options_schema=None)
+        spec = make_spec(driver_options={"sleep": 10})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_valid_driver_options_passes(self):
+        """driver_options matching schema: passes."""
+        from schema import Optional
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            driver_options_schema={
+                Optional("sleep"): int,
+                Optional("compute_fidelity"): bool,
+            }
+        )
+        spec = make_spec(
+            driver_options={"sleep": 10, "compute_fidelity": True}
+        )
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_invalid_driver_options_filtered(self):
+        """driver_options with wrong type: filtered out."""
+        from schema import Optional
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            driver_options_schema={
+                Optional("sleep"): int,
+                Optional("compute_fidelity"): bool,
+            }
+        )
+        spec = make_spec(driver_options={"sleep": "not_an_int"})
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_extra_keys_filtered(self):
+        """driver_options with extra unknown keys: filtered out."""
+        from schema import Optional
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            driver_options_schema={
+                Optional("sleep"): int,
+            }
+        )
+        spec = make_spec(driver_options={"unknown_key": 1})
+        assert filter_obj._filter_one(device, spec) is False
+
+
+class TestInputConstraintsTranspilerOptions:
+    """Tests for InputConstraintsFilter transpiler_options check."""
+
+    def test_transpiler_options_none_passes(self):
+        """transpiler_options is None: passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            transpiler_options_schema={"optimization_level": int}
+        )
+        spec = make_spec(transpiler_options=None)
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_no_transpiler_schema_passes(self):
+        """Driver declares no transpiler_options_schema: passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(transpiler_options_schema=None)
+        spec = make_spec(transpiler_options={"optimization_level": 1})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_empty_transpiler_schema_passes(self):
+        """Driver declares empty transpiler_options_schema: passes."""
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(transpiler_options_schema={})
+        spec = make_spec(transpiler_options={"optimization_level": 1})
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_valid_transpiler_options_passes(self):
+        """transpiler_options matching schema: passes."""
+        from schema import Optional
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            transpiler_options_schema={
+                "optimization_level": (
+                    Optional("optimization_level", default=1),
+                    int,
+                ),
+                "layout_method": (Optional("layout_method"), str),
+            }
+        )
+        spec = make_spec(
+            transpiler_options={
+                "optimization_level": 2,
+                "layout_method": "dense",
+            }
+        )
+        assert filter_obj._filter_one(device, spec) is True
+
+    def test_invalid_transpiler_options_filtered(self):
+        """transpiler_options with wrong type: filtered out."""
+        from schema import Optional
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            transpiler_options_schema={
+                "optimization_level": (
+                    Optional("optimization_level"),
+                    int,
+                ),
+            }
+        )
+        spec = make_spec(
+            transpiler_options={"optimization_level": "not_an_int"}
+        )
+        assert filter_obj._filter_one(device, spec) is False
+
+    def test_transpiler_extra_keys_filtered(self):
+        """transpiler_options with extra unknown keys: filtered out."""
+        from schema import Optional
+
+        from wy_qcos.scheduler.filters.input_constraints import (
+            InputConstraintsFilter,
+        )
+
+        filter_obj = InputConstraintsFilter()
+        device = make_device_state(
+            transpiler_options_schema={
+                "optimization_level": (
+                    Optional("optimization_level"),
+                    int,
+                ),
+            }
+        )
+        spec = make_spec(transpiler_options={"unknown_key": 1})
+        assert filter_obj._filter_one(device, spec) is False
