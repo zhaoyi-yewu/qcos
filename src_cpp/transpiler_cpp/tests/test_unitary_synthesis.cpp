@@ -19,13 +19,17 @@
 
 #include <cmath>
 #include <complex>
+#include <fstream>
 #include <memory>
+#include <random>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "circuit/dag_circuit.h"
 #include "circuit/gate_operation.h"
+#include "compiler/qasm_to_ir.hpp"
 #include "optimizer/unitary_synthesis.h"
 
 using namespace qcos;
