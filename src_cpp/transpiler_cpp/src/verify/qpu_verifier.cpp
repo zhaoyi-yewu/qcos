@@ -132,10 +132,15 @@ bool QPUVerifier::check_target_bits_range_and_count() const {
   // 越界检查复用 check_target_bits_range
   if (!check_target_bits_range()) return false;
 
-  // target_bits 非空时去重，并校验去重后的数量与电路实际使用比特数一致
+  // target_bits 非空时检查重复 + 数量校验
   if (!target_bits_.empty()) {
-    std::set<int> unique_set(target_bits_.begin(), target_bits_.end());
-    target_bits_.assign(unique_set.begin(), unique_set.end());
+    std::set<int> seen;
+    for (int bit : target_bits_) {
+      if (!seen.insert(bit).second) {
+        result_.add_failure("Topology error: duplicate target_bits");
+        return false;
+      }
+    }
     if (static_cast<int>(target_bits_.size()) != parsed_num_qubits_) {
       result_.add_failure(
           "Topology error: target qubits number mismatch with circuit");

@@ -148,7 +148,7 @@ TEST(CMSSVerifier, TargetBitsCountLessThan_ReturnsFalse) {
             "Topology error: target qubits number mismatch with circuit");
 }
 
-TEST(CMSSVerifier, TargetBitsDedupCorrect_ReturnsTrue) {
+TEST(CMSSVerifier, TargetBitsDuplicate_ReturnsFalse) {
   auto params = make_mq02_params();
   params.target_bits = {0, 0, 1, 1};
   CMSSVerifier verifier(params);
@@ -157,12 +157,14 @@ TEST(CMSSVerifier, TargetBitsDedupCorrect_ReturnsTrue) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cx q[0],q[1];\n";
-  EXPECT_TRUE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
-TEST(CMSSVerifier, TargetBitsDedupTooFew_ReturnsFalse) {
+TEST(CMSSVerifier, TargetBitsDuplicateMiddle_ReturnsFalse) {
   auto params = make_mq02_params();
-  params.target_bits = {0, 0, 1};
+  params.target_bits = {0, 1, 0};
   CMSSVerifier verifier(params);
   std::string qasm =
       "OPENQASM 2.0;\n"
@@ -172,8 +174,7 @@ TEST(CMSSVerifier, TargetBitsDedupTooFew_ReturnsFalse) {
       "h q[2];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message,
-            "Topology error: target qubits number mismatch with circuit");
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
 // ============ 深度/门数量校验（MQ02 拓扑，与拓扑结构无关） ============
@@ -398,7 +399,7 @@ TEST(CMSSVerifier, MQ02_TargetCountMismatch_ReturnsFalse) {
             "Topology error: target qubits number mismatch with circuit");
 }
 
-TEST(CMSSVerifier, MQ02_TargetDedupCorrect_ReturnsTrue) {
+TEST(CMSSVerifier, MQ02_TargetDuplicate_ReturnsFalse) {
   auto params = make_mq02_params();
   params.target_bits = {0, 0, 1, 1};
   CMSSVerifier verifier(params);
@@ -407,10 +408,12 @@ TEST(CMSSVerifier, MQ02_TargetDedupCorrect_ReturnsTrue) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cx q[0],q[1];\n";
-  EXPECT_TRUE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
-TEST(CMSSVerifier, MQ02_TargetDedupTooFew_ReturnsFalse) {
+TEST(CMSSVerifier, MQ02_TargetDuplicateMiddle_ReturnsFalse) {
   auto params = make_mq02_params();
   params.target_bits = {0, 0, 1};
   CMSSVerifier verifier(params);
@@ -422,8 +425,7 @@ TEST(CMSSVerifier, MQ02_TargetDedupTooFew_ReturnsFalse) {
       "h q[2];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message,
-            "Topology error: target qubits number mismatch with circuit");
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
 TEST(CMSSVerifier, MQ02_TargetConnected_Adjacent_ReturnsTrue) {
@@ -614,7 +616,7 @@ TEST(CMSSVerifier, QZ01_TargetCountMismatch_ReturnsFalse) {
             "Topology error: target qubits number mismatch with circuit");
 }
 
-TEST(CMSSVerifier, QZ01_TargetDedupCorrect_ReturnsTrue) {
+TEST(CMSSVerifier, QZ01_TargetDuplicate_ReturnsFalse) {
   auto params = make_qz01_params();
   params.target_bits = {0, 0, 9, 9};
   CMSSVerifier verifier(params);
@@ -623,10 +625,12 @@ TEST(CMSSVerifier, QZ01_TargetDedupCorrect_ReturnsTrue) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cx q[0],q[1];\n";
-  EXPECT_TRUE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
-TEST(CMSSVerifier, QZ01_TargetDedupTooFew_ReturnsFalse) {
+TEST(CMSSVerifier, QZ01_TargetDuplicateMiddle_ReturnsFalse) {
   auto params = make_qz01_params();
   params.target_bits = {0, 0, 1};
   CMSSVerifier verifier(params);
@@ -638,8 +642,7 @@ TEST(CMSSVerifier, QZ01_TargetDedupTooFew_ReturnsFalse) {
       "h q[2];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message,
-            "Topology error: target qubits number mismatch with circuit");
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
 TEST(CMSSVerifier, QZ01_TargetConnected_DirectEdge_ReturnsTrue) {
@@ -742,7 +745,7 @@ TEST(CMSSVerifier, QZ01_TargetBitsCountLessThan_ReturnsFalse) {
             "Topology error: target qubits number mismatch with circuit");
 }
 
-TEST(CMSSVerifier, QZ01_TargetBitsDedupCorrect_ReturnsTrue) {
+TEST(CMSSVerifier, QZ01_TargetBitsDuplicate_ReturnsFalse) {
   auto params = make_qz01_params();
   params.target_bits = {0, 0, 9, 9};
   CMSSVerifier verifier(params);
@@ -751,10 +754,12 @@ TEST(CMSSVerifier, QZ01_TargetBitsDedupCorrect_ReturnsTrue) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cx q[0],q[1];\n";
-  EXPECT_TRUE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
-TEST(CMSSVerifier, QZ01_TargetBitsDedupTooFew_ReturnsFalse) {
+TEST(CMSSVerifier, QZ01_TargetBitsDuplicateMiddle_ReturnsFalse) {
   auto params = make_qz01_params();
   params.target_bits = {0, 0, 9};
   CMSSVerifier verifier(params);
@@ -766,8 +771,7 @@ TEST(CMSSVerifier, QZ01_TargetBitsDedupTooFew_ReturnsFalse) {
       "h q[2];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message,
-            "Topology error: target qubits number mismatch with circuit");
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
 // ============ make_test_params 拓扑全场景（8比特，耦合0-1-2，最大连通=3）
@@ -897,7 +901,7 @@ TEST(CMSSVerifier, TestParams_TargetCountMismatch_ReturnsFalse) {
             "Topology error: target qubits number mismatch with circuit");
 }
 
-TEST(CMSSVerifier, TestParams_TargetDedupCorrect_ReturnsTrue) {
+TEST(CMSSVerifier, TestParams_TargetDuplicate_ReturnsFalse) {
   auto params = make_test_params();
   params.target_bits = {0, 0, 1, 1};
   CMSSVerifier verifier(params);
@@ -906,10 +910,12 @@ TEST(CMSSVerifier, TestParams_TargetDedupCorrect_ReturnsTrue) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cx q[0],q[1];\n";
-  EXPECT_TRUE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
-TEST(CMSSVerifier, TestParams_TargetDedupTooFew_ReturnsFalse) {
+TEST(CMSSVerifier, TestParams_TargetDuplicateMiddle_ReturnsFalse) {
   auto params = make_test_params();
   params.target_bits = {0, 0, 1};
   CMSSVerifier verifier(params);
@@ -921,8 +927,7 @@ TEST(CMSSVerifier, TestParams_TargetDedupTooFew_ReturnsFalse) {
       "h q[2];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message,
-            "Topology error: target qubits number mismatch with circuit");
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
 TEST(CMSSVerifier, TestParams_TargetConnected_Adjacent_ReturnsTrue) {
@@ -1110,7 +1115,7 @@ TEST(CMSSVerifier, Shenglian_TargetCountMismatch_ReturnsFalse) {
             "Topology error: target qubits number mismatch with circuit");
 }
 
-TEST(CMSSVerifier, Shenglian_TargetDedupCorrect_ReturnsTrue) {
+TEST(CMSSVerifier, Shenglian_TargetDuplicate_ReturnsFalse) {
   auto params = make_shenglian_params();
   params.target_bits = {15, 15, 22, 22};
   CMSSVerifier verifier(params);
@@ -1119,10 +1124,12 @@ TEST(CMSSVerifier, Shenglian_TargetDedupCorrect_ReturnsTrue) {
       "include \"qelib1.inc\";\n"
       "qreg q[2];\n"
       "cx q[0],q[1];\n";
-  EXPECT_TRUE(verifier.verify(qasm).passed);
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
-TEST(CMSSVerifier, Shenglian_TargetDedupTooFew_ReturnsFalse) {
+TEST(CMSSVerifier, Shenglian_TargetDuplicateMiddle_ReturnsFalse) {
   auto params = make_shenglian_params();
   params.target_bits = {15, 15, 22};
   CMSSVerifier verifier(params);
@@ -1134,8 +1141,7 @@ TEST(CMSSVerifier, Shenglian_TargetDedupTooFew_ReturnsFalse) {
       "h q[2];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message,
-            "Topology error: target qubits number mismatch with circuit");
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
 TEST(CMSSVerifier, Shenglian_TargetConnected_Adjacent_ReturnsTrue) {

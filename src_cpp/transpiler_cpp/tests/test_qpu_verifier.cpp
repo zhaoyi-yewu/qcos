@@ -427,37 +427,15 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsWithOneIsolated_ReturnsFalse) {
 }
 
 // target_bits 有重复但去重后数量正确且连通：应通过
-TEST(QuafuVerifier, CheckTopology_TargetBitsDedupCorrect_ReturnsTrue) {
+TEST(QuafuVerifier, CheckTopology_TargetBitsDuplicate_ReturnsFalse) {
   VerifyParams params;
   params.bits = 8;
   params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
   params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
   params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
                                     0.0,   0.0,   0.0,   0.0};
-  // 重复 0 和 1，去重后为 {0, 1, 2}，与电路使用的 3 比特匹配
+  // target_bits 含重复 0，应报错
   params.target_bits = {0, 0, 1, 1, 2};
-
-  QuafuVerifier verifier(params);
-
-  std::string qasm =
-      "OPENQASM 2.0;\n"
-      "include \"qelib1.inc\";\n"
-      "qreg q[3];\n"
-      "cz q[0],q[1];\n"
-      "h q[2];\n";
-  EXPECT_TRUE(verifier.verify(qasm).passed);
-}
-
-// target_bits 看似数量正确(3)但去重后只有2个，少于电路实际3比特：应失败
-TEST(QuafuVerifier, CheckTopology_TargetBitsDedupTooFew_ReturnsFalse) {
-  VerifyParams params;
-  params.bits = 8;
-  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
-  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
-  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
-                                    0.0,   0.0,   0.0,   0.0};
-  // 3 个 target_bits 含重复 0，去重后 {0, 1}，但电路用 3 比特
-  params.target_bits = {0, 0, 1};
 
   QuafuVerifier verifier(params);
 
@@ -469,8 +447,31 @@ TEST(QuafuVerifier, CheckTopology_TargetBitsDedupTooFew_ReturnsFalse) {
       "h q[2];\n";
   auto result = verifier.verify(qasm);
   EXPECT_FALSE(result.passed);
-  EXPECT_EQ(result.message,
-            "Topology error: target qubits number mismatch with circuit");
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
+}
+
+// target_bits 含重复值：应报错
+TEST(QuafuVerifier, CheckTopology_TargetBitsDuplicateMiddle_ReturnsFalse) {
+  VerifyParams params;
+  params.bits = 8;
+  params.coupling_list = {{0, 1}, {1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 2}};
+  params.edge_fidelities = {0.99, 0.99, 0.98, 0.98, 0.97, 0.97};
+  params.single_qubit_fidelities = {0.999, 0.999, 0.999, 0.999,
+                                    0.0,   0.0,   0.0,   0.0};
+  // target_bits 含重复 1，应报错
+  params.target_bits = {0, 1, 1};
+
+  QuafuVerifier verifier(params);
+
+  std::string qasm =
+      "OPENQASM 2.0;\n"
+      "include \"qelib1.inc\";\n"
+      "qreg q[3];\n"
+      "cz q[0],q[1];\n"
+      "h q[2];\n";
+  auto result = verifier.verify(qasm);
+  EXPECT_FALSE(result.passed);
+  EXPECT_EQ(result.message, "Topology error: duplicate target_bits");
 }
 
 // target_bits 数量多于电路实际使用比特数：应失败
