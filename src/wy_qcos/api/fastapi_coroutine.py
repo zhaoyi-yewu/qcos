@@ -23,9 +23,20 @@ from typing import Protocol
 
 import fastapi_jsonrpc as jsonrpc
 
+from wy_qcos.common.config import Config
 from wy_qcos.metrics.metrics_server import MetricsServer
 from wy_qcos.metrics.metrics_scheduler import MetricsScheduler
 from wy_qcos.metrics.metrics_task import set_app, init_metrics
+from wy_qcos.metrics.device_availability_collector import (
+    DeviceAvailabilityCollector,
+)
+from wy_qcos.metrics.device_availability_scheduler import (
+    DeviceAvailabilityScheduler,
+)
+from wy_qcos.metrics.device_availability_task import (
+    set_app as set_availability_app,
+)
+from wy_qcos.api.posiq.routes_jsonrpc.device import set_availability_collector
 from wy_qcos.task_manager.gc_cleaner import GcCleaner
 from wy_qcos.task_manager.job_cleaner import JobCleaner
 
@@ -103,6 +114,8 @@ async def app_lifespan(app: jsonrpc.API):
     """
     # Pass app instance to metrics_task for accessing app.state._db_engine
     set_app(app)
+    # Pass app instance to device_availability_task as well
+    set_availability_app(app)
 
     # Initialize metrics module (verify app and db engine available)
     init_metrics()
@@ -116,6 +129,19 @@ async def app_lifespan(app: jsonrpc.API):
     # Register metrics server
     metrics_server = MetricsServer()
     manager.add_service(metrics_server)
+
+    # Register device availability collector (Redis subscription thread)
+    # and the hourly aggregation scheduler.
+    availability_collector = DeviceAvailabilityCollector()
+    redis_ip = Config.REDIS.REDIS_SERVER_IP
+    redis_port = Config.REDIS.REDIS_SERVER_PORT
+    availability_collector.configure(redis_ip, redis_port)
+    availability_collector.start()
+    # expose the collector to the device routes so get-device can
+    # return the current-hour real-time availability rate
+    set_availability_collector(availability_collector)
+    availability_schedule = DeviceAvailabilityScheduler()
+    manager.add_service(availability_schedule)
 
     # Register job cleaner
     job_cleaner = JobCleaner(
