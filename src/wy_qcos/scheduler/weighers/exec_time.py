@@ -38,7 +38,8 @@ class AvgExecTimeWeigher(BaseWeigher):
     def _weigh_object(self, obj: DeviceState, spec: RequestSpec) -> float:
         logger.debug(
             f"AvgExecTimeWeigher: device_name: {obj.name}, "
-            f"multiplier: {self.multiplier}. "
+            f"multiplier: {self.multiplier}, weight: "
+            f"{float(-obj.avg_exec_time_per_qubit)}. "
             f"avg_exec_time_per_qubit: {obj.avg_exec_time_per_qubit}"
         )
 
