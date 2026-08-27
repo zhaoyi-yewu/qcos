@@ -202,6 +202,15 @@ class DAGCircuit {
   std::vector<DAGNode*> successors(const DAGNode* node) const;
 
   /**
+   * @brief 返回指定节点在给定量子比特上的第一个后继门操作节点
+   * @param cur_node 查询起点
+   * @param qubit 量子比特编号
+   * @return DAGOpNode* 该量子比特上的后继门节点；不存在时返回 nullptr
+   * @throws std::invalid_argument qubit 不在 cur_node 的 qargs 中
+   */
+  DAGOpNode* get_next_op_on_qubit(DAGOpNode* cur_node, int qubit) const;
+
+  /**
    * @brief 返回指定节点的直接前驱节点
    * @param node 查询目标
    * @return std::vector<DAGNode*> 前驱节点列表

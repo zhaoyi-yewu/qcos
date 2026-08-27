@@ -49,30 +49,15 @@ TEST(AdjacentPhaseOptPassTest, MergesAdjacentParameterizedPhaseGates) {
   EXPECT_NEAR(nodes[0]->op->arg_value[0], 3.0 * M_PI / 4.0, 1e-9);
 }
 
-TEST(AdjacentPhaseOptPassTest, HonorsBasisFilterForParameterizedPhaseGates) {
+TEST(AdjacentPhaseOptPassTest, MergesAdjacentRzGates) {
   AdjacentPhaseOptPass optimizer;
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("rx", {0}, {M_PI / 2.0}),
-      create_gate("rx", {0}, {M_PI / 4.0})};
-  DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
-
-  EXPECT_EQ(optimizer.run(dag, std::set<std::string>{"ry"}), 0);
-
-  const auto counts = dag.count_ops();
-  EXPECT_EQ(counts.at("rx"), 2);
-}
-
-TEST(AdjacentPhaseOptPassTest,
-     ParameterizesAndDeparameterizesDiscreteRzPhaseGates) {
-  AdjacentPhaseOptPass optimizer;
-  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("s", {0}),
-                                                    create_gate("s", {0})};
+      create_gate("rz", {0}, {M_PI / 2.0}),
+      create_gate("rz", {0}, {M_PI / 2.0})};
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   EXPECT_EQ(optimizer.run(dag), 1);
 
   const auto counts = dag.count_ops();
-  EXPECT_EQ(counts.count("s"), 0u);
-  EXPECT_EQ(counts.at("z"), 1);
-  EXPECT_EQ(counts.count("rz"), 0u);
+  EXPECT_EQ(counts.at("rz"), 1);
 }

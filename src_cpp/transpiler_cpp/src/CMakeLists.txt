@@ -16,7 +16,10 @@ add_library(${LIB_TRANSPILER} STATIC
                             optimizer/inverse_cancellation.cpp
                             optimizer/subcircuit_rewrite.cpp
                             optimizer/template.cpp
-                            optimizer/clifford_rz_optimization.cpp
+                            optimizer/hadamard_gate_reduction.cpp
+                            optimizer/rz_commute_optimization.cpp
+                            optimizer/cx_commute_optimization.cpp
+                            optimizer/phase_polynomial_merging.cpp
                             optimizer/collect_block.cpp
                             optimizer/gate_optimizer.cpp
                             optimizer/unitary_synthesis.cpp

@@ -25,6 +25,7 @@
 
 #include "circuit/dag_circuit.h"
 #include "circuit/gate_operation.h"
+#include "optimizer/optimization_pass.h"
 
 namespace qcos {
 
@@ -32,7 +33,7 @@ namespace qcos {
  * @class InverseCancellation
  * @brief 基于 collect_runs 的逆门对消除 pass
  */
-class InverseCancellation {
+class InverseCancellation : public OptimizationPass {
  public:
   /**
    * @brief 描述可对消的单门或逆门对规则项
@@ -67,7 +68,8 @@ class InverseCancellation {
    * @param gates_to_cancel 可对消门或门对规则项列表
    */
   explicit InverseCancellation(
-      const std::vector<InverseGateRule>& gates_to_cancel);
+      const std::vector<InverseGateRule>& gates_to_cancel,
+      bool verbose = false);
 
   /**
    * @brief 在 DAG 上执行逆门对消
@@ -75,9 +77,11 @@ class InverseCancellation {
    * @param basis_gates 可选 basis gate 过滤集合
    * @return int 被删除的门数量
    */
-  int run(
-      DAGCircuit& dag,
-      const std::optional<std::set<std::string>>& basis_gates = std::nullopt);
+  int run(DAGCircuit& dag,
+          const std::optional<std::set<std::string>>& basis_gates =
+              std::nullopt) override;
+
+  std::string name() const override { return "InverseCancellation"; }
 
  private:
   /**
@@ -98,9 +102,8 @@ class InverseCancellation {
    * @param topo_order 预计算的拓扑序节点 id 列表，避免重复计算
    * @return int 被删除的门数量
    */
-  int run_on_self_inverse(
-      DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates,
-      const std::vector<int>& topo_order) const;
+  int run_on_self_inverse(DAGCircuit& dag,
+                          const std::vector<int>& topo_order) const;
 
   /**
    * @brief 对所有显式逆门对运行消去逻辑
@@ -109,13 +112,13 @@ class InverseCancellation {
    * @param topo_order 预计算的拓扑序节点 id 列表，避免重复计算
    * @return int 被删除的门数量
    */
-  int run_on_inverse_pairs(
-      DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates,
-      const std::vector<int>& topo_order) const;
+  int run_on_inverse_pairs(DAGCircuit& dag,
+                           const std::vector<int>& topo_order) const;
 
   std::vector<InverseGateRule> inverse_gate_pairs_;
   std::set<std::string> self_inverse_gate_names_;
   std::set<std::string> inverse_gate_pairs_names_;
+  bool verbose_;
 };
 
 }  // namespace qcos

@@ -22,6 +22,7 @@
 #include <string>
 
 #include "circuit/dag_circuit.h"
+#include "optimizer/optimization_pass.h"
 
 namespace qcos {
 
@@ -29,12 +30,12 @@ namespace qcos {
  * @class AdjacentPhaseOptPass
  * @brief 合并相邻的相位门
  */
-class AdjacentPhaseOptPass {
+class AdjacentPhaseOptPass : public OptimizationPass {
  public:
   /**
    * @brief 构造相邻相位门合并 pass
    */
-  AdjacentPhaseOptPass();
+  explicit AdjacentPhaseOptPass(bool verbose = false);
 
   /**
    * @brief 在 DAG 上执行相邻相位门合并
@@ -42,12 +43,14 @@ class AdjacentPhaseOptPass {
    * @param basis_gates 可选 basis gate 过滤集合
    * @return int 被删除的门数量
    */
-  int run(
-      DAGCircuit& dag,
-      const std::optional<std::set<std::string>>& basis_gates = std::nullopt);
+  int run(DAGCircuit& dag,
+          const std::optional<std::set<std::string>>& basis_gates =
+              std::nullopt) override;
+  std::string name() const override { return "AdjacentPhaseOptPass"; }
 
  private:
   std::set<std::string> phase_gates_;
+  bool verbose_;
 };
 
 }  // namespace qcos

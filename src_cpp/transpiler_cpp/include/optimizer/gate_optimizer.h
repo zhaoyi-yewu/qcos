@@ -58,9 +58,10 @@ std::vector<std::vector<std::shared_ptr<BaseOperation>>> split_ir_by_layers(
  *
  * opt_level:
  *   0 - 不做优化
- *   1 - InverseCancellation + AdjacentPhaseOptPass
- *   2 - Level 1 + EquivalencePass
- *   3 - Level 2 + CliffordRzOptimization
+ *   1 - InverseCancellation + AdjacentPhaseOptPass + EquivalencePass
+ *   2 - Level 1 + HadamardGateReduction + RzCommuteOptimization
+ *       + CxCommuteOptimization + PhasePolynomialMerging
+ *   3 - Level 2 + UnitarySynthesis
  *
  * num_threads:
  *   1 - 串行（默认）

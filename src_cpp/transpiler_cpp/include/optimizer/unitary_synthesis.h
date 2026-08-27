@@ -26,6 +26,7 @@
 
 #include "circuit/base_operation.h"
 #include "circuit/dag_circuit.h"
+#include "optimizer/optimization_pass.h"
 
 namespace qcos {
 
@@ -84,8 +85,7 @@ CMatrix compute_block_unitary(
  * @throws std::invalid_argument 矩阵不是酉矩阵
  */
 std::vector<std::shared_ptr<BaseOperation>> decompose_unitary(
-    const CMatrix& unitary,
-    const std::set<std::string>& basis_gates,
+    const CMatrix& unitary, const std::set<std::string>& basis_gates,
     const std::vector<int>& qubits = {});
 
 struct SingleQubitDecomp {
@@ -97,8 +97,7 @@ struct SingleQubitDecomp {
 
 SingleQubitDecomp decompose_single_qubit(const CMatrix& u);
 
-std::vector<std::shared_ptr<BaseOperation>>
-single_qubit_unitary_to_basis(
+std::vector<std::shared_ptr<BaseOperation>> single_qubit_unitary_to_basis(
     const CMatrix& u, int qubit,
     const std::optional<std::set<std::string>>& basis_gates);
 
@@ -115,33 +114,34 @@ struct TwoQubitDecomp {
 
 TwoQubitDecomp decompose_two_qubit(const CMatrix& u);
 
-std::vector<std::shared_ptr<BaseOperation>>
-two_qubit_unitary_to_basis(
+std::vector<std::shared_ptr<BaseOperation>> two_qubit_unitary_to_basis(
     const CMatrix& u, int qubit0, int qubit1,
     const std::optional<std::set<std::string>>& basis_gates);
 
-class UnitarySynthesis {
+class UnitarySynthesis : public OptimizationPass {
  public:
   using OpPtr = std::shared_ptr<BaseOperation>;
   using OpList = std::vector<OpPtr>;
 
   UnitarySynthesis(
       const std::optional<std::set<std::string>>& basis_gates = std::nullopt,
-      double approximation_degree = 1.0,
-      size_t max_block_size = 2);
+      double approximation_degree = 1.0, size_t max_block_size = 2,
+      bool verbose = false);
 
-  int run(
-      DAGCircuit& dag,
-      const std::optional<std::set<std::string>>& basis_gates = std::nullopt);
+  int run(DAGCircuit& dag,
+          const std::optional<std::set<std::string>>& basis_gates =
+              std::nullopt) override;
 
-  OpList synthesize_block(
-      const CMatrix& unitary,
-      const std::vector<int>& qubits);
+  std::string name() const override { return "UnitarySynthesis"; }
+
+  OpList synthesize_block(const CMatrix& unitary,
+                          const std::vector<int>& qubits);
 
  private:
   std::optional<std::set<std::string>> basis_gates_;
   double approximation_degree_;
   size_t max_block_size_;
+  bool verbose_;
 
   OpList synthesize_1q(const CMatrix& u, int qubit);
   OpList synthesize_2q(const CMatrix& u, int q0, int q1);
@@ -153,8 +153,7 @@ class ConsolidateBlocks {
 
   ConsolidateBlocks(
       const std::optional<std::set<std::string>>& basis_gates = std::nullopt,
-      double approximation_degree = 1.0,
-      size_t min_block_size = 2);
+      double approximation_degree = 1.0, size_t min_block_size = 2);
 
   int run(
       DAGCircuit& dag,
