@@ -17,6 +17,8 @@
 
 from .base import BaseFilter, BaseFilterHandler
 from .code_type import CodeTypeFilter
+from .device_availability import DeviceAvailabilityFilter
+from .device_name import DeviceNameFilter
 from .device_status import DeviceStatusFilter
 from .device_group import DeviceGroupFilter
 from .qubit_count import QubitCountFilter
@@ -25,9 +27,9 @@ from .gate_fidelity import GateFidelityFilter
 from .queue_limit import QueueLimitFilter
 
 # Default filter order (must filters first, then optional)
-# Note: DeviceGroupFilter is injected by AutoScheduler with
-# device_group_manager, not listed here as it needs runtime
-# configuration.
+# All filters share the same initialization interface via
+# BaseFilterHandler, which injects device_group_manager into every
+# instance. Filters that don't need it simply ignore it.
 DEFAULT_FILTERS = [
     CodeTypeFilter,
     DeviceStatusFilter,
@@ -35,4 +37,7 @@ DEFAULT_FILTERS = [
     QubitCountFilter,
     QueueLimitFilter,
     GateFidelityFilter,
+    DeviceAvailabilityFilter,
+    DeviceNameFilter,
+    DeviceGroupFilter,
 ]

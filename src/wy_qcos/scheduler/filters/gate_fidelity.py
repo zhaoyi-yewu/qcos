@@ -50,10 +50,11 @@ class GateFidelityFilter(BaseFilter):
             logger.debug(
                 f"GateFidelityFilter: device_name: {obj.name}, "
                 f"avg_fidelity_1q: {avg_fidelity_1q}. "
-                f"spec.gate_fidelity_1q_min: {spec.gate_fidelity_1q_min}"
+                f"spec.gate_fidelity_1q_min: "
+                f"{spec.gate_fidelity_1q_min}"
             )
-            # If no fidelity data available, do not block the device
-            if avg_fidelity_1q > 0.0:
+            # If no fidelity data available (None), pass through
+            if avg_fidelity_1q is not None:
                 if avg_fidelity_1q < spec.gate_fidelity_1q_min:
                     return False
         # 2-qubit gate fidelity check
@@ -62,10 +63,11 @@ class GateFidelityFilter(BaseFilter):
             logger.debug(
                 f"GateFidelityFilter: device_name: {obj.name}, "
                 f"avg_fidelity_2q: {avg_fidelity_2q}. "
-                f"spec.gate_fidelity_2q_min: {spec.gate_fidelity_2q_min}"
+                f"spec.gate_fidelity_2q_min: "
+                f"{spec.gate_fidelity_2q_min}"
             )
-            # If no fidelity data available, do not block the device
-            if avg_fidelity_2q > 0.0:
+            # If no fidelity data available (None), pass through
+            if avg_fidelity_2q is not None:
                 if avg_fidelity_2q < spec.gate_fidelity_2q_min:
                     return False
         return True

@@ -29,9 +29,27 @@ class CodeTypeFilter(BaseFilter):
 
     Matches the job's code_type (qasm, qasm2, qasm3, qubo) against
     the device driver's supported_code_types.
+
+    When the flavor/extra_specs provides ``qcos:code_types`` (a
+    comma-separated list), it overrides the job's code_type: only
+    devices whose supported_code_types intersect the specified list
+    pass. This lets a flavor restrict eligible code types regardless
+    of the job's own code_type.
     """
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
+        # Flavor/extra_specs override: restrict by qcos:code_types
+        allowed = spec.code_types
+        if allowed:
+            match = bool(set(obj.supported_code_types) & set(allowed))
+            logger.debug(
+                f"CodeTypeFilter: device_name: {obj.name}. "
+                f"obj.supported_code_types: "
+                f"{obj.supported_code_types}, "
+                f"spec.code_types: {allowed}, match: {match}"
+            )
+            return match
+
         logger.debug(
             f"CodeTypeFilter: device_name: {obj.name}. "
             f"obj.supported_code_types: {obj.supported_code_types}, "
