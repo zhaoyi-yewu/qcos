@@ -263,9 +263,9 @@ class DriverSpinQRpc(DriverGateBase):
         # physical qubits.
         # the index of physical qubits after mapping may exceed the number of
         # logical qubits
-        # Use available_num_qubits (the number of physical qubits obtained from
+        # Use available_qubits (the number of physical qubits obtained from
         # the hardware)
-        max_physical_qubits = self.available_num_qubits
+        max_physical_qubits = self.available_qubits
 
         # Ensure it can accommodate at least all physical qubit indices
         # (from 0 to max_physical_qubits-1)
@@ -433,7 +433,7 @@ class DriverSpinQRpc(DriverGateBase):
 
         if return_code == 1:
             return False, f"Failed to login. ret_code: {return_code}", None
-        self.available_num_qubits = response["qubits_num"]
+        self.available_qubits = response["qubits_num"]
         return True, None, response
 
     @rpc_retry()

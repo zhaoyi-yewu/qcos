@@ -182,7 +182,7 @@ class DriverSpinQNmr(DriverGateBase):
         """
         gates = []
 
-        max_physical_qubits = self.available_num_qubits
+        max_physical_qubits = self.available_qubits
 
         logger.info(
             f"Initializing qubit_depth with {max_physical_qubits} qubits "

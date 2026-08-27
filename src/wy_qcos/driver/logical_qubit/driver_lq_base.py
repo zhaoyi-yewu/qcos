@@ -15,7 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from loguru import logger
 from lqcloud import LQCloudProvider, QuantumCircuit
@@ -420,19 +421,52 @@ class DriverLogicalQubitBase(DriverBase):
         logger.info("4. get task results")
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
         results = self.convert_results(_results)
-        line_result = results
         optimization = self.convert_code_to_qasm(
             num_qubits, src_code, transpile_results
         )
-        final_result = {
-            "lineResult": line_result,
-        }
+
+        # machine profiling
+        machine_profiling = {}
+        machine_started_at = _results.metadata.get("started_at", None)
+        if machine_started_at:
+            machine_started_at = datetime.fromisoformat(machine_started_at)
+            dt_utc = machine_started_at.replace(tzinfo=timezone.utc)
+            dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+            ts = dt_beijing.timestamp()
+            machine_profiling["machine_started_at"] = ts
+        _metadata = _results.metadata.get("result", {}).get("metadata", None)
+        if _metadata:
+            machine_ended_at = _metadata.get("date", None)
+            if machine_ended_at:
+                machine_ended_at = machine_ended_at.rstrip("Z")
+        else:
+            machine_ended_at = _results.metadata.get("completed_at", None)
+        if machine_ended_at:
+            machine_ended_at = datetime.fromisoformat(machine_ended_at)
+            ts = None
+            if _metadata:
+                dt_beijing = machine_ended_at.replace(
+                    tzinfo=ZoneInfo("Asia/Shanghai")
+                )
+                ts = dt_beijing.timestamp()
+            else:
+                dt_utc = machine_ended_at.replace(tzinfo=timezone.utc)
+                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+                ts = dt_beijing.timestamp()
+            machine_profiling["machine_ended_at"] = ts
+        machine_duration = _results.metadata.get("execution_time", None)
+        if machine_duration:
+            machine_duration = float(machine_duration)
+            machine_profiling["machine_duration"] = machine_duration
+
+        # set results
         self.set_results(
             job_id,
             data_index,
             results=results,
-            raw_results=final_result,
+            raw_results=_results.metadata,
             result_type=Constant.RESULT_TYPE_SAMPLING,
+            machine_profiling=machine_profiling,
         )
         self.set_optimized_circuit(optimization)
         # 5. Save results and set driver status to ONLINE
