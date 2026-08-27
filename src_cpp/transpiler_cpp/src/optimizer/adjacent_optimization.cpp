@@ -66,6 +66,14 @@ int AdjacentPhaseOptPass::run(
       next_node->op->arg_value[0] += node->op->arg_value[0];
       dag.remove_op_node(node);
       ++reduced;
+      // Remove gate if merged angle is ~0 (mod 2π)
+      constexpr double kTwoPi = 2.0 * M_PI;
+      double mod_angle = std::fmod(next_node->op->arg_value[0], kTwoPi);
+      if (mod_angle < 0) mod_angle += kTwoPi;
+      if (mod_angle < 1e-8 || mod_angle > kTwoPi - 1e-8) {
+        dag.remove_op_node(next_node);
+        ++reduced;
+      }
     }
   }
 
