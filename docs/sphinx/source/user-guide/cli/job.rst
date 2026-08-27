@@ -255,6 +255,15 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
        --transpiler cmss \
        --transpiler-options '{"sc_mapping_options": {"routing_algorithm": "sabre", "sabre_extention_size": 20, "sabre_weight": 0.5, "sabre_decay": 0.001}}'
 
+- 国基量子
+
+.. code-block:: shell
+
+   # 百花驱动
+   qcos-cli submit-job --code-type qasm --shots 1024 --backend cetc_baihua --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm.qasm
+   # 百花驱动+使用高性能转译器
+   qcos-cli submit-job --code-type qasm --shots 1024 --backend cetc_baihua --transpiler high_performance_cmss --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
 - 幺正量子
 
 .. code-block:: shell
