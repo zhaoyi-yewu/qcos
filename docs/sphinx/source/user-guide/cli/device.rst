@@ -224,3 +224,60 @@ DELETED）统计该设备上各状态的作业数量，数据来源于 qcos 数�
 
    # 将设备 hanyuan1 恢复在线模式
    qcos-cli set-device-maintain-mode off --backend hanyuan1
+
+set-device
+^^^^^^^^^^
+
+设置设备属性（状态、启用/禁用、最大比特数）。至少指定 ``--status``、
+``--enable`` 或 ``--max-qubits`` 中的一个参数。
+
+需要 admin 角色权限。
+
+命令行参数
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 设置设备属性
+   usage: qcos-cli set-device [-h]
+       [--status {auto,online,offline,busy,disconnected,calibrating,maintain,unknown}]
+       [--enable {true,false}]
+       [--max-qubits MAX_QUBITS]
+       BACKEND
+
+   Set device attributes (status, enable, max_qubits).
+
+   positional arguments:
+     BACKEND               Device name (backend)
+
+   options:
+     -h, --help            show this help message and exit
+     --status {auto,online,offline,busy,disconnected,calibrating,maintain,unknown}
+                           Device status
+     --enable {true,false}
+                           Enable or disable the device
+     --max-qubits MAX_QUBITS
+                           Max qubits: 'auto' or a positive integer
+
+典型场景示例
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 设置设备状态为在线
+   qcos-cli set-device hanyuan1 --status online
+
+   # 设置设备状态为维护
+   qcos-cli set-device hanyuan1 --status maintain
+
+   # 禁用设备
+   qcos-cli set-device hanyuan1 --enable false
+
+   # 设置最大比特数为 100
+   qcos-cli set-device hanyuan1 --max-qubits 100
+
+   # 恢复驱动声明的默认最大比特数
+   qcos-cli set-device hanyuan1 --max-qubits auto
+
+   # 组合设置
+   qcos-cli set-device hanyuan1 --status online --enable true --max-qubits auto

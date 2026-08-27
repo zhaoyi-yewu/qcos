@@ -69,6 +69,8 @@ from .device import (
     GetDeviceOptionsResponse,
     SetDeviceMaintainModeRequest,
     SetDeviceMaintainModeResponse,
+    SetDeviceRequest,
+    SetDeviceResponse,
 )
 from .transpiler import (
     GetTranspilersRequest,

@@ -528,10 +528,13 @@ class CommandHelper:
         Returns:
             list of device group names (falls back to ID if not found)
         """
-        if not device_group_ids:
-            return device_group_ids
         resource = QcosShell.CMD_GROUP_DEVICE_GROUP
-        status_code, reason, text, result = client.get_device_groups()
+        filters = None
+        if device_group_ids:
+            filters = {"group_ids": device_group_ids}
+        status_code, reason, text, result = client.get_device_groups(
+            filters=filters
+        )
         json_results = CommandHelper.check_results(
             resource, "get_device_groups", status_code, reason, text
         )
@@ -1072,6 +1075,116 @@ class SetDeviceMaintainMode(Command):
         print(
             f"Device {json_results['name']} status "
             f"set to: {json_results['status']}"
+        )
+
+
+class SetDevice(Command):
+    """Set device attributes (status, enable, max_qubits).
+
+    At least one of --status, --enable, or --max-qubits must be
+    specified.
+
+    Examples:
+        qcos set-device hanyuan1 --status online
+        qcos set-device hanyuan1 --enable false
+        qcos set-device hanyuan1 --max-qubits 100
+        qcos set-device hanyuan1 --max-qubits auto
+        qcos set-device hanyuan1 --status online \
+            --enable true --max-qubits auto
+    """
+
+    group = QcosShell.CMD_GROUP_DEVICE
+
+    def get_parser(self, prog_name):
+        """Get parser for this command.
+
+        Args:
+            prog_name: program name
+
+        Returns:
+            parser
+        """
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "backend",
+            type=str,
+            help="Device name (backend)",
+        )
+        parser.add_argument(
+            "--status",
+            dest="status",
+            type=str,
+            choices=[
+                "auto",
+                "online",
+                "offline",
+                "busy",
+                "disconnected",
+                "calibrating",
+                "maintain",
+                "unknown",
+            ],
+            default=None,
+            help="Device status: auto (no change), online, offline, "
+            "busy, disconnected, calibrating, maintain, unknown",
+        )
+        parser.add_argument(
+            "--enable",
+            dest="enable",
+            type=str,
+            choices=["true", "false"],
+            default=None,
+            help="Enable or disable the device: true or false",
+        )
+        parser.add_argument(
+            "--max-qubits",
+            dest="max_qubits",
+            type=str,
+            default=None,
+            help="Max qubits: 'auto' to restore driver default, "
+            "or a positive integer",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        """Take action for command line arguments.
+
+        Args:
+            parsed_args: command line arguments
+        """
+        resource = self.group
+        backend = parsed_args.backend
+        status = parsed_args.status
+        enable_str = parsed_args.enable
+        max_qubits = parsed_args.max_qubits
+
+        # at least one option must be specified
+        if status is None and enable_str is None and max_qubits is None:
+            print(
+                "Error: at least one of --status, --enable, "
+                "or --max-qubits must be specified"
+            )
+            return
+
+        # convert enable string to bool
+        enable = None
+        if enable_str is not None:
+            enable = enable_str == "true"
+
+        status_code, reason, text, result = self.app.client.set_device(
+            backend,
+            status=status,
+            enable=enable,
+            max_qubits=max_qubits,
+        )
+        json_results = CommandHelper.check_results(
+            resource, "set_device", status_code, reason, text
+        )
+        print(
+            f"Device {json_results['name']}: "
+            f"status={json_results['status']}, "
+            f"enable={json_results['enable']}, "
+            f"max_qubits={json_results['max_qubits']}"
         )
 
 
@@ -4870,6 +4983,7 @@ command_manager.add_command("get-calibrate-results", GetCalibrateResults)
 command_manager.add_command("set-device-options", SetDeviceOptions)
 command_manager.add_command("get-device-options", GetDeviceOptions)
 command_manager.add_command("set-device-maintain-mode", SetDeviceMaintainMode)
+command_manager.add_command("set-device", SetDevice)
 command_manager.add_command("list-devices", GetDevices)
 # device group command
 command_manager.add_command("create-device-group", CreateDeviceGroup)

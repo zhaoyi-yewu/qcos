@@ -49,7 +49,10 @@ def _get_job_count(device_name, job_repo=None):
         its count for the given device, plus a TOTAL entry that
         sums all statuses.
     """
-    job_count = {status.lower(): 0 for status in Constant.JOB_STATUSES}
+    job_count = {
+        status.lower(): 0
+        for status in ([Constant.JOB_STATUS_TOTAL] + Constant.JOB_STATUSES)
+    }
     if not isinstance(job_repo, JobRepository):
         job_count[Constant.JOB_STATUS_TOTAL.lower()] = 0
         return job_count
@@ -68,7 +71,13 @@ def _get_job_count(device_name, job_repo=None):
     return job_count
 
 
-def _get_device_info(device, auth_data=None, details=False, job_repo=None):
+def _get_device_info(
+    device,
+    auth_data=None,
+    details=False,
+    job_repo=None,
+    workers=None,
+):
     """Get device info.
 
     Args:
@@ -77,10 +86,39 @@ def _get_device_info(device, auth_data=None, details=False, job_repo=None):
         details: need detail information or not
         job_repo: JobRepository instance for querying job counts.
             When None, job_count is an empty dict.
+        workers: list of worker dicts from TaskFlowManager.list_workers().
+            When None, device_monitor_status and
+            device_manager_status default to "offline".
 
     Returns:
         device_info
     """
+    # extract monitor polling interval from device configs
+    device_configs = device.get_configs(hide_password=True)
+    monitor_configs = (
+        device_configs.get("device_monitor", {})
+        if isinstance(device_configs, dict)
+        else {}
+    )
+    monitor_polling_interval = monitor_configs.get(
+        "polling_interval",
+        Constant.DEFAULT_DEVICE_MONITOR_POLLING_INTERVAL,
+    )
+
+    # get device monitor / manager worker status from workers list
+    device_monitor_status = "offline"
+    device_manager_status = "offline"
+    enable_device_manager = device.get_driver().enable_device_mgr
+    if workers:
+        monitor_pool = f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.name}"
+        mgr_pool = f"{Constant.WORK_POOL_MGR_PREFIX}{device.name}"
+        for worker in workers:
+            pool_name = worker.get("work_pool", "")
+            if pool_name == monitor_pool:
+                device_monitor_status = worker.get("worker_status", "unknown")
+            elif pool_name == mgr_pool:
+                device_manager_status = worker.get("worker_status", "unknown")
+
     _device_info = {
         "name": device.name,
         "alias_name": device.alias_name,
@@ -91,6 +129,11 @@ def _get_device_info(device, auth_data=None, details=False, job_repo=None):
         "tech_type": device.tech_type,
         "max_qubits": device.max_qubits,
         "available_qubits": device.available_qubits,
+        "enable_device_monitor": device.get_enable_device_monitor(),
+        "device_monitor_status": device_monitor_status,
+        "monitor_polling_interval": monitor_polling_interval,
+        "enable_device_manager": enable_device_manager,
+        "device_manager_status": device_manager_status,
         "job_count": _get_job_count(device.name, job_repo),
         "last_updated_at": device.last_updated_at,
         "details": device.details,
@@ -126,14 +169,26 @@ def get_devices(
 
     details = body.details
     device_manager = scheduler.get_device_manager()
+    task_manager = scheduler.get_task_manager()
     devices = device_manager.get_devices()
+    # query workers only once to avoid N Prefect API calls
+    workers = None
+    if task_manager is not None:
+        try:
+            workers = task_manager.list_workers()
+        except Exception as e:
+            logger.warning(f"Failed to list workers: {e}")
     response_info = {}
     for device_name, device in sorted(devices.items()):
         success, _ = validate_virtual_instance(auth_data, backend=device_name)
         if not success:
             continue
         _response_info = _get_device_info(
-            device, auth_data, job_repo=job_repo, details=details
+            device,
+            auth_data,
+            job_repo=job_repo,
+            details=details,
+            workers=workers,
         )
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
@@ -166,6 +221,7 @@ def get_device(
 
     device_name = body.name
     device_manager = scheduler.get_device_manager()
+    task_manager = scheduler.get_task_manager()
     device = device_manager.get_device(device_name)
     if device is None:
         jsonrpc_errors.handle_error_not_found(
@@ -180,8 +236,19 @@ def get_device(
             func_name,
             (False, f"Device: '{device_name}' is not found"),
         )
+    # query workers only once
+    workers = None
+    if task_manager is not None:
+        try:
+            workers = task_manager.list_workers()
+        except Exception as e:
+            logger.warning(f"Failed to list workers: {e}")
     _response_info = _get_device_info(
-        device, auth_data, body.details, job_repo=job_repo
+        device,
+        auth_data,
+        body.details,
+        job_repo=job_repo,
+        workers=workers,
     )
     response_info = schemas.GetDeviceResponse.model_validate(_response_info)
     return response_info
@@ -365,4 +432,99 @@ def set_device_maintain_mode(
     response_info = schemas.SetDeviceMaintainModeResponse.model_validate(
         _response_info
     )
+    return response_info
+
+
+@device_api_v1.method(
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
+def set_device(
+    body: schemas.SetDeviceRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.SetDeviceResponse:
+    """Set device attributes (status, enable, max_qubits).
+
+    Allows updating device status, enable flag, and max qubits
+    in a single call. Each field is optional; when omitted (None)
+    the corresponding attribute is not changed.
+
+    Args:
+        body: SetDeviceRequest body
+        auth_data: auth data
+
+    Returns:
+        SetDeviceResponse with updated device attributes
+    """
+    func_name = "set_device"
+    logger.info(f"Call {func_name}: {body}")
+
+    device_name = body.device_name
+    status = body.status
+    enable = body.enable
+    max_qubits = body.max_qubits
+
+    device_manager = scheduler.get_device_manager()
+    device = device_manager.get_device(device_name)
+    if device is None:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
+
+    # update status when provided and not "auto"
+    if status is not None and status != "auto":
+        if status not in device.DEVICE_STATUSES:
+            jsonrpc_errors.handle_error_not_found(
+                module_name,
+                func_name,
+                (
+                    False,
+                    f"Invalid status: '{status}'. "
+                    f"Must be one of: "
+                    f"{', '.join(device.DEVICE_STATUSES)}",
+                ),
+            )
+        if status == device.DEVICE_STATUS_MAINTAIN:
+            device.set_manual_maintain_mode(True)
+        else:
+            # switching to a non-maintain status clears the
+            # manual maintain flag so monitor updates can resume
+            if device.get_manual_maintain_mode():
+                device.set_manual_maintain_mode(False)
+        device.set_status(status)
+
+    # update enable flag when provided
+    if enable is not None:
+        device.set_enable(enable)
+
+    # update max qubits when provided
+    if max_qubits is not None:
+        if max_qubits == "auto":
+            # restore driver-declared default max qubits
+            driver = device.get_driver()
+            device.set_max_qubits(driver.get_max_qubits())
+        else:
+            try:
+                device.set_max_qubits(int(max_qubits))
+            except (TypeError, ValueError):
+                jsonrpc_errors.handle_error_not_found(
+                    module_name,
+                    func_name,
+                    (
+                        False,
+                        f"Invalid max_qubits: '{max_qubits}'. "
+                        f"Must be 'auto' or a positive integer",
+                    ),
+                )
+
+    _response_info = {
+        "name": device.name,
+        "status": device.status,
+        "enable": device.enable,
+        "max_qubits": device.max_qubits,
+    }
+    response_info = schemas.SetDeviceResponse.model_validate(_response_info)
     return response_info
