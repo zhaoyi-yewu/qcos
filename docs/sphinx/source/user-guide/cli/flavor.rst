@@ -278,14 +278,10 @@ property 字段说明
 .. code-block:: shell
 
    # 设置允许的设备列表
-   qcos-cli create-flavor my-flavor \
-       --property qcos:devices="dummy,qutip_sim" \
-       --device-groups <device-group-uuid>
+   qcos-cli create-flavor my-flavor --property qcos:devices="dummy,qutip_sim" --device-groups <device-group-uuid>
 
    # 设置排除设备与代码类型
-   qcos-cli update-flavor my-flavor \
-       --property qcos:exclude_devices="dummy" \
-       --property qcos:code_types="qasm2,qasm3"
+   qcos-cli update-flavor my-flavor --property qcos:exclude_devices="dummy" qcos:code_types="qasm2,qasm3"
 
    # 清空所有 property
    qcos-cli update-flavor my-flavor --unset-extra-properties
