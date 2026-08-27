@@ -50,6 +50,7 @@ ENABLED_FILTERS = [
     "QubitCountFilter",
     "QueueLimitFilter",
     "GateFidelityFilter",
+    "DeviceGroupFilter",
 ]
 # enabled weigher class names; empty list uses all DEFAULT_WEIGHERS
 # available weighers: DeviceLoadWeigher, AvgExecTimeWeigher
@@ -74,7 +75,7 @@ ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
 # access control policy file
 ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
 # default admin user password (hashed with PASSWORD_SALT)
-DEFAULT_ADMIN_PASSWORD = "P@ssword1"
+DEFAULT_ADMIN_PASSWORD = "P*ssword1"
 # jwt secret key for authentication
 JWT_AUTH_SECRET_KEY = "47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A"
 # jwt auth algorithm

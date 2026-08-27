@@ -38,13 +38,6 @@ from wy_qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
 
-# Default admin user
-DEFAULT_ADMIN_PASSWORD = (
-    Config.USERS.DEFAULT_ADMIN_PASSWORD
-    if Config.USERS.DEFAULT_ADMIN_PASSWORD
-    else Constant.DEFAULT_ADMIN_PASSWORD
-)
-
 
 class UserManager:
     """User manager."""
@@ -244,6 +237,12 @@ class UserManager:
         )
 
         # init users
+        # Default admin user
+        DEFAULT_ADMIN_PASSWORD = (
+            Config.USERS.DEFAULT_ADMIN_PASSWORD
+            if Config.USERS.DEFAULT_ADMIN_PASSWORD
+            else Constant.DEFAULT_ADMIN_PASSWORD
+        )
         init_users(
             Constant.ADMIN_USERNAME,
             Constant.ADMIN_PROJECT_ID,
