@@ -93,6 +93,7 @@ def config(conf):
     conf['DEFAULT']['MAX_QUEUED_JOBS'] = ${MAX_QUEUED_JOBS:-1000}
     conf['DEFAULT']['AUTH_MODE'] = '${_AUTH_MODE}'
     conf['USERS']['MAX_JOBS'] = ${MAX_JOBS_PER_USER:-100}
+    conf['USERS']['DEFAULT_ADMIN_PASSWORD'] = '${DEFAULT_ADMIN_PASSWORD:-P*ssword1}'
     conf['VIRT']['PASSWORD_SALT'] = '${PASSWORD_SALT:-123456}'
 
     conf['API_SERVER']['API_WORKERS'] = ${API_WORKERS:-8}

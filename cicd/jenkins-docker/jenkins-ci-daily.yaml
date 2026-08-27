@@ -6,7 +6,7 @@ pipeline {
     agent {
         docker {
             image 'qcos-sandbox:cicd'
-            args '--network host -v /var/run/docker.sock:/var/run/docker.sock -v /etc/localtime:/etc/localtime:ro -v /etc/hosts:/etc/hosts -e TZ=Asia/Shanghai'
+            args '--network host -v /var/run/docker.sock:/var/run/docker.sock -v /etc/localtime:/etc/localtime:ro -v /etc/hosts:/etc/hosts -v /var/qcos:/var/qcos -v /var/log/qcos:/var/log/qcos -e TZ=Asia/Shanghai'
         }
     }
 
@@ -183,10 +183,13 @@ pipeline {
                 if [ -n "\${DOCKER_COMPOSE_BIN_MIRROR}" ]; then
                     sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
                 fi
+                sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
+
                 df -h
                 cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
                 sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
                 ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                export BUILD_WHEEL_IN_SANDBOX=false
                 docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
                 """
             }
@@ -228,10 +231,13 @@ pipeline {
                 if [ -n "\${DOCKER_COMPOSE_BIN_MIRROR}" ]; then
                     sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
                 fi
+                sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
+
                 df -h
                 cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
                 sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
                 ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                export BUILD_WHEEL_IN_SANDBOX=false
                 docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
                 """
             }
@@ -367,6 +373,9 @@ pipeline {
                 mkdir -p /etc/qcos/
                 cp -rf \${TOP_DIR}/etc/qcos/st-conf.d /etc/qcos/
                 cp -rf \${TOP_DIR}/etc/qcos/qcos-st.toml /etc/qcos/
+                # Clean existing pgsql database
+                echo "Clean existing pgsql database"
+                \${TOP_DIR}/bin/clean-qcos-db.sh -f
                 # Start QCOS system via docker-compose
                 ./run-docker.sh
                 # Wait for qcos-api to become ready
@@ -398,13 +407,12 @@ pipeline {
                 echo "Running system tests in container: qcos"
                 cd \${TOP_DIR}
                 tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
-                docker cp /tmp/cicd.tar.gz qcos:/tmp/
-                docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
+                docker cp /tmp/cicd.tar.gz qcos:/root/
+                docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /root/cicd.tar.gz"
                 TEST_EXIT_CODE=0
                 docker exec qcos sh -c "source /root/.bashrc; echo 'Transpiler list:'; qcos-cli list-transpilers; echo 'Driver list:'; qcos-cli list-drivers; echo 'Device list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all" || TEST_EXIT_CODE=\$?
                 # Print log files for debug purpose
                 echo -e "\\n----------------------------------\\nPrint log files for debug purpose:"
-                ls -al /var/log/qcos || true
                 awk 'FNR==1{print "\\n\\n--- Log File: " FILENAME " ---"} {print} END{print ""}' /var/log/qcos/qcos-api.log /var/log/qcos/postgresql.log /var/log/qcos/device*.log || true
                 exit \${TEST_EXIT_CODE}
                 """
@@ -617,6 +625,7 @@ void dockerCleanup() {
 void qcosCleanup() {
     sh """
     docker rm -f prefect-server redis postgres qcos-sandbox-temp qcos qcos-cli || true
+    rm -rf /var/log/qcos/*
     rm -rf /var/qcos/db/
     rm -rf /etc/qcos/*
     """
