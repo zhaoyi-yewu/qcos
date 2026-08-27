@@ -66,36 +66,6 @@ std::vector<std::shared_ptr<BaseOperation>> decompose_unitary(
     const CMatrix& unitary, const std::set<std::string>& basis_gates,
     const std::vector<int>& qubits = {});
 
-struct SingleQubitDecomp {
-  double theta;
-  double phi;
-  double lambda;
-  double phase;
-};
-
-SingleQubitDecomp decompose_single_qubit(const CMatrix& u);
-
-std::vector<std::shared_ptr<BaseOperation>> single_qubit_unitary_to_basis(
-    const CMatrix& u, int qubit,
-    const std::optional<std::set<std::string>>& basis_gates);
-
-struct TwoQubitDecomp {
-  CMatrix k1;
-  CMatrix k2;
-  CMatrix k3;
-  CMatrix k4;
-  double cx;
-  double cy;
-  double cz;
-  int num_cx;
-};
-
-TwoQubitDecomp decompose_two_qubit(const CMatrix& u);
-
-std::vector<std::shared_ptr<BaseOperation>> two_qubit_unitary_to_basis(
-    const CMatrix& u, int qubit0, int qubit1,
-    const std::optional<std::set<std::string>>& basis_gates);
-
 class UnitarySynthesis : public OptimizationPass {
  public:
   using OpPtr = std::shared_ptr<BaseOperation>;
