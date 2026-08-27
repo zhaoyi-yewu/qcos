@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------
-# Copyright© 2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -20,6 +20,7 @@ ARG CONTAINER_NAME
 ARG QCOS_WEBUI_IMAGE_VERSION
 ARG DEV
 ARG NPM_MIRROR
+ARG DOCKER_USER_QCOS
 
 LABEL stage=${CONTAINER_NAME}-builder
 LABEL build=${CONTAINER_NAME}
@@ -31,7 +32,6 @@ ENV LANGUAGE=en_US:en
 ENV CONTAINER_NAME=${CONTAINER_NAME}
 ENV PS1="(\${CONTAINER_NAME})[$(pwd)]$ "
 
-#ADD ./.build-context/ ${BUILD_CONTEXT}
 COPY ./ ${BUILD_CONTEXT}
 WORKDIR /root
 
@@ -51,15 +51,20 @@ RUN set -e && \
     cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/ && \
 # install basic rpms
     yum install -y hostname iputils iproute telnet net-tools openssl \
-    util-linux vim npm nginx && \
+      util-linux vim sudo npm nginx && \
 # install npm packages
     rm -rf ${app_dir}/dist ${app_dir}/node_modules ${app_dir}/package-lock.json && \
+    npm cache clean --force && \
+    export NODE_OPTIONS="--no-experimental-fetch" && \
     if [ -n "${NPM_MIRROR}" ]; then npm config set registry ${NPM_MIRROR}; fi && \
-    # install packages
-    npm install --omit=dev --verbose && \
-    if [ "${DEV,,}" = "false" ]; then \
-      npm run build:prod; \
-      cp -rf ${app_dir}/dist/ /app; \
+    # install packages: dev build needs devDependencies
+    # (e.g. @vue/cli-service for npm run dev)
+    if [ "${DEV,,}" = "true" ]; then \
+      npm install --no-audit --verbose; \
+    else \
+      npm install --no-audit --verbose && \
+      npm run build:prod && \
+      cp -rf ${app_dir}/dist/ /apps && \
       rm -rf ${app_dir}; \
     fi && \
 # cleanup build-context
@@ -67,4 +72,7 @@ RUN set -e && \
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
 
+RUN useradd -u 1000 -g root -m qcos && \
+    echo "qcos ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/qcos
+USER ${DOCKER_USER_QCOS}
 ENTRYPOINT ["/entrypoint.sh"]
