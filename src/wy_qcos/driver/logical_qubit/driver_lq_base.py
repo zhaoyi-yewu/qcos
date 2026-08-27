@@ -280,8 +280,8 @@ class DriverLogicalQubitBase(DriverBase):
         success, err_msg, cfg = self.get_device_info()
         device_running_info = {}
         if not success:
-            logger.debug(f"Failed to get device info: {err_msg}")
-            device_running_info["status"] = "offline"
+            logger.warning(f"Failed to get device info: {err_msg}")
+            device_running_info["status"] = Device.DEVICE_STATUS_DISCONNECTED
             device_running_info["details"] = {}
             return device_running_info
 

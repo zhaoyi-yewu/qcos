@@ -123,8 +123,7 @@ class DriverHanyuan1(DriverGateBase):
         err_msg = None
 
         # check and load driver configs
-        driver_config_schema = copy.deepcopy(self.default_driver_config_schema)
-        driver_config_schema.update({
+        driver_config_schema = {
             "debug": bool,
             "ip_address": str,
             "port": int,
@@ -147,7 +146,7 @@ class DriverHanyuan1(DriverGateBase):
                     str: {"gates": [list], Optional("params"): [str]}
                 },
             },
-        })
+        }
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema, ignore_extra_keys=True
         )
@@ -1004,8 +1003,8 @@ class DriverHanyuan1(DriverGateBase):
         device_running_info = {}
         success, err_msg, result = self.get_device_info()
         if not success:
-            logger.debug(f"Failed to get device info: {err_msg}")
-            device_running_info["status"] = "offline"
+            logger.warning(f"Failed to get device info: {err_msg}")
+            device_running_info["status"] = Device.DEVICE_STATUS_DISCONNECTED
             device_running_info["details"] = {}
             return device_running_info
 
