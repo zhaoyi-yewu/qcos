@@ -316,7 +316,8 @@ class TranspilerCmss(TranspilerBase):
         enable_mapping = self.transpiler_options.get("enable_mapping", True)
         # Neutral-atom routing does not insert SWAPs and its basis gate set
         # may lack a two-qubit gate to decompose SWAP, so SWAP decomposition
-        # is skipped for neutral-atom systems (see build_full_decomposition_table).
+        # is skipped for neutral-atom systems
+        # (see build_full_decomposition_table).
         is_neutral_atom = (
             trans_cfg_inst.get_tech_type()
             == Constant.TECH_TYPE_NEUTRAL_ATOM
