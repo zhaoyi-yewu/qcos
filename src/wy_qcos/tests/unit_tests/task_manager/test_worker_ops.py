@@ -92,10 +92,14 @@ class TestListWorkers:
         assert result[0]["worker_name"] == "process-device|dummy"
         assert result[0]["work_pool"] == "device|dummy"
         assert result[0]["device_name"] == "dummy"
-        assert result[0]["worker_status"] == WorkerStatus.ONLINE.value
+        assert result[0]["worker_status"] == (
+            WorkerStatus.ONLINE.value.lower()
+        )
         assert result[0]["pid"] == 101
         assert result[1]["device_name"] == "dummy"
-        assert result[1]["worker_status"] == WorkerStatus.OFFLINE.value
+        assert result[1]["worker_status"] == (
+            WorkerStatus.OFFLINE.value.lower()
+        )
         assert result[1]["pid"] is None
 
     def test_online_without_process_corrected_to_offline(self, task_manager):
@@ -114,7 +118,9 @@ class TestListWorkers:
 
         assert len(result) == 1
         # prefect reports ONLINE but no process exists -> OFFLINE
-        assert result[0]["worker_status"] == (WorkerStatus.OFFLINE.value)
+        assert result[0]["worker_status"] == (
+            WorkerStatus.OFFLINE.value.lower()
+        )
         assert result[0]["pid"] is None
 
     def test_list_empty_pool(self, task_manager):
@@ -311,9 +317,24 @@ class TestStartWorkerProcess:
         mock_process.start.assert_called_once()
 
     @mock.patch("wy_qcos.task_manager.task_manager.multiprocessing")
+    def test_start_worker_disabled_device(self, mock_mp, task_manager):
+        """No worker started when device is disabled (enable=False)."""
+        device = mock.Mock()
+        device.enable = False
+        device_manager = mock.Mock()
+        device_manager.get_devices.return_value = {"dummy": device}
+        task_manager.device_manager = device_manager
+
+        # job worker should not start
+        result = task_manager._start_worker_process("dummy", "job")
+        assert result is False
+        mock_mp.Process.assert_not_called()
+
+    @mock.patch("wy_qcos.task_manager.task_manager.multiprocessing")
     def test_start_monitor_worker_disabled(self, mock_mp, task_manager):
         """Monitor worker not started when device monitor disabled."""
         device = mock.Mock()
+        device.enable = True
         device_manager = mock.Mock()
         device_manager.get_devices.return_value = {"dummy": device}
         task_manager.device_manager = device_manager
