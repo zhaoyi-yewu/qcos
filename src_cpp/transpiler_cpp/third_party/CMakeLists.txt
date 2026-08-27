@@ -15,5 +15,7 @@ elseif(NOT GTest_FOUND)
     )
 endif()
 
-find_package(nanobind CONFIG REQUIRED)
+if(USE_PYQCOS)
+    find_package(nanobind CONFIG REQUIRED)
+endif()
 add_subdirectory(antlr4)

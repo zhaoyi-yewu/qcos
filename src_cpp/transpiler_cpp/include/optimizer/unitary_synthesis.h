@@ -24,35 +24,13 @@
 #include <string>
 #include <vector>
 
-#include "circuit/base_operation.h"
 #include "circuit/dag_circuit.h"
 #include "optimizer/optimization_pass.h"
+#include "optimizer/matrix_utils.h"
+#include "optimizer/one_qubit_euler_decomposer.h"
+#include "optimizer/two_qubit_decomposer.h"
 
 namespace qcos {
-
-using CMatrix = std::vector<std::vector<std::complex<double>>>;
-
-namespace matrix_utils {
-
-CMatrix identity(size_t n);
-CMatrix multiply(const CMatrix& a, const CMatrix& b);
-CMatrix tensor_product(const CMatrix& a, const CMatrix& b);
-CMatrix conjugate_transpose(const CMatrix& m);
-CMatrix scalar_multiply(std::complex<double> s, const CMatrix& m);
-double trace(const CMatrix& m);
-CMatrix subtract(const CMatrix& a, const CMatrix& b);
-CMatrix add(const CMatrix& a, const CMatrix& b);
-double frobenius_norm(const CMatrix& m);
-bool is_identity(const CMatrix& m, double tol = 1e-10);
-bool is_close(const CMatrix& a, const CMatrix& b, double tol = 1e-10);
-
-CMatrix gate_to_matrix(const std::shared_ptr<BaseOperation>& op);
-
-CMatrix compute_block_unitary(
-    const std::vector<DAGOpNode*>& block,
-    const std::unordered_map<int, int>& qubit_mapping);
-
-}  // namespace matrix_utils
 
 /**
  * @brief 将酉矩阵分解为目标门集中的基础门序列

@@ -31,6 +31,10 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_cmss_verifier.cpp
                             test_unitary_synthesis.cpp
                             test_transpile.cpp
+                            optimizer/test_matrix_utils.cpp
+                            optimizer/test_one_qubit_euler_decomposer.cpp
+                            optimizer/test_two_qubit_decomposer.cpp
+                            optimizer/test_basis_selector.cpp
 )
 target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST} ${LIB_ANTLR4})
 
