@@ -23,7 +23,7 @@ export PREFECT_API_URL=http://prefect-server.${QCOS_NAMESPACE}:4200/api
 # User configures
 # authentication mode: "no" (default), "password", "virtual_instance"
 export QCOS_AUTH_MODE=no
-export QCOS_PASSWORD_SALT=P@ssword1
+export QCOS_PASSWORD_SALT=P*ssword1
 
 # QCOS client config
 # [Optional] specify qcos cli configs
@@ -40,12 +40,12 @@ export QCOS_ADMIN_VIRTUAL_INSTANCE_ID=
 # Postgres configures
 #DB_BACKEND: sqlite, postgres
 export DB_BACKEND=postgres
-export POSTGRES_ADMIN_PASSWORD=P@ssword1
+export POSTGRES_ADMIN_PASSWORD=P*ssword1
 
 # QCOS database configs
 # pg: postgresql+pg8000://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos
 # sqlite: "sqlite:////var/qcos/db/qcos.db"
-export QCOS_DATABASE_PASSWORD=P@ssword1
+export QCOS_DATABASE_PASSWORD=P*ssword1
 export QCOS_DATABASE_CONNECTION_URL=postgresql+pg8000://qcos:${QCOS_DATABASE_PASSWORD}@prefect-server.${QCOS_NAMESPACE}:5432/qcos
 #QCOS_DATABASE_CONNECTION_URL=sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL
 
