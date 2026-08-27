@@ -622,7 +622,7 @@ class TestDeviceGroupFilter:
 
     def test_filter_one_no_manager(self):
         """When manager is None but filter enabled, pass."""
-        f = DeviceGroupFilter(device_group_manager=None)
+        f = DeviceGroupFilter()
         spec = make_spec(
             flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "g"}
         )
@@ -635,7 +635,8 @@ class TestDeviceGroupFilter:
             "dummy",
             "qutip",
         ]
-        f = DeviceGroupFilter(device_group_manager=mock_mgr)
+        f = DeviceGroupFilter()
+        f.set_device_group_manager(mock_mgr)
         spec = make_spec(
             flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "my-group"}
         )
@@ -647,7 +648,8 @@ class TestDeviceGroupFilter:
         mock_mgr.get_device_names_by_group.return_value = [
             "other",
         ]
-        f = DeviceGroupFilter(device_group_manager=mock_mgr)
+        f = DeviceGroupFilter()
+        f.set_device_group_manager(mock_mgr)
         spec = make_spec(
             flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "my-group"}
         )
@@ -657,7 +659,8 @@ class TestDeviceGroupFilter:
     def test_filter_one_empty_device_list(self):
         mock_mgr = MagicMock()
         mock_mgr.get_device_names_by_group.return_value = []
-        f = DeviceGroupFilter(device_group_manager=mock_mgr)
+        f = DeviceGroupFilter()
+        f.set_device_group_manager(mock_mgr)
         spec = make_spec(
             flavor_specs={FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: "empty"}
         )

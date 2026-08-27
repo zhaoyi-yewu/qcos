@@ -101,8 +101,8 @@ extra_properties字段
 Flavor的extra_properties字段支持以下键值（键名需为 ``namespace:name`` 格式），
 由FlavorManager校验，用于调度时过滤设备：
 
-- ``qc:devices``: 显式允许的设备名称（逗号分隔，如 ``"dummy,qutip_sim"``）
-- ``qc:exclude_devices``: 排除的设备名称（逗号分隔，如 ``"dummy"``）
+- ``qcos:devices``: 显式允许的设备名称（逗号分隔，如 ``"dummy,qutip_sim"``）
+- ``qcos:exclude_devices``: 排除的设备名称（逗号分隔，如 ``"dummy"``）
 - ``qc:device_availability``: 设备可用性要求（如 ``0.99``）
 - ``qc:code_types``: 支持的代码类型（如 ``"qasm2,qasm3"``）
 - ``qc:tech_types``: 量子技术路线类型（如 ``"superconducting,ion_trap"``）

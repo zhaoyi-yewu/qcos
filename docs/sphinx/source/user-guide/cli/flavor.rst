@@ -253,21 +253,21 @@ property 字段说明
      - 说明
      - 示例值
 
-   * - ``qc:devices``
+   * - ``qcos:devices``
      - 允许的设备名称列表（逗号分隔）
      - ``"dummy,qutip_sim"``
 
-   * - ``qc:exclude_devices``
+   * - ``qcos:exclude_devices``
      - 排除的设备名称列表（逗号分隔）
      - ``"dummy"``
+
+   * - ``qcos:code_types``
+     - 支持的代码类型
+     - ``"qasm2,qasm3"``
 
    * - ``qc:device_availability`` 【暂不支持】
      - 设备可用性要求
      - ``0.99``
-
-   * - ``qc:code_types``
-     - 支持的代码类型
-     - ``"qasm2,qasm3"``
 
    * - ``qc:tech_types``
      - 量子技术路线类型
@@ -279,13 +279,13 @@ property 字段说明
 
    # 设置允许的设备列表
    qcos-cli create-flavor my-flavor \
-       --property qc:devices="dummy,qutip_sim" \
+       --property qcos:devices="dummy,qutip_sim" \
        --device-groups <device-group-uuid>
 
    # 设置排除设备与代码类型
    qcos-cli update-flavor my-flavor \
-       --property qc:exclude_devices="dummy" \
-       --property qc:code_types="qasm2,qasm3"
+       --property qcos:exclude_devices="dummy" \
+       --property qcos:code_types="qasm2,qasm3"
 
    # 清空所有 property
    qcos-cli update-flavor my-flavor --unset-extra-properties

@@ -19,6 +19,7 @@ import logging
 from uuid import UUID
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from wy_qcos.db.models import DeviceGroup
@@ -172,9 +173,29 @@ class DeviceGroupRepository(BaseRepository):
             self._db_session.delete(group)
             self._db_session.commit()
             return True, None
+        except IntegrityError:
+            self._db_session.rollback()
+            # check for foreign key constraint violation
+            return False, (
+                "Flavor is still referenced by other resources (e.g. flavors) "
+                "and cannot be deleted."
+            )
         except Exception as e:
             self._db_session.rollback()
-            return False, str(e)
+            # check for foreign key constraint violation
+            # (e.g. device group still referenced by flavors)
+            err_str = str(e)
+            if (
+                "foreign key constraint" in err_str
+                or "violates foreign key" in err_str
+                or "23503" in err_str
+            ):
+                return False, (
+                    "Device group is still referenced by "
+                    "other resources (e.g. flavors) and "
+                    "cannot be deleted"
+                )
+            return False, err_str
 
     def update_device_group(
         self,

@@ -100,20 +100,20 @@ DEFAULT_FLAVORS = [
 # Flavor extra_properties allowed fields.
 # Keys must be in 'namespace:name' format.
 # supported source code types. (eg., qasm,qasm2,qasm3)
-EXTRA_PROPERTY_QC_CODE_TYPES = "qc:code_types"
+EXTRA_PROPERTY_QCOS_CODE_TYPES = "qcos:code_types"
 # explicit option allows any other devices (e.g., dummy,qutip)
-EXTRA_PROPERTY_QC_DEVICES = "qc:devices"
+EXTRA_PROPERTY_QCOS_DEVICES = "qcos:devices"
 # explicit option excludes devices (e.g., dummy,qutip)
-EXTRA_PROPERTY_QC_EXCLUDE_DEVICES = "qc:exclude_devices"
+EXTRA_PROPERTY_QCOS_EXCLUDE_DEVICES = "qcos:exclude_devices"
 # device availability. (eg., 0.99)
 EXTRA_PROPERTY_QC_DEVICE_AVAILABILITY = "qc:device_availability"
 # tech types. (eg., superconducting,ion_trap)
 EXTRA_PROPERTY_QC_TECH_TYPES = "qc:tech_types"
 
 EXTRA_PROPERTIES_ALLOWED_FIELDS = [
-    EXTRA_PROPERTY_QC_CODE_TYPES,
-    EXTRA_PROPERTY_QC_DEVICES,
-    EXTRA_PROPERTY_QC_EXCLUDE_DEVICES,
+    EXTRA_PROPERTY_QCOS_CODE_TYPES,
+    EXTRA_PROPERTY_QCOS_DEVICES,
+    EXTRA_PROPERTY_QCOS_EXCLUDE_DEVICES,
     EXTRA_PROPERTY_QC_DEVICE_AVAILABILITY,
     EXTRA_PROPERTY_QC_TECH_TYPES,
 ]

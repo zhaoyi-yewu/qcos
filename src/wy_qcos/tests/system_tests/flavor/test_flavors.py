@@ -122,7 +122,7 @@ class TestFlavor:
             max_qubits=32,
             gate_fidelity_1q_min=0.99,
             gate_fidelity_2q_min=0.99,
-            extra_properties={"qc:devices": "dummy"},
+            extra_properties={"qcos:devices": "dummy"},
             device_groups=[DEFAULT_DEVICE_GROUP_QC_ALL_ID],
         )
         resp = json.loads(text)
@@ -139,7 +139,7 @@ class TestFlavor:
             max_qubits=32,
             gate_fidelity_1q_min=0.99,
             gate_fidelity_2q_min=0.99,
-            extra_properties={"qc:devices": "dummy"},
+            extra_properties={"qcos:devices": "dummy"},
             device_groups=[DEFAULT_DEVICE_GROUP_QC_ALL_ID],
         )
         success, err_msg = StLibrary.is_response_success(status_code, text)
@@ -152,7 +152,7 @@ class TestFlavor:
         assert flavor["max_qubits"] == 32
         assert flavor["gate_fidelity_1q_min"] == 0.99
         assert flavor["gate_fidelity_2q_min"] == 0.99
-        assert flavor["extra_properties"] == {"qc:devices": "dummy"}
+        assert flavor["extra_properties"] == {"qcos:devices": "dummy"}
 
     @pytest.mark.smoke
     def test_get_flavors(self):
@@ -254,14 +254,14 @@ class TestFlavor:
 
         status_code, reason, text, result = self.admin_client.update_flavor(
             flavor_id=flavor_id,
-            extra_properties={"qc:devices": "qutip_sim"},
+            extra_properties={"qcos:devices": "qutip_sim"},
         )
         success, err_msg = StLibrary.is_response_success(status_code, text)
         assert success, f"Failed to merge extra_properties: {err_msg}"
         resp = json.loads(text)
         flavor = resp["result"]
         # extra_properties should contain merged value
-        assert flavor["extra_properties"] == {"qc:devices": "qutip_sim"}
+        assert flavor["extra_properties"] == {"qcos:devices": "qutip_sim"}
 
     def test_update_flavor_clear_fields(self):
         """Test that passing None clears nullable fields."""
@@ -370,7 +370,7 @@ class TestFlavor:
             max_qubits=1,
             gate_fidelity_1q_min=0.99,
             gate_fidelity_2q_min=0.99,
-            extra_properties={"qc:devices": "dummy"},
+            extra_properties={"qcos:devices": "dummy"},
             device_groups=[DEFAULT_DEVICE_GROUP_QC_ALL_ID],
         )
         success, err_msg = StLibrary.is_response_success(status_code, text)
@@ -389,7 +389,7 @@ class TestFlavor:
             max_qubits=32,
             gate_fidelity_1q_min=1.5,
             gate_fidelity_2q_min=0.99,
-            extra_properties={"qc:devices": "dummy"},
+            extra_properties={"qcos:devices": "dummy"},
             device_groups=[DEFAULT_DEVICE_GROUP_QC_ALL_ID],
         )
         success, err_msg = StLibrary.is_response_success(status_code, text)

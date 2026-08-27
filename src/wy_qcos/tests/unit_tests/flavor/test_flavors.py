@@ -108,7 +108,7 @@ class TestValidateExtraProperties:
     def test_valid_key_returns_success(self):
         mgr = make_flavor_manager()
         ok, err = mgr.validate_extra_properties({
-            "qc:devices": "dummy,qutip_sim"
+            "qcos:devices": "dummy,qutip_sim"
         })
         assert ok is True
         assert err is None
@@ -126,7 +126,7 @@ class TestValidateExtraProperties:
         assert "Unsupported" in err
 
     def test_allowed_fields_constant(self):
-        assert "qc:devices" in (EXTRA_PROPERTIES_ALLOWED_FIELDS)
+        assert "qcos:devices" in (EXTRA_PROPERTIES_ALLOWED_FIELDS)
 
 
 # ------------------------------------------------------------------ #
@@ -149,7 +149,7 @@ class TestFlavorManagerGet:
 
     def test_get_flavor_found(self):
         mgr = make_flavor_manager()
-        flavor = make_flavor(extra_properties={"qc:devices": "dummy"})
+        flavor = make_flavor(extra_properties={"devices": "dummy"})
         with patch(
             "wy_qcos.flavor.flavor_manager.FlavorRepository"
         ) as mock_repo_cls:
@@ -241,7 +241,7 @@ class TestFlavorManagerGet:
             max_qubits=10,
             gate_fidelity_1q_min=0.99,
             gate_fidelity_2q_min=0.995,
-            extra_properties={"qc:devices": "dummy"},
+            extra_properties={"devices": "dummy"},
         )
         with patch.object(mgr, "get_flavor", return_value=flavor):
             specs = mgr.get_flavor_specs(flavor.id)
@@ -249,7 +249,7 @@ class TestFlavorManagerGet:
         assert specs[FlavorConstant.FS_KEY_MAX_QUBITS] == 10
         assert specs[FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN] == 0.99
         assert specs[FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN] == 0.995
-        assert specs["qc:devices"] == "dummy"
+        assert specs["devices"] == "dummy"
 
     def test_get_flavor_specs_partial(self):
         mgr = make_flavor_manager()
@@ -1130,9 +1130,7 @@ class TestUpdateFlavorRoute:
         mgr.validate_extra_properties.return_value = (True, None)
         mgr.get_flavor.return_value = None
         mock_sched.get_flavor_manager.return_value = mgr
-        body = self._make_request(
-            flavor_id, extra_properties={"qc:devices": "x"}
-        )
+        body = self._make_request(flavor_id, extra_properties={"devices": "x"})
         with (
             patch(
                 "wy_qcos.api.posiq.routes_jsonrpc.flavor.get_db_filters",
@@ -1150,7 +1148,7 @@ class TestUpdateFlavorRoute:
         """Explicitly passing extra_properties=None clears the field."""
         flavor_id = str(uuid.uuid4())
         existing = make_flavor(
-            flavor_id=flavor_id, extra_properties={"qc:devices": "old"}
+            flavor_id=flavor_id, extra_properties={"devices": "old"}
         )
         updated = make_flavor(flavor_id=flavor_id, extra_properties=None)
         mock_sched = MagicMock()
@@ -1207,11 +1205,11 @@ class TestUpdateFlavorRoute:
     def test_update_flavor_merge_extra_properties(self):
         flavor_id = str(uuid.uuid4())
         existing = make_flavor(
-            flavor_id=flavor_id, extra_properties={"qc:devices": "old"}
+            flavor_id=flavor_id, extra_properties={"devices": "old"}
         )
         updated = make_flavor(
             flavor_id=flavor_id,
-            extra_properties={"qc:devices": "new"},
+            extra_properties={"devices": "new"},
         )
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -1222,7 +1220,7 @@ class TestUpdateFlavorRoute:
         mgr.update_flavor.return_value = (True, None, updated)
         mock_sched.get_flavor_manager.return_value = mgr
         body = self._make_request(
-            flavor_id, extra_properties={"qc:devices": "new"}
+            flavor_id, extra_properties={"devices": "new"}
         )
         with (
             patch(
