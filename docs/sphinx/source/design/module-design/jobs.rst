@@ -61,6 +61,7 @@ Filter 分为必须过滤器和可选过滤器，可选过滤器仅在相关参�
 - ``CodeTypeFilter`` - 匹配设备支持的代码类型CODE_TYPE：QASM、QASM2、QASM3、QUBO等
 - ``DeviceStatusFilter`` - 设备的在线状态，必须为在线或繁忙
 - ``QueueLimitFilter`` - 设备队列是否已满
+- ``DeviceGroupFilter`` - 过滤指定设备组
 
 **可选过滤器（由 flavor_specs / extra_specs 触发）：**
 
@@ -129,9 +130,17 @@ Flavor 通过 API 接口进行管理：
 配置
 ^^^^^^^^^^^^^^^^^^^^
 在 ``qcos.toml`` 中可通过 ``[SCHEDULER]`` 配置段自定义启用的
-Filter 和 Weigher 列表。Filter/Weigher 名称须与
-``FILTER_REGISTRY`` / ``WEIGHER_REGISTRY`` 中注册的类名一致；
-未识别的名称会被跳过并告警，若全部未识别则回退到默认列表。
+Filter 和 Weigher 列表。AutoScheduler 在初始化时会通过
+``Library.import_classes`` 动态扫描 ``scheduler/filters`` 和
+``scheduler/weighers`` 目录，自动发现所有继承 ``BaseFilter`` /
+``BaseWeigher`` 的子类并建立名称→类的映射；
+``ENABLED_FILTERS`` / ``ENABLED_WEIGHERS`` 中的名称须与这些被
+发现的类名一致；未识别的名称会被跳过并告警，若全部未识别则回退
+到默认列表（``DEFAULT_FILTERS`` / ``DEFAULT_WEIGHERS``）。
+重复的类名会被自动去重；``DeviceGroupFilter`` 在被发现后会自动
+追加到过滤链末尾（去重），其 ``device_group_manager`` 由
+``BaseFilterHandler`` 在实例化后统一通过 ``set_device_group_manager()``
+注入。
 
 .. code-block:: toml
 
@@ -147,10 +156,11 @@ Filter 和 Weigher 列表。Filter/Weigher 名称须与
    ENABLED_FILTERS = [
        "CodeTypeFilter",
        "DeviceStatusFilter",
-       "QubitCountFilter",
        "TechTypeFilter",
-       "GateFidelityFilter",
+       "QubitCountFilter",
        "QueueLimitFilter",
+       "GateFidelityFilter",
+       "DeviceGroupFilter",
    ]
 
    # enabled weigher class names; empty list uses DEFAULT_WEIGHERS

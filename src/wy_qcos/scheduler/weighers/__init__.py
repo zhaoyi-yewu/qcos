@@ -24,9 +24,3 @@ DEFAULT_WEIGHERS = [
     DeviceLoadWeigher,
     AvgExecTimeWeigher,
 ]
-
-# Weigher registry for auto-discovery
-WEIGHER_REGISTRY = {
-    "DeviceLoadWeigher": DeviceLoadWeigher,
-    "AvgExecTimeWeigher": AvgExecTimeWeigher,
-}
