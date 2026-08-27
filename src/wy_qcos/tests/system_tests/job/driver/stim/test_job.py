@@ -410,7 +410,7 @@ class TestJob:
                 == Constant.JOB_STATUS_FAILED
             )
             assert (
-                "No rule for gate rx"
+                "Cannot decompose gate(s) ['rx']"
                 in job_results["result"]["results"][0]["error"]["message"]
             )
         else:
