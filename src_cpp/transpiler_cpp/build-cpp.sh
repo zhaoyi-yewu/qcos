@@ -72,8 +72,17 @@ mkdir -p ${BUILD_DIR}
 
 cd ${BUILD_DIR}
 PYTHON_EXE=${Python_EXECUTABLE:-$(which python3 2>/dev/null || echo python3)}
-cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DPython_EXECUTABLE="${PYTHON_EXE}" ..
-make -j${NPROC}
+PY_LIBDIR=$(${PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')" 2>/dev/null)
+PY_LDLIB=$(${PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_config_var('LDLIBRARY') or '')" 2>/dev/null)
+PY_INCDIR=$(${PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_path('include') or '')" 2>/dev/null)
+PY_LIB=""
+[ -n "${PY_LIBDIR}" ] && [ -n "${PY_LDLIB}" ] && PY_LIB="${PY_LIBDIR}/${PY_LDLIB}"
+cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    -DPython_EXECUTABLE="${PYTHON_EXE}" \
+    ${PY_LIB:+-DPython_LIBRARY="${PY_LIB}"} \
+    ${PY_INCDIR:+-DPython_INCLUDE_DIR="${PY_INCDIR}"} \
+    ..
+make -j${NPROC} ${BUILD_TARGET:-}
 
 # copy .so and .pyi to wy_qcos/transpiler
 mkdir -p "$TARGET_DIR"

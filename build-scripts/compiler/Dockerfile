@@ -23,9 +23,10 @@
 #
 # Build (after building the base image):
 #   docker build -f build-scripts/compiler/Dockerfile \
-#       -t qcos-compiler:1.5.0 .
+#       -t qcos-compiler:1.5.0 \
+#       --build-arg COMPILER_BASE_IMAGE=qcos-compiler-bc-oe-base:1.5.0 .
 
-ARG COMPILER_BASE_IMAGE=qcos-compiler-base:1.5.0
+ARG COMPILER_BASE_IMAGE=qcos-compiler-bc-oe-base:1.5.0
 FROM ${COMPILER_BASE_IMAGE}
 
 ARG BUILD_CONTEXT=/tmp/build-context
@@ -54,7 +55,10 @@ RUN set -e && \
     if [ -n "${PIP_MIRROR}" ]; then \
         ${VENV_PATH}/bin/pip config set global.index-url "${PIP_MIRROR}"; \
     fi && \
-    bash ${BUILD_CONTEXT}/src_cpp/transpiler_cpp/build-cpp.sh release rebuild && \
+    ln -sf libgtest.so.1.8.1 /usr/lib64/libgmock.so.1.8.1 && \
+    ln -sf libgtest_main.so.1.8.1 /usr/lib64/libgmock_main.so.1.8.1 && \
+    ${VENV_PATH}/bin/pip install --no-cache-dir cmake && \
+    BUILD_TARGET=high_performance bash ${BUILD_CONTEXT}/src_cpp/transpiler_cpp/build-cpp.sh release rebuild && \
     ${VENV_PATH}/bin/pip install --no-cache-dir ${BUILD_CONTEXT} && \
     VENV_TRANSPILER_DIR=$(${VENV_PATH}/bin/python -c \
       "import wy_qcos.transpiler, os; print(os.path.dirname(wy_qcos.transpiler.__file__))") && \
