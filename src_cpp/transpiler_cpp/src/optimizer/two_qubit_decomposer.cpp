@@ -109,9 +109,10 @@ ProductDecomp decompose_product_gate(const CM& K) {
     detR = R[0][0] * R[1][1] - R[0][1] * R[1][0];
   }
   if (std::abs(detR) < 0.1) {
-    fprintf(stderr, "DECOMPOSE_PRODUCT_GATE FAILED! detR=%.10f\n", std::abs(detR));
-    fprintf(stderr, "K:\n");
-    for (int r = 0; r < 4; r++) { for (int c2 = 0; c2 < 4; c2++) fprintf(stderr, " (%.6f,%.6f)", K[r][c2].real(), K[r][c2].imag()); fprintf(stderr, "\n"); }
+    throw std::runtime_error(
+        "decompose_product_gate: unable to decompose, detR < 0.1. "
+        "This indicates M2 diagonalization produced a degenerate K matrix; "
+        "P is not in SO(4).");
   }
   C sqrt_detR = std::sqrt(detR);
   for (int i = 0; i < 2; ++i)
@@ -167,21 +168,9 @@ WeylResult compute_weyl_decomposition(const CM& u) {
     throw std::runtime_error("Failed to diagonalize M2");
   }
 
-  // Fix sign of P to be in SO(4)
-  double det_P = std::real(matrix_utils::det4(P));
-  if (det_P < 0) {
-    for (int i = 0; i < 4; ++i) P[i][3] = -P[i][3];
-  }
-
   std::vector<double> d(4);
   for (int i = 0; i < 4; ++i) d[i] = -std::arg(D[i]) / 2.0;
   d[3] = -d[0] - d[1] - d[2];
-
-  fprintf(stderr, "=== Weyl Debug ===\n");
-  fprintf(stderr, "D (diagonal): ");
-  for (int i = 0; i < 4; ++i) fprintf(stderr, "(%.6f,%.6f) ", D[i].real(), D[i].imag());
-  fprintf(stderr, "\n");
-  fprintf(stderr, "d (before cs): %.6f %.6f %.6f %.6f\n", d[0], d[1], d[2], d[3]);
 
   std::vector<double> cs(3);
   for (int i = 0; i < 3; ++i)
@@ -215,6 +204,17 @@ WeylResult compute_weyl_decomposition(const CM& u) {
   for (int i = 0; i < 3; ++i) d[i] = d_new[i];
   P = P_new;
 
+  // Fix sign of P to be in SO(4). This must happen AFTER the column reorder
+  // above, because the reorder is an odd permutation (swaps two of the first
+  // three columns) and flips the sign of det(P). A P outside SO(4) makes the
+  // downstream product-gate decomposition ill-conditioned (K1_mb block
+  // determinants collapse to ~0, producing NaN via sqrt(0)). Matches qiskit's
+  // ordering: reorder first, then fix det.
+  double det_P = std::real(matrix_utils::det4(P));
+  if (det_P < 0) {
+    for (int i = 0; i < 4; ++i) P[i][3] = -P[i][3];
+  }
+
   // Compute K1, K2 (4x4 in magic basis)
   std::vector<C> exp_id(4);
   for (int i = 0; i < 4; ++i) exp_id[i] = std::exp(C(0, d[i]));
@@ -229,13 +229,6 @@ WeylResult compute_weyl_decomposition(const CM& u) {
 
   auto pd1 = decompose_product_gate(K1_mb);
   auto pd2 = decompose_product_gate(K2_mb);
-  fprintf(stderr, "K1_mb:\n");
-  for (int r = 0; r < 4; r++) { for (int c2 = 0; c2 < 4; c2++) fprintf(stderr, " (%.6f,%.6f)", K1_mb[r][c2].real(), K1_mb[r][c2].imag()); fprintf(stderr, "\n"); }
-  fprintf(stderr, "K2_mb:\n");
-  for (int r = 0; r < 4; r++) { for (int c2 = 0; c2 < 4; c2++) fprintf(stderr, " (%.6f,%.6f)", K2_mb[r][c2].real(), K2_mb[r][c2].imag()); fprintf(stderr, "\n"); }
-  fprintf(stderr, "K1l det=%.6f K1r det=%.6f\n",
-    std::abs(pd1.Kl[0][0]*pd1.Kl[1][1]-pd1.Kl[0][1]*pd1.Kl[1][0]),
-    std::abs(pd1.Kr[0][0]*pd1.Kr[1][1]-pd1.Kr[0][1]*pd1.Kr[1][0]));
   CM K1l = pd1.Kl, K1r = pd1.Kr;
   CM K2l = pd2.Kl, K2r = pd2.Kr;
   global_phase += pd1.phase + pd2.phase;
@@ -645,32 +638,6 @@ std::vector<std::shared_ptr<BaseOperation>> two_qubit_unitary_to_basis(
     decomposition = decomp1(wd, kp);
   } else if (best_nbasis == 2) {
     decomposition = decomp2(wd, kp);
-    fprintf(stderr, "=== decomp2 DEBUG ===\n");
-    fprintf(stderr, "Weyl: a=%.6f b=%.6f c=%.6f\n", a, b, c);
-    fprintf(stderr, "wd.K1l:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", wd.K1l[r][c2].real(), wd.K1l[r][c2].imag()); fprintf(stderr, "\n"); }
-    fprintf(stderr, "wd.K1r:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", wd.K1r[r][c2].real(), wd.K1r[r][c2].imag()); fprintf(stderr, "\n"); }
-    fprintf(stderr, "wd.K2l:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", wd.K2l[r][c2].real(), wd.K2l[r][c2].imag()); fprintf(stderr, "\n"); }
-    fprintf(stderr, "wd.K2r:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", wd.K2r[r][c2].real(), wd.K2r[r][c2].imag()); fprintf(stderr, "\n"); }
-    fprintf(stderr, "kp.q0l:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", kp.q0l[r][c2].real(), kp.q0l[r][c2].imag()); fprintf(stderr, "\n"); }
-    fprintf(stderr, "kp.q0r:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", kp.q0r[r][c2].real(), kp.q0r[r][c2].imag()); fprintf(stderr, "\n"); }
-    fprintf(stderr, "kp.q2l:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", kp.q2l[r][c2].real(), kp.q2l[r][c2].imag()); fprintf(stderr, "\n"); }
-    fprintf(stderr, "kp.q2r:\n");
-    for (int r = 0; r < 2; r++) { for (int c2 = 0; c2 < 2; c2++) fprintf(stderr, " (%.6f,%.6f)", kp.q2r[r][c2].real(), kp.q2r[r][c2].imag()); fprintf(stderr, "\n"); }
-    for (int k = 0; k < (int)decomposition.size(); k++) {
-      fprintf(stderr, "decomp[%d]:\n", k);
-      for (int r = 0; r < 2; r++) {
-        for (int c2 = 0; c2 < 2; c2++)
-          fprintf(stderr, " (%.6f,%.6f)", decomposition[k][r][c2].real(), decomposition[k][r][c2].imag());
-        fprintf(stderr, "\n");
-      }
-    }
   } else {
     decomposition = decomp3(wd, kp);
   }
