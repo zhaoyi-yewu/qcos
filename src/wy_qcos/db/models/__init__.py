@@ -26,4 +26,5 @@ from .user import TokenBlacklist
 from .job import Job
 from .flavor import Flavor
 from .device_group import DeviceGroup
+from .device_availability import DeviceAvailabilityHourly
 from .flavor_device_group import FlavorDeviceGroup
