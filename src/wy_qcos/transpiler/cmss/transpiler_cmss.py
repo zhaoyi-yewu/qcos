@@ -319,8 +319,7 @@ class TranspilerCmss(TranspilerBase):
         # is skipped for neutral-atom systems
         # (see build_full_decomposition_table).
         is_neutral_atom = (
-            trans_cfg_inst.get_tech_type()
-            == Constant.TECH_TYPE_NEUTRAL_ATOM
+            trans_cfg_inst.get_tech_type() == Constant.TECH_TYPE_NEUTRAL_ATOM
         )
         run_time: TranspileRuntime = self.transpiler_runtime
 

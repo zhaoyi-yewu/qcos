@@ -330,13 +330,11 @@ class TestTranspilerCmss:
 
         for gate in basis_gate_list:
             assert gate.name in allowed_gate_names, (
-                f"gate '{gate.name}' not in allowed gates "
-                f"{allowed_gate_names}"
+                f"gate '{gate.name}' not in allowed gates {allowed_gate_names}"
             )
             for target in gate.targets:
                 assert isinstance(target, int) and target >= 0, (
-                    f"target {target} of {gate.name} is not a "
-                    f"non-negative int"
+                    f"target {target} of {gate.name} is not a non-negative int"
                 )
 
         seen_measure = False
@@ -398,9 +396,7 @@ class TestTranspilerCmss:
                     sc_mapping_options
                 )
 
-            parse_result = transpiler.parse(
-                {"000": qasm_data}, code_type
-            )
+            parse_result = transpiler.parse({"000": qasm_data}, code_type)
             basis_gate_list, mapping_dict, final_layout_dict = (
                 transpiler.transpile(parse_result, basis_gates)
             )
@@ -429,9 +425,7 @@ class TestTranspilerCmss:
         )
 
         allowed_gate_names = set(basis_gates) | {"measure"}
-        self._assert_transpile_result(
-            basis_gate_list, allowed_gate_names
-        )
+        self._assert_transpile_result(basis_gate_list, allowed_gate_names)
         assert final_layout_dict is not None
         assert mapping_dict is not None
 
@@ -454,9 +448,7 @@ class TestTranspilerCmss:
 
         # NA 路由会引入 move 门, 故允许集合为 basis ∪ {measure, move}.
         allowed_gate_names = set(basis_gates) | {"measure", "move"}
-        self._assert_transpile_result(
-            basis_gate_list, allowed_gate_names
-        )
+        self._assert_transpile_result(basis_gate_list, allowed_gate_names)
         assert final_layout_dict is not None
         assert mapping_dict is not None
 
@@ -480,8 +472,6 @@ class TestTranspilerCmss:
 
         # NA 路由会引入 move 门, 故允许集合为 basis ∪ {measure, move}.
         allowed_gate_names = set(basis_gates) | {"measure", "move"}
-        self._assert_transpile_result(
-            basis_gate_list, allowed_gate_names
-        )
+        self._assert_transpile_result(basis_gate_list, allowed_gate_names)
         assert final_layout_dict is not None
         assert mapping_dict is not None
