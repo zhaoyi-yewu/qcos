@@ -98,17 +98,21 @@ DEFAULT_FLAVORS = [
 ]
 
 # Flavor extra_properties allowed fields.
-# Keys must be in 'namespace:name' format.
+# Keys must be in 'namespace:name' format. The canonical key
+# strings live in FlavorConstant so filters and the flavor manager
+# share a single source of truth.
 # supported source code types. (eg., qasm,qasm2,qasm3)
-EXTRA_PROPERTY_QCOS_CODE_TYPES = "qcos:code_types"
+EXTRA_PROPERTY_QCOS_CODE_TYPES = FlavorConstant.FS_KEY_CODE_TYPES
 # explicit option allows any other devices (e.g., dummy,qutip)
-EXTRA_PROPERTY_QCOS_DEVICES = "qcos:devices"
+EXTRA_PROPERTY_QCOS_DEVICES = FlavorConstant.FS_KEY_DEVICES
 # explicit option excludes devices (e.g., dummy,qutip)
-EXTRA_PROPERTY_QCOS_EXCLUDE_DEVICES = "qcos:exclude_devices"
+EXTRA_PROPERTY_QCOS_EXCLUDE_DEVICES = FlavorConstant.FS_KEY_EXCLUDE_DEVICES
 # device availability. (eg., 0.99)
-EXTRA_PROPERTY_QC_DEVICE_AVAILABILITY = "qc:device_availability"
+EXTRA_PROPERTY_QC_DEVICE_AVAILABILITY = (
+    FlavorConstant.FS_KEY_DEVICE_AVAILABILITY
+)
 # tech types. (eg., superconducting,ion_trap)
-EXTRA_PROPERTY_QC_TECH_TYPES = "qc:tech_types"
+EXTRA_PROPERTY_QC_TECH_TYPES = FlavorConstant.FS_KEY_TECH_TYPES
 
 EXTRA_PROPERTIES_ALLOWED_FIELDS = [
     EXTRA_PROPERTY_QCOS_CODE_TYPES,
