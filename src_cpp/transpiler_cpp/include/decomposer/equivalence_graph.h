@@ -265,6 +265,17 @@ public:
      *
      * @param source Primitive gate set
      * @param target Target gate set
+     * @param enable_mapping Whether mapping (routing) is enabled.
+     *   Only when mapping is enabled is the SWAP gate added to the
+     *   source set, since its decomposition depth is used by the
+     *   mapping module.
+     * @param is_neutral_atom Whether the target device is a
+     *   neutral-atom system. Neutral-atom routing does not rely on
+     *   SWAP insertion and its basis gate set may lack a two-qubit
+     *   gate to decompose SWAP (swap -> cx -> cz), so SWAP is skipped
+     *   to avoid spurious undecomposable-SWAP errors. SWAP is only
+     *   added when mapping is enabled AND the device is not a
+     *   neutral-atom system.
      *
      * @return Pair of:
      * - decomposition table
@@ -280,7 +291,9 @@ public:
     >
     build_full_decomposition_table(
         const std::vector<std::string>& source,
-        const std::vector<std::string>& target
+        const std::vector<std::string>& target,
+        bool enable_mapping = true,
+        bool is_neutral_atom = false
     );
 
 private:

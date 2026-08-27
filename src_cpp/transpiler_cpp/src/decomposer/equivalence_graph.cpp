@@ -17,6 +17,7 @@
 
  #include "decomposer/equivalence_graph.h"
 
+ #include <algorithm>
  #include <sstream>
  #include <regex>
  #include <queue>
@@ -1580,9 +1581,24 @@ EquivalenceGraph::expand_gate_recursive(
 
     if (it == rule_map.end()) {
 
-        throw runtime_error(
-            "no rule for gate " +
-            gate.name);
+        vector<string> target_sorted(
+            target_set.begin(),
+            target_set.end());
+        sort(target_sorted.begin(),
+             target_sorted.end());
+        ostringstream target_ss;
+        for (size_t i = 0;
+             i < target_sorted.size(); ++i) {
+            if (i) target_ss << ", ";
+            target_ss << target_sorted[i];
+        }
+        ostringstream msg;
+        msg << "Cannot decompose gate '"
+            << gate.name
+            << "' into target basis ["
+            << target_ss.str()
+            << "]: no decomposition rule found";
+        throw runtime_error(msg.str());
     }
 
     const auto& rule = it->second;
@@ -1742,16 +1758,27 @@ pair<
 >
 EquivalenceGraph::build_full_decomposition_table(
     const vector<string>& source,
-    const vector<string>& target
+    const vector<string>& target,
+    bool enable_mapping,
+    bool is_neutral_atom
 ) {
 
     // ------------------------------------------------
     // Extend source gate set
     // ------------------------------------------------
 
+    // Only require SWAP decomposition when mapping is enabled and
+    // the device is not a neutral-atom system. Neutral-atom routing
+    // does not insert SWAPs, and the basis gate set may lack a
+    // two-qubit gate to decompose SWAP (swap -> cx -> cz).
+    const bool require_swap =
+        enable_mapping && !is_neutral_atom;
+
     vector<string> extended_source = source;
 
-    extended_source.push_back("swap");
+    if (require_swap) {
+        extended_source.push_back("swap");
+    }
 
     // ------------------------------------------------
     // Extend target gate set
@@ -1810,6 +1837,13 @@ EquivalenceGraph::build_full_decomposition_table(
         ParamGate,
         ParamGateHash> path;
 
+    // Collect every source gate that has no decomposition
+    // rule so the error reports the full set at once instead
+    // of failing on the first undecomposable gate (which
+    // masks the real root cause, e.g. SWAP needing a missing
+    // two-qubit gate).
+    vector<string> missing;
+
     for (auto& name : extended_source) {
 
         // Already primitive target gate
@@ -1823,7 +1857,8 @@ EquivalenceGraph::build_full_decomposition_table(
         auto it = rule_map.find(name);
 
         if (it == rule_map.end()) {
-            throw runtime_error("no rule");
+            missing.push_back(name);
+            continue;
         }
 
         ParamGate template_gate =
@@ -1848,6 +1883,67 @@ EquivalenceGraph::build_full_decomposition_table(
         // Simple complexity metric
         count_map[template_gate.name] =
             expanded.size() + 1;
+    }
+
+    if (!missing.empty()) {
+
+        // Build a sorted, comma-separated view of the
+        // target basis for the error message.
+        vector<string> target_sorted(
+            target_set.begin(),
+            target_set.end());
+        sort(target_sorted.begin(),
+             target_sorted.end());
+        ostringstream target_ss;
+        for (size_t i = 0;
+             i < target_sorted.size(); ++i) {
+            if (i) target_ss << ", ";
+            target_ss << target_sorted[i];
+        }
+
+        // Build a comma-separated list of undecomposable
+        // gates.
+        ostringstream missing_ss;
+        for (size_t i = 0;
+             i < missing.size(); ++i) {
+            if (i) missing_ss << ", ";
+            missing_ss << missing[i];
+        }
+
+        ostringstream msg;
+        msg << "Cannot decompose gate(s) ["
+            << missing_ss.str()
+            << "] into target basis ["
+            << target_ss.str() << "]. ";
+
+        // SWAP can only be decomposed through a two-qubit
+        // gate (swap -> cx -> cz). When SWAP is among the
+        // missing gates and the target basis lacks both cx
+        // and cz, the root cause is the missing two-qubit
+        // gate rather than each individual gate failing.
+        bool swap_missing = find(
+            missing.begin(),
+            missing.end(),
+            "swap") != missing.end();
+        bool has_two_qubit =
+            target_set.count("cx") ||
+            target_set.count("cz");
+
+        if (swap_missing && !has_two_qubit) {
+            msg << "SWAP decomposition requires a "
+                << "two-qubit gate (cx or cz) in the "
+                << "target basis (swap -> cx -> cz), "
+                << "but neither is present; either add "
+                << "cx/cz to the basis gate set or "
+                << "disable mapping for this device";
+        } else {
+            msg << "no decomposition path from the "
+                << "target basis to these gate(s); "
+                << "check that the basis gate set is "
+                << "complete";
+        }
+
+        throw runtime_error(msg.str());
     }
 
     return {table, count_map};

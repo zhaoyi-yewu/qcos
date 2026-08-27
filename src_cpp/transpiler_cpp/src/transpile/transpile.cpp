@@ -205,11 +205,16 @@ TranspileResult transpile_na(const std::string& qasm_string,
 
   // Step 4: Get decompose rules — build the decomposition rule table from the
   // basis gates.
+  // Neutral-atom routing does not insert SWAPs and the basis gate set may
+  // lack a two-qubit gate to decompose SWAP, so SWAP decomposition is
+  // skipped here (see build_full_decomposition_table).
   auto rule_start = clock::now();
   auto gate_names = collect_gate_names(decomposed_ops);
   Decomposer decomposer;
   auto [decompose_table, usage_stats] =
-      decomposer.get_decompose_rules(gate_names, supp_basis_gates);
+      decomposer.get_decompose_rules(gate_names, supp_basis_gates,
+                                     /*enable_mapping=*/true,
+                                     /*is_neutral_atom=*/true);
   t.decompose_rule_time =
       std::chrono::duration<double>(clock::now() - rule_start).count();
 
