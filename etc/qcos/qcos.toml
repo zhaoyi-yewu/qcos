@@ -42,7 +42,8 @@ ENABLE_AUTO_SCHEDULE = true
 # enabled filter class names; empty list uses all DEFAULT_FILTERS
 # available filters: CodeTypeFilter, DeviceStatusFilter,
 #   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
-#   QueueLimitFilter, DeviceGroupFilter
+#   QueueLimitFilter, DeviceAvailabilityFilter, DeviceNameFilter,
+#   DeviceGroupFilter
 ENABLED_FILTERS = [
     "CodeTypeFilter",
     "DeviceStatusFilter",
@@ -50,11 +51,15 @@ ENABLED_FILTERS = [
     "QubitCountFilter",
     "QueueLimitFilter",
     "GateFidelityFilter",
+    "DeviceAvailabilityFilter",
+    "DeviceNameFilter",
     "DeviceGroupFilter",
 ]
 # enabled weigher class names; empty list uses all DEFAULT_WEIGHERS
-# available weighers: DeviceLoadWeigher, AvgExecTimeWeigher
+# available weighers: DeviceAvailabilityWeigher, DeviceLoadWeigher,
+# AvgExecTimeWeigher
 ENABLED_WEIGHERS = [
+    "DeviceAvailabilityWeigher",
     "DeviceLoadWeigher",
     "AvgExecTimeWeigher",
 ]
@@ -92,9 +97,9 @@ PASSWORD_SALT = "123456"
 [DATABASE]
 # QCOS database connection URL (sqlite or postgresql)
 # eg:
-# postgresql: "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
+# postgresql: "postgresql+psycopg://qcos:${password}@127.0.0.1:5432/qcos"
 # sqlite: "sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL"
-QCOS_DATABASE_CONNECTION_URL = "postgresql+pg8000://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos"
+QCOS_DATABASE_CONNECTION_URL = "postgresql+psycopg://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos"
 
 [REDIS]
 # redis server ip
