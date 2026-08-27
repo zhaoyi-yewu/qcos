@@ -82,6 +82,10 @@ class Constant:
     JOB_TYPE_ESTIMATION = "estimation"
     JOB_TYPES = [JOB_TYPE_SAMPLING, JOB_TYPE_ESTIMATION]
 
+    # Special job_id value that resolves to the most recent job
+    # (sorted by created_at descending) on the server side.
+    JOB_ID_LAST = "last"
+
     # Job priority
     DEFAULT_JOB_PRIORITY = 5
     MIN_JOB_PRIORITY = 1

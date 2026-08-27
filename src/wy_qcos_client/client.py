@@ -449,8 +449,9 @@ class Client:
         status=None,
         enable=None,
         max_qubits=None,
+        available_qubits=None,
     ):
-        """Set device attributes (status, enable, max_qubits).
+        """Set device attributes (status, enable, max_qubits, etc.).
 
         Each parameter is optional; when omitted (None) the
         corresponding attribute is not changed.
@@ -462,6 +463,8 @@ class Client:
             enable: enable flag (True/False). None means no change.
             max_qubits: max qubits ("auto" or positive integer
                 string). None means no change.
+            available_qubits: available qubits ("auto" or positive
+                integer string). None means no change.
 
         Returns:
             status_code, reason, text, result
@@ -476,6 +479,8 @@ class Client:
             data["enable"] = enable
         if max_qubits is not None:
             data["max_qubits"] = max_qubits
+        if available_qubits is not None:
+            data["available_qubits"] = available_qubits
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
