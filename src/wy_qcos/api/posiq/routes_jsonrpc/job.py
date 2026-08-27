@@ -28,6 +28,7 @@ from wy_qcos.db.models import Job
 from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.db.utils.db_utils import get_db_filters, get_repository
 from wy_qcos.scheduler import AutoScheduler, NoValidDeviceError
+from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.common import args_schema, errors
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
@@ -273,6 +274,14 @@ def submit_job(
                 "flavor_id, not with backend",
             ),
         )
+    if extra_specs:
+        ok, err_msg = RequestSpec.validate_extra_specs(extra_specs)
+        if not ok:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, err_msg),
+            )
     if not backend and not flavor_id:
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
