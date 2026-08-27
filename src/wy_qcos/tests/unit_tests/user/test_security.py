@@ -571,8 +571,11 @@ class TestLoginLogging:
                 mock_create_login_log
             )
             mock_users_repo.get_login_logs.side_effect = (
-                lambda user_id=None, start_time=None, end_time=None,
-                limit=100, offset=0: (
+                lambda user_id=None,
+                start_time=None,
+                end_time=None,
+                limit=100,
+                offset=0: (
                     True,
                     None,
                     login_logs[offset : offset + limit]

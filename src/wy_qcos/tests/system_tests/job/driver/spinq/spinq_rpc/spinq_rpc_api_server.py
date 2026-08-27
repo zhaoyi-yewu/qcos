@@ -95,8 +95,7 @@ def load_config(config_file_path: str):
 
     # get qpu_configs
     qpu_configs = (
-        config_data
-        .get("spinq_rpc", {})
+        config_data.get("spinq_rpc", {})
         .get("transpiler", {})
         .get("qpu_configs", {})
     )

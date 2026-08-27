@@ -211,8 +211,11 @@ class TestUserManager:
             mock_users_repo.update_user.side_effect = mock_update_user
             mock_users_repo.create_login_log.return_value = None
             mock_users_repo.get_login_logs.side_effect = (
-                lambda user_id=None, start_time=None, end_time=None,
-                limit=100, offset=0: (
+                lambda user_id=None,
+                start_time=None,
+                end_time=None,
+                limit=100,
+                offset=0: (
                     True,
                     None,
                     manager.login_logs[offset : offset + limit]

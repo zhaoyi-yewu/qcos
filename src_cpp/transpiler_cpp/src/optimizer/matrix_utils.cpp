@@ -455,7 +455,11 @@ bool is_close(const CMatrix& a, const CMatrix& b, double tol) {
 }
 
 bool is_unitary(const CMatrix& m, double tol) {
-  if (m.size() != m[0].size()) return false;
+  if (m.empty() || m[0].empty()) return false;
+  size_t n = m.size();
+  for (const auto& row : m)
+    if (row.size() != n) return false;
+  if (n != m[0].size()) return false;
   CMatrix m_dag = conjugate_transpose(m);
   CMatrix product = multiply(m, m_dag);
   return is_identity(product, tol);
