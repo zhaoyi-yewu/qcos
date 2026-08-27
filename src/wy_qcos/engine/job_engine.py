@@ -1375,7 +1375,8 @@ def run_subqubo_code(
             logger.info(sub_job_results["results"])
             if sub_job_results["results"]:
                 subqubo_solution = (
-                    sub_job_results.get("results", {})
+                    sub_job_results
+                    .get("results", {})
                     .get("out_data", [{}])[0]
                     .get("solutionVector", [])
                 )

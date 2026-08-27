@@ -34,7 +34,8 @@ class DataParseHandler(BaseHTTPRequestHandler):
     def _parse_multipart_data(self):
         """Parse multipart/form-data type requests."""
         boundary = (
-            self.headers.get("Content-Type")
+            self.headers
+            .get("Content-Type")
             .split("boundary=")[-1]
             .encode("utf-8")
         )
