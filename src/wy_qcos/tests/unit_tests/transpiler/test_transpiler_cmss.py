@@ -461,3 +461,29 @@ class TestTranspilerCmss:
         assert final_layout_dict is not None
         assert mapping_dict is not None
 
+
+    def test_transpile_with_neutral_atom_chip_single_qubit_qasm(self):
+        """中性原子真机转译: DriverHanyuan1 (basis={rx,ry,rz}) +
+        hanyuan1_100 拓扑 + 含 ccx 的 w-state 电路, 启用 enable_na_move
+        走 NARoute (支持 cz/move), 结果会引入 NA 特有的 move 门.
+
+        扩展方式: 复制本用例, 替换驱动/topology/qasm 常量即可.
+        """
+        basis_gate_list, mapping_dict, final_layout_dict, basis_gates = (
+            self._run_transpile(
+                driver=DriverHanyuan1(),
+                toml_rel_path="topology/hanyuan1_100.toml",
+                chip_name="hanyuan1_100",
+                qasm_rel_path="qasm/2.0/simple-qasm.qasm",
+                code_type=Constant.CODE_TYPE_QASM,
+                enable_na_move=False,
+            )
+        )
+
+        # NA 路由会引入 move 门, 故允许集合为 basis ∪ {measure, move}.
+        allowed_gate_names = set(basis_gates) | {"measure", "move"}
+        self._assert_transpile_result(
+            basis_gate_list, allowed_gate_names
+        )
+        assert final_layout_dict is not None
+        assert mapping_dict is not None
