@@ -386,7 +386,26 @@ def driver_run(job_info, driver, num_qubits, data):
 
         return format_run_results(driver, job_id, data["index"])
     except Exception as e:
-        return {"results": None, "metadata": {}, "error": ValueError(str(e))}
+        err = e.args[0]
+        error_message = None
+        vendor_error_code = None
+        vendor_error_message = None
+        if isinstance(err, dict):
+            error_message = err["error_message"]
+            vendor_error_code = err["vendor_error_code"]
+            vendor_error_message = err["vendor_error_message"]
+        else:
+            error_message = err[0]
+
+        return {
+            "results": None,
+            "metadata": {},
+            "error": {
+                "error": error_message,
+                "vendor_error_code": vendor_error_code,
+                "vendor_error_message": vendor_error_message,
+            },
+        }
 
 
 def post_run(driver):
@@ -1090,10 +1109,17 @@ def _run_code(
             )
 
         # run: error handling
-        err_msg = run_results.get("error", None)
-        if err_msg:
+        err_dict = run_results.get("error", None)
+        if err_dict:
+            vendor_error_code = err_dict.get("vendor_error_code", None)
+            vendor_error_message = err_dict.get("vendor_error_message", None)
+            err_msg = err_dict.get("error", None)
             job_results = format_error_results(
-                driver, errors.JobEngineDriverRunError, err_msg
+                driver,
+                errors.JobEngineDriverRunError,
+                err_msg,
+                vendor_error_code=vendor_error_code,
+                vendor_error_message=vendor_error_message,
             )
             return job_results, driver, transpiler, mapping_dict
 
@@ -2066,13 +2092,17 @@ def format_run_results(driver, job_id, data_index):
     return job_results
 
 
-def format_error_results(driver, err_cls, err_msg):
+def format_error_results(
+    driver, err_cls, err_msg, vendor_error_code=None, vendor_error_message=None
+):
     """Format error results.
 
     Args:
         driver: driver
         err_cls: error class
         err_msg: error message
+        vendor_error_code: vendor error code
+        vendor_error_message: vendor error message
 
     Returns:
         formatted error results
@@ -2093,7 +2123,11 @@ def format_error_results(driver, err_cls, err_msg):
         "error": None,
     }
 
-    err = err_cls(err_msg)
+    err = err_cls(
+        err_msg,
+        vendor_error_code=vendor_error_code,
+        vendor_error_message=vendor_error_message,
+    )
     job_results["metadata"]["status"] = Constant.JOB_STATUS_FAILED
     job_results["metadata"]["ended_at"] = (
         Library.get_current_datetime().isoformat()
@@ -2102,6 +2136,14 @@ def format_error_results(driver, err_cls, err_msg):
         "code": err.get_error_code(),
         "message": err.get_err_msgs(),
     }
+    vendor_error_code = err.get_vendor_error_code()
+    if vendor_error_code:
+        job_results["error"]["vendor_error_code"] = vendor_error_code
+
+    vendor_error_message = err.get_vendor_err_msgs()
+    if vendor_error_message:
+        job_results["error"]["vendor_error_message"] = vendor_error_message
+
     driver_name = "Unknown driver"
     if driver:
         driver_name = driver.name

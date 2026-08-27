@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -22,14 +23,13 @@ from loguru import logger
 from lqcloud import LQCloudProvider, QuantumCircuit
 from schema import And, Optional, Or, Schema
 
-from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.common.constant import Constant, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit as QCircuit
-from wy_qcos.transpiler.high_performance import OperationType
+from wy_qcos.transpiler.high_performance import OperationType, BaseOperation
 
 
 class DriverLogicalQubitBase(DriverGateBase):
@@ -267,7 +267,8 @@ class DriverLogicalQubitBase(DriverGateBase):
             device info
         """
         try:
-            cfg = self.provider.get_backend_config(self.qpu_name)
+            self.backend = self.provider.get_backend(self.qpu_name)
+            cfg = self.backend.refresh_config(clear_provider_cache=True)
             return True, None, cfg
         except Exception as e:
             return False, str(e) if str(e) else "request failed", None
@@ -404,16 +405,32 @@ class DriverLogicalQubitBase(DriverGateBase):
         # 2. Submit task
         logger.info("2. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
-        success, err_msg, task = self.submit_task(final_code, shots)
+        success, err_cls, task = self.submit_task(final_code, shots)
         if not success:
-            raise ValueError(f"failed to submit task: {err_msg}")
+            vendor_error_code, vendor_error_message = (
+                self.convert_error_message(err_cls)
+            )
+            err = {
+                "error_message": "failed to submit task",
+                "vendor_error_code": vendor_error_code,
+                "vendor_error_message": vendor_error_message,
+            }
+            raise ValueError(err)
 
         # 3. Wait task results
         logger.info("3. wait task results")
         self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-        success, err_msg, _results = self.get_task_results(task)
+        success, err_cls, _results = self.get_task_results(task)
         if not success:
-            raise ValueError(f"failed to get task result: {err_msg}")
+            vendor_error_code, vendor_error_message = (
+                self.convert_error_message(err_cls)
+            )
+            err = {
+                "error_message": "failed to get task result",
+                "vendor_error_code": vendor_error_code,
+                "vendor_error_message": vendor_error_message,
+            }
+            raise ValueError(err)
 
         # 4. Get task results
         logger.info("4. get task results")
@@ -458,11 +475,17 @@ class DriverLogicalQubitBase(DriverGateBase):
             machine_profiling["machine_duration"] = machine_duration
 
         # set results
+        enable_raw_results = self.driver_options.get(
+            "enable_raw_results", False
+        )
+        raw_results = None
+        if enable_raw_results:
+            raw_results = _results.metadata
         self.set_results(
             job_id,
             data_index,
             results=results,
-            raw_results=_results.metadata,
+            raw_results=raw_results,
             result_type=Constant.RESULT_TYPE_SAMPLING,
             machine_profiling=machine_profiling,
         )
@@ -502,7 +525,7 @@ class DriverLogicalQubitBase(DriverGateBase):
             )
             return True, None, task
         except Exception as e:
-            return False, str(e), None
+            return False, e, None
 
     def get_task_results(self, task):
         """Get task results.
@@ -514,12 +537,14 @@ class DriverLogicalQubitBase(DriverGateBase):
         """
         success = False
         try:
-            result = task.result(timeout=300)
+            result = task.result(
+                timeout=self.max_job_wait_time, wait=self.job_query_interval
+            )
             if result:
                 success = True
             return success, None, result
         except Exception as e:
-            return success, str(e), None
+            return success, e, None
 
     def convert_results(self, results):
         """Convert results.
@@ -531,7 +556,8 @@ class DriverLogicalQubitBase(DriverGateBase):
             converted task results
         """
         dict_result = results.get_counts()
-        return dict_result
+        cleaned_dict_result = {k: v for k, v in dict_result.items() if v != 0}
+        return cleaned_dict_result
 
     def set_optimized_circuit(self, optimized_circuit):
         """Set optimized circuit.
@@ -548,3 +574,51 @@ class DriverLogicalQubitBase(DriverGateBase):
             optimized_circuit
         """
         return self.optimized_circuit
+
+    def convert_error_message(self, err):
+        """Convert errors.
+
+        Returns:
+            Converted errors
+        """
+        errors_mapping = {
+            "validation_error": "提交内容不合法，请修改线路参数。",
+            "config_error": "QPU配置数据缺失，请联系管理员。",
+            "hardware_error": "QPU运行发生错误，请稍后重试。",
+            "readout_error": "读出信号后处理失败，请稍后重试。",
+            "timeout_error": "单次任务在QPU侧执行超时，请稍后重试。",
+            "internal_error": "未归类的异常。",
+            "actor_unavailable": "测控进程暂时失联，请稍后重试。",
+            "dispatch_busy": "QPU队列已满，下发被拒，请稍后重试。",
+            "dispatch_network": "任务下发时网络错误，请稍后重试。",
+            "dispatch_timeout": "下发任务超时，请稍后重试。",
+            "dispatch_validation": "QPU拒绝了这个任务，请修改线路参数。",
+            "dispatch_unknown": "下发阶段未归类异常。",
+            "poll_network": "轮询任务状态时出错，请稍后重试。",
+            "poll_timeout": "轮询任务状态时出错，请稍后重试。",
+            "poll_http_error": "轮询任务状态时出错，请稍后重试。",
+            "poll_unknown": "轮询任务状态时出错，请稍后重试。",
+            "job_lost": "任务在 QPU上已过期或丢失，请重新提交任务。",
+            "qpu_unreachable": "QPU连续多次不可达，请稍后重试。",
+            "qpu_unavailable": "QPU切到下线/维护，在途任务失败，请等待恢复。",
+        }
+        errors_code_mapping = {
+            400: "shots 参数超出允许范围或QPU不可用。",
+            402: "无法提交任务，请联系管理员。",
+            409: "前一次相同Idempotency-Key的请求仍在处理，请稍后重试。",
+            413: "Command payload 过大，请拆分批次。",
+            429: "提交过于频繁或活跃任务数过多，请稍后重试。",
+            503: "任务队列暂时不可用，请稍后重试。",
+        }
+        message = str(err)
+        http_code = None
+        match = re.search(r"HTTP\s*(\d+)", message)
+        if match:
+            http_code = int(match.group(1))
+            if http_code in errors_code_mapping:
+                message = errors_code_mapping[http_code]
+            return http_code, message
+
+        if err.error_type in errors_mapping:
+            message = errors_mapping[err.error_type]
+        return http_code, message
