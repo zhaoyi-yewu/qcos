@@ -441,13 +441,94 @@ class DriverSpinQNmr(DriverGateBase):
 
         return converted_result
 
+    def send_request_and_process_response(self, data, url, func_name):
+        """send_request_and_process_response.G89.
+
+        Args:
+            data: http data
+            url: http url
+            func_name: func_name
+        """
+        logger.debug(f"url: {url}, data: {data}")
+        status_code, reason, text, r = Library.call_http_api(
+            url,
+            HttpMethod.POST,
+            json=data,
+            headers=self.auth_headers,
+            func_name=func_name,
+        )
+        success = True
+        err_msg = []
+        logger.debug(f"code: {status_code}, text: {text}")
+        if status_code == HttpCode.SUCCESS_OK:
+            response = json.loads(text)
+            result = response.get("result", None)
+            if result is None:
+                success = False
+            logger.debug(f"result: {result}")
+            return success, "\n".join(err_msg), result
+        else:
+            err_msg.append(reason)
+        return False, err_msg, None
+
     def fetch_running_info(self):
         """Fetch running info.
 
         Returns:
             remote device running info
         """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
+        device_running_info = {"status": Device.DEVICE_STATUS_UNKNOWN}
+        if self._nmr_conn_str is None:
+            self.fetch_configs()
+        url = f"{self._nmr_conn_str}/fetch_running_info"
+        success, err_msg, result = self.send_request_and_process_response(
+            None, url, "fetch_running_info"
+        )
+        if success:
+            device_running_info["status"] = Device.DEVICE_STATUS_ONLINE
+        else:
+            device_running_info["status"] = Device.DEVICE_STATUS_DISCONNECTED
 
         return device_running_info
+
+    def calibrate_device(self, data):
+        """Calibrate device.
+
+        Args:
+            data: calibration data
+        """
+        logger.info("Start to calibrate")
+        if self._nmr_conn_str is None:
+            self.fetch_configs()
+        url = f"{self._nmr_conn_str}/calibrate"
+        return self.send_request_and_process_response(
+            data, url, "calibrate_device"
+        )
+
+    def set_device_options(self, data):
+        """Set Device options.
+
+        Args:
+            data: Device options data
+        """
+        logger.info("Start to set_device_options")
+        if self._nmr_conn_str is None:
+            self.fetch_configs()
+        url = f"{self._nmr_conn_str}/set_device_options"
+        return self.send_request_and_process_response(
+            data, url, "set_device_options"
+        )
+
+    def get_device_options(self, data):
+        """Get Device options.
+
+        Args:
+            data: data
+        """
+        logger.info("Start to get_device_options")
+        if self._nmr_conn_str is None:
+            self.fetch_configs()
+        url = f"{self._nmr_conn_str}/get_device_options"
+        return self.send_request_and_process_response(
+            data, url, "get_device_options"
+        )
