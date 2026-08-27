@@ -15,16 +15,22 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
+
 from wy_qcos.device.device import Device
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from .base import BaseFilter
+
+logger = logging.getLogger(__name__)
 
 
 class DeviceStatusFilter(BaseFilter):
     """Filter devices by online status.
 
     Only enabled devices with status online or busy are eligible.
+    Devices that are disabled, offline, disconnected, calibrating,
+    or in maintain mode are filtered out.
     """
 
     # Statuses that allow job submission
@@ -34,6 +40,14 @@ class DeviceStatusFilter(BaseFilter):
     ]
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
+        logger.debug(
+            f"DeviceStatusFilter: device_name: {obj.name}. "
+            f"obj.enable: {obj.enable}, "
+            f"obj.status: {obj.status}, "
+            f"allowed_statuses: {self._ALLOWED_STATUSES}"
+        )
+
         if not obj.enable:
             return False
+
         return obj.status in self._ALLOWED_STATUSES

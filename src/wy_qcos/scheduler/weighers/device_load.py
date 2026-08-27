@@ -15,9 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
+
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from .base import BaseWeigher
+
+logger = logging.getLogger(__name__)
 
 
 class DeviceLoadWeigher(BaseWeigher):
@@ -30,5 +34,19 @@ class DeviceLoadWeigher(BaseWeigher):
     multiplier = 1.0
 
     def _weigh_object(self, obj: DeviceState, spec: RequestSpec) -> float:
-        total_jobs = obj.queued_job_count + obj.running_job_count
+        total_jobs = (
+            obj.queued_job_count
+            + obj.running_job_count
+            + obj.vendor_queued_job_count
+            + obj.vendor_running_job_count
+        )
+        logger.debug(
+            f"DeviceLoadWeigher: device_name: {obj.name}, "
+            f"multiplier: {self.multiplier}. "
+            f"total_jobs: {total_jobs}, "
+            f"queued_job_count: {obj.queued_job_count}, "
+            f"running_job_count: {obj.running_job_count}, "
+            f"vendor_queued_job_count: {obj.vendor_queued_job_count}, "
+            f"vendor_running_job_count: {obj.vendor_running_job_count}"
+        )
         return float(-total_jobs)

@@ -15,9 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
+
 from wy_qcos.scheduler.device_state import DeviceState
 from wy_qcos.scheduler.request_spec import RequestSpec
 from .base import BaseFilter
+
+logger = logging.getLogger(__name__)
 
 
 class TechTypeFilter(BaseFilter):
@@ -31,6 +35,12 @@ class TechTypeFilter(BaseFilter):
         return spec.tech_type is not None
 
     def _filter_one(self, obj: DeviceState, spec: RequestSpec) -> bool:
+        logger.debug(
+            f"TechTypeFilter: device_name: {obj.name}. "
+            f"obj.tech_type: {obj.tech_type}, "
+            f"spec.tech_type: {spec.tech_type}"
+        )
+
         if spec.tech_type is None:
             return True
         return obj.tech_type == spec.tech_type
