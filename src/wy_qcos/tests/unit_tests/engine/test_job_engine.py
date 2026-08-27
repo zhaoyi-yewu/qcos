@@ -269,6 +269,62 @@ class TestJobEngine:
             TranspilerBase(),
         )
 
+    @patch("wy_qcos.engine.job_engine.flow_run_driver")
+    @patch("wy_qcos.engine.job_engine.flow_transpile")
+    @patch("wy_qcos.engine.job_engine.flow_parse")
+    def test_run_code_passes_multiple_source_codes_in_one_job(
+        self, mock_flow_parse, mock_flow_transpile, mock_flow_run_driver
+    ):
+        profiling = {
+            "parse_started_at": 1.0,
+            "parse_ended_at": 2.0,
+            "parse_duration": 1.0,
+            "transpile_started_at": 2.0,
+            "transpile_ended_at": 3.0,
+            "transpile_duration": 1.0,
+            "driver_run_started_at": 3.0,
+            "driver_run_ended_at": 4.0,
+            "driver_run_duration": 1.0,
+        }
+        parsed_codes = {
+            "job-0-0": (2, "parsed-0"),
+            "job-0-1": (3, "parsed-1"),
+        }
+        mock_flow_parse.return_value = (
+            {"parsed_src_code": parsed_codes, "error": None},
+            profiling,
+        )
+        mock_flow_transpile.return_value = (
+            {
+                "transpile_results": parsed_codes,
+                "mapping_dict": None,
+                "num_qubits": 5,
+                "final_layout_dict": None,
+                "error": None,
+            },
+            profiling,
+        )
+        mock_flow_run_driver.return_value = (
+            {
+                "results": {"00000": 1},
+                "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+                "error": None,
+            },
+            profiling,
+        )
+
+        _, _, _, mapping = _run_code(
+            0,
+            {"job-0-0": "qasm-0", "job-0-1": "qasm-1"},
+            {"data": {"code_type": Constant.CODE_TYPE_QASM}},
+            Mock(),
+            Mock(),
+        )
+
+        driver_data = mock_flow_run_driver.call_args.args[3]
+        assert driver_data["source_code"] == ["qasm-0", "qasm-1"]
+        assert mapping == {"job-0-0": 2, "job-0-1": 3}
+
     @patch("wy_qcos.engine.job_engine.init_driver.submit")
     @patch("wy_qcos.engine.job_engine.init_transpiler.submit")
     @patch("wy_qcos.engine.job_engine.run_circuit_code")
@@ -925,12 +981,12 @@ class TestJobEngine:
             },
             "device": "test_device",
         }
-        sub_results = [{"00": 0.6, "11": 0.4}, {"00": 0.3, "11": 0.7}]
+        batch_counts = {"0000": 6, "1111": 4}
         mock_run_code.return_value = (
-            {"results": sub_results[0], "metadata": {"status": "COMPLETED"}},
+            {"results": batch_counts, "metadata": {"status": "COMPLETED"}},
             mock_driver,
             mock_transpiler,
-            {},
+            {"subcircuit-0": 2, "subcircuit-1": 2},
         )
         reconstructed_probs = np.array([0.45, 0.0, 0.0, 0.55])
         mock_reconstruct.return_value = (reconstructed_probs, {})
@@ -938,7 +994,7 @@ class TestJobEngine:
         with (
             patch(
                 "wy_qcos.engine.job_engine.time.perf_counter",
-                side_effect=[10, 10.25, 20, 30, 31.5, 40, 42.25, 50],
+                side_effect=[10, 10.25, 20, 30, 31.5, 50],
             ),
             patch("wy_qcos.engine.job_engine.logger") as mock_logger,
         ):
@@ -956,7 +1012,12 @@ class TestJobEngine:
         assert driver == mock_driver
         assert transpiler == mock_transpiler
         mock_generate_subs.assert_called_once()
-        assert mock_run_code.call_count == 2
+        mock_run_code.assert_called_once()
+        submitted_codes = mock_run_code.call_args.args[1]
+        assert list(submitted_codes.values()) == [
+            "subcircuit1",
+            "subcircuit2",
+        ]
         mock_reconstruct.assert_called_once()
         log_messages = [
             call.args[0] for call in mock_logger.info.call_args_list
@@ -970,15 +1031,9 @@ class TestJobEngine:
             for message in log_messages
         )
         assert any(
-            "Wirecut subcircuit result received" in message
-            and "subcircuit=1/2" in message
+            "Wirecut subcircuit batch result received" in message
+            and "batch_size=2" in message
             and "duration_seconds=1.500000" in message
-            for message in log_messages
-        )
-        assert any(
-            "Wirecut subcircuit result received" in message
-            and "subcircuit=2/2" in message
-            and "duration_seconds=2.250000" in message
             for message in log_messages
         )
         assert any(

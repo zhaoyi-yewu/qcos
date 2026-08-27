@@ -982,7 +982,13 @@ def _run_code(
     if transpile_results is None or num_qubits is None:
         raise ValueError("unexpected transpile_results or num_qubits")
     job_results["num_qubits"] = num_qubits
-    source_code = next(iter(src_code_dict.values()))
+    source_codes = list(src_code_dict.values())
+    source_code = source_codes[0] if len(source_codes) == 1 else source_codes
+    if mapping_dict is None and len(source_codes) > 1:
+        mapping_dict = {
+            key: parsed_code[0]
+            for key, parsed_code in parse_results["parsed_src_code"].items()
+        }
 
     if driver:
         # [flow_run_driver]
@@ -1637,7 +1643,7 @@ def run_circuit_cutting_code(
     )
     # Step 2: Execute all subcircuits
     result_cache = SubcircuitResultCache.from_job_info(job_info)
-    sub_results = []
+    sub_results = [None] * len(subcircuits)
     mapping_dict = None
     job_results = {
         "results": None,
@@ -1650,6 +1656,8 @@ def run_circuit_cutting_code(
     executed_count = 0
     cache_hit_count = 0
     execution_batch_started_at = time.perf_counter()
+    uncached_indices = []
+    src_sub_code_dict = {}
     for i in range(total_subcircuits):
         cached_result = result_cache.get(subcircuits[i], job_info)
         if cached_result is not None:
@@ -1660,20 +1668,21 @@ def run_circuit_cutting_code(
                 f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
                 f"reason=result_cache_hit"
             )
-            sub_results.append(counts_to_probs(cached_result))
-            continue
+            sub_results[i] = counts_to_probs(cached_result)
+        else:
+            uncached_indices.append(i)
+            sub_source_code_index = f"{source_code_index}-{i}"
+            src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
 
-        src_sub_code_dict = {}
-        sub_source_code_index = f"{str(source_code_index)}-{str(i)}"
-        src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
+    if src_sub_code_dict:
         logger.info(
-            f"Wirecut subcircuit execution started: job_id={job_id}, "
+            f"Wirecut subcircuit batch execution started: job_id={job_id}, "
             f"source_code_index={source_code_index}, "
-            f"subcircuit={i + 1}/{total_subcircuits}, index={i}"
+            f"batch_size={len(src_sub_code_dict)}"
         )
         execution_started_at = time.perf_counter()
         job_results, driver, transpiler, mapping_dict = _run_code(
-            sub_source_code_index,
+            source_code_index,
             src_sub_code_dict,
             job_info,
             driver,
@@ -1681,38 +1690,47 @@ def run_circuit_cutting_code(
         )
         execution_duration = time.perf_counter() - execution_started_at
         execution_status = job_results["metadata"]["status"]
-        if job_results["metadata"]["status"] != "COMPLETED":
+        if execution_status != Constant.JOB_STATUS_COMPLETED:
             logger.warning(
-                f"Wirecut subcircuit execution failed: job_id={job_id}, "
+                f"Wirecut subcircuit batch execution failed: job_id={job_id}, "
                 f"source_code_index={source_code_index}, "
-                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"batch_size={len(src_sub_code_dict)}, "
                 f"status={execution_status}, "
                 f"duration_seconds={execution_duration:.6f}"
             )
             return job_results, driver, transpiler, mapping_dict
-        if (
-            job_results["metadata"]["status"] == "COMPLETED"
-            and job_results["results"] is not None
-        ):
-            executed_count += 1
-            result_cache.set(subcircuits[i], job_info, job_results["results"])
-            sub_result = counts_to_probs(job_results["results"])
-            sub_results.append(sub_result)
-            logger.info(
-                f"Wirecut subcircuit result received: job_id={job_id}, "
-                f"source_code_index={source_code_index}, "
-                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
-                f"status={execution_status}, "
-                f"duration_seconds={execution_duration:.6f}"
-            )
+
+        if len(uncached_indices) == 1:
+            batch_results = [job_results]
         else:
-            logger.warning(
-                f"Wirecut subcircuit result missing: job_id={job_id}, "
-                f"source_code_index={source_code_index}, "
-                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
-                f"status={execution_status}, "
-                f"duration_seconds={execution_duration:.6f}"
+            batch_results = get_internal_aggregated_results(
+                job_results, mapping_dict
             )
+        if len(batch_results) != len(uncached_indices):
+            err_msg = "Wirecut batch result count does not match subcircuits"
+            return (
+                format_error_results(
+                    driver, errors.JobEngineCircuitCuttingError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+
+        for i, batch_result in zip(uncached_indices, batch_results):
+            result = batch_result.get("results")
+            if result is None:
+                continue
+            executed_count += 1
+            result_cache.set(subcircuits[i], job_info, result)
+            sub_results[i] = counts_to_probs(result)
+        logger.info(
+            f"Wirecut subcircuit batch result received: job_id={job_id}, "
+            f"source_code_index={source_code_index}, "
+            f"batch_size={len(src_sub_code_dict)}, "
+            f"status={execution_status}, "
+            f"duration_seconds={execution_duration:.6f}"
+        )
     execution_batch_duration = time.perf_counter() - execution_batch_started_at
     logger.info(
         f"Wirecut subcircuit execution completed: job_id={job_id}, "
