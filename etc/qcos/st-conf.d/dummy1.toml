@@ -1,10 +1,9 @@
-[dummy]
-alias_name = "空载测试设备"
+[dummy1]
+alias_name = "空载测试设备1"
 driver = "DriverDummy"
-description = "空载测试设备(dummy)"
+description = "空载测试设备1(dummy1)"
 
-# [Optional] enable or disable the device
-# enable = true
+enable = true
 
 # [Optional] max qubits of device
 # device_max_qubits = 10
@@ -15,7 +14,7 @@ debug = false
 
 # [Optional] device log file path
 # device_log_file = /var/log/qcos/device_dummy.log
-device_log_file = "/var/log/qcos/device_dummy.log"
+device_log_file = "/var/log/qcos/device_dummy1.log"
 
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_dummy.log
@@ -35,17 +34,17 @@ device_log_file = "/var/log/qcos/device_dummy.log"
 # [Optional] max queued jobs, -1 means unlimited
 max_queued_jobs = -1
 
-[dummy.device_monitor]
+[dummy1.device_monitor]
 # [Optional] enable device monitor
 enable_device_monitor = false
 
 # [Optional] device monitor log file path
-monitor_log_file = "/var/log/qcos/device_monitor_dummy.log"
+monitor_log_file = "/var/log/qcos/device_monitor_dummy1.log"
 
 # [Optional] monitor polling interval (secs)
 polling_interval = 60
 
-[dummy.transpiler.qpu_configs]
+[dummy1.transpiler.qpu_configs]
 # Samples
 qubits = 36
 storage_area = ["P144", "P145", "P146", "P147", "P148", "P149", "P150", "P151", "P152", "P153", "P154", "P155",
@@ -99,7 +98,7 @@ coupler_error.R_G1 = 3.0
 coupler_error.R_G2 = 3.0
 coupler_error.R_G3 = 3.0
 
-[dummy.transpiler.decomposition_rule]
+[dummy1.transpiler.decomposition_rule]
 # Samples
 u3.params = ["a", "b", "c"]
 u3.gates = [

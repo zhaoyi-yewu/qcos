@@ -3,6 +3,9 @@ alias_name = "逻辑比特 QZ01-surface_code 超导驱动"
 driver = "DriverLqQZ01SurfaceCode"
 description = "逻辑比特 QZ01-surface_code 超导驱动"
 
+# [Optional] enable or disable the device
+# enable = true
+
 # [Optional] debug
 # debug = false
 debug = false

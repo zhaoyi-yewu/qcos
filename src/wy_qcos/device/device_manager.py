@@ -42,6 +42,7 @@ class DeviceManager:
             "driver": str,
             Optional("alias_name"): str,
             Optional("description"): str,
+            Optional("enable"): bool,
             Optional("device_max_qubits"): int,
         }
         self.redis_instance = redis.Redis(
@@ -76,6 +77,11 @@ class DeviceManager:
                 driver_name = device_configs.pop("driver", None)
                 alias_name = device_configs.pop("alias_name", None)
                 description = device_configs.pop("description", None)
+                # enable defaults to True when not specified in config;
+                # when explicitly set to False the device is loaded but
+                # remains disabled (enable=False) so it is visible but
+                # cannot accept jobs.
+                enable = device_configs.pop("enable", True)
                 device_max_qubits = device_configs.pop(
                     "device_max_qubits", None
                 )
@@ -132,7 +138,7 @@ class DeviceManager:
 
                     if success:
                         device.set_configs(device_configs)
-                        device.set_enable(True)
+                        device.set_enable(enable)
                         self.devices[device_name] = device
                     else:
                         logger.warning(
@@ -173,7 +179,15 @@ class DeviceManager:
         """Init devices."""
         self.check_redis_connection()
         for device_name, device in self.devices.items():
-            device.set_status(device.DEVICE_STATUS_ONLINE)
+            # set initial status based on enable flag: devices
+            # with enable=false start as offline
+            if device.enable:
+                if device.get_enable_device_monitor():
+                    device.set_status(device.DEVICE_STATUS_UNKNOWN)
+                else:
+                    device.set_status(device.DEVICE_STATUS_ONLINE)
+            else:
+                device.set_status(device.DEVICE_STATUS_OFFLINE)
             # Init driver
             success, err_msg = device.init_device()
             if not success:

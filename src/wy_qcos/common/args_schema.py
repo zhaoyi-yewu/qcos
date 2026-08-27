@@ -116,6 +116,7 @@ DEVICE_INFO_SCHEMA = {
 # into the [device.device_monitor] sub-table; they are validated
 # there and are no longer top-level driver config keys.
 DEFAULT_DRIVER_CONFIG_SCHEMA = {
+    Optional("enable"): bool,
     Optional("debug"): bool,
     Optional("device_log_file"): str,
     Optional("mgr_log_file"): str,

@@ -1,7 +1,10 @@
 [quafu]
-alias_name = "北京量子院 夸父-Dongling 超导驱动"
+alias_name = "北京量子院-夸父-Dongling 超导驱动"
 driver = "DriverQuafu"
-description = "北京量子院 夸父-Dongling 超导驱动"
+description = "北京量子院-夸父-Dongling 超导驱动"
+
+# [Optional] enable or disable the device
+# enable = true
 
 # [Optional] debug
 # debug = false
