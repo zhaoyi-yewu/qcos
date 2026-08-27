@@ -60,6 +60,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import random
 import re
 from typing import Any
 from collections.abc import Sequence
@@ -72,6 +73,7 @@ from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.utils import (
     counts_to_probabilities,
     clip_and_normalize,
+    expectation_from_probabilities,
 )
 
 logger = logging.getLogger(__name__)
@@ -201,6 +203,110 @@ def count_cz_gates(circuit: QuantumCircuit) -> int:
         Number of CZ gates.
     """
     return sum(1 for op in circuit.get_operations() if op.name == "cz")
+
+
+# Gate names that are self-inverse (G^dag = G) and thus safe to fold by
+# repetition (G G G is logically G).  ZNE folding replaces a gate with
+# ``G G^dag G``; for self-inverse gates this is three identical copies.
+_SELF_INVERSE_GATES = frozenset(
+    {"cz", "cx", "x", "y", "z", "h", "s", "t", "sdg", "tdg"}
+)
+
+
+def _is_foldable(op: BaseOperation) -> bool:
+    """Whether ``op`` can be noise-scaled by gate folding."""
+    return op.name in _SELF_INVERSE_GATES
+
+
+def fold_gates(
+    circuit: QuantumCircuit,
+    scale: float,
+    *,
+    strategy: str = "left",
+    gate_names: Sequence[str] | None = None,
+    seed: int | None = None,
+) -> QuantumCircuit:
+    """Fold gates to scale circuit noise by an arbitrary factor.
+
+    Generalised gate folding following mitiq's ``fold_gates_at_random``
+    family.  Each folded gate ``G`` is replaced by ``G G G`` (for
+    self-inverse gates this is ``G * G^dag * G``), so folding one gate
+    once adds two noisy copies and raises the scale by ``2 / n`` where
+    ``n`` is the number of foldable gates.
+
+    The ``strategy`` controls *which* gates receive the extra partial fold
+    needed to reach a non-odd-integer scale:
+
+    - ``"left"``:  the first gates (deterministic, legacy behaviour).
+    - ``"right"``: the last gates.
+    - ``"random"``: a random subset (mitiq default) -- avoids systematic
+      bias toward the circuit's leading gates.
+
+    Args:
+        circuit: The quantum circuit to transform.
+        scale: Noise scale factor ``>= 1``.
+        strategy: ``"left"``, ``"right"`` or ``"random"``.
+        gate_names: Restrict folding to these gate names.  Defaults to
+            all self-inverse two-qubit gates (CZ/CX), matching the
+            legacy CZ-only intent while allowing CX devices.
+        seed: RNG seed for the ``"random"`` strategy.
+
+    Returns:
+        New circuit with gates folded to approximate ``scale``.
+
+    Raises:
+        ValueError: If ``scale < 1`` or ``strategy`` is unknown.
+    """
+    scale = float(scale)
+    if scale < 1.0:
+        raise ValueError(f"ZNE scale factor must be >= 1, got {scale}")
+    if abs(scale - 1.0) < 1e-12:
+        return circuit
+    if strategy not in ("left", "right", "random"):
+        raise ValueError(
+            f"Unknown folding strategy '{strategy}', expected "
+            "left/right/random"
+        )
+
+    ops = list(circuit.get_operations())
+    if gate_names is not None:
+        foldable_idx = [
+            i for i, op in enumerate(ops) if op.name in set(gate_names)
+        ]
+    else:
+        foldable_idx = [i for i, op in enumerate(ops) if _is_foldable(op)]
+    n = len(foldable_idx)
+    if n == 0:
+        return circuit
+
+    # Each gate folded k times -> scale 1 + 2k/n.  Start every gate at
+    # num_uniform = floor((scale-1)/2) folds (nearest odd-integer scale),
+    # then add one extra fold to a subset to hit the fractional part --
+    # mitiq's _create_fold_mask greedy approach.
+    num_uniform = int((scale - 1.0) // 2.0)
+    num_extra = int(round((scale - 1.0 - 2.0 * num_uniform) * n / 2.0))
+    num_extra = max(0, min(num_extra, n))
+
+    if strategy == "right":
+        extra_idx = set(foldable_idx[n - num_extra:])
+    elif strategy == "random":
+        rng = random.Random(seed)
+        shuffled = foldable_idx[:]
+        rng.shuffle(shuffled)
+        extra_idx = set(shuffled[:num_extra])
+    else:  # left
+        extra_idx = set(foldable_idx[:num_extra])
+
+    new_ops: list[BaseOperation] = []
+    for i, op in enumerate(ops):
+        new_ops.append(op)
+        if i in foldable_idx:
+            folds = num_uniform + (1 if i in extra_idx else 0)
+            for _ in range(folds):
+                # G G^dag G == G G G for self-inverse gates.
+                new_ops.append(copy.deepcopy(op))
+                new_ops.append(copy.deepcopy(op))
+    return QuantumCircuit.from_ir(new_ops, circuit.num_qubits)
 
 
 def zne_linear_extrapolate(
@@ -493,6 +599,7 @@ class ZNEMitigation(MitigationBase):
     DEFAULT_SCALE_FACTORS: tuple[float, ...] = (1.0, 2.0, 3.0)
     DEFAULT_METHOD: str = "polynomial"
     DEFAULT_POLYNOMIAL_DEGREE: int = 1
+    DEFAULT_FOLDING_STRATEGY: str = "left"
 
     def __init__(
         self,
@@ -502,6 +609,9 @@ class ZNEMitigation(MitigationBase):
         enable_fallback: bool = True,
         fallback_threshold: float = 0.15,
         scale_factor: float | None = None,
+        folding_strategy: str = DEFAULT_FOLDING_STRATEGY,
+        folding_seed: int | None = None,
+        fold_gate_names: Sequence[str] | None = None,
     ):
         """Initialise ZNE mitigation.
 
@@ -513,6 +623,13 @@ class ZNEMitigation(MitigationBase):
             fallback_threshold: Max negative mass before fallback.
             scale_factor: Legacy single scale factor; equivalent to
                 ``scale_factors=(1, scale_factor)``.
+            folding_strategy: Which gates get the partial fold for
+                fractional scales -- ``"left"`` (default, legacy),
+                ``"right"`` or ``"random"`` (mitiq default, unbiased).
+            folding_seed: RNG seed for the ``"random"`` strategy.
+            fold_gate_names: Gate names eligible for folding.  Defaults
+                to all self-inverse two-qubit gates; restricting to
+                ``["cz"]`` reproduces the legacy CZ-only behaviour.
         """
         super().__init__("zne")
         if scale_factors is not None:
@@ -531,6 +648,13 @@ class ZNEMitigation(MitigationBase):
         self._enable_fallback = enable_fallback
         self._fallback_threshold = fallback_threshold
         self._scale_factor = max(self._scale_factors)
+        self._folding_strategy = folding_strategy
+        self._folding_seed = folding_seed
+        # Default to CZ-only so the out-of-the-box behaviour is identical
+        # to the legacy apply_zne_cz_folding; widen via fold_gate_names.
+        self._fold_gate_names = (
+            ("cz",) if fold_gate_names is None else tuple(fold_gate_names)
+        )
 
     def set_config(self, config: dict[str, Any]) -> None:
         """Set configuration from a dictionary."""
@@ -558,6 +682,13 @@ class ZNEMitigation(MitigationBase):
         self._fallback_threshold = config.get(
             "fallback_threshold", self._fallback_threshold
         )
+        self._folding_strategy = config.get(
+            "folding_strategy", self._folding_strategy
+        )
+        self._folding_seed = config.get("folding_seed", self._folding_seed)
+        if "fold_gate_names" in config:
+            gns = config["fold_gate_names"]
+            self._fold_gate_names = None if gns is None else tuple(gns)
         self._scale_factor = max(self._scale_factors)
 
     def validate_device(self, device_config: dict[str, Any]) -> tuple:
@@ -593,9 +724,22 @@ class ZNEMitigation(MitigationBase):
                 }
             ]
 
+        use_legacy = (
+            self._folding_strategy == "left"
+            and self._fold_gate_names == ("cz",)
+        )
         variants: list[dict[str, Any]] = []
         for scale in self._scale_factors:
-            scaled = apply_zne_cz_folding(circuit, float(scale))
+            if use_legacy:
+                scaled = apply_zne_cz_folding(circuit, float(scale))
+            else:
+                scaled = fold_gates(
+                    circuit,
+                    float(scale),
+                    strategy=self._folding_strategy,
+                    gate_names=self._fold_gate_names,
+                    seed=self._folding_seed,
+                )
             achieved = count_cz_gates(scaled) / cz_count if cz_count else 1.0
             variants.append({
                 "label": f"zne_s{achieved:g}",
@@ -603,11 +747,12 @@ class ZNEMitigation(MitigationBase):
                 "scale_factor": float(scale),
             })
             logger.info(
-                "ZNE variant zne_s%.4g: %d CZ -> %d CZ (scale %.3f)",
+                "ZNE variant zne_s%.4g: %d CZ -> %d CZ (scale %.3f, %s)",
                 achieved,
                 cz_count,
                 count_cz_gates(scaled),
                 achieved,
+                "legacy" if use_legacy else self._folding_strategy,
             )
         return variants
 
@@ -630,12 +775,27 @@ class ZNEMitigation(MitigationBase):
     ) -> dict[str, Any]:
         """Apply ZNE extrapolation to measurement results.
 
+        Two extrapolation modes are supported (mitiq offers only the
+        expectation-value mode; the probability mode is kept as default
+        for backwards-compatible counts output):
+
+        - **Probability mode (default):** extrapolate each bitstring's
+          probability to zero noise, returning ``mitigated`` counts.
+        - **Expectation-value mode:** pass ``observable=[q0, q1, ...]`` to
+          reduce each scale's counts to a single Z-parity expectation via
+          :func:`utils.expectation_from_probabilities`, extrapolate that
+          scalar to zero noise, and return it under the
+          ``"expectation_value"`` key.  Scalar extrapolation is the
+          mitiq standard and is statistically more stable than
+          per-element probability extrapolation.
+
         Args:
             results: Dict mapping variant label to counts.  Labels of the
                 form ``zne_s<scale>`` are parsed; legacy ``original`` and
                 ``scaled`` labels are also accepted.
             calibration: Not used by ZNE.
-            **kwargs: ``num_qubits`` may be supplied.
+            **kwargs: ``num_qubits`` and optional ``observable`` (a list
+                of qubit indices for the Z-parity observable).
 
         Returns:
             Extrapolated results with metadata.
@@ -648,6 +808,8 @@ class ZNEMitigation(MitigationBase):
                     break
         if num_qubits is None:
             num_qubits = 1
+
+        observable = kwargs.get("observable")
 
         # Collect (scale, probs); keep the first occurrence of each scale
         # and remember the scale-1 counts for the shot total / fallback.
@@ -675,6 +837,42 @@ class ZNEMitigation(MitigationBase):
 
         total_counts = sum(scale1_counts.values())
         points.sort(key=lambda item: item[0])
+
+        if observable is not None:
+            # Expectation-value mode (mitiq standard): fit the scalar
+            # observable value vs scale directly.  Distribution-entropy
+            # pruning does not apply -- a more uniform distribution as
+            # noise grows is the *signal* the fit rides on, not a
+            # collapse to discard.  Only require >= 2 points.
+            if len(points) < 2:
+                return {
+                    "results": {
+                        "expectation_value": float(
+                            expectation_from_probabilities(
+                                scale1_probs, list(observable)
+                            )
+                        ),
+                        "expectation_value_raw": float(
+                            expectation_from_probabilities(
+                                scale1_probs, list(observable)
+                            )
+                        ),
+                    },
+                    "metadata": {
+                        "technique": "zne",
+                        "applied": False,
+                        "mode": "expectation_value",
+                        "reason": "insufficient_scale_points",
+                        "scale_factors": [float(s) for s, _ in points],
+                    },
+                }
+            scales = np.array([p[0] for p in points], dtype=float)
+            probs_matrix = np.vstack([p[1] for p in points])
+            return self._extrapolate_expectation(
+                scales, probs_matrix, self._extrapolation_method,
+                observable, scale1_probs, total_counts, num_qubits,
+            )
+
         # Drop saturated / non-monotonic trailing points so extrapolation
         # never curve-fits collapsed measurements.
         pruned = _prune_scale_points(points, num_qubits)
@@ -745,5 +943,72 @@ class ZNEMitigation(MitigationBase):
                 "fallback": used_fallback,
                 "fallback_threshold": self._fallback_threshold,
                 "pruned_points": len(points) - len(pruned),
+            },
+        }
+
+    def _extrapolate_expectation(
+        self,
+        scales: np.ndarray,
+        probs_matrix: np.ndarray,
+        method: str,
+        observable: Any,
+        scale1_probs: np.ndarray,
+        total_counts: int,
+        num_qubits: int,
+    ) -> dict[str, Any]:
+        """Expectation-value ZNE (mitiq standard).
+
+        Reduces each scale's probability vector to a single Z-parity
+        expectation over ``observable`` qubits, fits the (scale,
+        expectation) pairs to ``method``, and evaluates at zero noise.
+        Scalar extrapolation is statistically more stable than
+        per-element probability extrapolation.
+        """
+        support = list(observable)
+        expectations = np.array(
+            [expectation_from_probabilities(probs_matrix[i], support)
+             for i in range(scales.size)],
+            dtype=float,
+        )
+        raw_exp1 = float(expectations[0]) if scales.size else 0.0
+
+        extrapolated = extrapolate_to_zero(
+            scales, expectations.reshape(-1, 1), method,
+            self._polynomial_degree,
+        )
+        extrapolated = float(np.asarray(extrapolated).ravel()[0])
+
+        finite = bool(np.isfinite(extrapolated))
+        # Expectation values are bounded in [-1, 1]; a divergent fit
+        # (out of range) triggers fallback to the scale-1 value.
+        used_fallback = False
+        if not finite or (
+            self._enable_fallback and abs(extrapolated) > 1.0 + 1e-9
+        ):
+            logger.warning(
+                "ZNE expectation extrapolation unstable (method=%s, "
+                "value=%.4f, finite=%s); falling back to scale-1",
+                method, extrapolated, finite,
+            )
+            extrapolated = raw_exp1
+            used_fallback = True
+        extrapolated = float(np.clip(extrapolated, -1.0, 1.0))
+
+        return {
+            "results": {
+                "expectation_value": extrapolated,
+                "expectation_value_raw": raw_exp1,
+            },
+            "metadata": {
+                "technique": "zne",
+                "applied": True,
+                "mode": "expectation_value",
+                "observable": support,
+                "scale_factors": [float(s) for s in scales],
+                "extrapolation_method": method,
+                "polynomial_degree": self._polynomial_degree,
+                "expectations": [float(e) for e in expectations],
+                "fallback": used_fallback,
+                "fallback_threshold": self._fallback_threshold,
             },
         }

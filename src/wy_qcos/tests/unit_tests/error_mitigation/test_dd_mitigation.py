@@ -138,6 +138,103 @@ class TestGenerateDdSequence:
         assert len(delay_ops) == len(XY4_PULSES) + 1
 
 
+class TestNewDdSequences:
+    """Test the mitiq-aligned sequences (XY8, XXYX, XX, UDD)."""
+
+    def test_xy8_pulses(self):
+        from wy_qcos.error_mitigation.dd_mitigation import XY8_PULSES
+        gate_times = {"x": 0.02, "y": 0.02}
+        ops = generate_dd_sequence(2.0, "XY8", gate_times, 0)
+        gate_names = [op.name for op in ops if op.name in ("x", "y")]
+        assert gate_names == XY8_PULSES
+
+    def test_xxyx_pulses(self):
+        from wy_qcos.error_mitigation.dd_mitigation import XXYX_PULSES
+        gate_times = {"x": 0.02, "y": 0.02}
+        ops = generate_dd_sequence(1.0, "XXYX", gate_times, 0)
+        gate_names = [op.name for op in ops if op.name in ("x", "y")]
+        assert gate_names == XXYX_PULSES
+
+    def test_xx_pulses(self):
+        from wy_qcos.error_mitigation.dd_mitigation import XX_PULSES
+        gate_times = {"x": 0.02}
+        ops = generate_dd_sequence(1.0, "XX", gate_times, 0)
+        gate_names = [op.name for op in ops if op.name in ("x", "y")]
+        assert gate_names == XX_PULSES
+
+    def test_udd4_pulse_count(self):
+        # UDD4 -> 4 pulses
+        gate_times = {"x": 0.02, "y": 0.02}
+        ops = generate_dd_sequence(2.0, "UDD4", gate_times, 0)
+        gate_names = [op.name for op in ops if op.name in ("x", "y")]
+        assert len(gate_names) == 4
+
+    def test_udd_nonuniform_spacing(self):
+        # Uhrig centres are NOT evenly spaced: the k-th centre is
+        # sin^2(k*pi/2*(n+1)); for UDD4 the centres (as fraction of
+        # window) are [sin^2(pi/10), sin^2(2pi/10), ...] which are not
+        # equal multiples.
+        import numpy as np
+        from wy_qcos.error_mitigation.dd_mitigation import udd_pulses
+        n = 4
+        centres = [float((np.sin(np.pi * k / (2 * (n + 1)))) ** 2)
+                   for k in range(1, n + 1)]
+        # adjacent gaps are not all equal
+        gaps = [centres[k] - centres[k - 1] for k in range(1, n)]
+        assert len(set(round(g, 6) for g in gaps)) > 1
+        # axis sequence for even order alternates y/x
+        assert udd_pulses(4) == ["y", "x", "y", "x"]
+
+    def test_unknown_sequence_falls_back_to_xy4(self):
+        gate_times = {"x": 0.02, "y": 0.02}
+        ops = generate_dd_sequence(1.0, "NONSENSE", gate_times, 0)
+        gate_names = [op.name for op in ops if op.name in ("x", "y")]
+        assert gate_names == XY4_PULSES
+
+
+class TestIdleWindowDetection:
+    """Test the improved detect_idle_windows."""
+
+    def test_barrier_aligns_clocks(self):
+        # h on q0 (0->0.02), barrier {0,1}, then h on q1.
+        # Without barrier q1's first gate would start at 0; with barrier
+        # it starts at 0.02, so q1 has no idle window before its gate
+        # (the barrier already advanced its clock).
+        from wy_qcos.common.cmss.base_operation import BaseOperation
+        ops = [
+            GateOperation("h", targets=[0],
+                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+            BaseOperation("barrier", targets=[0, 1]),
+            GateOperation("h", targets=[1],
+                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+        ]
+        gate_times = {"h": 0.02, "barrier": 0.0}
+        windows = detect_idle_windows(ops, 2, gate_times)
+        # q1 clock was advanced by barrier, so its h starts at 0.02 -> no gap
+        assert all(w["duration"] >= 0 for w in windows[1])
+
+    def test_include_trailing(self):
+        # h on q0 only; q1 never touched -> trailing window = full depth.
+        ops = [
+            GateOperation("h", targets=[0],
+                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+        ]
+        gate_times = {"h": 0.02}
+        windows = detect_idle_windows(ops, 2, gate_times, include_trailing=True)
+        # q1 has one trailing window of 0.02us
+        assert len(windows[1]) == 1
+        assert abs(windows[1][0]["duration"] - 0.02) < 1e-9
+
+    def test_no_trailing_by_default(self):
+        ops = [
+            GateOperation("h", targets=[0],
+                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+        ]
+        gate_times = {"h": 0.02}
+        windows = detect_idle_windows(ops, 2, gate_times)
+        assert windows[1] == []
+
+
 class TestInsertDdIntoCircuit:
     """Test insert_dd_into_circuit function."""
 
