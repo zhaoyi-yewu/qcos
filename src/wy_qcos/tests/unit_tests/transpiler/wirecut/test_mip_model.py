@@ -17,6 +17,7 @@
 
 import pulp
 import unittest
+from unittest.mock import Mock, patch
 
 from wy_qcos.transpiler.common.wirecut.mip_model import MIPModel
 
@@ -91,6 +92,32 @@ class TestMIPModel(unittest.TestCase):
 
         assert success  # Check if the model was solved successfully
         assert isinstance(cut_edges, list)
+
+    @patch("wy_qcos.transpiler.common.wirecut.mip_model.highspy", Mock())
+    @patch("wy_qcos.transpiler.common.wirecut.mip_model.pulp.HiGHS")
+    def test_solution_uses_highs_when_available(self, mock_highs):
+        solver = Mock()
+        mock_highs.return_value = solver
+        self.model.model.solve = Mock(return_value=pulp.LpStatusOptimal)
+        self.model.model.sol_status = pulp.const.LpSolutionNoSolutionFound
+
+        self.model.solve()
+
+        mock_highs.assert_called_once_with(msg=False)
+        self.model.model.solve.assert_called_once_with(solver)
+
+    @patch("wy_qcos.transpiler.common.wirecut.mip_model.highspy", None)
+    @patch("wy_qcos.transpiler.common.wirecut.mip_model.pulp.PULP_CBC_CMD")
+    def test_solution_falls_back_to_cbc(self, mock_cbc):
+        solver = Mock()
+        mock_cbc.return_value = solver
+        self.model.model.solve = Mock(return_value=pulp.LpStatusOptimal)
+        self.model.model.sol_status = pulp.const.LpSolutionNoSolutionFound
+
+        self.model.solve()
+
+        mock_cbc.assert_called_once_with(msg=False)
+        self.model.model.solve.assert_called_once_with(solver)
 
     def test_invalid_solution(self):
         """Test the case where no feasible solution is found."""
