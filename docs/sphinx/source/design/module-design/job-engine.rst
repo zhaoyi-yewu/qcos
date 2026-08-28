@@ -33,7 +33,7 @@
       [
        init_driver()  # 初始化驱动
        parse()  # 源代码解析
-        init_transpiler()  # 初始化转译器
+        init_transpiler()  # 初始化转译器（含默认值填充）
         transpile()  # 进行转译
         results = run_driver()  # 运行驱动中的run函数
        return results
@@ -45,6 +45,9 @@
                  driver.init_driver() ->  # 驱动初始化
                  driver.fetch_configs() ->  # 驱动动态获取真机配置信息
              init_transpiler ->  # 初始化转译器
+                 # 从 driver.transpiler_options_schema 填充默认值
+                 # 仅填充用户未指定且 schema 声明了 default 的 key
+                 transpiler.update_transpiler_options()  # 应用转译器选项
              flow_parse ->  # 解析源代码
                  transpiler.parse() ->  # 调用转译器解析源代码
              flow_transpile ->  # 转译
@@ -52,5 +55,44 @@
              flow_run_driver ->  # 驱动运行
                  driver_run ->  # 驱动运行
                      driver.run() / driver.dry_run() ->  # 运行驱动中的run(真实运行)或者dry_run(模拟运行/空跑)
+                     post_run(driver)  # 运行后处理（sleep/进度更新）
+                     driver.set_progress_by_task(COMPLETE)  # 设置完成进度
          get_results  # 获取运行结果
       ]
+
+转译器选项默认值填充
+--------------------------
+
+``init_transpiler`` 在实例化转译器后，会从驱动声明的
+``transpiler_options_schema`` 中读取各选项的默认值，填充到用户
+未指定的选项中，确保转译器始终获得完整参数。
+
+填充逻辑如下：
+
+1. 当 ``transpiler_options`` 为 ``None`` 时，初始化为空字典 ``{}``
+2. 通过 ``Library.convert_schema`` 将驱动的 schema dict 转换为
+   ``{Optional_marker: validator}`` 形式
+3. 遍历转换后的 schema，对每个 ``Optional`` marker：
+
+   - 通过 ``getattr(key, "schema", key)`` 获取选项名
+   - 若选项名已存在于 ``transpiler_options`` 中，跳过（不覆盖）
+   - 若该 marker 声明了 ``default``（``hasattr(key, "default")``），
+     则将默认值填入 ``transpiler_options``
+4. 最终调用 ``transpiler.update_transpiler_options()`` 应用选项
+
+驱动运行后处理（post_run）
+------------------------------
+
+``driver_run`` 在调用 ``driver.run()`` / ``driver.dry_run()`` 后，
+统一执行 ``post_run(driver)`` 进行运行后处理，然后设置
+``TASK_STAGE_COMPLETE`` 进度。
+
+``post_run`` 的主要逻辑：
+
+- 读取 ``driver.driver_options`` 中的 ``sleep`` 值（调试用等待秒数）
+- 若 ``sleep`` 为真值，从当前进度到 100 按比例递增设置进度，
+  每秒推进一次，实现等待期间的进度可视化
+
+此逻辑原先在 ``DriverDummy.run()`` 中实现，现统一提取到
+``job_engine`` 层，所有驱动均可通过 ``driver_options`` 的
+``sleep`` 键触发等待进度，无需各自实现。

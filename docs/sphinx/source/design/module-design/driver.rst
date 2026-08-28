@@ -3,6 +3,21 @@
 
 驱动管理器会在软件初始化时，搜索源代码的qcos/driver目录，找到所有继承自DriverBase的厂商驱动类，并进行初始化。
 
+驱动类层次
+--------------------
+
+驱动类继承层次如下：
+
+- ``DriverBase`` - 所有驱动的抽象基类，定义 ``driver_options_schema``、
+  ``input_constrains``、``transpiler_options_schema`` 等属性
+- ``DriverGateBase(DriverBase)`` - 量子门级驱动基类，声明
+  ``transpiler_options_schema`` 通用 schema（optimization_level、
+  enable_na_move、na_mapping_type、enable_mapping、
+  sc_mapping_options、enable_wirecut 等）
+- ``DriverWuyueBase(DriverGateBase)`` - 吾越驱动基类
+- ``DriverLogicalQubitBase(DriverGateBase)`` - 逻辑比特驱动基类
+- 各厂商驱动继承上述基类
+
 驱动管理器初始化
 -------------------------
 
@@ -170,28 +185,66 @@
            self.set_progress_by_task(self.TASK_STAGE_START)
            self.set_device_status(Device.DEVICE_STATUS_BUSY)
 
-           # handle extra_configs
-           sleep = self.driver_options.get("sleep", None)
-           if sleep:
-               self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
-               sleep_count = 1
-               while sleep_count <= sleep:
-                   logger.info(f"sleep: {sleep_count} / {sleep}")
-                   time.sleep(1)
-                   sleep_count += 1
-
            # dummy driver results
            result = self.get_fake_results(num_qubits, shots, data)
            self.set_results(job_id, data_index, results=result)
            self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-           self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
+           # post_run (sleep/progress) and set_progress_by_task(COMPLETE)
+           # are handled by job_engine.driver_run after this method returns
 
-       def cancel(self, job_id):
-           """Cancel running job in driver.
+           def cancel(self, job_id):
+               """Cancel running job in driver.
 
-           Driver should clean up any resources of the job
+               Driver should clean up any resources of the job
 
-           Args:
-               job_id: job ID
-           """
-           logger.info(f"Cancel job: job_id: {job_id}")
+               Args:
+                   job_id: job ID
+               """
+               logger.info(f"Cancel job: job_id: {job_id}")
+
+
+驱动约束 Schema
+-------------------------
+
+驱动通过以下三个 schema 属性声明自身的输入约束，供调度器
+``InputConstraintsFilter`` 和作业引擎 ``init_transpiler`` 使用：
+
+.. list-table:: 驱动约束属性
+   :widths: 30 70
+   :header-rows: 1
+   :align: left
+
+   * - 属性
+     - 说明
+   * - ``input_constrains``
+     - ``dict`` 类型，包含 job_shots 等 key，值为
+       ``schema.Schema`` 对象或 ``None``。``InputConstraintsFilter``
+       据此校验作业的 ``shots`` 是否满足驱动的 shots 约束。
+       ``DriverBase`` 默认为无约束（job_shots 为 None）。
+   * - ``driver_options_schema``
+     - ``dict`` 类型，定义 ``driver_options`` 的合法字段及类型。
+       ``InputConstraintsFilter`` 据此校验作业的 ``driver_options``。
+       ``DriverBase`` 声明了通用字段如 sleep、enable_wirecut、
+       wirecut_qubit_width、max_job_wait_time 等。
+   * - ``transpiler_options_schema``
+     - ``dict`` 类型，定义 ``transpiler_options`` 的合法字段及默认值。
+       格式为 \{name: (Optional(name, default=...), validator)\}。
+       ``init_transpiler`` 据此填充用户未指定选项的默认值；
+       ``InputConstraintsFilter`` 经 ``Library.convert_schema`` 转换后
+       校验用户提交的 ``transpiler_options``。
+
+驱动约束示例：
+
+.. code-block:: python
+
+   class DriverLogicalQubitBase(DriverGateBase):
+       def __init__(self):
+           super().__init__()
+           # job_shots: 1~50000
+           self.input_constrains["job_shots"] = Schema(
+               And(int, lambda x: 1 <= x <= 50000)
+           )
+           # enable_mapping: only True is allowed
+           self.transpiler_options_schema["enable_mapping"] = (
+               Optional("enable_mapping", default=True), True
+           )
