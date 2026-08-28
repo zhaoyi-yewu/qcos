@@ -2052,7 +2052,17 @@ class SubmitJob(Command):
 
 
 class GetJobStatus(ShowOne):
-    """Get job status."""
+    """Get job status.
+
+    The job_id positional argument accepts a real job UUID or the
+    special value "last" (case-insensitive). When "last" is given,
+    the most recent job (sorted by created_at descending on the
+    server side) is resolved automatically and its status fetched.
+
+    Examples:
+        qcos-cli get-job-status <job_id>
+        qcos-cli get-job-status last
+    """
 
     group = QcosShell.CMD_GROUP_JOB
 
@@ -2066,7 +2076,12 @@ class GetJobStatus(ShowOne):
             parser
         """
         parser = super().get_parser(prog_name)
-        parser.add_argument("job_id", type=str, help="Job ID")
+        parser.add_argument(
+            "job_id",
+            type=str,
+            help="Job ID, or the special value 'last' "
+            "to resolve the most recent job",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -2080,6 +2095,25 @@ class GetJobStatus(ShowOne):
         """
         resource = self.group
         job_id = parsed_args.job_id
+
+        # Special value "last" (case-insensitive): resolve the most
+        # recent job by querying the job list (already sorted by
+        # created_at descending on the server side).
+        if job_id and job_id.lower() == Constant.JOB_ID_LAST:
+            status_code, reason, text, result = self.app.client.get_jobs()
+            jobs_list = CommandHelper.check_results(
+                resource, "get_jobs", status_code, reason, text
+            )
+            if not jobs_list:
+                raise errors.GenericException(
+                    "No jobs found, cannot resolve 'last'"
+                )
+            job_id = jobs_list[0].get("job_id")
+            if not job_id:
+                raise errors.GenericException(
+                    "Failed to resolve job_id from the latest job"
+                )
+            print(f"Latest job_id: {job_id}")
 
         # Validate argument: job_id
         CommandHelper.handle_invalid_arguments(
