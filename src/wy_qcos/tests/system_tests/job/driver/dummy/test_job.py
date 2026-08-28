@@ -213,6 +213,7 @@ class TestJob:
         assert success is True
 
     def test_submit_job_wirecut(self):
+        """Wirecut batch should fail when only part of it can be mapped."""
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_submit_job_wirecut",
@@ -236,11 +237,15 @@ class TestJob:
             self.admin_client, job_info, self.timeout, self.interval
         )
         if success:
-            StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
                 job_results["result"]["job_status"]
-                == Constant.JOB_STATUS_COMPLETED
+                == Constant.JOB_STATUS_FAILED
             )
+            assert (
+                "Wirecut batch result count does not match subcircuits"
+                in job_results["result"]["results"][0]["error"]["message"]
+            )
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
         else:
             logger.warning(
                 f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
