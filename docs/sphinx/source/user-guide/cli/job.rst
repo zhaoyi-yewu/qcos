@@ -370,10 +370,14 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
                                   [--max-width <integer>] [--fit-width] [--print-empty]
                                   job_id
 
-   Get job status.
+   Get job status. The job_id positional argument accepts a real
+   job UUID or the special value ``last`` (case-insensitive). When
+   ``last`` is given, the most recent job (sorted by created_at
+   descending) is resolved automatically and its status fetched.
 
    positional arguments:
-     job_id        Job ID
+     job_id        Job ID, or 'last' (case-insensitive) to fetch
+                   the most recent job status
 
 .. code-block:: shell
 
@@ -414,6 +418,10 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 
    # 获取作业状态
    qcos-cli get-job-status 00000000-0000-4000-8000-000000000001
+
+   # 获取最近一次作业的状态（不区分大小写）
+   qcos-cli get-job-status last
+   qcos-cli get-job-status LAST
 
    # 获取作业结果
    qcos-cli get-job-results 00000000-0000-4000-8000-000000000001
