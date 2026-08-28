@@ -150,6 +150,12 @@ class JobMetrics:
             self.job_gauge.labels(status=Constant.JOB_METRICS_FIELD_TOTAL).set(
                 data.total
             )
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_SUBMITTED_JOB_RATE_MIN
+            ).set(data.submitted_job_rate_min)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_COMPLETED_JOB_RATE_MIN
+            ).set(data.completed_job_rate_min)
 
         logger.debug(f"Job metrics updated: {data}")
 
