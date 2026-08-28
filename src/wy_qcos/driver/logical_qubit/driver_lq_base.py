@@ -20,19 +20,19 @@ from zoneinfo import ZoneInfo
 
 from loguru import logger
 from lqcloud import LQCloudProvider, QuantumCircuit
-from schema import Or, Optional
+from schema import And, Optional, Or, Schema
 
 from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.common.constant import Constant, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
-from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit as QCircuit
 from wy_qcos.transpiler.high_performance import OperationType
 
 
-class DriverLogicalQubitBase(DriverBase):
+class DriverLogicalQubitBase(DriverGateBase):
     """逻辑比特驱动基类.
 
     Logical Qubit Base driver
@@ -79,19 +79,20 @@ class DriverLogicalQubitBase(DriverBase):
             self.TASK_STAGE_GET_RESULTS: 95,
             self.TASK_STAGE_COMPLETE: 100,
         }
-        self.driver_options_schema = {
-            Optional("qes"): {
-                Optional("dynamical_decoupling"): {
-                    Optional("enable"): bool,
-                }
-            },
-            Optional("qem"): {
-                Optional("readout_error"): {
-                    Optional("enable"): bool,
-                }
-            },
-        }
         self.enable_device_monitor = True
+        # input constrains for scheduling
+        self.input_constrains["job_shots"] = Schema(
+            And(
+                int,
+                lambda x: 1 <= x <= 50000,  # min: 1024, max: 50000
+            )
+        )
+        # transpiler_option schema for specific driver
+        # enable_mapping: only true is allowed
+        self.transpiler_options_schema["enable_mapping"] = (
+            Optional("enable_mapping", default=True),
+            True,
+        )
 
     def init_driver(self):
         """Init driver."""
@@ -468,7 +469,6 @@ class DriverLogicalQubitBase(DriverBase):
         self.set_optimized_circuit(optimization)
         # 5. Save results and set driver status to ONLINE
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def submit_task(self, qc, shots):
         """Submit task.

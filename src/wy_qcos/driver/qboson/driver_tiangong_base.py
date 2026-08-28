@@ -222,7 +222,6 @@ class DriverTiangongBase(DriverQuboBase):
             result_type=Constant.RESULT_TYPE_QUBO,
         )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def cancel(self, job_id):
         """Cancel running job in driver.

@@ -30,13 +30,13 @@ from schema import Optional
 from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
-from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.gate_operation import BaseOperation
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
-class DriverWuyueBase(DriverBase):
+class DriverWuyueBase(DriverGateBase):
     """Wuyue驱动基类.
 
     Wuyue Base driver
@@ -66,7 +66,7 @@ class DriverWuyueBase(DriverBase):
         super().__init__()
         self.transpiler = Constant.TRANSPILER_DUMMY
         self.tech_type = Constant.TECH_TYPE_NONE
-        self.default_data_type = DriverBase.DATA_TYPE_QASM2
+        self.default_data_type = DriverGateBase.DATA_TYPE_QASM2
         self.supported_code_types = [Constant.CODE_TYPE_QASM2]
         self.supported_transpilers = [Constant.TRANSPILER_DUMMY]
         self.ip_addr = None
@@ -283,7 +283,6 @@ class DriverWuyueBase(DriverBase):
             },
         )
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)
 
     def cancel(self, job_id):
         """Cancel running job in driver.

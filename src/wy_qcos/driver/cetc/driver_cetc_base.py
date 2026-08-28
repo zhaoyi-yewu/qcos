@@ -86,6 +86,12 @@ class DriverCetcBase(DriverGateBase):
             Optional("token"): str,
         })
         self.enable_device_monitor = True
+        # transpiler_option schema for specific driver
+        # enable_mapping: only false is allowed
+        self.transpiler_options_schema["enable_mapping"] = (
+            Optional("enable_mapping", default=False),
+            False,
+        )
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -715,4 +721,3 @@ class DriverCetcBase(DriverGateBase):
 
         # 6. Set driver status to ONLINE
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
-        self.set_progress_by_task(self.TASK_STAGE_COMPLETE)

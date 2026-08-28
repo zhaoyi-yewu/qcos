@@ -45,7 +45,10 @@ class DriverWuyueHanyuan1(DriverWuyueBase):
             Constant.TWO_QUBIT_GATE_CZ,
         ]
         self.supported_code_types = [Constant.CODE_TYPE_QASM2]
-        self.supported_transpilers = [Constant.TRANSPILER_CMSS]
+        self.supported_transpilers = [
+            Constant.TRANSPILER_CMSS,
+            Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
+        ]
         self.max_qubits = 100
         self.hanyuan1_device_info_schema = {
             Optional("horizontalRelaxationTime"): int,
@@ -59,6 +62,12 @@ class DriverWuyueHanyuan1(DriverWuyueBase):
             Optional("elementAtom"): str,
             Optional("time"): str,
         }
+        # transpiler_option schema for specific driver
+        # enable_mapping: only false is allowed
+        self.transpiler_options_schema["enable_mapping"] = (
+            Optional("enable_mapping", default=False),
+            False,
+        )
 
     def update_device_info_schema(self) -> dict:
         """Update device info schema.
