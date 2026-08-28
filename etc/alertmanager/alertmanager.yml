@@ -17,7 +17,7 @@ global:
   smtp_smarthost:
   smtp_from:
   smtp_auth_username:
-  smtp_auth_password: "P*ssword1"
+  smtp_auth_password:
   smtp_require_tls: true
 
 route:
@@ -29,6 +29,6 @@ route:
 
 receivers:
   - name: "default-email"
-    email_configs:
-      - to:
-        send_resolved: true
+#    email_configs:
+#      - to: "test@cmss.chinamobile.com"
+#        send_resolved: true

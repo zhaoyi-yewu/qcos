@@ -346,12 +346,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total)",
+          "expr": "sum(job_count{status=\"total\"}) or vector(0)",
           "refId": "A",
-          "legendFormat": "总任务数"
+          "legendFormat": "总作业数"
         }
       ],
-      "title": "任务总数",
+      "title": "作业总数",
       "type": "stat"
     },
     {
@@ -405,12 +405,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"running\"})",
+          "expr": "sum(job_count{status=\"running\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "运行中"
         }
       ],
-      "title": "运行中任务",
+      "title": "运行中作业",
       "type": "stat"
     },
     {
@@ -464,12 +464,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"queued\"})",
+          "expr": "sum(job_count{status=\"queued\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "队列中"
         }
       ],
-      "title": "队列中任务",
+      "title": "队列中作业",
       "type": "stat"
     },
     {
@@ -523,12 +523,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"completed\"})",
+          "expr": "sum(job_count{status=\"completed\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "已完成"
         }
       ],
-      "title": "已完成任务",
+      "title": "已完成作业",
       "type": "stat"
     },
     {
@@ -582,12 +582,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"failed\"})",
+          "expr": "sum(job_count{status=\"failed\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "失败"
         }
       ],
-      "title": "失败任务",
+      "title": "失败作业",
       "type": "stat"
     },
     {
@@ -641,12 +641,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"cancelled\"})",
+          "expr": "sum(job_count{status=\"cancelled\"}) or vector(0)",
           "refId": "A",
           "legendFormat": ""
         }
       ],
-      "title": "已取消任务",
+      "title": "已取消作业",
       "type": "stat"
     },
     {
@@ -700,12 +700,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"cancelling\"})",
+          "expr": "sum(job_count{status=\"cancelling\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "取消中"
         }
       ],
-      "title": "取消中",
+      "title": "取消中作业",
       "type": "stat"
     },
     {
@@ -759,12 +759,71 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"deleted\"})",
+          "expr": "sum(job_count{status=\"deleted\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "已删除"
         }
       ],
-      "title": "已删除任务",
+      "title": "已删除作业",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 2020,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(job_count{status=\"deleting\"}) or vector(0)",
+          "refId": "A",
+          "legendFormat": "删除中"
+        }
+      ],
+      "title": "删除中作业",
       "type": "stat"
     },
     {
@@ -818,12 +877,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"unknown\"})",
+          "expr": "sum(job_count{status=\"unknown\"}) or vector(0)",
           "refId": "A",
           "legendFormat": "未知状态"
         }
       ],
-      "title": "未知状态",
+      "title": "未知状态作业",
       "type": "stat"
     },
     {
@@ -910,16 +969,16 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total)",
+          "expr": "sum(job_count{status=\"total\"})",
           "refId": "A",
-          "legendFormat": "总任务数"
+          "legendFormat": "总作业数"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "total{status=\"completed\"}",
+          "expr": "job_count{status=\"completed\"}",
           "refId": "B",
           "legendFormat": "完成"
         },
@@ -928,12 +987,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "total{status=\"failed\"}",
+          "expr": "job_count{status=\"failed\"}",
           "refId": "C",
           "legendFormat": "失败"
         }
       ],
-      "title": "任务统计趋势",
+      "title": "作业统计趋势",
       "type": "timeseries"
     },
     {
@@ -1020,7 +1079,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"running\"})",
+          "expr": "sum(job_count{status=\"running\"})",
           "legendFormat": "运行中",
           "refId": "A"
         },
@@ -1029,7 +1088,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"queued\"})",
+          "expr": "sum(job_count{status=\"queued\"})",
           "legendFormat": "队列中",
           "refId": "B"
         },
@@ -1038,7 +1097,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"cancelling\"})",
+          "expr": "sum(job_count{status=\"cancelling\"})",
           "legendFormat": "取消中",
           "refId": "C"
         },
@@ -1047,7 +1106,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"cancelled\"})",
+          "expr": "sum(job_count{status=\"cancelled\"})",
           "legendFormat": "已取消",
           "refId": "D"
         },
@@ -1056,8 +1115,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"deleted\"})",
-          "legendFormat": "已删除",
+          "expr": "sum(job_count{status=\"deleting\"})",
+          "legendFormat": "删除中",
           "refId": "E"
         },
         {
@@ -1065,12 +1124,21 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(total{status=\"unknown\"})",
-          "legendFormat": "未知状态",
+          "expr": "sum(job_count{status=\"deleted\"})",
+          "legendFormat": "已删除",
           "refId": "F"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(job_count{status=\"unknown\"})",
+          "legendFormat": "未知状态",
+          "refId": "G"
         }
       ],
-      "title": "任务状态分布",
+      "title": "作业状态分布",
       "type": "timeseries"
     },
     {
@@ -1448,6 +1516,126 @@
       ],
       "title": "API 并发请求数",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "unit": "req/m"
+         },
+         "overrides": []
+       },
+       "gridPos": {
+         "h": 4,
+         "w": 12,
+         "x": 0,
+         "y": 12
+       },
+       "id": 2021,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(job_count{status=\"submitted_job_rate_min\"}) or vector(0)",
+          "refId": "A",
+          "legendFormat": "提交速率"
+        }
+      ],
+      "title": "提交作业速率(每分钟)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "unit": "req/m"
+         },
+         "overrides": []
+       },
+       "gridPos": {
+         "h": 4,
+         "w": 12,
+         "x": 12,
+         "y": 12
+       },
+       "id": 2022,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(job_count{status=\"completed_job_rate_min\"}) or vector(0)",
+          "refId": "A",
+          "legendFormat": "完成速率"
+        }
+      ],
+      "title": "已完成作业速率(每分钟)",
+      "type": "stat"
     }
   ],
   "refresh": "10s",
