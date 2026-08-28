@@ -55,14 +55,13 @@ RUN set -e && \
 # install npm packages
     rm -rf ${app_dir}/dist ${app_dir}/node_modules ${app_dir}/package-lock.json && \
     npm cache clean --force && \
-    export NODE_OPTIONS="--no-experimental-fetch" && \
     if [ -n "${NPM_MIRROR}" ]; then npm config set registry ${NPM_MIRROR}; fi && \
     # install packages: dev build needs devDependencies
     # (e.g. @vue/cli-service for npm run dev)
     if [ "${DEV,,}" = "true" ]; then \
       npm install --no-audit --verbose; \
     else \
-      npm install --no-audit --verbose && \
+      npm install --no-audit && \
       npm run build:prod && \
       cp -rf ${app_dir}/dist/ /apps && \
       rm -rf ${app_dir}; \

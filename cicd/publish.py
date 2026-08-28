@@ -128,11 +128,11 @@ def publish_packages(qcos_version, repository="testpypi", dry_run=False):
     cmds = [
         # upload wy-qcos packages
         f"twine {action} {repository_args} "
-        f"{qcos_dist_dir}/wy_qcos-{qcos_version}-py3*.whl "
+        f"{qcos_dist_dir}/wy_qcos-{qcos_version}-*.whl "
         f"{qcos_dist_dir}/wy_qcos-{qcos_version}.tar.gz",
         # upload wy-qcos-client packages
         f"twine {action} {repository_args} "
-        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-py3*.whl "
+        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-*.whl "
         f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}.tar.gz",
     ]
     results = run_command(";".join(cmds))
