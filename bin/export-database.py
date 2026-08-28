@@ -125,12 +125,12 @@ def parse_db_url(db_url):
 
 
 def build_connection_url(host, port, username, password, db_name):
-    """Build a SQLAlchemy connection URL for postgresql+pg8000."""
+    """Build a SQLAlchemy connection URL for postgresql+psycopg."""
     if password:
         auth = f"{username}:{quote_plus(password)}"
     else:
         auth = username
-    return f"postgresql+pg8000://{auth}@{host}:{port}/{db_name}"
+    return f"postgresql+psycopg://{auth}@{host}:{port}/{db_name}"
 
 
 def build_output_path(output, db_name, file_type):

@@ -187,6 +187,74 @@
                "error": null
              }
 
+   * - **列出所有 Worker**
+     - **list_workers**
+
+       URI: /v1/system/list_workers
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "list_workers",
+               "params": {
+                 "body": {}
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "result": {
+                 "workers": [
+                   {
+                     "worker_name": "process-device|dummy",
+                     "work_pool": "device|dummy",
+                     "device_name": "dummy",
+                     "worker_status": "ONLINE",
+                     "pid": 1234
+                   }
+                 ]
+               }
+             }
+   * - **重启指定 Worker**
+     - **restart_worker**
+
+       URI: /v1/system/restart_worker
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "method": "restart_worker",
+               "params": {
+                 "body": {
+                   "worker_name": "process-device|dummy"
+                 }
+               }
+             }
+     - .. container:: table-code-small-font
+
+          .. code-block:: json
+
+             {
+               "jsonrpc": "2.0",
+               "id": 1,
+               "result": {
+                 "success": true,
+                 "message": "worker process-device|dummy restarted successfully",
+                 "worker_name": "process-device|dummy"
+               }
+             }
+
+
 系统参数详解
 ~~~~~~~~~~~~
 
@@ -353,89 +421,12 @@
       • 建议定期监控系统统计数据
 
 Worker 管理
-==================
+~~~~~~~~~~~~
 
 Worker 管理接口用于查询 Prefect Worker 列表及动态重启指定 Worker。需要管理员权限。
 
-.. list-table:: Worker 管理接口规范
-   :widths: 20 20 30 30
-   :header-rows: 1
-   :align: left
-   :class: longtable
-
-   * - 用途
-     - 方法
-     - 请求参数
-     - 返回值
-   * - **列出所有 Worker**
-     - **list_workers**
-
-       URI: /v1/system/list_workers
-     - .. container:: table-code-small-font
-
-          .. code-block:: json
-
-             {
-               "jsonrpc": "2.0",
-               "id": 1,
-               "method": "list_workers",
-               "params": {
-                 "body": {}
-               }
-             }
-     - .. container:: table-code-small-font
-
-          .. code-block:: json
-
-             {
-               "jsonrpc": "2.0",
-               "id": 1,
-               "result": {
-                 "workers": [
-                   {
-                     "worker_name": "process-device|dummy",
-                     "work_pool": "device|dummy",
-                     "device_name": "dummy",
-                     "worker_status": "ONLINE",
-                     "pid": 1234
-                   }
-                 ]
-               }
-             }
-   * - **重启指定 Worker**
-     - **restart_worker**
-
-       URI: /v1/system/restart_worker
-     - .. container:: table-code-small-font
-
-          .. code-block:: json
-
-             {
-               "jsonrpc": "2.0",
-               "id": 1,
-               "method": "restart_worker",
-               "params": {
-                 "body": {
-                   "worker_name": "process-device|dummy"
-                 }
-               }
-             }
-     - .. container:: table-code-small-font
-
-          .. code-block:: json
-
-             {
-               "jsonrpc": "2.0",
-               "id": 1,
-               "result": {
-                 "success": true,
-                 "message": "worker process-device|dummy restarted successfully",
-                 "worker_name": "process-device|dummy"
-               }
-             }
-
 返回字段说明
-==================
+^^^^^^^^^^^^^^
 
 **list_workers 返回字段：**
 

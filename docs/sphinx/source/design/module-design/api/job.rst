@@ -44,8 +44,11 @@
                    "flavor_id": "00000000-0000-4000-8000-000000000001",
                    // 额外调度参数 [可选]
                    // 动态的、单次作业特有的运行策略，覆盖 flavor specs
+                   // 支持字段见下方"额外调度参数 (extra_specs)"章节
                    "extra_specs": {
-                     "max_qubits": 100
+                     "qc:max_qubits": 100,
+                     "qc:device_availability": 0.95,
+                     "qcos:devices": "wy_hanyuan1,spinq_gemini"
                    },
                    // 转译器名称 [可选]
                    "transpiler": "cmss",
@@ -936,6 +939,83 @@
 +------------------------+----------+----------------------------------------------+
 | ended_at               | datetime | 作业结束执行时间 [可选]                      |
 +------------------------+----------+----------------------------------------------+
+
+额外调度参数 (extra_specs)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``extra_specs`` 用于在提交作业时动态指定单次作业特有的调度策略，
+会覆盖 flavor 中同名字段。仅在与 ``flavor_id`` 搭配（自动调度）时生效，
+不能与 ``backend`` 同时指定。
+
+支持字段如下：
+
+.. list-table:: extra_specs 支持字段
+   :widths: 28 15 57
+   :header-rows: 1
+   :align: left
+
+   * - 字段 key
+     - 类型
+     - 说明（覆盖 flavor 同名字段）
+   * - ``qc:min_qubits``
+     - int
+     - 最少比特数，参与 QubitCountFilter
+   * - ``qc:max_qubits``
+     - int
+     - 最多比特数，参与 QubitCountFilter
+   * - ``qc:gate_fidelity_1q_min``
+     - float
+     - 最小单比特门保真度，参与 GateFidelityFilter
+   * - ``qc:gate_fidelity_2q_min``
+     - float
+     - 最小双比特门保真度，参与 GateFidelityFilter
+   * - ``qc:device_availability``
+     - float(0-1)
+     - 最小设备可用率（上线率），参与 DeviceAvailabilityFilter
+   * - ``qc:tech_types``
+     - str/list
+     - 技术类型白名单（逗号分隔字符串或列表），参与 TechTypeFilter
+   * - ``qcos:code_types``
+     - str/list
+     - 允许的 code 类型（逗号分隔或列表），覆盖 job 的 code_type，
+       参与 CodeTypeFilter
+   * - ``qcos:devices``
+     - str/list
+     - 设备名白名单（逗号分隔或列表），``all`` 表示不限制，
+       参与 DeviceNameFilter
+   * - ``qcos:exclude_devices``
+     - str/list
+     - 设备名黑名单（逗号分隔或列表），参与 ExcludeDeviceFilter
+
+.. note::
+
+   - ``qc:device_groups`` 由 flavor 的设备组映射表注入，
+     不通过 ``extra_specs`` 指定。
+   - 优先级：``extra_specs`` 覆盖 ``flavor_specs`` 同名字段。
+
+示例：
+
+.. code-block:: bash
+
+   # 1. 要求设备上线率 >= 0.95
+   qcos-cli submit-job --flavor q1.all \
+     --extra-specs '{"qc:device_availability": 0.95}' \
+     --source-code-file circuit.qasm
+
+   # 2. 设备白名单 + 黑名单 + 技术类型
+   qcos-cli submit-job --flavor q1.all \
+     --extra-specs '{"qcos:devices": "wy_hanyuan1,spinq_gemini", "qcos:exclude_devices": "dummy", "qc:tech_types": "superconducting"}' \
+     --source-code-file circuit.qasm
+
+   # 3. 覆盖比特数与保真度约束
+   qcos-cli submit-job --flavor q1.all \
+     --extra-specs '{"qc:min_qubits": 5, "qc:max_qubits": 20, "qc:gate_fidelity_2q_min": 0.99}' \
+     --source-code-file circuit.qasm
+
+   # 4. 覆盖 code 类型约束
+   qcos-cli submit-job --flavor q1.all \
+     --extra-specs '{"qcos:code_types": "qasm,qasm2"}' \
+     --source-code-file circuit.qasm
 
 代码类型说明
 ~~~~~~~~~~~~

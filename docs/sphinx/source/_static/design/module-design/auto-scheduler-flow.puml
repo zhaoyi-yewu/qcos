@@ -1,0 +1,32 @@
+@startuml
+title 自动调度流程图
+
+skinparam ActivityBackgroundColor #dbe7fb
+skinparam ActivityBorderColor #0066cc
+skinparam ArrowColor #0066cc
+
+start
+:用户提交作业(不指定backend);
+:解析作业参数;
+:extra_specs白名单校验;
+if (校验通过?) then (否)
+  :返回bad_request错误;
+  stop
+else (是)
+  :构建RequestSpec;
+  :构建DeviceState列表;
+  :执行Filter过滤;
+  if (有设备通过?) then (否)
+    :报错NoValidDeviceError;
+    stop
+  else (是)
+    if (仅1台?) then (是)
+    else (多台)
+      :执行Weigher排序;
+    endif
+    :选择设备;
+    :提交作业到deployment;
+    stop
+  endif
+endif
+@enduml

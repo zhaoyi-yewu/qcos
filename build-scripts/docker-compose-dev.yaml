@@ -84,8 +84,8 @@ services:
     security_opt:
       - no-new-privileges:true
     tmpfs:
-      - /tmp
-      - /var/tmp
+      - /tmp:exec
+      - /var/tmp:exec
     depends_on:
       - prefect-server
       - redis

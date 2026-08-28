@@ -66,9 +66,20 @@
 RUNNING、FAILED、COMPLETED、CANCELLING、CANCELLED、DELETING、
 DELETED）统计该设备上各状态的作业数量，数据来源于 qcos 数据库。
 
+返回结果中还包含 ``metrics`` 字典，其中包含设备上线率（availability rate）
+相关指标：
+
+- ``metrics.availability_hourly``：当前小时实时上线率
+  （``online``/``busy`` 采样数 / 总采样数），取值 ``0.0``~``1.0``；
+  当前小时尚无采样时为 ``null``。
+- ``metrics.availability_last_hour``：上一个整点小时的聚合上线率，
+  来源于 ``device_availability_hourly`` 表；无历史记录时为 ``null``。
+- ``metrics.availability_history``：最近若干小时的上线率历史列表，
+  用于查看可用性趋势；无历史记录时为 ``null``。
+
 .. code-block:: shell
 
-   # 以 JSON 格式输出，查看 job_count 明细
+   # 以 JSON 格式输出，查看 job_count 与 metrics.availability 明细
    qcos-cli get-device dummy -f json
 
 设备校准
@@ -228,8 +239,9 @@ DELETED）统计该设备上各状态的作业数量，数据来源于 qcos 数�
 set-device
 ^^^^^^^^^^
 
-设置设备属性（状态、启用/禁用、最大比特数）。至少指定 ``--status``、
-``--enable`` 或 ``--max-qubits`` 中的一个参数。
+设置设备属性（状态、启用/禁用、最大比特数、可用比特数）。至少指定
+``--status``、``--enable``、``--max-qubits`` 或 ``--available-qubits``
+中的一个参数。
 
 需要 admin 角色权限。
 
@@ -243,9 +255,11 @@ set-device
        [--status {auto,online,offline,busy,disconnected,calibrating,maintain,unknown}]
        [--enable {true,false}]
        [--max-qubits MAX_QUBITS]
+       [--available-qubits AVAILABLE_QUBITS]
        BACKEND
 
-   Set device attributes (status, enable, max_qubits).
+   Set device attributes (status, enable, max_qubits,
+   available_qubits).
 
    positional arguments:
      BACKEND               Device name (backend)
@@ -258,6 +272,9 @@ set-device
                            Enable or disable the device
      --max-qubits MAX_QUBITS
                            Max qubits: 'auto' or a positive integer
+     --available-qubits AVAILABLE_QUBITS
+                           Available qubits: 'auto' or a positive
+                           integer
 
 典型场景示例
 ~~~~~~~~~~~~~~~
@@ -278,6 +295,12 @@ set-device
 
    # 恢复驱动声明的默认最大比特数
    qcos-cli set-device hanyuan1 --max-qubits auto
+
+   # 设置可用比特数为 50
+   qcos-cli set-device hanyuan1 --available-qubits 50
+
+   # 恢复驱动声明的默认可用比特数
+   qcos-cli set-device hanyuan1 --available-qubits auto
 
    # 组合设置
    qcos-cli set-device hanyuan1 --status online --enable true --max-qubits auto

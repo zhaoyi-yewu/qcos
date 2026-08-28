@@ -146,21 +146,21 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 
 .. code-block:: shell
 
-   # 使用 extra_specs 自动调度 (需搭配 --flavor)
-   qcos-cli submit-job --code-type qasm --shots 10 --flavor 00000000-0000-4000-8000-000000000001 --extra-specs '{"max_qubits": 100}' -f ./samples/qasm/2.0/simple-qasm.qasm
-
    # 使用 flavor_id 自动调度
    qcos-cli submit-job --code-type qasm --shots 10 --flavor 00000000-0000-4000-8000-000000000001 -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 使用 flavor_name 自动调度 (自动解析为 flavor_id)
    qcos-cli submit-job --code-type qasm --shots 10 --flavor g1.all -f ./samples/qasm/2.0/simple-qasm.qasm
 
+   # 使用 extra_specs 自动调度 (需搭配 --flavor)
+   qcos-cli submit-job --code-type qasm --shots 10 --flavor f1 --extra-specs '{"qcos:devices": "lq_mq02,lq_qz01_surface"}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
 - Flavor管理 (预设调度策略)
 
 .. code-block:: shell
 
    # 创建 Flavor
-   qcos-cli create-flavor q-flavor-sc --specs '{"min_qubits": 16, "tech_type": "superconducting", "gate_fidelity_2q_min": 0.995}'
+   qcos-cli create-flavor f1 --gate-fidelity-1q-min 0.1 --gate-fidelity-2q-min 0.1 --min-qubits 2 --property qcos:devices="dummy,qutip_sim" qcos:code_types="qasm,qasm2" qcos:exclude_devices="dummy2" qc:device_availability=0.99 qc:tech_types="superconducting" --device-groups qc.all
 
    # 查看 Flavor 列表
    qcos-cli list-flavors
@@ -383,10 +383,14 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
                                    [--output-file OUTPUT_FILE]
                                    job_id
 
-   Get job results.
+   Get job results. The job_id positional argument accepts a real
+   job UUID or the special value ``last`` (case-insensitive). When
+   ``last`` is given, the most recent job (sorted by created_at
+   descending) is resolved automatically and its results fetched.
 
    positional arguments:
-     job_id        Job ID
+     job_id        Job ID, or 'last' (case-insensitive) to fetch
+                   the most recent job results
      output-file   save job results to file
 
    output formatters:
@@ -416,6 +420,10 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 
    # 获取作业结果，并保存为results.yaml
    qcos-cli get-job-results 00000000-0000-4000-8000-000000000001 -f yaml --output-file results.yaml -y
+
+   # 获取最近一次作业的结果（不区分大小写）
+   qcos-cli get-job-results last
+   qcos-cli get-job-results LAST -o results.txt -y
 
 作业删除和取消
 *************************

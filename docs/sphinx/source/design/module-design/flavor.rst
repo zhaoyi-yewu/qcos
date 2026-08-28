@@ -103,7 +103,9 @@ Flavor的extra_properties字段支持以下键值（键名需为 ``namespace:nam
 
 - ``qcos:devices``: 显式允许的设备名称（逗号分隔，如 ``"dummy,qutip_sim"``）
 - ``qcos:exclude_devices``: 排除的设备名称（逗号分隔，如 ``"dummy"``）
-- ``qc:device_availability``: 设备可用性要求（如 ``0.99``）
+- ``qc:device_availability``: 设备可用性（上线率）最低要求，
+  取值 0.0-1.0（如 ``0.99``）。由 ``DeviceAvailabilityFilter``
+  根据 DeviceState 的 ``availability`` 过滤，低于阈值的设备被淘汰
 - ``qc:code_types``: 支持的代码类型（如 ``"qasm2,qasm3"``）
 - ``qc:tech_types``: 量子技术路线类型（如 ``"superconducting,ion_trap"``）
 
