@@ -764,6 +764,7 @@ class GetDevices(Lister):
             "name",
             "alias_name",
             "driver_name",
+            "tech_type",
             "enable",
             "status",
             "max_qubits",
@@ -4045,7 +4046,7 @@ class CreateFlavor(Command):
             default=None,
             help="Property in namespace:key=value format "
             "(can be specified multiple times, "
-            "e.g. --property qc:test=1)",
+            "e.g. --property qc:tech_types=superconducting)",
         )
         parser.add_argument(
             "--device-groups",
@@ -4092,7 +4093,7 @@ class CreateFlavor(Command):
                     raise errors.InvalidArguments(
                         f"Invalid property key: '{k}'. "
                         "Key must be in 'namespace:name' "
-                        "format (e.g. 'qc:test=1')"
+                        "format (e.g. qc:tech_types=superconducting)"
                     )
                 extra_properties[k] = v.strip()
 
@@ -4244,7 +4245,7 @@ class UpdateFlavor(Command):
             default=None,
             help="Property in namespace:key=value format "
             "(can be specified multiple times, will be merged, "
-            "e.g. --property qc:test=1)",
+            "e.g. --property qc:tech_types=superconducting)",
         )
         mx.add_argument(
             "--unset-extra-properties",
@@ -4340,7 +4341,7 @@ class UpdateFlavor(Command):
                     raise errors.InvalidArguments(
                         f"Invalid property key: '{k}'. "
                         "Key must be in 'namespace:name' format "
-                        "(e.g. 'qc:test=1')"
+                        "(e.g. qc:tech_types=superconducting)"
                     )
                 extra_properties[k] = v.strip()
 

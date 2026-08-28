@@ -55,9 +55,9 @@ class DeviceManager:
         """Scan and load drivers."""
         logger.info("Load devices ...")
         devices = self.config.DEVICES.DEVICE_LIST
+        extra_configs = self.config.get_extra_configs()
         for device_name in devices:
             logger.info(f"Loading device: {device_name}")
-            extra_configs = self.config.get_extra_configs()
             device_configs = extra_configs.get(device_name)
             if device_configs:
                 _success, err_msgs = Library.validate_schema(
@@ -94,7 +94,7 @@ class DeviceManager:
                 )
                 enable_device_monitor = device_monitor_configs.pop(
                     "enable_device_monitor",
-                    device_configs.pop("enable_device_monitor", None),
+                    device_configs.pop("enable_device_monitor", False),
                 )
                 driver = self.driver_manager.get_driver(driver_name)
                 if driver:

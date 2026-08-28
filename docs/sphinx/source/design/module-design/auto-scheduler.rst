@@ -16,12 +16,13 @@
 
 自动调度使用 **Filter Scheduler** 模式，采用两阶段调度：先过滤（Filter），后排序（Weigher）。
 
-.. image:: ../../_static/design/module-design/auto-scheduler.svg
+.. figure:: ../../_static/design/module-design/auto-scheduler.svg
    :alt: 自动调度架构图
    :width: 90%
    :align: center
 
-自动调度架构图
+.. centered:: *自动调度架构图*
+
 
 调度流程
 ^^^^^^^^^^^^^^^^^^^^
@@ -30,6 +31,9 @@
    :alt: 自动调度流程图
    :width: 80%
    :align: center
+
+.. centered:: *自动调度流程图*
+
 
 1. 构建 ``RequestSpec`` 对象，聚合作业信息、flavor规格和extra_specs
 2. 构建 ``DeviceState`` 列表，包含每个设备的静态信息和动态负载信息

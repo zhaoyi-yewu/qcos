@@ -1,0 +1,49 @@
+[qutip_sim1]
+alias_name = "Qutip模拟器1"
+driver = "DriverQutipSim"
+description = "Qutip模拟器1(qutip-sim1)"
+
+# [Optional] enable or disable the device
+# enable = true
+
+# [Optional] max qubits of device
+# device_max_qubits = 10
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_qutip_sim1.log
+device_log_file = "/var/log/qcos/device_qutip_sim1.log"
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_mgr_qutip_sim1.log
+
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
+[qutip_sim1.transpiler.qpu_configs]
+qubits = 6
+
+[qutip_sim1.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_qutip_sim1.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60

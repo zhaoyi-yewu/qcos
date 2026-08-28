@@ -108,7 +108,9 @@
                  "flavor_id": "00000000-0000-4000-8000-000000000001",
                  // 额外调度参数 [可选]
                  "extra_specs": {
-                   "max_qubits": 100
+                   "qc:max_qubits": 100,
+                   "qc:device_availability": 0.95,
+                   "qcos:devices": "wy_hanyuan1,spinq_gemini"
                  },
                  "transpiler": "cmss",
                  // 可选, 转译器配置参数
@@ -282,7 +284,7 @@
                             "driver:run": 10.95714,
                             "machine_started_at": "2026-07-10T10:48:56.280000",
                             "machine_ended_at": "2026-07-10T10:49:01.378000",
-                            "machine": 5097477.0,
+                            "machine": 5.09747,
                             "scheduling_started_at": "2026-07-10T10:48:50.920598",
                             "scheduling_ended_at": "2026-07-10T10:48:50.920599",
                             "scheduling": 0.0,
