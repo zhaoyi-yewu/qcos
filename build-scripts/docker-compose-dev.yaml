@@ -42,7 +42,7 @@ services:
       PREFECT_SERVER_SERVICES_EVENT_PERSISTER_QUEUE_MAX_SIZE: "5000"
       PREFECT_SERVER_EVENTS_RELATED_RESOURCE_CACHE_TTL: "PT150S"
       # prefect docket configs
-      PREFECT_SERVER_DOCKET_URL: "redis://${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/1"
+      PREFECT_SERVER_DOCKET_URL: "redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/1?retry_on_timeout=True&health_check_interval=30"
       # prefect event messaging configs
       # PREFECT_SERVER_EVENTS_MESSAGING_BROKER: "prefect_redis.messaging"
       # PREFECT_SERVER_EVENTS_MESSAGING_CACHE: "prefect_redis.messaging"
@@ -67,7 +67,7 @@ services:
     container_name: redis
     restart: always
     network_mode: "host"
-    command: redis-server --bind ${REDIS_SERVER_LISTEN_IP:-127.0.0.1}
+    command: redis-server --requirepass "${REDIS_PASSWORD:-123456}" --bind ${REDIS_SERVER_LISTEN_IP:-127.0.0.1}
     read_only: true
     security_opt:
       - no-new-privileges:true
@@ -117,8 +117,7 @@ services:
       PREFECT_WORKER_PREFETCH_SECONDS: ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
       PREFECT_WORKER_HEARTBEAT_SECONDS: ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
       PREFECT_LOGGING_LEVEL: ${PREFECT_LOGGING_LEVEL:-INFO}
-      REDIS_SERVER_IP: ${REDIS_SERVER_IP:-127.0.0.1}
-      REDIS_SERVER_PORT: ${REDIS_SERVER_PORT:-6379}
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/0"
       PYTHONPATH: /root/qcos-project/src
     command: "--db-migration --no-exit -w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/api"
     logging:

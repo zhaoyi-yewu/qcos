@@ -91,7 +91,7 @@ spec:
           value: "5000"
         # prefect docket configs
         - name: PREFECT_SERVER_DOCKET_URL
-          value: "redis://${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/1"
+          value: "redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/1?retry_on_timeout=True&health_check_interval=30"
         # prefect event messaging configs
         #- name: PREFECT_SERVER_EVENTS_MESSAGING_BROKER
         #  value: "prefect_redis.messaging"
@@ -198,7 +198,7 @@ spec:
           capabilities:
             drop:
             - ALL
-        command: ["redis-server", "--bind", "${REDIS_SERVER_LISTEN_IP:-127.0.0.1}"]
+        command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-123456}", "--bind", "${REDIS_SERVER_LISTEN_IP:-127.0.0.1}"]
         env:
         - name: TZ
           value: "Asia/Shanghai"
@@ -343,10 +343,8 @@ spec:
           value: ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
         - name: PREFECT_LOGGING_LEVEL
           value: ${PREFECT_LOGGING_LEVEL:-INFO}
-        - name: REDIS_SERVER_IP
-          value: ${REDIS_SERVER_IP:-127.0.0.1}
-        - name: REDIS_SERVER_PORT
-          value: ${REDIS_SERVER_PORT:-6379}
+        - name: REDIS_URL
+          value: redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/0
         resources:
           requests:
             cpu: "1000m"
