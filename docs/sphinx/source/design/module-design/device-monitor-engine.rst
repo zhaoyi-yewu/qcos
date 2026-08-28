@@ -3,7 +3,40 @@
 
 设备监控引擎（device monitor engine）主要用来执行周期性任务获取设备的运行信息，包括状态等。
 
-操作系统启动后，每个设备都会自动生成一个 Prefect 作业，以进程形式运行。
+设备监控引擎与 Prefect Worker 的关系
+--------------------------------------
+
+设备监控引擎（即 :func:`device_monitor_flow`）本身并不直接被 API 进程调用，而是以
+Prefect **flow** 的形式注册为 deployment，由独立的 **Prefect Worker 进程** 拉取并执行。
+二者是"被调度者"与"调度执行者"的关系：
+
+- **设备监控引擎**：即 :func:`device_monitor_flow`，是一个被 ``@flow`` 装饰的 Prefect
+  flow，负责周期性采集设备运行信息（状态、可用性等）。
+- **Prefect Worker**：由 :class:`ProcessWorker` 实现的常驻进程，负责从 Prefect Server
+  轮询其所归属工作池中的 flow run，拉取到任务后在本地子进程中执行对应的 flow。
+
+每个设备在启动时会创建一个 **monitor Worker** 进程，绑定到 ``monitor|{device_name}``
+工作池（工作池前缀为 ``monitor|``）。该 Worker 仅在设备启用监控
+（``enable_device_monitor``）时启动，监听 ``default`` 队列。
+
+部署与启动流程：
+
+1. :meth:`generate_deployment_configs` 为设备生成 deployment，将
+   :func:`device_monitor_flow` 关联到 ``monitor|{device_name}`` 工作池，
+   入口命令为 ``python -m prefect.engine``。
+2. :meth:`create_deployments` 通过 :meth:`flow.deploy` 在 Prefect Server 注册
+   deployment 并记录 ``deploy_id``。
+3. :meth:`start_workers` 调用 :meth:`_start_worker_process` 以
+   ``multiprocessing.Process`` 启动 monitor Worker，Worker 内部实例化
+   :class:`ProcessWorker` 并 :meth:`worker.start` 进入轮询循环。
+4. 系统启动后 :meth:`run_device_monitor` 通过
+   ``create_flow_run_from_deployment`` 为每个设备创建监控 flow run，
+   由对应 Worker 拉取执行。
+
+.. note::
+
+   monitor Worker 与 job Worker 使用不同的工作池（``monitor|`` vs ``device|``），
+   二者互不影响，监控任务的排队/执行不会阻塞量子作业，反之亦然。
 
 监控数据与自动调度的关系
 --------------------------

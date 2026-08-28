@@ -144,7 +144,9 @@ metrics_task（更新任务）
 * ``check_prefect_health()`` — 通过调用 ``sync_client.hello()`` 检查 Prefect API 可用性（超时 3s）
 * ``check_fastapi_health()`` — 由于 FastAPI 与指标监控在同一进程，默认返回健康
 * ``check_redis_health()`` — 通过 ``redis.ping()`` 检查 Redis 连接（超时 2s，失败时重置客户端）
-* ``update_system_health_metrics()`` — 并发执行所有 4 项组件健康检查，汇总结果并更新SystemHealthMetrics
+* ``update_system_health_metrics()`` — 并发执行所有 4 项组件健康检查，汇总结果并更新
+  SystemHealthMetrics。当 FastAPI、Prefect、Redis 三个组件均健康但 Worker 不健康时，自动调用
+  ``watchdog_restart_dead_workers()`` 重启已死亡的 Worker 进程（超时 30s）
 * ``update_metrics_task_async()`` — 并发执行 ``update_job_metrics()`` 与 ``update_system_health_metrics()``，总超时 15s
 
 配置信息
