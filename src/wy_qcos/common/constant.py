@@ -51,9 +51,12 @@ class Constant:
     DEFAULT_QCOS_SERVER_IP = "127.0.0.1"
     DEFAULT_QCOS_SERVER_PORT = 18400
 
-    # REDIS server default IP and port
+    # REDIS server default URL
     DEFAULT_REDIS_SERVER_IP = "127.0.0.1"
     DEFAULT_REDIS_SERVER_PORT = 6379
+    DEFAULT_REDIS_URL = (
+        f"redis://{DEFAULT_REDIS_SERVER_IP}:{DEFAULT_REDIS_SERVER_PORT}/0"
+    )
     REDIS_CHANNEL_QCOS_PREFIX = "/qcos"
     REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX = (
         f"{REDIS_CHANNEL_QCOS_PREFIX}/device_running_info"

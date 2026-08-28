@@ -82,8 +82,7 @@ class DeviceAvailabilityCollector:
         self._counters: dict[str, DeviceAvailabilityCounter] = {}
         self._thread: threading.Thread | None = None
         self._running = False
-        self._redis_ip = None
-        self._redis_port = None
+        self._redis_url = None
         self._pattern = (
             f"{Constant.REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX}/*"
         )
@@ -94,22 +93,20 @@ class DeviceAvailabilityCollector:
         with cls._instance_lock:
             cls._instance = None
 
-    def configure(self, redis_ip, redis_port):
+    def configure(self, redis_url):
         """Configure Redis connection parameters.
 
         Args:
-            redis_ip: Redis server IP
-            redis_port: Redis server port
+            redis_url: Redis server URL (e.g. redis://127.0.0.1:6379/0)
         """
-        self._redis_ip = redis_ip
-        self._redis_port = redis_port
+        self._redis_url = redis_url
 
     def start(self):
         """Start the background subscription thread."""
         if self._running:
             logger.debug("DeviceAvailabilityCollector already running")
             return
-        if self._redis_ip is None or self._redis_port is None:
+        if self._redis_url is None:
             logger.error(
                 "DeviceAvailabilityCollector not configured, skip start"
             )
@@ -134,10 +131,10 @@ class DeviceAvailabilityCollector:
         """
         while self._running:
             try:
-                client = redis.Redis(
-                    host=self._redis_ip,
-                    port=self._redis_port,
+                client = redis.Redis.from_url(
+                    self._redis_url,
                     decode_responses=True,
+                    protocol=2,
                 )
                 pubsub = client.pubsub()
                 pubsub.psubscribe(self._pattern)

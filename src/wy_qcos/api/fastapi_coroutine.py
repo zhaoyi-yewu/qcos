@@ -133,9 +133,7 @@ async def app_lifespan(app: jsonrpc.API):
     # Register device availability collector (Redis subscription thread)
     # and the hourly aggregation scheduler.
     availability_collector = DeviceAvailabilityCollector()
-    redis_ip = Config.REDIS.REDIS_SERVER_IP
-    redis_port = Config.REDIS.REDIS_SERVER_PORT
-    availability_collector.configure(redis_ip, redis_port)
+    availability_collector.configure(Config.REDIS.REDIS_URL)
     availability_collector.start()
     # expose the collector to the device routes so get-device can
     # return the current-hour real-time availability rate
