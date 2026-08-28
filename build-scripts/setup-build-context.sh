@@ -42,38 +42,38 @@ if [ -n "${YUM_MIRROR}" ]; then
 
 [OS]
 name=OS
-baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/
+baseurl=${YUM_MIRROR}/OS/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/OS/\$basearch/RPM-GPG-KEY-openEuler
 
 [everything]
 name=everything
-baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/everything/\$basearch/
+baseurl=${YUM_MIRROR}/everything/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/everything/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/everything/\$basearch/RPM-GPG-KEY-openEuler
 
 [EPOL]
 name=EPOL
-baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/EPOL/main/\$basearch/
+baseurl=${YUM_MIRROR}/EPOL/main/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/OS/\$basearch/RPM-GPG-KEY-openEuler
 
 [debuginfo]
 name=debuginfo
-baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/debuginfo/\$basearch/
+baseurl=${YUM_MIRROR}/debuginfo/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/debuginfo/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/debuginfo/\$basearch/RPM-GPG-KEY-openEuler
 
 [update]
 name=update
-baseurl=${YUM_MIRROR}/openEuler-24.03-LTS/update/\$basearch/
+baseurl=${YUM_MIRROR}/update/\$basearch/
 enabled=1
 gpgcheck=1
-gpgkey=${YUM_MIRROR}/openEuler-24.03-LTS/OS/\$basearch/RPM-GPG-KEY-openEuler
+gpgkey=${YUM_MIRROR}/OS/\$basearch/RPM-GPG-KEY-openEuler
 EOM
 fi
 
@@ -90,23 +90,41 @@ git_commit_id=$(git rev-parse HEAD 2>/dev/null || echo "")
 echo ${git_commit_id} > ${top_dir}/latest-commit-id.txt
 
 # copy dirs/files to build-context
-exclude_pattern=".venv-driver"
-files=("build-scripts/.env" \
-       "latest-commit-id.txt" "src" "etc" \
-       "LICENSE" \
-       "pyproject.toml" \
-       "requirements/" \
-       "build-scripts/qcos/entrypoint.sh" \
-       "build-scripts/cli/" \
-       "bin/qcos-api.py" "bin/qcos-cli.py" "bin/qcos-transpiler.py" \
-       "samples/")
-for file_path in "${files[@]}"; do
-  src=${top_dir}/${file_path}
-  dst=${BUILD_CONTEXT}/
-  if [[ ${file_path} == *"/"* ]]; then
-    # if $file is files
-    dst=${BUILD_CONTEXT}/${file_path}
-    mkdir -p $(dirname ${dst})
-  fi
-  rsync -r --exclude=${exclude_pattern} --delete ${src} ${dst}
+# Use "|" as a delimiter. Left side is the path, right side is the specific exclude rules for this entry.
+files=(
+    "build-scripts/.env|"
+    "latest-commit-id.txt|"
+    "src|"
+    "etc|"
+    "LICENSE|"
+    "pyproject.toml|"
+    "requirements/|"
+    "build-scripts/qcos/entrypoint.sh|"
+    "build-scripts/cli/|"
+    "bin/qcos-api.py|"
+    "bin/qcos-cli.py|"
+    "bin/qcos-transpiler.py|"
+    "samples/|"
+    "webui/|--exclude=node_modules/ --exclude=dist/ --exclude=build-scripts/ --exclude=build/"
+    "build-scripts/webui/|"
+)
+for entry in "${files[@]}"; do
+    # 1. Extract the file path and exclude rules
+    file_path="${entry%%|*}"
+    exclude_rules="${entry#*|}"
+
+    # Fallback safety check: if no "|" is present, set exclude_rules to empty
+    if [[ "$entry" != *"|"* ]]; then
+        exclude_rules=""
+    fi
+    src="${top_dir}/${file_path}"
+    dst="${BUILD_CONTEXT}/"
+    if [[ ${file_path} == *"/"* ]]; then
+        dst="${BUILD_CONTEXT}/${file_path}"
+        # Double quotes prevent errors if the path contains spaces
+        mkdir -p "$(dirname "${dst}")"
+    fi
+    # 2. Append the specific exclude_rules to the rsync command
+    # If you have a global exclude_pattern, you can place it before or after ${exclude_rules}
+    rsync -r ${exclude_pattern} ${exclude_rules} --delete "${src}" "${dst}"
 done

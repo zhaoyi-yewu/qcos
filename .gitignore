@@ -49,6 +49,9 @@ docs/api-docs/js/
 docs/api-docs/dist/
 docs/sphinx/source/api/
 
+# WEBUI
+webui/node_modules
+
 # build temp files
 build-scripts/.build-context/
 build-scripts/.env
