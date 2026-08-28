@@ -17,7 +17,8 @@
 
      # BCLinux/CentOS/OpenEuler环境下示例:
      # 需保证Python3>=3.11版本
-     yum install -y python3 python3-pip python3-sphinx python3-requests python3-alembic gcc python3-devel
+     # cmake/gcc-c++/make/boost-devel/gtest-devel 用于编译 C++ 扩展(high_performance.so)
+     yum install -y python3 python3-pip python3-sphinx python3-requests python3-alembic gcc gcc-c++ make cmake boost-devel gtest-devel python3-devel
      pip3 install tomlkit poetry
 
 - 安装Python依赖包：
