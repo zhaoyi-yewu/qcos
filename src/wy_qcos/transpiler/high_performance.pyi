@@ -2568,6 +2568,36 @@ def sabre_routing(
     """
     ...
 
+def cpp_na_default_routing(
+    gates_list: collections.abc.Sequence[high_performance.BaseOperation],
+    qpu_cfg: dict,
+    qbit_num: int,
+    optimize: bool = False,
+) -> tuple[list[high_performance.BaseOperation], dict]:
+    """Execute neutral-atom default routing (NADefaultRoute).
+
+    Thin wrapper around ``na_routing`` fixed to the "default" NA mapping
+    strategy with MOVE support enabled, exposing only the inputs a
+    single-circuit neutral-atom mapping needs. Inserts MOVE operations to
+    shuttle atoms between the storage and operate areas so that two-qubit
+    gates act on adjacent sites.
+
+    Args:
+    gates_list (list[BaseOperation]): Logical operation sequence.
+        Each operation's targets are logical qubit indices.
+    qpu_cfg (dict): QPU configuration with keys ``storage_area``,
+        ``operate_area``, ``coupler_map`` and ``readout_error``.
+    qbit_num (int): Number of logical qubits.
+    optimize (bool, optional): Whether to enable the overlap
+        optimization (``execute_with_opt``). Defaults to False.
+
+    Returns:
+        tuple[list[BaseOperation], dict]: The mapped operation sequence
+        (with MOVE operations and physical qubit targets) and an empty
+        final layout dict.
+    """
+    ...
+
 class TranspileTimings:
     """Timing breakdown for each transpile stage."""
 

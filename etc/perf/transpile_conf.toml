@@ -28,7 +28,7 @@ perf_enabled = false
 [transpile.transpiler]
 # 默认为true
 # enable_transpiler = true
-# base_gates中元素与拓扑类型强相关
+# base_gates中元素与拓扑类型强相关, 支持多组基础门集输入
 base_gates = ["rx, ry, cx"]
 
 [transpile.optimize]

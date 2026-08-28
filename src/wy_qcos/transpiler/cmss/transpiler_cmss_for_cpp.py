@@ -49,6 +49,7 @@ from wy_qcos.transpiler.high_performance import (
     transpile_from_qasm as cpp_transpile_from_qasm,
     transpile_from_ir as cpp_transpile_from_ir,
     transpile_na as cpp_transpile_na,
+    cpp_na_default_routing,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
@@ -183,10 +184,26 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
-            routing_algorithm = sc_mapping_options.get(
-                "routing_algorithm",
-                DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
-            )
+            # Determine routing algorithm based on tech_type and options
+            if (
+                trans_cfg_inst.get_tech_type()
+                == Constant.TECH_TYPE_SUPERCONDUCTING
+            ):
+                routing_algorithm = sc_mapping_options.get(
+                    "routing_algorithm",
+                    DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
+                )
+            elif (
+                trans_cfg_inst.get_tech_type()
+                == Constant.TECH_TYPE_NEUTRAL_ATOM
+            ):
+                routing_algorithm = na_mapping_type
+            else:
+                raise TranspilerException(
+                    f"Unsupported tech_type({trans_cfg_inst.get_tech_type()}) "
+                    "for mapping."
+                )
+            # execute mapping based on routing algorithm
             if routing_algorithm == "sabre":
                 coupling_list, edge_fidelities, single_qubit_fidelities = (
                     extract_topology_data(qpu_cfg)
@@ -196,6 +213,17 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     coupling_list,
                     edge_fidelities=edge_fidelities,
                     single_qubit_fidelities=single_qubit_fidelities,
+                )
+            elif routing_algorithm == "default" and enable_na_move:
+                mapping_res, final_layout = cpp_na_default_routing(
+                    value[1], qpu_cfg, value[0]
+                )
+                final_layout_dict[key] = final_layout
+                return (
+                    mapping_res,
+                    mapping_dict,
+                    init_layout_dict,
+                    final_layout_dict,
                 )
             else:
                 with Timer() as mapping_pre_timer:
@@ -328,9 +356,9 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
 
             try:
                 return cpp_transpile_from_qasm(
-                    qasm_string,
-                    supp_basis_gates,
-                    coupling_list,
+                    qasm_string=qasm_string,
+                    supp_basis_gates=supp_basis_gates,
+                    coupling_list=coupling_list,
                     opt_level=opt_level,
                     edge_fidelities=edge_fidelities,
                     single_qubit_fidelities=single_qubit_fidelities,

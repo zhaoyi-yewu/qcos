@@ -206,19 +206,27 @@ NASingleRoute::execute_with_order() {
   return {result, {}};
 }
 
-// ===================== NARoute =====================
+// ===================== NARoute (base) =====================
 
-std::pair<std::string, std::string> NARoute::sorted_edge(const std::string& a,
+std::vector<std::shared_ptr<BaseOperation>> NARoute::execute_with_opt() {
+  auto [res, layout] = execute_with_order();
+  (void)layout;
+  return res;
+}
+
+// ===================== NADefaultRoute =====================
+
+std::pair<std::string, std::string> NADefaultRoute::sorted_edge(const std::string& a,
                                                          const std::string& b) {
   return a <= b ? std::make_pair(a, b) : std::make_pair(b, a);
 }
 
-std::string NARoute::edge_key(const std::string& a, const std::string& b) {
+std::string NADefaultRoute::edge_key(const std::string& a, const std::string& b) {
   auto pr = sorted_edge(a, b);
   return pr.first + std::string(1, kEdgeSep) + pr.second;
 }
 
-std::pair<std::string, std::string> NARoute::parse_edge_key(
+std::pair<std::string, std::string> NADefaultRoute::parse_edge_key(
     const std::string& key) {
   auto pos = key.find(kEdgeSep);
   if (pos == std::string::npos) {
@@ -227,7 +235,7 @@ std::pair<std::string, std::string> NARoute::parse_edge_key(
   return {key.substr(0, pos), key.substr(pos + 1)};
 }
 
-std::shared_ptr<BaseOperation> NARoute::make_move(int q,
+std::shared_ptr<BaseOperation> NADefaultRoute::make_move(int q,
                                                   const std::string& from,
                                                   const std::string& to) {
   auto op = std::make_shared<Move>(std::vector<int>{q},
@@ -253,7 +261,7 @@ std::shared_ptr<BaseOperation> NARoute::make_move(int q,
  * Only couplers whose both ends lie in operate_area are added to the graph,
  * since two-qubit gates can only execute there.
  */
-void NARoute::prepare_data(
+void NADefaultRoute::prepare_data(
     int qbit_num,
     const std::vector<std::shared_ptr<BaseOperation>>& gates,
     const NAQpuConfig& qpu_config) {
@@ -297,7 +305,7 @@ void NARoute::prepare_data(
 std::tuple<std::vector<NADagNode>,
            std::vector<std::shared_ptr<BaseOperation>>,
            std::unordered_map<int, int>>
-NARoute::get_rx_dag() {
+NADefaultRoute::get_rx_dag() {
   std::vector<NADagNode> dg;
   std::vector<std::shared_ptr<BaseOperation>> measure_op;
   std::unordered_map<int, int> node_indices;
@@ -384,7 +392,7 @@ NARoute::get_rx_dag() {
  * readout error (ties broken by position name). Called at the start of every
  * execute path so each run begins from a deterministic mapping.
  */
-void NARoute::get_init_mapping() {
+void NADefaultRoute::get_init_mapping() {
   auto [dg, measure, node_indices] = get_rx_dag();
   dag_ = std::move(dg);
   measure_ = std::move(measure);
@@ -434,7 +442,7 @@ void NARoute::get_init_mapping() {
  * @brief Return the current front layer: dag_opt_ nodes whose in_degree is 0
  *        and whose gate list is non-empty — i.e. the gates ready to run now.
  */
-std::vector<int> NARoute::get_front_layer() const {
+std::vector<int> NADefaultRoute::get_front_layer() const {
   std::vector<int> front_layer;
   for (int i = 0; i < static_cast<int>(dag_opt_.size()); ++i) {
     if (dag_opt_[i].in_degree == 0 && !dag_opt_[i].gate.empty()) {
@@ -450,7 +458,7 @@ std::vector<int> NARoute::get_front_layer() const {
  *        qubit without crowding existing atoms.
  * @return the position name, or "" if none qualifies.
  */
-std::string NARoute::find_pos(int dis) const {
+std::string NADefaultRoute::find_pos(int dis) const {
   std::unordered_set<std::string> disable_pos;
   for (const auto& o : op_occupied_) {
     disable_pos.insert(o);
@@ -472,7 +480,7 @@ std::string NARoute::find_pos(int dis) const {
  *        and re-add edges incident to o (whose other end is also free) to
  *        free_edges_.
  */
-void NARoute::back(const std::string& o) {
+void NADefaultRoute::back(const std::string& o) {
   int q = op_to_logical[o];
   auto storage_it = logical_to_storage.find(q);
   if (storage_it == logical_to_storage.end()) {
@@ -495,7 +503,7 @@ void NARoute::back(const std::string& o) {
  *        emit a MOVE op, update logical_to_op / op_to_logical, mark o occupied,
  *        and remove all edges incident to o from free_edges_.
  */
-void NARoute::put(int q, const std::string& o) {
+void NADefaultRoute::put(int q, const std::string& o) {
   auto storage_it = logical_to_storage.find(q);
   if (storage_it == logical_to_storage.end()) {
     throw std::runtime_error("put: qubit " + std::to_string(q) +
@@ -516,7 +524,7 @@ void NARoute::put(int q, const std::string& o) {
  *        free_edges_ for both positions (free edges around o1, occupy edges
  *        around o2).
  */
-void NARoute::mov(const std::string& o1, const std::string& o2) {
+void NADefaultRoute::mov(const std::string& o1, const std::string& o2) {
   int q = op_to_logical[o1];
   res_.push_back(make_move(q, o1, o2));
   logical_to_op[q] = o2;
@@ -541,7 +549,7 @@ void NARoute::mov(const std::string& o1, const std::string& o2) {
  * Iterates over a snapshot of op_occupied_ so backing out (which mutates the
  * set) does not invalidate the loop.
  */
-void NARoute::pre_back(const std::vector<NADagNode>& nodes) {
+void NADefaultRoute::pre_back(const std::vector<NADagNode>& nodes) {
   std::unordered_set<int> all_q;
   for (const auto& node : nodes) {
     for (int q : node.qubits) all_q.insert(q);
@@ -554,7 +562,7 @@ void NARoute::pre_back(const std::vector<NADagNode>& nodes) {
   }
 }
 
-std::string NARoute::get_empty_neighbor(const std::string& p) const {
+std::string NADefaultRoute::get_empty_neighbor(const std::string& p) const {
   std::unordered_set<std::string> n = ag_.neighbors(p);
   // Remove the intersection with op_occupied_.
   for (const auto& o : op_occupied_) n.erase(o);
@@ -562,7 +570,7 @@ std::string NARoute::get_empty_neighbor(const std::string& p) const {
   return *n.begin();
 }
 
-std::string NARoute::get_unlocked_neighbor(const std::string& p) const {
+std::string NADefaultRoute::get_unlocked_neighbor(const std::string& p) const {
   for (const auto& nxt : ag_.neighbors(p)) {
     if (locked_.find(nxt) == locked_.end()) return nxt;
   }
@@ -578,7 +586,7 @@ std::string NARoute::get_unlocked_neighbor(const std::string& p) const {
  * other qubit there. Each successful branch locks p1/p2 and the landing spot
  * so subsequent placements don't displace them.
  */
-bool NARoute::mov_to_neighbors(const std::string& p1,
+bool NADefaultRoute::mov_to_neighbors(const std::string& p1,
                                const std::string& p2) {
   if (ag_.is_adjacent(p1, p2)) return true;
   std::string d = get_empty_neighbor(p1);
@@ -619,7 +627,7 @@ bool NARoute::mov_to_neighbors(const std::string& p1,
  *        qubit at p1, locking p1 and the landing spot. @return false if p1 has
  *        no empty neighbor.
  */
-bool NARoute::put_to_neighbors1(const std::string& p1, int q) {
+bool NADefaultRoute::put_to_neighbors1(const std::string& p1, int q) {
   std::string d = get_empty_neighbor(p1);
   if (d.empty()) return false;
   put(q, d);
@@ -633,7 +641,7 @@ bool NARoute::put_to_neighbors1(const std::string& p1, int q) {
  *        operate-area positions), consuming that edge and locking both spots.
  * @return false if no free edge remains.
  */
-bool NARoute::put_to_neighbors2(int q1, int q2) {
+bool NADefaultRoute::put_to_neighbors2(int q1, int q2) {
   if (free_edges_.empty()) return false;
   std::string key = *free_edges_.begin();
   auto [a, b] = parse_edge_key(key);
@@ -656,7 +664,7 @@ bool NARoute::put_to_neighbors2(int q1, int q2) {
  * remaining nodes are emitted and removed from the DAG. Updates pre_node_idx_ /
  * has_pre_node_ to the last executed node for the next overlap round.
  */
-void NARoute::execute_multi_nodes(const std::vector<NADagNode>& nodes) {
+void NADefaultRoute::execute_multi_nodes(const std::vector<NADagNode>& nodes) {
   locked_.clear();
   std::vector<NADagNode> remain = mov_multi_nodes(nodes);
   for (const auto& node : remain) {
@@ -700,7 +708,7 @@ void NARoute::execute_multi_nodes(const std::vector<NADagNode>& nodes) {
  * mov_to_neighbors; one placed -> put_to_neighbors1; neither placed ->
  * put_to_neighbors2.
  */
-std::vector<NADagNode> NARoute::mov_multi_nodes(
+std::vector<NADagNode> NADefaultRoute::mov_multi_nodes(
     const std::vector<NADagNode>& nodes) {
   pre_back(nodes);
   std::vector<NADagNode> remain;
@@ -726,7 +734,7 @@ std::vector<NADagNode> NARoute::mov_multi_nodes(
  *        dag_opt_. No placement logic — the qubit is already (or assumed) in
  *        the operate area.
  */
-void NARoute::execute_single_node(const NADagNode& node) {
+void NADefaultRoute::execute_single_node(const NADagNode& node) {
   for (const auto& g : node.gate) res_.push_back(g);
   int idx = node.original_idx;
   auto it = node_indices_.find(idx);
@@ -740,7 +748,7 @@ void NARoute::execute_single_node(const NADagNode& node) {
  *        gate-name sequence). Used to decide if a single-qubit node's puts can
  *        be overlapped behind the previous node's execution.
  */
-bool NARoute::overlap(int nd1, int nd2) const {
+bool NADefaultRoute::overlap(int nd1, int nd2) const {
   const auto& gt1 = dag_[nd1].gate;
   const auto& gt2 = dag_[nd2].gate;
   if (gt1.size() < gt2.size()) return false;
@@ -760,7 +768,7 @@ bool NARoute::overlap(int nd1, int nd2) const {
  *
  * @return the rewritten operation list.
  */
-std::vector<std::shared_ptr<BaseOperation>> NARoute::add_put(
+std::vector<std::shared_ptr<BaseOperation>> NADefaultRoute::add_put(
     std::vector<std::shared_ptr<BaseOperation>> res,
     std::shared_ptr<BaseOperation> opt) {
   int q = opt->targets[0];
@@ -802,7 +810,7 @@ std::vector<std::shared_ptr<BaseOperation>> NARoute::add_put(
  * This mirrors the Python adjust_pos: overlapping puts are reordered to keep
  * each gate's operands consistent with the rearranged move sequence.
  */
-void NARoute::adjust_pos(const std::vector<int>& pos,
+void NADefaultRoute::adjust_pos(const std::vector<int>& pos,
                          const std::vector<int>& posq) {
   if (pos.empty()) return;
   int n = static_cast<int>(pos.size());
@@ -884,7 +892,7 @@ void NARoute::adjust_pos(const std::vector<int>& pos,
  * the put sequence is then reordered via adjust_pos() to keep gate operands
  * consistent. Non-overlapping nodes stay in front_layer_ for normal scheduling.
  */
-void NARoute::execute_single_node_opt() {
+void NADefaultRoute::execute_single_node_opt() {
   std::vector<int> pos;
   std::vector<int> posq;
   std::vector<int> front_layer = front_layer_;  // copy
@@ -925,7 +933,7 @@ void NARoute::execute_single_node_opt() {
  *       count is always 0 — single-qubit gates are always preferred, and
  *       two-qubit gates are only returned when no single-qubit gate exists.
  */
-std::pair<int, std::vector<int>> NARoute::get_max_common() {
+std::pair<int, std::vector<int>> NADefaultRoute::get_max_common() {
   // Note: in the Python impl op_occupied is a set of position strings while
   // multi_qubits / qubits[0] are logical-qubit integers, so their intersection
   // is always empty. This faithfully reproduces that behavior: comm is always
@@ -967,7 +975,7 @@ std::pair<int, std::vector<int>> NARoute::get_max_common() {
  *        to -1) so it drops out of future front-layer lookups. The node is not
  *        erased (indices must stay stable).
  */
-void NARoute::remove_dag_opt_node(int idx) {
+void NADefaultRoute::remove_dag_opt_node(int idx) {
   if (idx < 0 || idx >= static_cast<int>(dag_opt_.size())) return;
   NADagNode& node = dag_opt_[idx];
   // Decrement the in-degree of successor nodes.
@@ -993,7 +1001,7 @@ void NARoute::remove_dag_opt_node(int idx) {
  * every gate resolves to the coordinate its qubit occupied at that point in the
  * sequence. @throw std::runtime_error if a qubit has no mapping.
  */
-void NARoute::finalize_gates(bool /*deep_copy_layout*/) {
+void NADefaultRoute::finalize_gates(bool /*deep_copy_layout*/) {
   // operator_list: logical qubit -> current physical position string.
   // Mirrors Python's operator_list (execute_with_order uses a reference to
   // self.logical_to_storage, execute_with_opt uses a deepcopy). Here we copy
@@ -1037,7 +1045,7 @@ void NARoute::finalize_gates(bool /*deep_copy_layout*/) {
  */
 std::pair<std::vector<std::shared_ptr<BaseOperation>>,
           std::unordered_map<int, int>>
-NARoute::execute_with_order() {
+NADefaultRoute::execute_with_order() {
   get_init_mapping();
 
   for (const auto& node : dag_) {
@@ -1083,7 +1091,7 @@ NARoute::execute_with_order() {
  * Measurement gates are appended last; finalize_gates() then resolves every
  * logical qubit to its physical coordinate before returning.
  */
-std::vector<std::shared_ptr<BaseOperation>> NARoute::execute_with_opt() {
+std::vector<std::shared_ptr<BaseOperation>> NADefaultRoute::execute_with_opt() {
   get_init_mapping();
 
   front_layer_ = get_front_layer();
@@ -1117,6 +1125,34 @@ std::vector<std::shared_ptr<BaseOperation>> NARoute::execute_with_opt() {
 
   finalize_gates(true);
   return res_;
+}
+
+// ===================== na_mapping (unified entry) =====================
+
+std::vector<std::shared_ptr<BaseOperation>> na_mapping(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
+    const NAQpuConfig& qpu_config, int qbit_num, bool na_support_move,
+    const std::string& na_mapping_type, bool optimize) {
+  std::unique_ptr<NARoute> router;
+
+  if (na_support_move) {
+    if (na_mapping_type != "default") {
+      throw std::invalid_argument(
+          "na_mapping_type '" + na_mapping_type +
+          "' is not supported by the C++ backend; only 'default' is available");
+    }
+    router = std::make_unique<NADefaultRoute>();
+  } else {
+    router = std::make_unique<NASingleRoute>();
+  }
+
+  router->prepare_data(qbit_num, gates_list, qpu_config);
+  if (optimize) {
+    return router->execute_with_opt();
+  }
+  auto [res, layout] = router->execute_with_order();
+  (void)layout;
+  return res;
 }
 
 }  // namespace qcos

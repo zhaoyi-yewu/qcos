@@ -172,7 +172,8 @@ TranspileResult transpile_from_qasm(
 
 TranspileResult transpile_na(const std::string& qasm_string,
                              const std::vector<std::string>& supp_basis_gates,
-                             const NAQpuConfig& qpu_config, int opt_level) {
+                             const NAQpuConfig& qpu_config, int opt_level,
+                             const std::string& na_mapping_type) {
   using clock = std::chrono::high_resolution_clock;
 
   TranspileResult result;
@@ -218,12 +219,12 @@ TranspileResult transpile_na(const std::string& qasm_string,
   t.decompose_rule_time =
       std::chrono::duration<double>(clock::now() - rule_start).count();
 
-  // Step 5: NA mapping — NARoute maps logical to physical qubits and inserts
-  // MOVE.
+  // Step 5: NA mapping — dispatch by na_mapping_type (default: NADefaultRoute),
+  // inserting MOVE to shuttle atoms so two-qubit gates act on adjacent sites.
   auto map_start = clock::now();
-  NARoute router;
-  router.prepare_data(num_qubits, decomposed_ops, qpu_config);
-  auto [routed_ops, layout] = router.execute_with_order();
+  auto routed_ops = na_mapping(decomposed_ops, qpu_config, num_qubits,
+                               /*na_support_move=*/true, na_mapping_type,
+                               /*optimize=*/false);
   t.mapping_time =
       std::chrono::duration<double>(clock::now() - map_start).count();
 
