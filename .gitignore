@@ -50,6 +50,7 @@ docs/api-docs/dist/
 docs/sphinx/source/api/
 
 # WEBUI
+webui/package-lock.json
 webui/node_modules
 
 # build temp files

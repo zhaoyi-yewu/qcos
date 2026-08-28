@@ -10,5 +10,4 @@
    build-run-k8s
    build-run-wheel
    build-docs
-   operations
    security
