@@ -96,12 +96,12 @@ class TestDriverCetcBase:
     @patch.object(DriverCetcBase, "get_configs")
     def test_fetch_configs(self, mock_get_configs):
         mock_get_configs.return_value = {
-            "token": "Bearer abc",
+            "token": "abc",
             "url": "http://localhost:8080/",
             "computer_type": 61,
         }
         driver_cetc.fetch_configs()
-        assert driver_cetc.token == _s("Bearer abc")
+        assert driver_cetc.token == _s("abc")
         assert driver_cetc.base_url == "http://localhost:8080"
         assert driver_cetc.computer_type == 61
         assert driver_cetc.auth_headers["Authorization"] == "Bearer abc"

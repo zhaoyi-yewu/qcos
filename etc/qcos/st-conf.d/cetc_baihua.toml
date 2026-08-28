@@ -36,7 +36,7 @@ max_job_wait_time = 604800
 job_query_interval = 5
 
 # [Required] Bearer token for TianGong platform authentication
-# Format: "Bearer eyJhbGciOiJIUzI1NiJ9..."
+# Format: "eyJhbGciOiJIUzI1NiJ9..."
 token = "test-token"
 
 # [Required] TianGong platform API base URL

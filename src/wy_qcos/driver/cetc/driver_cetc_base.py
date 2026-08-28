@@ -170,7 +170,7 @@ class DriverCetcBase(DriverGateBase):
             )
 
         # Prepare auth headers for subsequent HTTP calls
-        self.auth_headers["Authorization"] = self.token
+        self.auth_headers["Authorization"] = f"Bearer {self.token}"
 
     def update_driver_params_from_options(self):
         """Sync instance attributes from driver_options.
@@ -187,7 +187,7 @@ class DriverCetcBase(DriverGateBase):
             self.base_url = self.driver_options["url"].rstrip("/")
         if "token" in self.driver_options:
             self.token = self.driver_options["token"]
-            self.auth_headers["Authorization"] = self.token
+            self.auth_headers["Authorization"] = f"Bearer {self.token}"
 
     def fetch_running_info(self):
         """Fetch running info.
@@ -272,7 +272,7 @@ class DriverCetcBase(DriverGateBase):
 
         url = f"{self.base_url}{self.path_qdevicedetail}"
         params = {"deviceid": self.computer_type}
-        headers = {"Authorization": self.token}
+        headers = {"Authorization": f"Bearer {self.token}"}
 
         logger.info(f"query device detail url: {url}")
 
@@ -442,7 +442,7 @@ class DriverCetcBase(DriverGateBase):
             "steps": steps,
         }
         headers = {
-            "Authorization": self.token,
+            "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
         }
 
@@ -472,7 +472,8 @@ class DriverCetcBase(DriverGateBase):
         else:
             success = False
             err_msgs.append(
-                f"HTTP {status_code}: {reason}, response: {text[:500]}"
+                f"HTTP {status_code}: {reason}, "
+                f"response: {text[:500] if text else 'None'}"
             )
 
         return success, "\n".join(err_msgs), instance_id
@@ -516,7 +517,7 @@ class DriverCetcBase(DriverGateBase):
 
         url = f"{self.base_url}{self.path_taskdetail}"
         params = {"instanceId": instance_id}
-        headers = {"Authorization": self.token}
+        headers = {"Authorization": f"Bearer {self.token}"}
 
         status_code, reason, text, _ = Library.call_http_api(
             url,
@@ -537,7 +538,8 @@ class DriverCetcBase(DriverGateBase):
         else:
             success = False
             err_msgs.append(
-                f"HTTP {status_code}: {reason}, response: {text[:500]}"
+                f"HTTP {status_code}: {reason}, "
+                f"response: {text[:500] if text else 'None'}"
             )
 
         return success, "\n".join(err_msgs), data
@@ -582,7 +584,7 @@ class DriverCetcBase(DriverGateBase):
         }
         if state is not None:
             params["state"] = state
-        headers = {"Authorization": self.token}
+        headers = {"Authorization": f"Bearer {self.token}"}
 
         status_code, reason, text, _ = Library.call_http_api(
             url,
@@ -603,7 +605,8 @@ class DriverCetcBase(DriverGateBase):
         else:
             success = False
             err_msgs.append(
-                f"HTTP {status_code}: {reason}, response: {text[:500]}"
+                f"HTTP {status_code}: {reason}, "
+                f"response: {text[:500] if text else 'None'}"
             )
 
         return success, "\n".join(err_msgs), data
