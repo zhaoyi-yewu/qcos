@@ -272,10 +272,15 @@ class TestDriverLogicalQubit:
     ):
         mock_convert_code.return_value = Mock()
         mock_submit_task.return_value = (True, None, Mock())
+        # _results must expose a ``.metadata`` attribute (accessed by
+        # driver run() for machine profiling); use Mock with empty
+        # metadata so the profiling branches are skipped.
+        mock_results = Mock()
+        mock_results.metadata = {}
         mock_get_task_results.return_value = (
             True,
             None,
-            {"count": {"11111": 9, "00000": 1}},
+            mock_results,
         )
         mock_convert_results.return_value = {
             "11111": 9,

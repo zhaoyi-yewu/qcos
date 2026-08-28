@@ -387,6 +387,7 @@ class TestSetDevice:
         body.status = "online"
         body.enable = None
         body.max_qubits = None
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.name == "dummy"
@@ -410,6 +411,7 @@ class TestSetDevice:
         body.status = "maintain"
         body.enable = None
         body.max_qubits = None
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.status == "maintain"
@@ -433,6 +435,7 @@ class TestSetDevice:
         body.status = "auto"
         body.enable = None
         body.max_qubits = None
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.status == "offline"
@@ -453,6 +456,7 @@ class TestSetDevice:
         body.status = None
         body.enable = False
         body.max_qubits = None
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.enable is False
@@ -473,6 +477,7 @@ class TestSetDevice:
         body.status = None
         body.enable = None
         body.max_qubits = "50"
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.max_qubits == 50
@@ -495,6 +500,7 @@ class TestSetDevice:
         body.status = None
         body.enable = None
         body.max_qubits = "auto"
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.max_qubits == (device.get_driver().get_max_qubits())
@@ -516,6 +522,7 @@ class TestSetDevice:
         body.status = "online"
         body.enable = True
         body.max_qubits = "100"
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.status == "online"
@@ -538,6 +545,7 @@ class TestSetDevice:
         body.status = "online"
         body.enable = None
         body.max_qubits = None
+        body.available_qubits = None
 
         with pytest.raises(jsonrpc_errors.NotFoundError):
             set_device(body)
@@ -569,6 +577,7 @@ class TestSetDevice:
         body.status = None
         body.enable = None
         body.max_qubits = "not_a_number"
+        body.available_qubits = None
 
         with pytest.raises(jsonrpc_errors.NotFoundError):
             set_device(body)
@@ -593,8 +602,55 @@ class TestSetDevice:
         body.status = None
         body.enable = None
         body.max_qubits = None
+        body.available_qubits = None
 
         result = set_device(body)
         assert result.status == "online"
         assert result.enable is True
         assert result.max_qubits == 42
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_available_qubits(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """Set device available qubits to a specific value."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.status = None
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = "30"
+
+        result = set_device(body)
+        assert result.available_qubits == 30
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_available_qubits_auto(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """Set available_qubits='auto' restores driver default."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.status = None
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = "auto"
+
+        result = set_device(body)
+        assert result.available_qubits == (
+            device.get_driver().get_available_qubits()
+        )

@@ -808,12 +808,12 @@ class TestCleanExpiredJobFlows:
     @patch(f"{MODULE}.JobRepository")
     @patch(f"{MODULE}.create_db_session")
     @pytest.mark.asyncio
-    async def test_naive_datetime_treated_as_utc(
+    async def test_naive_datetime_treated_as_local(
         self, mock_ctx, mock_repo_cls
     ):
         job = MagicMock()
         job.id = uuid4()
-        job.created_at = datetime.utcnow() - timedelta(days=30)
+        job.created_at = datetime.now() - timedelta(days=30)
         job.flow_run_id = None
         cleaner, mock_repo = _setup_expired_cleaner(
             [job], mock_ctx, mock_repo_cls
