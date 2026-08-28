@@ -132,8 +132,11 @@ function build_qcos_base_image {
 function run_sandbox {
   echo -e "\nRun sandbox: ${QCOS_REGISTRY}${SANDBOX_IMAGE_NAME}:${SANDBOX_IMAGE_VERSION}"
   # run sandbox
-  docker-compose -f docker-compose-sandbox.yaml down
-  docker-compose -f docker-compose-sandbox.yaml up -d
+  docker_compose_file="docker-compose-sandbox.yaml"
+  new_docker_compose_file=".docker-compose-sandbox.yaml"
+  create_temp_docker_compose_file ${docker_compose_file} "${new_docker_compose_file}"
+  docker-compose -f ${new_docker_compose_file} down
+  docker-compose -f ${new_docker_compose_file} up -d
 }
 
 function build_sandbox_image {
@@ -163,7 +166,7 @@ function build_qcos {
   echo -e "\nBuilding wheel package: wy-qcos"
   OUTPUT_PKG_DIR=${BUILD_SCRIPTS_DIR}/output
   WHEEL_PKG_DIST_DIR=${OUTPUT_PKG_DIR}/dist
-  QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-py3-none-any.whl
+  QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-cp311-cp311-linux_x86_64.whl
 
   # build qcos-cli wheel package
   if [ "${build_wheel_in_sandbox,,}" = false ];then
