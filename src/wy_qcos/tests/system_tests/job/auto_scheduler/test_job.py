@@ -23,6 +23,11 @@ Covers:
 - QubitCountFilter: devices with insufficient qubits are filtered
 - DeviceLoadWeigher: least busy device is preferred
 - All devices disabled: NoValidDeviceError
+- DeviceAvailabilityFilter: qc:device_availability threshold
+  controls scheduling based on availability
+- DeviceNameFilter: qcos:devices whitelist restricts eligible devices
+- ExcludeDeviceFilter: qcos:exclude_devices blacklist excludes devices
+- TechTypeFilter: qc:tech_types restricts by technology type
 
 Uses dummy, dummy1, dummy2 devices and set-device to modify
 enable/status/max_qubits at runtime. Creates a device group and
@@ -62,6 +67,9 @@ class TestJob:
         "test_device_load_weigher",
         "test_device_load_weigher_busy",
         "test_all_devices_disabled",
+        "test_device_name_filter_whitelist",
+        "test_exclude_device_filter_blacklist",
+        "test_tech_type_filter",
     ]
 
     @classmethod
@@ -517,3 +525,105 @@ class TestJob:
             assert result.get("error") is not None
         finally:
             self._restore_devices()
+
+    def test_device_name_filter_whitelist(self):
+        """DeviceNameFilter restricts to a whitelist via extra_specs.
+
+        Use extra_specs qcos:devices to whitelist only dummy1.
+        Auto scheduling should select dummy1.
+        """
+        self._restore_devices()
+        job_info = self._make_auto_job_info(
+            "test_device_name_filter_whitelist",
+            flavor_id=self.flavor_id,
+            extra_specs={"qcos:devices": DEVICE_DUMMY1},
+        )
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client,
+            job_info,
+            self.timeout,
+            self.interval,
+        )
+        if success:
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        assert success is True
+        backend = job_results["result"]["backend"]
+        assert backend == DEVICE_DUMMY1
+
+    def test_exclude_device_filter_blacklist(self):
+        """ExcludeDeviceFilter excludes devices via extra_specs.
+
+        Use extra_specs qcos:exclude_devices to blacklist dummy and
+        dummy1. Auto scheduling should select dummy2.
+        """
+        self._restore_devices()
+        job_info = self._make_auto_job_info(
+            "test_exclude_device_filter_blacklist",
+            flavor_id=self.flavor_id,
+            extra_specs={
+                "qcos:exclude_devices": f"{DEVICE_DUMMY},{DEVICE_DUMMY1}"
+            },
+        )
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client,
+            job_info,
+            self.timeout,
+            self.interval,
+        )
+        if success:
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        assert success is True
+        backend = job_results["result"]["backend"]
+        assert backend == DEVICE_DUMMY2
+
+    def test_tech_type_filter(self):
+        """TechTypeFilter restricts by technology type via extra_specs.
+
+        Dummy devices are neutral_atom. Use extra_specs
+        qc:tech_types to whitelist neutral_atom so all dummy devices
+        remain eligible. Auto scheduling should select one of them.
+        """
+        self._restore_devices()
+        job_info = self._make_auto_job_info(
+            "test_tech_type_filter",
+            flavor_id=self.flavor_id,
+            extra_specs={"qc:tech_types": Constant.TECH_TYPE_NEUTRAL_ATOM},
+        )
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client,
+            job_info,
+            self.timeout,
+            self.interval,
+        )
+        if success:
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        assert success is True
+        backend = job_results["result"]["backend"]
+        assert backend in ALL_DUMMY_DEVICES
