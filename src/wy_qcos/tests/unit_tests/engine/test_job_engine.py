@@ -44,6 +44,7 @@ from wy_qcos.engine.job_engine import (
     init_transpiler,
     job_flow,
     parse,
+    post_run,
     probs_to_dict,
     register_signals,
     run_circuit_code,
@@ -151,7 +152,9 @@ class TestJobEngine:
             "class_name": "TranspilerDummy",
         }
         transpiler_inst = init_transpiler.fn
-        return_value = transpiler_inst(transpiler_info, None)
+        mock_driver = MagicMock()
+        mock_driver.transpiler_options_schema = None
+        return_value = transpiler_inst(transpiler_info, None, mock_driver)
         assert return_value["transpiler"] is None
 
     def test_create_src_code_info_with_none_aggregation(self):
@@ -1869,3 +1872,159 @@ class TestJobEngine:
         )
         assert results["metadata"]["status"] == "FAILED"
         assert mapping is None
+
+
+class TestInitTranspilerDefaults:
+    """Tests for init_transpiler default-value filling.
+
+    Covers the logic that reads driver.transpiler_options_schema
+    and fills missing keys with their declared default values before
+    calling transpiler.update_transpiler_options.
+
+    Uses a real module (wy_qcos.transpiler.transpiler_base) so that
+    getattr works correctly on Optional markers inside the fill logic.
+    """
+
+    transpiler_info = {
+        "module_name": "wy_qcos.transpiler.transpiler_base",
+        "class_name": "TranspilerBase",
+    }
+
+    @patch("wy_qcos.engine.job_engine._import_module")
+    def test_none_schema_returns_error(self, mock_import_module):
+        """Driver schema is None (convert_schema raises): error."""
+        import wy_qcos.transpiler.transpiler_base as tbase
+
+        mock_import_module.return_value = tbase
+        mock_driver = MagicMock()
+        mock_driver.transpiler_options_schema = None
+        result = init_transpiler.fn(self.transpiler_info, None, mock_driver)
+        assert result["transpiler"] is None
+        assert result["error"] is not None
+
+    @patch("wy_qcos.engine.job_engine._import_module")
+    def test_empty_schema_no_options(self, mock_import_module):
+        """Driver declares empty schema and options is None."""
+        import wy_qcos.transpiler.transpiler_base as tbase
+
+        mock_import_module.return_value = tbase
+        mock_driver = MagicMock()
+        mock_driver.transpiler_options_schema = {}
+        result = init_transpiler.fn(self.transpiler_info, None, mock_driver)
+        assert result["transpiler"] is not None
+        assert result["error"] is None
+
+    @patch("wy_qcos.engine.job_engine._import_module")
+    def test_schema_fills_defaults(self, mock_import_module):
+        """Missing keys are filled with schema defaults."""
+        from schema import Optional
+
+        from wy_qcos.common.constant import Constant
+
+        import wy_qcos.transpiler.transpiler_base as tbase
+
+        mock_import_module.return_value = tbase
+        mock_driver = MagicMock()
+        mock_driver.transpiler_options_schema = {
+            "optimization_level": (
+                Optional(
+                    "optimization_level",
+                    default=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+                ),
+                int,
+            ),
+            "enable_mapping": (
+                Optional("enable_mapping", default=False),
+                bool,
+            ),
+        }
+        result = init_transpiler.fn(self.transpiler_info, None, mock_driver)
+        transpiler = result["transpiler"]
+        assert transpiler is not None
+        assert (
+            transpiler.transpiler_options.get("optimization_level")
+            == Constant.DEFAULT_OPTIMIZATION_LEVEL
+        )
+        assert transpiler.transpiler_options.get("enable_mapping") is False
+
+    @patch("wy_qcos.engine.job_engine._import_module")
+    def test_schema_does_not_override_existing(self, mock_import_module):
+        """Existing keys in transpiler_options are not overridden."""
+        from schema import Optional
+
+        from wy_qcos.common.constant import Constant
+
+        import wy_qcos.transpiler.transpiler_base as tbase
+
+        mock_import_module.return_value = tbase
+        mock_driver = MagicMock()
+        mock_driver.transpiler_options_schema = {
+            "optimization_level": (
+                Optional(
+                    "optimization_level",
+                    default=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+                ),
+                int,
+            ),
+            "enable_mapping": (
+                Optional("enable_mapping", default=False),
+                bool,
+            ),
+        }
+        result = init_transpiler.fn(
+            self.transpiler_info,
+            {"optimization_level": 3},
+            mock_driver,
+        )
+        transpiler = result["transpiler"]
+        assert transpiler is not None
+        assert transpiler.transpiler_options.get("optimization_level") == 3
+        assert transpiler.transpiler_options.get("enable_mapping") is False
+
+
+class TestPostRun:
+    """Tests for the post_run helper in job_engine."""
+
+    def test_no_sleep(self):
+        """Driver without sleep option: no progress calls."""
+        mock_driver = MagicMock()
+        mock_driver.driver_options = {}
+        post_run(mock_driver)
+        mock_driver.set_progress.assert_not_called()
+
+    def test_sleep_zero(self):
+        """sleep=0 (falsy): no progress calls."""
+        mock_driver = MagicMock()
+        mock_driver.driver_options = {"sleep": 0}
+        post_run(mock_driver)
+        mock_driver.set_progress.assert_not_called()
+
+    def test_sleep_progress_calls(self):
+        """sleep=3: set_progress is called 3 times."""
+        mock_driver = MagicMock()
+        mock_driver.driver_options = {"sleep": 3}
+        mock_driver.get_progress.return_value = 50
+        post_run(mock_driver)
+        assert mock_driver.set_progress.call_count == 3
+
+    def test_sleep_progress_values(self):
+        """sleep=2 starting at 50: progress goes 75, 100."""
+        mock_driver = MagicMock()
+        mock_driver.driver_options = {"sleep": 2}
+        mock_driver.get_progress.return_value = 50
+        post_run(mock_driver)
+        progress_values = [
+            call.args[0] for call in mock_driver.set_progress.call_args_list
+        ]
+        assert progress_values == [75, 100]
+
+    def test_sleep_progress_from_zero(self):
+        """sleep=2 starting at 0: progress goes 50, 100."""
+        mock_driver = MagicMock()
+        mock_driver.driver_options = {"sleep": 2}
+        mock_driver.get_progress.return_value = 0
+        post_run(mock_driver)
+        progress_values = [
+            call.args[0] for call in mock_driver.set_progress.call_args_list
+        ]
+        assert progress_values == [50, 100]
