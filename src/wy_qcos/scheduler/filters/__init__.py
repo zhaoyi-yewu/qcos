@@ -24,6 +24,7 @@ from .device_group import DeviceGroupFilter
 from .qubit_count import QubitCountFilter
 from .tech_type import TechTypeFilter
 from .gate_fidelity import GateFidelityFilter
+from .input_constraints import InputConstraintsFilter
 from .queue_limit import QueueLimitFilter
 
 # Default filter order (must filters first, then optional)
@@ -36,6 +37,7 @@ DEFAULT_FILTERS = [
     TechTypeFilter,
     QubitCountFilter,
     QueueLimitFilter,
+    InputConstraintsFilter,
     GateFidelityFilter,
     DeviceAvailabilityFilter,
     DeviceNameFilter,

@@ -48,6 +48,10 @@ class RequestSpec:
     # --- from job request ---
     code_type: str | None = None
     num_qubits: int = 0
+    shots: int | None = None
+    circuit_aggregation: str | None = None
+    driver_options: dict | None = None
+    transpiler_options: dict | None = None
 
     # --- from flavor ---
     flavor_id: str | None = None

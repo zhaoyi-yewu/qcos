@@ -329,6 +329,10 @@ def submit_job(
         request_spec = AutoScheduler.build_request_spec(
             code_type=code_type,
             num_qubits=num_qubits,
+            shots=shots,
+            circuit_aggregation=circuit_aggregation,
+            driver_options=driver_options,
+            transpiler_options=transpiler_options,
             flavor_id=flavor_id_str,
             extra_specs=extra_specs,
             flavor_manager=scheduler.get_flavor_manager(),
@@ -462,7 +466,7 @@ def submit_job(
                 transpiler_options_schema,
                 allow_none=True,
             ),
-            param_name="transpiler_options",
+            param_name=f"transpiler: {transpiler_name}, transpiler_options",
         )
 
     # validate: qec_options
