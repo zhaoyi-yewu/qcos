@@ -10,7 +10,7 @@
 - 新增Device Group（设备分组）功能：支持设备逻辑分组管理，包含增删改查API和CLI命令
 - 新增DeviceGroupFilter调度过滤器，根据device group成员列表过滤候选设备
 - 支持量子作业自动调度功能：用户提交作业时不指定backend，由系统自动选择后端设备
-- 新增自动调度器，支持9个Filter和3个Weigher
+- 新增自动调度器，支持10个Filter和3个Weigher
 - Job表新增flavor_id和extra_specs字段
 - submit-job命令新增--flavor-id和--extra-specs参数，--backend改为可选
 - 新增show-mem命令：查询API服务端进程内存占用（RSS/VMS/线程数/GC对象数/CPU使用率）
@@ -36,6 +36,21 @@
 - list-devices命令输出新增availability_total列
 - get_avg_1q_fidelity/get_avg_2q_fidelity从calibration.qubit_metrics
   /coupler_metrics提取xeb_fidelity/cz_fidelity，无数据返回None
+- 新增InputConstraintsFilter调度过滤器：校验作业的shots、
+  circuit_aggregation、driver_options、transpiler_options是否满足
+  驱动声明的约束schema（input_constrains、driver_options_schema、
+  transpiler_options_schema）
+- 驱动基类新增input_constrains和transpiler_options_schema属性，
+  用于声明调度约束和转译器选项schema
+- DriverGateBase声明通用transpiler_options_schema
+  （optimization_level、enable_na_move、na_mapping_type、
+  enable_mapping、sc_mapping_options、enable_wirecut）
+- DriverLogicalQubitBase声明job_shots约束(1~50000)和
+  enable_mapping约束(仅允许True)
+- DriverQuafu声明job_shots约束(1024~102400，须为1024倍数)
+  和enable_mapping约束(True/False均可)
+- get-job-status命令支持"last"特殊值，自动解析最近作业的状态
+- 支持Metrics容器(Prometheus、Alertmanager、Grafana)自动部署
 
 ### 变更功能
 
@@ -67,6 +82,17 @@
 - webui/src/下所有.js文件添加版权头
 - 自动调度器availability计算逻辑抽取到DeviceAvailabilityCollector
   .compute_availability_rates统一方法，auto_scheduler和device.py共用
+- DriverWuyueBase和DriverLogicalQubitBase继承关系从DriverBase
+  改为DriverGateBase，统一使用DriverGateBase的transpiler_options_schema
+- driver_run统一调用post_run(driver)处理sleep/进度逻辑，
+  各驱动不再自行实现set_progress_by_task(TASK_STAGE_COMPLETE)
+- init_transpiler新增从driver.transpiler_options_schema填充
+  转译器选项默认值的逻辑，用户未指定的选项自动使用schema声明的default
+- submit_job路由将shots、circuit_aggregation、driver_options、
+  transpiler_options传入build_request_spec，供调度器过滤使用
+- DEFAULT_FILTERS追加InputConstraintsFilter，位于QueueLimitFilter之后
+- DeviceState新增input_constrains、enable_circuit_aggregation、
+  driver_options_schema、transpiler_options_schema字段，从driver属性映射
 
 ### 修复问题
 
