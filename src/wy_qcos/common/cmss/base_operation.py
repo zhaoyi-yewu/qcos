@@ -91,12 +91,12 @@ class BaseOperation:
 
         # Build the argument part (e.g., rx(1.57))
         if isinstance(self.arg_value, list) and len(self.arg_value) > 0:
-            arg_str = "(" + ", ".join(map(str, self.arg_value)) + ")"
+            arg_str = "(" + ",".join(map(str, self.arg_value)) + ")"
         else:
             arg_str = ""
 
         # Build the qubit target part (e.g., q[0], q[1])
-        targets_str = ", ".join(f"{qubit_prefix}[{t}]" for t in self.targets)
+        targets_str = ",".join(f"{qubit_prefix}[{t}]" for t in self.targets)
 
         # Convert sync to barrier
         name = self.name.lower()

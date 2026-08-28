@@ -85,14 +85,14 @@ TEST_F(QasmConverterTest, TwoQubitGateToQasm2) {
   qc_.append(std::make_shared<CX>(std::vector<int>{0, 1}));
   std::string result = ops_to_qasm2(qc_);
 
-  EXPECT_NE(result.find("cx q[0], q[1];"), std::string::npos);
+  EXPECT_NE(result.find("cx q[0],q[1];"), std::string::npos);
 }
 
 TEST_F(QasmConverterTest, TwoQubitGateToQasm3) {
   qc_.append(std::make_shared<CX>(std::vector<int>{0, 1}));
   std::string result = ops_to_qasm3(qc_);
 
-  EXPECT_NE(result.find("cx q[0], q[1];"), std::string::npos);
+  EXPECT_NE(result.find("cx q[0],q[1];"), std::string::npos);
 }
 
 TEST_F(QasmConverterTest, ParamGateToQasm2) {
@@ -164,12 +164,12 @@ TEST_F(QasmConverterTest, MixedOperationsToQasm2) {
   std::string result = ops_to_qasm2(qc_);
 
   EXPECT_NE(result.find("h q[0];"), std::string::npos);
-  EXPECT_NE(result.find("cx q[0], q[1];"), std::string::npos);
+  EXPECT_NE(result.find("cx q[0],q[1];"), std::string::npos);
   EXPECT_NE(result.find("measure q[0] -> c[0];"), std::string::npos);
   EXPECT_NE(result.find("measure q[1] -> c[1];"), std::string::npos);
 
   size_t h_pos = result.find("h q[0];");
-  size_t cx_pos = result.find("cx q[0], q[1];");
+  size_t cx_pos = result.find("cx q[0],q[1];");
   size_t m0_pos = result.find("measure q[0] -> c[0];");
   size_t m1_pos = result.find("measure q[1] -> c[1];");
   EXPECT_LT(h_pos, cx_pos);
@@ -255,14 +255,14 @@ TEST_F(QasmConverterTest, ThreeQubitGateToQasm2) {
   qc.append(std::make_shared<CCX>(std::vector<int>{0, 1, 2}));
   std::string result = ops_to_qasm2(qc);
 
-  EXPECT_NE(result.find("ccx q[0], q[1], q[2];"), std::string::npos);
+  EXPECT_NE(result.find("ccx q[0],q[1],q[2];"), std::string::npos);
 }
 
 TEST_F(QasmConverterTest, SwapGateToQasm2) {
   qc_.append(std::make_shared<SWAP>(std::vector<int>{0, 1}));
   std::string result = ops_to_qasm2(qc_);
 
-  EXPECT_NE(result.find("swap q[0], q[1];"), std::string::npos);
+  EXPECT_NE(result.find("swap q[0],q[1];"), std::string::npos);
 }
 
 TEST_F(QasmConverterTest, U3GateToQasm2) {
