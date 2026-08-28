@@ -104,7 +104,7 @@ class JobMetrics:
         # Prometheus gauge with status label for job metrics
 
         self.job_gauge = Gauge(
-            Constant.JOB_METRICS_FIELD_TOTAL,
+            Constant.JOB_METRICS_PROMETHEUS_NAME,
             "Total number of jobs by status",
             ["status"],
         )
@@ -335,6 +335,12 @@ class APIMetrics:
 
         # Internal tracking for quick access to total requests
         self._total_requests_count = 0
+        # Prometheus gauge for API request stats by time window
+        self.api_request_gauge = Gauge(
+            Constant.API_METRICS_REQUEST_STATS,
+            "API request statistics by time window",
+            ["type"],
+        )
 
     def record_api_request(self, data: APIMetricsData):
         """Record an API request.
@@ -371,6 +377,27 @@ class APIMetrics:
             idx = bisect.bisect_left(self._api_request_timestamps, cutoff)
             self._api_request_timestamps = self._api_request_timestamps[idx:]
 
+            # Update Prometheus gauge for time-windowed stats
+            one_hour_ago = current_time - timedelta(hours=1)
+            one_day_ago = current_time - timedelta(hours=24)
+            idx_hour = bisect.bisect_right(
+                self._api_request_timestamps, one_hour_ago
+            )
+            idx_day = bisect.bisect_right(
+                self._api_request_timestamps, one_day_ago
+            )
+            last_hour_count = len(self._api_request_timestamps) - idx_hour
+            last_day_count = len(self._api_request_timestamps) - idx_day
+            self.api_request_gauge.labels(type="total_requests").set(
+                self._total_requests_count
+            )
+            self.api_request_gauge.labels(type="last_hour_requests").set(
+                last_hour_count
+            )
+            self.api_request_gauge.labels(type="last_day_requests").set(
+                last_day_count
+            )
+
     def increment_api_requests_in_progress(self):
         """Increment the counter of in-progress API requests."""
         self.api_requests_in_progress.inc()
@@ -403,6 +430,17 @@ class APIMetrics:
             last_hour_count = len(self._api_request_timestamps) - idx_hour
             last_day_count = len(self._api_request_timestamps) - idx_day
             total_requests = self._total_requests_count
+
+            # Refresh Prometheus gauge so /metrics is always up-to-date
+            self.api_request_gauge.labels(type="total_requests").set(
+                total_requests
+            )
+            self.api_request_gauge.labels(type="last_hour_requests").set(
+                last_hour_count
+            )
+            self.api_request_gauge.labels(type="last_day_requests").set(
+                last_day_count
+            )
 
         return {
             "total_requests": total_requests,
@@ -515,6 +553,8 @@ class MetricsCollector:
             Prometheus metrics in text format
         """
         with self._global_lock:
+            # Refresh API request gauge so /metrics is always current
+            self.api_metrics.get_api_stats()
             return generate_latest()
 
     def get_content_type(self) -> str:

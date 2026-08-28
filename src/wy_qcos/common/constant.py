@@ -535,6 +535,7 @@ class Constant:
 
     # Job metrics
     JOB_METRICS_FIELD_TOTAL = "total"
+    JOB_METRICS_PROMETHEUS_NAME = "job_count"
     JOB_METRICS_FIELD_COMPLETED = JOB_STATUS_COMPLETED.lower()
     JOB_METRICS_FIELD_FAILED = JOB_STATUS_FAILED.lower()
     JOB_METRICS_FIELD_RUNNING = JOB_STATUS_RUNNING.lower()
@@ -551,6 +552,7 @@ class Constant:
     API_METRICS_REQUESTS_TOTAL = "api_requests_total"
     API_METRICS_REQUESTS_IN_PROGRESS = "api_requests_in_progress"
     API_METRICS_REQUESTS_DURATION = "api_request_duration"
+    API_METRICS_REQUEST_STATS = "api_request"
 
     # API stats field names
     API_TOTAL_REQUESTS = "total_requests"

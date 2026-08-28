@@ -103,7 +103,8 @@ class TestMetricsCrossCompare:
         for rpc_field, prom_status in status_fields.items():
             rpc_value = rpc_result[rpc_field]
             prom_key = (
-                f'{Constant.JOB_METRICS_FIELD_TOTAL}{{status="{prom_status}"}}'
+                f"{Constant.JOB_METRICS_PROMETHEUS_NAME}"
+                f'{{status="{prom_status}"}}'
             )
             assert prom_key in prom_metrics, (
                 f"Prometheus missing metric: {prom_key}"
@@ -201,3 +202,30 @@ class TestMetricsCrossCompare:
         assert prom_metrics[in_progress_key] >= 0, (
             f"Invalid in_progress value: {prom_metrics[in_progress_key]}"
         )
+
+    def test_api_request_gauge_rpc_vs_prometheus(self):
+        """Compare api_request gauge values with RPC get_api_stats.
+
+        The api_request gauge exposes total_requests, last_hour_requests,
+        and last_day_requests as labelled Prometheus metrics.  These
+        should match the values returned by the RPC get_api_stats method.
+        """
+        rpc_result = self._get_rpc_result(self.admin_client.get_api_stats)
+        prom_metrics = self._get_prometheus_metrics()
+
+        for rpc_field, gauge_type in [
+            (Constant.API_TOTAL_REQUESTS, "total_requests"),
+            (Constant.API_LAST_HOUR_REQUESTS, "last_hour_requests"),
+            (Constant.API_LAST_DAY_REQUESTS, "last_day_requests"),
+        ]:
+            rpc_value = rpc_result[rpc_field]
+            prom_key = (
+                f'{Constant.API_METRICS_REQUEST_STATS}{{type="{gauge_type}"}}'
+            )
+            assert prom_key in prom_metrics, (
+                f"Prometheus missing metric: {prom_key}"
+            )
+            assert rpc_value == prom_metrics[prom_key], (
+                f"Mismatch for {gauge_type}: "
+                f"RPC={rpc_value}, Prometheus={prom_metrics[prom_key]}"
+            )
