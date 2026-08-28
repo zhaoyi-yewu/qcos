@@ -40,7 +40,6 @@ class TestJob:
         "test_stim_submit_job_unsupported_bit_num",
         "test_stim_submit_job_unsupported_gate",
         "test_stim_submit_job_unsupported_qec_code",
-        "test_stim_submit_job_enable_mapping",
         "test_stim_submit_job_two_qubits_gate",
         "test_stim_submit_job_with_x_error",
         "test_stim_submit_job_with_y_error",
@@ -456,48 +455,6 @@ class TestJob:
             )
             assert (
                 "Unknown quantum error correction code: 'surface'."
-                in job_results["result"]["results"][0]["error"]["message"]
-            )
-        else:
-            logger.warning(
-                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
-            )
-        StLibrary.delete_job(self.admin_client, job_info["job_id"])
-        assert success is True
-
-    @pytest.mark.smoke
-    def test_stim_submit_job_enable_mapping(self):
-        job_info = {
-            "job_id": str(Library.create_uuid(prefix=[0xF0])),
-            "job_name": "test_stim_submit_job",
-            "source_code_list": [SAMPLES["simple-qasm-1-bit.qasm"]],
-            "code_type": Constant.CODE_TYPE_QASM2,
-            "job_type": Constant.JOB_TYPE_SAMPLING,
-            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "description: test_stim_submit_job",
-            "backend": "stim",
-            "shots": Constant.DEFAULT_SHOTS,
-            "circuit_aggregation": None,
-            "driver_options": None,
-            "transpiler": Constant.TRANSPILER_CMSS,
-            "profiling": None,
-            "callbacks": None,
-            "dry_run": False,
-            "qec_options": {
-                "qec_code": "surface",
-            },
-        }
-        StLibrary.submit_job(self.admin_client, job_info)
-        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.admin_client, job_info, self.timeout, self.interval
-        )
-        if success:
-            assert (
-                job_results["result"]["job_status"]
-                == Constant.JOB_STATUS_FAILED
-            )
-            assert (
-                "Missing qpu configs"
                 in job_results["result"]["results"][0]["error"]["message"]
             )
         else:

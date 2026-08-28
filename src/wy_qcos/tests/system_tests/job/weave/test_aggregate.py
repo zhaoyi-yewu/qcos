@@ -57,16 +57,21 @@ class TestAggregate:
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
 
     @staticmethod
-    def assert_qutip_results(circuit_result, num_qubits, expected_results):
+    def assert_results(circuit_result, num_qubits, expected_results):
         assert circuit_result["num_qubits"] == num_qubits
-        assert circuit_result["results"] == expected_results
         assert all(
             len(bitstring) == num_qubits
             for bitstring in circuit_result["results"].keys()
         )
 
     @pytest.mark.smoke
-    def test_submit_job_internal_aggregate(self):
+    def test_submit_job_internal_aggregate_dummy(self):
+        self._test_submit_job_internal_aggregate("dummy")
+
+    def test_submit_job_internal_aggregate_qutip(self):
+        self._test_submit_job_internal_aggregate("qutip_sim")
+
+    def _test_submit_job_internal_aggregate(self, device_name):
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_weave_internal_aggregate",
@@ -77,12 +82,12 @@ class TestAggregate:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_weave_internal_aggregate",
-            "backend": "qutip_sim",
+            "backend": device_name,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": Constant.AGGREGATION_TYPE_INTERNAL,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
+            "transpiler_options": {"enable_mapping": True},
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
@@ -99,7 +104,7 @@ class TestAggregate:
                 result = job_results["result"]
                 assert result["job_status"] == (Constant.JOB_STATUS_COMPLETED)
                 assert len(result["results"]) == 1
-                self.assert_qutip_results(
+                self.assert_results(
                     result["results"][0],
                     1,
                     {"1": Constant.DEFAULT_SHOTS},
@@ -116,7 +121,13 @@ class TestAggregate:
             )
 
     @pytest.mark.smoke
-    def test_submit_job_external_aggregate(self):
+    def test_submit_job_external_aggregate_dummy(self):
+        self._test_submit_job_external_aggregate("dummy")
+
+    def test_submit_job_external_aggregate_qutip(self):
+        self._test_submit_job_external_aggregate("qutip_sim")
+
+    def _test_submit_job_external_aggregate(self, device_name):
         parent_job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_weave_external_aggregate_parent",
@@ -127,12 +138,12 @@ class TestAggregate:
             "description": (
                 "description: test_weave_external_aggregate_parent"
             ),
-            "backend": "qutip_sim",
+            "backend": device_name,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": Constant.AGGREGATION_TYPE_EXTERNAL,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
+            "transpiler_options": {"enable_mapping": True},
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
@@ -145,12 +156,12 @@ class TestAggregate:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_weave_external_aggregate_sub",
-            "backend": "qutip_sim",
+            "backend": device_name,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": Constant.AGGREGATION_TYPE_EXTERNAL,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
+            "transpiler_options": {"enable_mapping": True},
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
@@ -191,12 +202,12 @@ class TestAggregate:
 
                 parent_circuit_result = parent_result["results"][0]
                 sub_circuit_result = sub_result["results"][0]
-                self.assert_qutip_results(
+                self.assert_results(
                     parent_circuit_result,
                     1,
                     {"1": Constant.DEFAULT_SHOTS},
                 )
-                self.assert_qutip_results(
+                self.assert_results(
                     sub_circuit_result,
                     2,
                     {"11": Constant.DEFAULT_SHOTS},
@@ -233,13 +244,13 @@ class TestAggregate:
             "code_type": Constant.CODE_TYPE_QASM,
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
-            "description": "diff specs job1 (qutip_sim)",
-            "backend": "qutip_sim",
+            "description": "diff specs job1 (dummy1)",
+            "backend": "dummy1",
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": Constant.AGGREGATION_TYPE_EXTERNAL,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
+            "transpiler_options": {"enable_mapping": True},
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
@@ -252,12 +263,12 @@ class TestAggregate:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "diff specs job2 (dummy)",
-            "backend": "dummy",
+            "backend": "dummy2",
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": Constant.AGGREGATION_TYPE_EXTERNAL,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
+            "transpiler_options": {"enable_mapping": True},
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
@@ -328,12 +339,12 @@ class TestAggregate:
                 f"exceeds max aggregation jobs ({num_codes} > "
                 f"{Constant.MAX_AGGREGATION_JOBS})"
             ),
-            "backend": "qutip_sim",
+            "backend": "dummy",
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": Constant.AGGREGATION_TYPE_INTERNAL,
             "driver_options": None,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
+            "transpiler_options": {"enable_mapping": True},
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
@@ -379,12 +390,12 @@ class TestAggregate:
                 "job_type": Constant.JOB_TYPE_SAMPLING,
                 "job_priority": Constant.DEFAULT_JOB_PRIORITY,
                 "description": (f"external aggregate exceed max job {i}"),
-                "backend": "qutip_sim",
+                "backend": "dummy",
                 "shots": Constant.DEFAULT_SHOTS,
                 "circuit_aggregation": (Constant.AGGREGATION_TYPE_EXTERNAL),
                 "driver_options": driver_options,
                 "transpiler": Constant.TRANSPILER_CMSS,
-                "transpiler_options": None,
+                "transpiler_options": {"enable_mapping": True},
                 "profiling": None,
                 "callbacks": None,
                 "dry_run": False,

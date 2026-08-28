@@ -28,6 +28,8 @@ Covers:
 - DeviceNameFilter: qcos:devices whitelist restricts eligible devices
 - ExcludeDeviceFilter: qcos:exclude_devices blacklist excludes devices
 - TechTypeFilter: qc:tech_types restricts by technology type
+- InputConstraintsFilter: driver_options/circuit_aggregation/
+  transpiler_options constraints validate against driver schema
 
 Uses qutip_sim, qutip_sim1, qutip_sim2 devices and set-device to modify
 enable/status/max_qubits at runtime. Creates a device group and
@@ -74,6 +76,10 @@ class TestJob:
         "test_device_name_filter_whitelist",
         "test_exclude_device_filter_blacklist",
         "test_tech_type_filter",
+        "test_input_constraints_driver_options",
+        "test_input_constraints_invalid_driver_options",
+        "test_input_constraints_circuit_aggregation",
+        "test_input_constraints_transpiler_options",
     ]
 
     @classmethod
@@ -177,6 +183,8 @@ class TestJob:
         extra_specs=None,
         driver_options=None,
         backend=None,
+        transpiler_options=None,
+        circuit_aggregation=None,
     ):
         """Build a job_info dict for auto-scheduled submission.
 
@@ -192,6 +200,10 @@ class TestJob:
                 When None, no driver options are sent.
             backend: explicit backend name. When None, auto
                 scheduling is triggered via flavor_id.
+            transpiler_options: transpiler-specific options dict.
+                When None, no transpiler options are sent.
+            circuit_aggregation: circuit aggregation type
+                (None, "internal", "external"). Defaults to None.
 
         Returns:
             dict with job submission parameters
@@ -206,10 +218,10 @@ class TestJob:
             "description": f"description: {job_name}",
             "backend": backend,
             "shots": Constant.DEFAULT_SHOTS,
-            "circuit_aggregation": None,
+            "circuit_aggregation": circuit_aggregation,
             "driver_options": driver_options,
             "transpiler": Constant.TRANSPILER_CMSS,
-            "transpiler_options": None,
+            "transpiler_options": transpiler_options,
             "profiling": None,
             "callbacks": None,
             "dry_run": False,
@@ -281,7 +293,7 @@ class TestJob:
             job_info["source_code_list"],
             code_type=job_info["code_type"],
             job_id=job_info["job_id"],
-            circuit_aggregation=None,
+            circuit_aggregation=job_info.get("circuit_aggregation"),
             job_name=job_info["job_name"],
             job_type=job_info["job_type"],
             job_priority=job_info["job_priority"],
@@ -290,9 +302,9 @@ class TestJob:
             backend=None,
             flavor_id=job_info["flavor_id"],
             extra_specs=job_info.get("extra_specs"),
-            driver_options=None,
+            driver_options=job_info.get("driver_options"),
             transpiler=job_info["transpiler"],
-            transpiler_options=None,
+            transpiler_options=job_info.get("transpiler_options"),
             profiling=None,
             callbacks=None,
             dry_run=job_info["dry_run"],
@@ -613,6 +625,129 @@ class TestJob:
             extra_specs={
                 "qc:tech_types": Constant.TECH_TYPE_GENERIC_SIMULATOR
             },
+        )
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client,
+            job_info,
+            self.timeout,
+            self.interval,
+        )
+        if success:
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        assert success is True
+        backend = job_results["result"]["backend"]
+        assert backend in ALL_QUTIP_SIM_DEVICES
+
+    def test_input_constraints_invalid_driver_options(self):
+        """InputConstraintsFilter filters devices rejecting driver_options.
+
+        Submit a job with an invalid driver_options key that is not
+        in any qutip_sim device's driver_options_schema. Since all
+        qutip_sim devices share the same schema, they should all be
+        filtered out, and the submission should fail.
+        """
+        self._restore_devices()
+        job_info = self._make_auto_job_info(
+            "test_input_constraints_invalid_driver_options",
+            flavor_id=self.flavor_id,
+            driver_options={"__invalid_option__": 999},
+        )
+        status_code, text = self._submit_auto_job_expect_error(
+            self.admin_client, job_info
+        )
+        result = json.loads(text)
+        assert result.get("error") is not None
+
+    def test_input_constraints_circuit_aggregation(self):
+        """InputConstraintsFilter checks circuit_aggregation capability.
+
+        qutip_sim devices do not support circuit aggregation
+        (enable_circuit_aggregation=False). Submitting a job with
+        circuit_aggregation=None should pass the filter and complete.
+        """
+        self._restore_devices()
+        job_info = self._make_auto_job_info(
+            "test_input_constraints_circuit_aggregation",
+            flavor_id=self.flavor_id,
+            circuit_aggregation=None,
+        )
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client,
+            job_info,
+            self.timeout,
+            self.interval,
+        )
+        if success:
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        assert success is True
+        backend = job_results["result"]["backend"]
+        assert backend in ALL_QUTIP_SIM_DEVICES
+
+    def test_input_constraints_transpiler_options(self):
+        """InputConstraintsFilter validates transpiler_options.
+
+        Submit a job with transpiler_options that match the
+        DriverGateBase transpiler_options_schema (optimization_level
+        is a valid int). The job should pass the filter and complete.
+        """
+        self._restore_devices()
+        job_info = self._make_auto_job_info(
+            "test_input_constraints_transpiler_options",
+            flavor_id=self.flavor_id,
+            transpiler_options={"optimization_level": 1},
+        )
+        StLibrary.submit_job(self.admin_client, job_info)
+        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+            self.admin_client,
+            job_info,
+            self.timeout,
+            self.interval,
+        )
+        if success:
+            StLibrary.delete_job(self.admin_client, job_info["job_id"])
+            assert (
+                job_results["result"]["job_status"]
+                == Constant.JOB_STATUS_COMPLETED
+            )
+        else:
+            logger.warning(
+                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
+            )
+        assert success is True
+        backend = job_results["result"]["backend"]
+        assert backend in ALL_QUTIP_SIM_DEVICES
+
+    def test_input_constraints_driver_options(self):
+        """InputConstraintsFilter allows valid driver_options.
+
+        qutip_sim devices declare a driver_options_schema (from
+        DriverBase) that accepts Optional keys like "sleep".
+        Submitting a job with valid driver_options should pass the
+        InputConstraintsFilter and complete successfully.
+        """
+        self._restore_devices()
+        job_info = self._make_auto_job_info(
+            "test_input_constraints_driver_options",
+            flavor_id=self.flavor_id,
+            driver_options={"sleep": 1},
         )
         StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
