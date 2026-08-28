@@ -17,12 +17,13 @@ services:
   qcos-webui:
     container_name: qcos-webui-dev
     image: ${REGISTRY}${QCOS_WEBUI_IMAGE_NAME}:dev
-    privileged: true
     network_mode: host
+    restart: always
+    stdin_open: True
+    tty: True
     read_only: true
     security_opt:
       - no-new-privileges:true
-    restart: always
     working_dir: /root/qcos-webui
     environment:
       TZ: Asia/Shanghai
