@@ -40,12 +40,14 @@ API_SERVER_LISTEN_PORT = 18400
 # is not specified in submit_job)
 ENABLE_AUTO_SCHEDULE = true
 # enabled filter class names; empty list uses all DEFAULT_FILTERS
-# available filters: CodeTypeFilter, DeviceStatusFilter,
+# available filters:
+#   CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
 #   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
 #   QueueLimitFilter, DeviceAvailabilityFilter, DeviceNameFilter,
 #   DeviceGroupFilter
 ENABLED_FILTERS = [
     "CodeTypeFilter",
+    "InputConstraintsFilter",
     "DeviceStatusFilter",
     "TechTypeFilter",
     "QubitCountFilter",
