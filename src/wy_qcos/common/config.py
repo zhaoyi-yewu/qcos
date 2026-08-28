@@ -175,15 +175,9 @@ class RedisSection(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    REDIS_SERVER_IP: str = Field(
-        default=Constant.DEFAULT_REDIS_SERVER_IP,
-        description="Redis server IP address",
-    )
-    REDIS_SERVER_PORT: int = Field(
-        default=Constant.DEFAULT_REDIS_SERVER_PORT,
-        ge=1024,
-        le=65535,
-        description="Redis server port (1024-65535)",
+    REDIS_URL: str = Field(
+        default=f"redis://{Constant.DEFAULT_REDIS_SERVER_IP}:{Constant.DEFAULT_REDIS_SERVER_PORT}/0",
+        description="Redis server url",
     )
 
 
@@ -314,9 +308,6 @@ class SSLSection(BaseModel):
     )
     KEY_FILE: str | None = Field(
         default=None, description="SSL private key file path"
-    )
-    CACERT_FILE: str | None = Field(
-        default=None, description="SSL CA certificate file path (optional)"
     )
 
 

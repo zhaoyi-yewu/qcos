@@ -104,10 +104,7 @@ PASSWORD_SALT = "123456"
 QCOS_DATABASE_CONNECTION_URL = "postgresql+psycopg://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos"
 
 [REDIS]
-# redis server ip
-REDIS_SERVER_IP = "127.0.0.1"
-# redis server port
-REDIS_SERVER_PORT = 6379
+REDIS_URL = "redis://:${REDIS_PASSWORD}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/0"
 
 [PREFECT]
 PREFECT_API_URL = "http://127.0.0.1:4200/api"
@@ -154,10 +151,6 @@ USE_SSL = false
 # SSL KEY_FILE
 # eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
 # KEY_FILE =
-
-# SSL CACERT_FILE (Optional)
-# eg. CACERT_FILE = "/etc/qcos/ssl/cacert.pem"
-# CACERT_FILE =
 
 [DEVICES]
 # DEVICE_LIST example:

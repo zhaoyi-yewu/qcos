@@ -370,8 +370,7 @@ class TaskScheduler:
             }
             device_mgr_info["device"] = {"configs": device.get_configs()}
             device_mgr_info["redis"] = {
-                "ip": self._device_manager.config.REDIS.REDIS_SERVER_IP,
-                "port": self._device_manager.config.REDIS.REDIS_SERVER_PORT,
+                "url": self._device_manager.config.REDIS.REDIS_URL,
             }
             device_mgr_info["global"] = {"configs": Config.get_configs()}
             success, details = self._policy_handler.exec_manage_task(
