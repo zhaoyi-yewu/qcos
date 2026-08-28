@@ -479,7 +479,10 @@ bool is_close_up_to_phase(const CMatrix& a, const CMatrix& b, double tol) {
         phase = a[i][j] / b[i][j];
       }
     }
-  if (max_abs < tol) return true;
+  // max_abs < tol means no position has both a and b nonzero: a and b
+  // cannot differ by only a global phase (the all-zero case was already
+  // handled by is_close above), so they are not equivalent up to phase.
+  if (max_abs < tol) return false;
   CMatrix scaled = scalar_multiply(phase, b);
   return is_close(a, scaled, tol);
 }
