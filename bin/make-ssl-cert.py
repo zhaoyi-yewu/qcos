@@ -114,7 +114,8 @@ def make_ssl_cert(ip_list, dns_list, key_files, cert_days=CERT_DAYS):
             key_file_exist = False
     for key_file_name, key_file in key_files.items():
         key_file_list.append(key_file_name + ": " + key_file)
-    key_files_str = ",".join(key_file_list)
+    key_files_str = "\n".join(key_file_list)
+    import pdb;
     if key_file_exist:
         print(key_files_str + " are already existed, skip!")
         return 1
