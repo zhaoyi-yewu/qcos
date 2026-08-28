@@ -181,9 +181,6 @@ class Server:
                 ssl_keyfile=Config.SSL.KEY_FILE
                 if Config.SSL.USE_SSL
                 else None,
-                ssl_ca_certs=Config.SSL.CACERT_FILE
-                if Config.SSL.USE_SSL
-                else None,
             )
 
             # overwrite uvicorn loggers with our own logger
