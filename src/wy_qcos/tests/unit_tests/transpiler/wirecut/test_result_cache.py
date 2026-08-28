@@ -43,8 +43,7 @@ def _job_info(job_id="job-1", shots=1024):
         "global": {
             "configs": {
                 "REDIS": {
-                    "REDIS_SERVER_IP": "127.0.0.1",
-                    "REDIS_SERVER_PORT": 6379,
+                    "REDIS_URL": "redis://127.0.0.1:6379/0",
                 }
             }
         },
@@ -68,13 +67,13 @@ class TestSubcircuitResultCache:
     def test_from_job_info_uses_job_redis_config(self, mock_redis):
         cache = SubcircuitResultCache.from_job_info(_job_info())
 
-        assert cache.redis_client == mock_redis.return_value
-        mock_redis.assert_called_once_with(
-            host="127.0.0.1",
-            port=6379,
+        assert cache.redis_client == mock_redis.from_url.return_value
+        mock_redis.from_url.assert_called_once_with(
+            "redis://127.0.0.1:6379/0",
             decode_responses=True,
             socket_connect_timeout=1,
             socket_timeout=1,
+            protocol=2,
         )
 
     def test_set_uses_twelve_hour_expiry_and_get_restores_result(self):

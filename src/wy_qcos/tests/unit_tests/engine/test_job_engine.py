@@ -1319,8 +1319,7 @@ class TestJobEngine:
         self.job_info["global"] = {
             "configs": {
                 "REDIS": {
-                    "REDIS_SERVER_IP": "127.0.0.1",
-                    "REDIS_SERVER_PORT": 6379,
+                    "REDIS_URL": "redis://127.0.0.1:6379/0",
                 }
             }
         }
@@ -1816,8 +1815,7 @@ class TestJobEngine:
             "global": {
                 "configs": {
                     "REDIS": {
-                        "REDIS_SERVER_IP": "127.0.0.1",
-                        "REDIS_SERVER_PORT": 6379,
+                        "REDIS_URL": "redis://127.0.0.1:6379/0",
                     }
                 }
             },

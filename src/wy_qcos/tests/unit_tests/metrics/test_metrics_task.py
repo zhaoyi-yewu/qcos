@@ -427,7 +427,7 @@ class TestCheckRedisHealth:
         mock_rc.ping = AsyncMock(return_value=True)
 
         with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
-            mar.Redis.return_value = mock_rc
+            mar.Redis.from_url.return_value = mock_rc
             with patch("wy_qcos.metrics.metrics_task._redis_client", None):
                 healthy, msg = run_async(check_redis_health())
                 run_async(clear_redis_client())
@@ -438,7 +438,7 @@ class TestCheckRedisHealth:
         mock_rc.ping = AsyncMock(side_effect=asyncio.TimeoutError())
 
         with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
-            mar.Redis.return_value = mock_rc
+            mar.Redis.from_url.return_value = mock_rc
             with patch("wy_qcos.metrics.metrics_task._redis_client", None):
                 healthy, msg = run_async(check_redis_health())
                 run_async(clear_redis_client())
@@ -449,7 +449,7 @@ class TestCheckRedisHealth:
         mock_rc.ping = AsyncMock(side_effect=Exception("Refused"))
 
         with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
-            mar.Redis.return_value = mock_rc
+            mar.Redis.from_url.return_value = mock_rc
             with patch("wy_qcos.metrics.metrics_task._redis_client", None):
                 healthy, msg = run_async(check_redis_health())
                 run_async(clear_redis_client())
