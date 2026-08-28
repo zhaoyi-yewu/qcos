@@ -154,12 +154,29 @@ struct BlockProcessor {
       }
     }
 
+    // 统计块内 2q 门数。对「全 basis 且 2q 门 ≤1」的块不再合成替换:
+    // 此类块 (如单 cz + 若干相邻 u3) 的酉已接近单个 2q 门, 对它再合成时,
+    // two_qubit_unitary_to_basis 可能给出 qubit 角色互换的等价分解 (数值
+    // 上是酉但语义与原电路不符), 反复再合成会震荡不收敛, 最终把 cz 的
+    // qubit 顺序翻转。含 ≥2 个 2q 门的块才真有合并空间, 值得合成。
+    // 非全 basis 块 (含待消除门) 不受此限, 仍须合成转 basis。
+    size_t two_qubit_count = 0;
+    for (DAGOpNode* node : block) {
+      if (node->qargs.size() == 2) ++two_qubit_count;
+    }
+    bool all_basis_block = bg.has_value() && !has_non_basis_gate;
+
     bool should_replace = false;
     if (replacement.empty() && has_non_basis_gate) {
       should_replace = true;
     } else if (!replacement.empty()) {
       if (replacement.size() < block.size()) {
-        should_replace = true;
+        // 全 basis 块且仅 0~1 个 2q 门: 无合并价值且易震荡, 跳过。
+        if (all_basis_block && two_qubit_count <= 1) {
+          should_replace = false;
+        } else {
+          should_replace = true;
+        }
       } else if (has_non_basis_gate && all_basis) {
         should_replace = true;
       }
@@ -200,50 +217,61 @@ int UnitarySynthesis::run(
 
   int total_replaced = 0;
 
-  // Phase 1: Optimize 1Q gate runs
+  // collect 集合:单比特门 与 全部门
   std::set<std::string> collect_1q;
   for (const auto& g : Constant::SINGLE_QUBIT_GATE_LIST) {
     collect_1q.insert(g);
   }
-
-  while (true) {
-    auto blocks = collect_all_matching_blocks(dag, collect_1q, 2);
-    if (blocks.empty()) break;
-
-    // 一次收集到的各 block 节点互不相交 (collect_all_matching_blocks 保证),
-    // 故处理一个 block 删除其节点不会使其他 block 的 DAGOpNode* 失效。
-    // 一轮内处理完所有 block, 避免每次替换后重扫全 DAG (O(blocks*n) -> O(n))。
-    bool any_replaced = false;
-    for (const auto& block : blocks) {
-      BlockProcessor proc{dag, bg, max_block_size_, *this};
-      int diff = proc.process_block(block);
-      if (diff != 0) {
-        total_replaced += diff;
-        any_replaced = true;
-      }
-    }
-    if (!any_replaced) break;
-  }
-
-  // Phase 2: Optimize 2Q blocks
   std::set<std::string> collect_all;
   for (const auto& g : Constant::ALL_GATE_LIST) {
     collect_all.insert(g);
   }
 
+  // 1Q 合并 与 2Q 合成 交替迭代。2Q 合成 (process_block) 常产生若干冗余
+  // u3, 若紧接着再对含这些 u3 的 2Q 块合成, 合成器对同一酉可能给出不同
+  // (数值上更短但语义漂移) 的分解, 反复替换不收敛, 最终可能把 cz 的
+  // qubit 顺序翻转。每轮 2Q 合成后重跑 1Q 合并把冗余 u3 并掉, 即可让
+  // 下一轮 2Q collect 收到稳定块结构, 收敛于「无替换」。
+  // 一次收集到的各 block 节点互不相交 (collect_interacting_blocks 保证),
+  // 故处理一个 block 删除其节点不会使其他 block 的 DAGOpNode* 失效;
+  // 一轮内处理完所有 block, 避免每次替换后重扫全 DAG (O(blocks*n) -> O(n))。
   while (true) {
-    auto blocks = collect_all_matching_blocks(dag, collect_all, 2);
-    if (blocks.empty()) break;
-
     bool any_replaced = false;
-    for (const auto& block : blocks) {
-      BlockProcessor proc{dag, bg, max_block_size_, *this};
-      int diff = proc.process_block(block);
-      if (diff != 0) {
-        total_replaced += diff;
-        any_replaced = true;
+
+    // Phase 1: 合并单比特连续门段 (max_qubits=1 保证块内只作用在一个
+    // qubit 上, 不被共享 qubit 的 2Q 门串成多 qubit 块)。
+    while (true) {
+      auto blocks = collect_interacting_blocks(dag, collect_1q, 1, 2);
+      if (blocks.empty()) break;
+      bool p1_replaced = false;
+      for (const auto& block : blocks) {
+        BlockProcessor proc{dag, bg, max_block_size_, *this};
+        int diff = proc.process_block(block);
+        if (diff != 0) {
+          total_replaced += diff;
+          p1_replaced = any_replaced = true;
+        }
       }
+      if (!p1_replaced) break;
     }
+
+    // Phase 2: 合成 2-qubit 交互块 (max_qubits=2 保证块内 qubit 并集 ≤2,
+    // 可直接做 4x4 酉合成)。
+    while (true) {
+      auto blocks = collect_interacting_blocks(dag, collect_all, 2, 2);
+      if (blocks.empty()) break;
+      bool p2_replaced = false;
+      for (const auto& block : blocks) {
+        BlockProcessor proc{dag, bg, max_block_size_, *this};
+        int diff = proc.process_block(block);
+        if (diff != 0) {
+          total_replaced += diff;
+          p2_replaced = any_replaced = true;
+        }
+      }
+      if (!p2_replaced) break;
+    }
+
     if (!any_replaced) break;
   }
 
@@ -278,7 +306,12 @@ int ConsolidateBlocks::run(
   int total_replaced = 0;
 
   while (true) {
-    auto blocks = collect_all_matching_blocks(dag, collect_gates, min_block_size_);
+    // 收集 2-qubit 交互块:max_qubits=2 保证块内 qubit 并集 ≤2, 可做 4x4
+    // 酉合并。旧 collect_all_matching_blocks 用 DSU 传递合并共享 qubit 的
+    // 门, 把 Heisenberg 等 cx 串联电路并成 >2 qubit 超大块, 本 pass 的
+    // qubits.size()>2 分支全部跳过, 无可合并块。
+    auto blocks = collect_interacting_blocks(dag, collect_gates, 2,
+                                             min_block_size_);
     if (blocks.empty()) break;
 
     bool any_replaced = false;
