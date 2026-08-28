@@ -1112,6 +1112,22 @@ class Library:
         )
 
     @staticmethod
+    def convert_schema(schema_dict):
+        """Convert schema dict into standard schema.
+
+        Args:
+            schema_dict: schema dict
+
+        Returns:
+            standard schema dict
+        """
+        std_schema_dict = {}
+        for _, value in schema_dict.items():
+            k, v = value
+            std_schema_dict[k] = v
+        return std_schema_dict
+
+    @staticmethod
     def count_qubits_in_qasm(qasm_content: str) -> int:
         """Count the number of qubits declared in QASM content.
 
