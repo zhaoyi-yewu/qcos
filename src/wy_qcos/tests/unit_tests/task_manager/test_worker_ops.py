@@ -344,3 +344,110 @@ class TestStartWorkerProcess:
         result = task_manager._start_worker_process("dummy", "monitor")
         assert result is False
         mock_mp.Process.assert_not_called()
+
+
+class TestWatchdogRestartDeadWorkers:
+    """Tests for TaskFlowManager.watchdog_restart_dead_workers."""
+
+    def test_no_sync_client(self, task_manager):
+        """Skip when sync client is not initialized."""
+        task_manager._sync_client = None
+        task_manager.device_manager = mock.Mock()
+        task_manager.watchdog_restart_dead_workers()
+
+    def test_no_device_manager(self, task_manager):
+        """Skip when device manager is not initialized."""
+        task_manager._sync_client = mock.Mock()
+        task_manager.device_manager = None
+        task_manager.watchdog_restart_dead_workers()
+
+    @mock.patch.object(TaskFlowManager, "_start_worker_process")
+    @mock.patch.object(TaskFlowManager, "list_workers")
+    def test_restart_offline_workers(
+        self, mock_list, mock_start, task_manager
+    ):
+        """Restart all offline workers."""
+        task_manager._sync_client = mock.Mock()
+        task_manager.device_manager = mock.Mock()
+        mock_list.return_value = [
+            {
+                "worker_name": "process-device|dummy",
+                "device_name": "dummy",
+                "worker_status": "offline",
+            },
+            {
+                "worker_name": "process-device|dummy_monitor",
+                "device_name": "dummy",
+                "worker_status": "online",
+            },
+            {
+                "worker_name": "process-device|other",
+                "device_name": "other",
+                "worker_status": "offline",
+            },
+        ]
+        mock_start.return_value = True
+
+        task_manager.watchdog_restart_dead_workers()
+
+        # only offline workers restarted; online worker skipped
+        assert mock_start.call_count == 2
+        mock_start.assert_any_call("dummy", "job")
+        mock_start.assert_any_call("other", "job")
+
+    @mock.patch.object(TaskFlowManager, "_start_worker_process")
+    @mock.patch.object(TaskFlowManager, "list_workers")
+    def test_skip_unparsable_worker_name(
+        self, mock_list, mock_start, task_manager
+    ):
+        """Skip workers whose name cannot be parsed."""
+        task_manager._sync_client = mock.Mock()
+        task_manager.device_manager = mock.Mock()
+        mock_list.return_value = [
+            {
+                "worker_name": "unparsable-name",
+                "device_name": "dummy",
+                "worker_status": "offline",
+            },
+        ]
+
+        task_manager.watchdog_restart_dead_workers()
+
+        mock_start.assert_not_called()
+
+    @mock.patch.object(TaskFlowManager, "_start_worker_process")
+    @mock.patch.object(TaskFlowManager, "list_workers")
+    def test_no_offline_workers(self, mock_list, mock_start, task_manager):
+        """Do nothing when all workers are online."""
+        task_manager._sync_client = mock.Mock()
+        task_manager.device_manager = mock.Mock()
+        mock_list.return_value = [
+            {
+                "worker_name": "process-device|dummy",
+                "device_name": "dummy",
+                "worker_status": "online",
+            },
+        ]
+
+        task_manager.watchdog_restart_dead_workers()
+
+        mock_start.assert_not_called()
+
+    @mock.patch.object(TaskFlowManager, "_start_worker_process")
+    @mock.patch.object(TaskFlowManager, "list_workers")
+    def test_restart_monitor_worker(self, mock_list, mock_start, task_manager):
+        """Restart monitor type worker when offline."""
+        task_manager._sync_client = mock.Mock()
+        task_manager.device_manager = mock.Mock()
+        mock_list.return_value = [
+            {
+                "worker_name": "process-device|dummy_monitor",
+                "device_name": "dummy",
+                "worker_status": "offline",
+            },
+        ]
+        mock_start.return_value = True
+
+        task_manager.watchdog_restart_dead_workers()
+
+        mock_start.assert_called_once_with("dummy", "monitor")

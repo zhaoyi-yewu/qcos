@@ -66,11 +66,7 @@ class TaskFlowManager:
         self.device_manager = None
         self.deployments = {}
         self.flows = {}
-        self.redis_instance = redis.Redis(
-            host=Config.REDIS.REDIS_SERVER_IP,
-            port=Config.REDIS.REDIS_SERVER_PORT,
-            decode_responses=True,
-        )
+        self.redis_instance = None
 
     @staticmethod
     def _is_device_monitor_enabled(device):
@@ -215,6 +211,11 @@ class TaskFlowManager:
 
     def start(self):
         """Create work pools, queues and start workers."""
+        self.redis_instance = redis.Redis.from_url(
+            Config.REDIS.REDIS_URL,
+            decode_responses=True,
+            protocol=2,
+        )
         prefect_configs = TaskFlowManager.get_prefect_configs()
         with prefect_settings.temporary_settings(updates=prefect_configs):
             self._client = get_client()
@@ -669,6 +670,59 @@ class TaskFlowManager:
 
         return True, f"worker {worker_name} restarted successfully"
 
+    def watchdog_restart_dead_workers(self):
+        """Check for dead workers and restart them automatically.
+
+        Called periodically from the health-check flow. For each
+        worker that is OFFLINE and has no running process, restart it
+        via _start_worker_process. Workers whose device is disabled
+        or whose worker type is disabled are skipped.
+        """
+        if not self._sync_client:
+            logger.warning(
+                "Prefect sync client is not initialized, skip watchdog"
+            )
+            return
+
+        if not self.device_manager:
+            logger.warning("Device manager is not initialized, skip watchdog")
+            return
+
+        # get current worker status from prefect
+        workers = self.list_workers()
+        restarted = 0
+        for worker_info in workers:
+            status = worker_info.get("worker_status", "")
+            worker_name = worker_info.get("worker_name", "")
+            device_name = worker_info.get("device_name", "")
+
+            # only restart workers that are offline (process dead)
+            if status != "offline":
+                continue
+            if not worker_name or not device_name:
+                continue
+
+            # parse worker type from worker name
+            _, worker_type = self._parse_worker_name(worker_name)
+            if worker_type is None:
+                continue
+
+            # restart the dead worker
+            logger.warning(
+                f"Watchdog: worker {worker_name} is offline, restarting..."
+            )
+            started = self._start_worker_process(device_name, worker_type)
+            if started:
+                logger.info(f"Watchdog: worker {worker_name} restarted")
+                restarted += 1
+            else:
+                logger.warning(
+                    f"Watchdog: worker {worker_name} restart failed"
+                )
+
+        if restarted > 0:
+            logger.info(f"Watchdog: restarted {restarted} dead worker(s)")
+
     @staticmethod
     def _parse_device_name_from_pool(pool_name):
         """Resolve the device name from a work pool name.
@@ -859,8 +913,7 @@ class TaskFlowManager:
                 }
                 device_monitor_info["name"] = device.get_name()
                 device_monitor_info["redis"] = {
-                    "ip": self.device_manager.config.REDIS.REDIS_SERVER_IP,
-                    "port": self.device_manager.config.REDIS.REDIS_SERVER_PORT,
+                    "url": self.device_manager.config.REDIS.REDIS_URL,
                 }
 
                 args = {"device_monitor_info": device_monitor_info}
