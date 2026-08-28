@@ -260,11 +260,17 @@ TEST(MatrixUtilsCompareTest, IsCloseUpToPhase) {
   EXPECT_FALSE(matrix_utils::is_close_up_to_phase(a, c, 1e-10));
 }
 
-TEST(MatrixUtilsCompareTest, IsCloseUpToPhasePhaseZeroInput) {
-  // When b is all zeros, any phase matches (degenerate); should return true.
+TEST(MatrixUtilsCompareTest, IsCloseUpToPhaseZeroInput) {
+  // b all zeros, a nonzero: no global phase makes them equal -> false.
   CMatrix a = matrix_utils::identity(2);
   CMatrix z(2, std::vector<C>(2, C(0, 0)));
-  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(a, z, 1e-8));
+  EXPECT_FALSE(matrix_utils::is_close_up_to_phase(a, z, 1e-8));
+  // both all zeros -> equal (caught by is_close) -> true.
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(z, z, 1e-8));
+  // non-overlapping support (a nonzero where b zero) -> not equal up to phase.
+  CMatrix b = {{C(0, 0), C(1, 0)}, {C(1, 0), C(0, 0)}};  // X-like, off-diagonal
+  CMatrix d = {{C(1, 0), C(0, 0)}, {C(0, 0), C(1, 0)}};  // identity, diagonal
+  EXPECT_FALSE(matrix_utils::is_close_up_to_phase(b, d, 1e-8));
 }
 
 // ========================================================================

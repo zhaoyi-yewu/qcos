@@ -466,3 +466,31 @@ TEST(OptimizePerformanceTest, QVN32_DecomposeThenOptimize_TimeBudget) {
       << "QV_n32 decompose+optimize total took " << total_sec
       << "s, exceeds budget " << kTimeBudgetSec << "s";
 }
+
+// 同一 RB 电路在 u3+cz basis 下走纯酉合成短路径,须酉等价。
+TEST(OptimizeQasmSynthesisTest, File_iswap_n2_U3CZBasis) {
+  std::string rel_path="qasm/benchpress/qasmbench-small/iswap_n2/iswap_n2.qasm";
+  const std::set<std::string>& basis= {"u3", "cz"};
+  double tol = 1e-6;
+  bool check_basis = true;
+  
+  std::string qasm = read_qasm_file(rel_path);
+  ASSERT_FALSE(qasm.empty()) << "Empty QASM: " << rel_path;
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_FALSE(ops.empty()) << "QASM parsed to empty op list: " << rel_path;
+  ASSERT_GE(nq, 1);
+
+  CMatrix original = ops_unitary(ops, nq);
+  auto result = optimize(ops, 3, false, basis);
+  if (check_basis) {
+    for (const auto& g : result) {
+      if (!dynamic_cast<const GateOperation*>(g.get())) continue;
+      EXPECT_TRUE(basis.count(g->name) > 0)
+          << "Gate '" << g->name << "' not in basis";
+    }
+  }
+  CMatrix synthesized = ops_unitary(result, nq);
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, tol))
+      << "optimize() changed QASM circuit unitary after synthesis: "
+      << rel_path;
+}

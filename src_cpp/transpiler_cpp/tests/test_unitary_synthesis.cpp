@@ -1968,3 +1968,90 @@ rx(0.8) q[1];
 )";
   run_qasm_decompose_test(qasm, 2, {"cx", "rz", "ry"});
 }
+
+// ========================================================================
+// 真实 benchmark 电路在 {u3, cz} 基下的酉综合回归测试
+//
+// 背景: iswap_n2 / hs4_n4 在 {u3, cz} basis 下曾出现优化后酉矩阵与原电路不等价
+// 的 bug (数值错误)。这两个用例作为回归防护: 优化前后酉矩阵必须等价 (允许
+// 全局相位), 且输出门全在 {u3, cz} 内。hs4_n4 为 4 比特, decompose_unitary
+// 路径仅支持 <=2 比特, 故只走 UnitarySynthesis pass 路径。
+// ========================================================================
+
+// iswap_n2 (2 比特): h/s/x/cx 电路, 走 pass + decompose 两条路径。
+TEST(QasmU3CzBenchTest, IswapN2_Pass_U3CzBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+x q[0];
+s q[0];
+s q[1];
+h q[0];
+cx q[0],q[1];
+h q[0];
+h q[1];
+cx q[0],q[1];
+h q[0];
+)";
+  run_qasm_pass_test(qasm, 2, {"u3", "cz"});
+}
+
+TEST(QasmU3CzBenchTest, IswapN2_Decompose_U3CzBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+x q[0];
+s q[0];
+s q[1];
+h q[0];
+cx q[0],q[1];
+h q[0];
+h q[1];
+cx q[0],q[1];
+h q[0];
+)";
+  run_qasm_decompose_test(qasm, 2, {"u3", "cz"});
+}
+
+// hs4_n4 (4 比特): 两组独立 2q 块 (q0/q1, q2/q3), h/x/cx 电路, 走 pass 路径。
+TEST(QasmU3CzBenchTest, Hs4N4_Pass_U3CzBasis) {
+  std::string qasm = R"(
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[4];
+creg c[4];
+h q[0];
+h q[1];
+h q[2];
+h q[3];
+x q[0];
+x q[2];
+h q[1];
+h q[3];
+cx q[0],q[1];
+cx q[2],q[3];
+h q[1];
+h q[3];
+x q[0];
+x q[2];
+h q[0];
+h q[1];
+h q[2];
+h q[3];
+h q[1];
+h q[3];
+cx q[0],q[1];
+cx q[2],q[3];
+h q[1];
+h q[3];
+h q[0];
+h q[1];
+h q[2];
+h q[3];
+)";
+  run_qasm_pass_test(qasm, 4, {"u3", "cz"});
+}
