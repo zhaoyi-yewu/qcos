@@ -9,9 +9,11 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <cmath>
 #include <complex>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -20,8 +22,10 @@
 
 #include "circuit/gate_operation.h"
 #include "compiler/qasm_to_ir.hpp"
+#include "decomposer/decomposer.h"
 #include "optimizer/gate_optimizer.h"
 #include "optimizer/matrix_utils.h"
+#include "transpile/transpile.h"
 
 using namespace qcos;
 
@@ -372,4 +376,93 @@ cx q[0], q[1];
   }
   CMatrix synthesized = ops_unitary(result, 2);
   EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, 1e-6));
+}
+
+// ======== optimize() 大电路性能测试 ========
+//
+// QV_n32 是 32 比特 / 5633 门的 benchmark 电路, 原生门为 u3/cx/x。
+// 目标 basis 为 {h,rx,ry,rz,cx}, 不含 u3/x, 故须先将非 basis 门转为基础门
+// 再优化: decompose_gates_to_1q2q (拆多比特门) -> Decomposer 规则表
+// (按 basis 把 u3/x 等替换为 rx/ry/rz/cx) -> optimize(level=3)。
+//
+// 本用例验证该“转基础门 + 优化”流水线在 32 比特规模下的耗时处于合理上限内,
+// 并断言优化后输出门全在 basis 内、门数不增(相对转基础门后的输入)。
+//
+// 注意: 不调用 ops_unitary 做整电路酉矩阵等价校验 —— 该 helper 需构造
+// 2^32 x 2^32 酉矩阵, 32 比特下必然 OOM, 仅适用于 <=4 比特小电路。
+// 大电路以 basis 合规 + 门数不增 + 耗时上限为判据。
+TEST(OptimizePerformanceTest, QVN32_DecomposeThenOptimize_TimeBudget) {
+  const std::string rel_path =
+      "qasm/benchpress/qasmbench-large/QV_n32/32.qasm";
+  std::string qasm = read_qasm_file(rel_path);
+  ASSERT_FALSE(qasm.empty()) << "Cannot read " << rel_path;
+
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_FALSE(ops.empty());
+  ASSERT_EQ(nq, 32);
+
+  // 剥离 measure (optimize 内部亦会剥离), 仅保留量子门
+  std::vector<std::shared_ptr<BaseOperation>> regular;
+  regular.reserve(ops.size());
+  for (const auto& op : ops) {
+    if (op->name == "measure") continue;
+    regular.push_back(op);
+  }
+  ASSERT_FALSE(regular.empty());
+
+  std::set<std::string> basis = {"h", "rx", "ry", "rz", "cx"};
+  std::vector<std::string> basis_vec(basis.begin(), basis.end());
+
+  using clock = std::chrono::high_resolution_clock;
+
+  // 1) 拆多比特门为 1q/2q 门 (u3 等仍保留, 等规则表替换)
+  auto t0 = clock::now();
+  auto decomp_1q2q = decompose_gates_to_1q2q(regular);
+  auto t1 = clock::now();
+  double decomp1q2q_sec = std::chrono::duration<double>(t1 - t0).count();
+
+  // 2) 按 basis 生成分解规则表, 把 u3/x 等非 basis 门替换为 basis 门
+  auto t2 = clock::now();
+  auto gate_names = collect_gate_names(decomp_1q2q);
+  Decomposer decomposer;
+  auto [decompose_table, usage_stats] =
+      decomposer.get_decompose_rules(gate_names, basis_vec);
+  auto in_basis = decomposer.apply_decompose_rules(decomp_1q2q,
+                                                   decompose_table);
+  auto t3 = clock::now();
+  double rule_sec = std::chrono::duration<double>(t3 - t2).count();
+
+  // 3) optimize(level=3) 全量优化
+  auto t4 = clock::now();
+  auto result = optimize(in_basis, 3, false, basis);
+  auto t5 = clock::now();
+  double opt_sec = std::chrono::duration<double>(t5 - t4).count();
+  double total_sec = std::chrono::duration<double>(t5 - t0).count();
+
+  std::cout << "[perf] QV_n32: raw=" << regular.size()
+            << " -> 1q2q=" << decomp_1q2q.size()
+            << " -> basis=" << in_basis.size()
+            << " -> optimized=" << result.size()
+            << " | decomp1q2q=" << decomp1q2q_sec << "s"
+            << " rules=" << rule_sec << "s"
+            << " optimize=" << opt_sec << "s"
+            << " total=" << total_sec << "s\n";
+
+  // 输出门必须全部落在目标 basis 内 (量子门; 非门操作透传不校验)
+  for (const auto& g : result) {
+    if (!dynamic_cast<const GateOperation*>(g.get())) continue;
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
+  }
+
+  // 优化不应使门数增加 (相对转基础门后的输入)
+  EXPECT_LE(result.size(), in_basis.size())
+      << "optimize() increased gate count: " << in_basis.size() << " -> "
+      << result.size();
+
+  // 耗时上限: 32 比特全流程基线约 0.3s, 留充足余量防 CI 抖动
+  const double kTimeBudgetSec = 10.0;
+  EXPECT_LT(total_sec, kTimeBudgetSec)
+      << "QV_n32 decompose+optimize total took " << total_sec
+      << "s, exceeds budget " << kTimeBudgetSec << "s";
 }

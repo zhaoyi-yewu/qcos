@@ -210,6 +210,9 @@ int UnitarySynthesis::run(
     auto blocks = collect_all_matching_blocks(dag, collect_1q, 2);
     if (blocks.empty()) break;
 
+    // 一次收集到的各 block 节点互不相交 (collect_all_matching_blocks 保证),
+    // 故处理一个 block 删除其节点不会使其他 block 的 DAGOpNode* 失效。
+    // 一轮内处理完所有 block, 避免每次替换后重扫全 DAG (O(blocks*n) -> O(n))。
     bool any_replaced = false;
     for (const auto& block : blocks) {
       BlockProcessor proc{dag, bg, max_block_size_, *this};
@@ -217,7 +220,6 @@ int UnitarySynthesis::run(
       if (diff != 0) {
         total_replaced += diff;
         any_replaced = true;
-        break;
       }
     }
     if (!any_replaced) break;
@@ -240,7 +242,6 @@ int UnitarySynthesis::run(
       if (diff != 0) {
         total_replaced += diff;
         any_replaced = true;
-        break;
       }
     }
     if (!any_replaced) break;
