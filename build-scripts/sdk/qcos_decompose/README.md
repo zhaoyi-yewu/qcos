@@ -1,6 +1,6 @@
 # qcos-decompose 介绍
 
-qcos-decompose 是五岳量子计算操作系统（QCOS）的量子电路分解工具包，提供 OpenQASM 电路解析与门分解功能。
+qcos-decompose 是WUYUEQbit量子计算操作系统（QCOS）的量子电路分解工具包，提供 OpenQASM 电路解析与门分解功能。
 
 ## 功能
 

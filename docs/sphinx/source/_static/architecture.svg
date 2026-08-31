@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   width="1280"
-   height="820"
+   width="1600"
+   height="1000"
+   viewBox="0 0 1280 820"
+   preserveAspectRatio="none"
    version="1.1"
    id="svg66"
    sodipodi:docname="architecture.svg"
@@ -528,7 +530,7 @@
      class="text_title"
      id="text7"><tspan
        style="fill:#0066cc;fill-opacity:1"
-       id="tspan76">&quot;五岳纪元&quot; 量子计算操作系统</tspan></text>
+       id="tspan76">&quot;WUYUEQbit&quot; 量子计算操作系统</tspan></text>
   <!-- 北向POSIQ接口 -->
   <rect
      x="30"
