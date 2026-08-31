@@ -23,7 +23,7 @@ from wy_qcos.driver.cascoldatom.driver_wuyue_hanyuan1 import (
 
 
 class DriverWuyueHanyuan1Sim(DriverWuyueHanyuan1):
-    """五岳中科酷原-汉原1 中性原子驱动, 汉原后端为模拟器.
+    """中科酷原-汉原1 中性原子驱动, 汉原后端为模拟器.
 
     Wuyue Cascoldatom Hanyuan1 driver
     """

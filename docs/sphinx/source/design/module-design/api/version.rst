@@ -48,7 +48,7 @@
                      "status": "CURRENT"
                    }
                  ],
-                 "platform_version": "五岳量子计算操作系统(qcos) v1.0.0",
+                 "platform_version": "WUYUEQbit量子计算操作系统(qcos) v1.0.0",
                  "capabilities": {
                    "job_types": [
                      "sampling",
