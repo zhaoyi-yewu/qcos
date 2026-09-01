@@ -45,4 +45,5 @@ services:
       - /var/run/qcos:/var/run/qcos
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/qcos:/var/qcos
+      - /tmp/qcos-poetry-cache:/root/.cache
       - ${QCOS_LOCAL_SRC_DIR}:/root/qcos-project

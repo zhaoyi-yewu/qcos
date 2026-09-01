@@ -57,7 +57,7 @@
 
    # 安装wheel包
    cd build-scripts
-   pip3 install --prefix=/usr ./output/dist/wy_qcos-1.0.0-py3-none-any.whl
+   pip3 install --prefix=/usr ./output/dist/wy_qcos-1.5.0-cp311-cp311-linux_x86_64.whl
 
    # 创建服务运行所需目录
    mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage
@@ -92,7 +92,7 @@
 
    # 安装wheel包
    cd build-scripts/cli
-   pip3 install --prefix=/usr ./output/dist/wy_qcos_client-1.0.0-py3-none-any.whl
+   pip3 install --prefix=/usr ./output/dist/wy_qcos_client-1.5.0-py3-none-any.whl
 
 修改配置文件
 ----------------
