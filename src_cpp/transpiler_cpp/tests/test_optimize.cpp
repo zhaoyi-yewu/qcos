@@ -14,6 +14,7 @@
 #include <complex>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -21,11 +22,14 @@
 #include <vector>
 
 #include "circuit/gate_operation.h"
+#include "circuit/dag_circuit.h"
 #include "compiler/qasm_to_ir.hpp"
 #include "decomposer/decomposer.h"
+#include "optimizer/collect_block.h"
 #include "optimizer/gate_optimizer.h"
 #include "optimizer/matrix_utils.h"
 #include "transpile/transpile.h"
+#include "utils/constant.h"
 
 using namespace qcos;
 
@@ -494,3 +498,113 @@ TEST(OptimizeQasmSynthesisTest, File_iswap_n2_U3CZBasis) {
       << "optimize() changed QASM circuit unitary after synthesis: "
       << rel_path;
 }
+// ======== optimize() 门数观测 — square-heisenberg N4 ========
+//
+// samples/qasm/benchpress/square-heisenberg/square_heisenberg_N4.qasm 是 4 比特
+// Heisenberg 模型 Trotter 电路, 原生门为 cx/rz/rx/ry。目标 basis {h,rx,ry,rz,cx}
+// 中已含全部原生门 (电路无 h/u3/x, 无需转基础门), 故直接 optimize(level=3)。
+// 本用例观测优化前后门数与门类型分布, 评估优化效果; 同时做 4Q 酉等价 + 基合规校验。
+TEST(OptimizeGateCountTest, SquareHeisenbergN4_HRxRyRzCx_Basis) {
+  const std::string rel_path =
+      "qasm/benchpress/square-heisenberg/square_heisenberg_N9.qasm";
+  std::string qasm = read_qasm_file(rel_path);
+  ASSERT_FALSE(qasm.empty()) << "Cannot read " << rel_path;
+
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_FALSE(ops.empty()) << "Empty op list: " << rel_path;
+  ASSERT_EQ(nq, 9);
+
+  // 剥离 measure (本电路无 measure, 但保持与流水线一致), 仅留量子门做统计
+  std::vector<std::shared_ptr<BaseOperation>> regular;
+  regular.reserve(ops.size());
+  for (const auto& op : ops) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+    regular.push_back(op);
+  }
+  ASSERT_FALSE(regular.empty());
+
+  std::set<std::string> basis = {"h", "rx", "ry", "rz", "cx"};
+
+  auto gate_hist = [](const std::vector<std::shared_ptr<BaseOperation>>& v) {
+    std::map<std::string, size_t> h;
+    for (const auto& op : v) {
+      if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+      h[op->name]++;
+    }
+    return h;
+  };
+
+  auto raw_hist = gate_hist(regular);
+
+  // level=3: 完整优化 + 酉合成
+  auto result = optimize(ops, 3, false, basis);
+
+  // 剥离非量子门后统计输出门
+  std::vector<std::shared_ptr<BaseOperation>> result_gates;
+  result_gates.reserve(result.size());
+  for (const auto& op : result) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+    result_gates.push_back(op);
+  }
+  auto opt_hist = gate_hist(result_gates);
+
+  std::cout << "[gatecount] square_heisenberg_N4 basis={h,rx,ry,rz,cx}\n";
+  std::cout << "[gatecount] raw total=" << regular.size() << " -> opt total="
+            << result_gates.size()
+            << " (reduced=" << (regular.size() - result_gates.size()) << ")\n";
+  std::cout << "[gatecount] raw hist:";
+  for (const auto& [g, c] : raw_hist) std::cout << " " << g << "=" << c;
+  std::cout << "\n[gatecount] opt hist:";
+  for (const auto& [g, c] : opt_hist) std::cout << " " << g << "=" << c;
+  std::cout << "\n";
+
+  // 优化不应使门数增加
+  EXPECT_LE(result_gates.size(), regular.size())
+      << "optimize() increased gate count: " << regular.size() << " -> "
+      << result_gates.size();
+
+  // 输出门必须全部落在目标 basis 内
+  for (const auto& g : result_gates) {
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
+  }
+
+  // 4Q 酉矩阵等价校验 (允许全局相位)
+  CMatrix original = ops_unitary(regular, nq);
+  CMatrix synthesized = ops_unitary(result_gates, nq);
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, 1e-6))
+      << "optimize() changed square_heisenberg_N4 unitary after synthesis";
+}
+
+// collect_interacting_blocks 切出的每个块 qubit 并集宽度须严格 ≤ max_qubits,
+// 否则合成类 pass (UnitarySynthesis/ConsolidateBlocks) 会因 qubits.size()>
+// max_qubits 整块跳过。以 Heisenberg N4 (4-qubit cx 链) 为例:旧实现会把
+// 传递连通的全部 cx 并成单个 4-qubit 超大块, 本用例验证重写后正确切分。
+TEST(OptimizeGateCountTest, InteractingBlocksQubitWidthBounded) {
+  const std::string rel_path =
+      "qasm/benchpress/square-heisenberg/square_heisenberg_N4.qasm";
+  std::string qasm = read_qasm_file(rel_path);
+  ASSERT_FALSE(qasm.empty());
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_EQ(nq, 4);
+
+  std::vector<std::shared_ptr<BaseOperation>> regular;
+  for (const auto& op : ops) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+    regular.push_back(op);
+  }
+  DAGCircuit dag = DAGCircuit::ir_to_dag(regular);
+  std::set<std::string> collect_gates;
+  for (const auto& g : Constant::ALL_GATE_LIST) collect_gates.insert(g);
+
+  const size_t max_qubits = 2;
+  auto blocks = collect_interacting_blocks(dag, collect_gates, max_qubits, 1);
+  EXPECT_FALSE(blocks.empty());
+  for (const auto& block : blocks) {
+    std::set<int> qs;
+    for (auto* n : block)
+      for (int q : n->qargs) qs.insert(q);
+    EXPECT_LE(qs.size(), max_qubits);
+  }
+}
+
