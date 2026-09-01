@@ -14,6 +14,8 @@ build:
     - imagemagick
     - librsvg2-bin
     - fonts-noto-cjk
+    - cmake
+    - build-essential
   jobs:
     post_install:
       - npm install -g @mermaid-js/mermaid-cli plantuml
