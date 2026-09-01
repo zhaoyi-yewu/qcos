@@ -154,11 +154,12 @@ struct BlockProcessor {
       }
     }
 
-    // 统计块内 2q 门数。对「全 basis 且 2q 门 ≤1」的块不再合成替换:
+    // 统计块内 2q 门数。对「全 basis 且仅含 1 个 2q 门」的块不再合成替换:
     // 此类块 (如单 cz + 若干相邻 u3) 的酉已接近单个 2q 门, 对它再合成时,
     // two_qubit_unitary_to_basis 可能给出 qubit 角色互换的等价分解 (数值
     // 上是酉但语义与原电路不符), 反复再合成会震荡不收敛, 最终把 cz 的
     // qubit 顺序翻转。含 ≥2 个 2q 门的块才真有合并空间, 值得合成。
+    // 纯 1Q 块 (two_qubit_count==0) 不受此限, 仍须合并连续 u3 段。
     // 非全 basis 块 (含待消除门) 不受此限, 仍须合成转 basis。
     size_t two_qubit_count = 0;
     for (DAGOpNode* node : block) {
@@ -171,8 +172,9 @@ struct BlockProcessor {
       should_replace = true;
     } else if (!replacement.empty()) {
       if (replacement.size() < block.size()) {
-        // 全 basis 块且仅 0~1 个 2q 门: 无合并价值且易震荡, 跳过。
-        if (all_basis_block && two_qubit_count <= 1) {
+        // 全 basis 块且仅 1 个 2q 门: 无合并价值且易震荡, 跳过。
+        // (纯 1Q 块 two_qubit_count==0 不跳过, 须合并)
+        if (all_basis_block && two_qubit_count == 1) {
           should_replace = false;
         } else {
           should_replace = true;
