@@ -608,3 +608,135 @@ TEST(OptimizeGateCountTest, InteractingBlocksQubitWidthBounded) {
   }
 }
 
+
+// ======== optimize() 门数观测 — ising_model_10 ========
+//
+// samples/qasm/2.0/benchmark/compiler_qasm/ising_model_10.qasm 是 10 比特
+// Ising 模型电路, 原生门为 h/rz/cx + measure。目标 basis {u3,cz} 不含原生
+// 门, 若直接 optimize(level=3), 合成器须在 2Q 块内把 cx 合成替换为 cz,
+// 该路径在 cx 链交互下易出现 qubit 角色漂移, 破坏整电路酉等价。
+//
+// 稳健做法: 先用 Decomposer 规则表把 h/rz/cx 等原生门分解为 {u3,cz} 基础门
+// (decompose_gates_to_1q2q 拆多比特门 -> Decomposer 按 basis 替换非 basis
+// 门), 使 optimize 收到的输入已是全 basis 门; 再 optimize(level=3) 时合成器
+// 只在「全 basis 块」上做合并, 不再触发 cx->cz 的跨门类替换, 酉等价有保障。
+// 本用例观测分解+优化前后门数与门类型分布, 打印优化后的门列表, 同时做
+// 10Q 酉等价 + basis 合规校验。
+TEST(OptimizeGateCountTest, IsingModel10_U3CZBasis) {
+  const std::string rel_path =
+      "qasm/2.0/benchmark/compiler_qasm/ising_model_10.qasm";
+  std::string qasm = read_qasm_file(rel_path);
+  ASSERT_FALSE(qasm.empty()) << "Cannot read " << rel_path;
+
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_FALSE(ops.empty()) << "Empty op list: " << rel_path;
+  ASSERT_EQ(nq, 10);
+
+  // 剥离 measure, 仅留量子门做统计与酉矩阵构造
+  std::vector<std::shared_ptr<BaseOperation>> regular;
+  regular.reserve(ops.size());
+  for (const auto& op : ops) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+    regular.push_back(op);
+  }
+  ASSERT_FALSE(regular.empty());
+
+  std::set<std::string> basis = {"u3", "cz"};
+  std::vector<std::string> basis_vec(basis.begin(), basis.end());
+
+  auto gate_hist = [](const std::vector<std::shared_ptr<BaseOperation>>& v) {
+    std::map<std::string, size_t> h;
+    for (const auto& op : v) {
+      if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+      h[op->name]++;
+    }
+    return h;
+  };
+
+  auto raw_hist = gate_hist(regular);
+
+  // 1) 拆多比特门为 1q/2q 门 (cx 仍保留, 等规则表替换为 cz)
+  auto decomp_1q2q = decompose_gates_to_1q2q(regular);
+
+  // 2) 按 basis 生成分解规则表, 把 h/rz/cx 等非 basis 门替换为 u3/cz
+  auto gate_names = collect_gate_names(decomp_1q2q);
+  Decomposer decomposer;
+  auto [decompose_table, usage_stats] =
+      decomposer.get_decompose_rules(gate_names, basis_vec);
+  auto in_basis = decomposer.apply_decompose_rules(decomp_1q2q,
+                                                   decompose_table);
+
+  // 3) level=3 优化: 输入已是全 basis 门, 合成器仅做块内合并, 不再跨门类替换
+  auto result = optimize(in_basis, 3, false, basis);
+
+  std::vector<std::shared_ptr<BaseOperation>> result_gates;
+  result_gates.reserve(result.size());
+  for (const auto& op : result) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+    result_gates.push_back(op);
+  }
+  auto opt_hist = gate_hist(result_gates);
+
+  std::cout << "[gatecount] ising_model_10 basis={u3,cz}\n";
+  std::cout << "[gatecount] raw total=" << regular.size()
+            << " -> decompose=" << in_basis.size()
+            << " -> opt total=" << result_gates.size()
+            << " (reduced=" << (in_basis.size() - result_gates.size()) << ")\n";
+  std::cout << "[gatecount] raw hist:";
+  for (const auto& [g, c] : raw_hist) std::cout << " " << g << "=" << c;
+  std::cout << "\n[gatecount] decompose hist:";
+  for (const auto& [g, c] : gate_hist(in_basis)) std::cout << " " << g << "=" << c;
+  std::cout << "\n[gatecount] opt hist:";
+  for (const auto& [g, c] : opt_hist) std::cout << " " << g << "=" << c;
+  std::cout << "\n[gatecount] opt gate list:";
+  for (const auto& g : result_gates) {
+    std::cout << " " << g->name;
+    if (!g->targets.empty()) {
+      std::cout << "{";
+      for (size_t i = 0; i < g->targets.size(); ++i) {
+        if (i) std::cout << ",";
+        std::cout << g->targets[i];
+      }
+      std::cout << "}";
+    }
+  }
+  std::cout << "\n";
+
+  // 输出门必须全部落在目标 basis 内 (量子门)
+  for (const auto& g : result_gates) {
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
+  }
+
+  // 优化不应使门数增加 (相对分解后的输入)
+  EXPECT_LE(result_gates.size(), in_basis.size())
+      << "optimize() increased gate count: " << in_basis.size() << " -> "
+      << result_gates.size();
+
+  // 10Q 酉矩阵等价校验 (允许全局相位), 对比原始电路 (未分解)
+  CMatrix original = ops_unitary(regular, nq);
+  CMatrix synthesized = ops_unitary(result_gates, nq);
+  // 诊断: 打印对齐相位后的最大元素误差量级
+  {
+    std::complex<double> phase{0, 0};
+    double max_abs = 0.0;
+    for (size_t i = 0; i < original.size(); ++i)
+      for (size_t j = 0; j < original[0].size(); ++j) {
+        double mag = std::abs(synthesized[i][j]);
+        if (mag > max_abs && std::abs(original[i][j]) > 1e-9) {
+          max_abs = mag;
+          phase = original[i][j] / synthesized[i][j];
+        }
+      }
+    double max_err = 0.0;
+    for (size_t i = 0; i < original.size(); ++i)
+      for (size_t j = 0; j < original[0].size(); ++j) {
+        double e = std::abs(original[i][j] - phase * synthesized[i][j]);
+        if (e > max_err) max_err = e;
+      }
+    std::cout << "[gatecount] max element err after phase align = " << max_err
+              << "\n";
+  }
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, 1e-6))
+      << "optimize() changed ising_model_10 unitary after synthesis";
+}
