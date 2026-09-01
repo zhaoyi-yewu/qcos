@@ -11,7 +11,7 @@
 
 插件式转译器
 --------------------
-本模块内置三个转译器插件：五岳量子转译器、Qiskit转译器和Dummy转译器。并且本模块可扩展性较好，支持用户在提交作业时, 动态配置转译器。
+本模块内置三个转译器插件：WUYUEQbit量子转译器(cmss)、Qiskit转译器(qiskit)和Dummy转译器(dummy)。并且本模块可扩展性较好，支持用户在提交作业时, 动态配置转译器。
 
 .. plantuml:: ../../_static/design/module-design/transpiler-class-er.puml
    :caption: 插件式转译器类关系图
@@ -19,13 +19,13 @@
    :width: 50%
    :align: center
 
-五岳转译器
+cmss转译器
 --------------------
 如下图所示，模块的入口为transpiler.py。整个模块由3个子功能组成：
 
 .. plantuml:: ../../_static/design/module-design/cmss-transpiler-module.puml
-   :caption: 五岳转译器调用关系图
-   :alt: 五岳转译器调用关系图
+   :caption: cmss转译器调用关系图
+   :alt: cmss转译器调用关系图
    :width: 50%
    :align: center
 

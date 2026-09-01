@@ -57,6 +57,7 @@ echo "Docs linter start ..."
 MD_FILES=$(find ${TOP_DIR} \
   -not -path "*/build-scripts/*" \
   -not -path "*/samples/*" \
+  -not -path "*/dist/*" \
   -not -path "*/.pytest_cache/*" \
   -not -path "*/.roo/*" \
   -not -path "*/webui/*" \

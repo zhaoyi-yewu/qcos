@@ -29,7 +29,7 @@ class Constant:
 
     PROGRAM_NAME = "WuYue-QCOS"
     PROGRAM_AUTHOR = "CMSS"
-    PLATFORM_NAME = "五岳量子计算操作系统(QCOS)"
+    PLATFORM_NAME = "WUYUEQbit量子计算操作系统(QCOS)"
     PLATFORM_VERSION = f"{PLATFORM_NAME} v{QcosVersion.VERSION}"
     COPYRIGHT = "2024-2026 中移（苏州）软件技术有限公司"
 

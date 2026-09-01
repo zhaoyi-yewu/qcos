@@ -7,8 +7,9 @@
    :maxdepth: 2
 
    developer-environment
-   developer-guide
    code-commit
+   develop-new-module
+   developer-guidelines
    run-tests
    release
    publish

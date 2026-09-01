@@ -29,7 +29,7 @@ from wy_qcos.driver.driver_pulse_base import DriverPulseBase
 
 
 class DriverHanyuan1Pulse(DriverPulseBase):
-    """五岳中科酷原-汉原1 中性原子驱动, 后端为汉原原生测控系统.
+    """中科酷原-汉原1 中性原子驱动, 后端为汉原原生测控系统.
 
     Wuyue Cascoldatom Hanyuan1 driver
     """

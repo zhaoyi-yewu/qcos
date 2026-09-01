@@ -23,7 +23,7 @@ from wy_qcos.driver.driver_wuyue_base import DriverWuyueBase
 
 
 class DriverWuyueHanyuan1(DriverWuyueBase):
-    """五岳中科酷原-汉原1 中性原子驱动.
+    """中科酷原-汉原1 中性原子驱动.
 
     Wuyue Cascoldatom Hanyuan1 driver
     """

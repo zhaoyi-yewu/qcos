@@ -53,16 +53,29 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 ## 4. 兼容性说明
 
 [软硬件执行环境](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E5%85%BC%E5%AE%B9%E6%80%A7)
+
 [量子设备兼容性](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#%E7%9C%9F%E6%9C%BA%E6%B5%8B%E6%8E%A7%E9%A9%B1%E5%8A%A8%E5%85%BC%E5%AE%B9%E6%80%A7)
 
-## 5. 许可证
+## 5. 开发者指导
+
+[开发环境搭建](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/developer-environment.html)
+
+[代码开发流程](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/code-commit.html)
+
+[新功能模块开发](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/develop-new-module.html)
+
+[项目开发规范](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/developer-guidelines.html)
+
+[测试和CICD](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/developer-guide/run-tests.html)
+
+## 6. 许可证
 
 QCOS开源代码遵循[MulanPSL-2.0](https://qcos.readthedocs.io/zh-cn/latest/other-docs/license.html)开源协议。
 samples/qasm下的代码遵循 Apache-2.0开源协议。
 
-## 6. 引用来源
+## 7. 引用来源
 
-### 6.1 QCOS中benchmark的公共测试集来源
+### 7.1 QCOS中benchmark的公共测试集来源
 
 - [benchpress](https://github.com/Qiskit/benchpress)
 - [MQT QMAP](https://github.com/munich-quantum-toolkit/qmap)

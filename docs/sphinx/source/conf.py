@@ -150,6 +150,7 @@ suppress_warnings = [
     "config.misconfig",
     "ref.ref",
     "ref.python",
+    "myst.xref_missing",
 ]
 
 
@@ -184,7 +185,15 @@ def _patch_imgconverter():
                 idx = src.rfind('[')
                 page = src[idx + 1:-1]
                 src_clean = src[:idx]
-            args = ['rsvg-convert', '-f', 'png', '-o', dst]
+            # Derive output format from the destination extension so
+            # the LaTeX builder gets vector PDF (lossless scaling);
+            # raise DPI for rasterized PNG to avoid blur at page width.
+            fmt = os.path.splitext(dst)[1].lstrip('.').lower() or 'png'
+            if fmt == 'jpg':
+                fmt = 'jpeg'
+            args = ['rsvg-convert', '-f', fmt, '-o', dst]
+            if fmt == 'png':
+                args.extend(['-d', '600', '-p', '600'])
             if page is not None:
                 args.extend(['--page', page])
             args.append(src_clean)
