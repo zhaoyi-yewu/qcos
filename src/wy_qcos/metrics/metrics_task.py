@@ -27,6 +27,7 @@ import redis.asyncio as async_redis
 from prefect.client.schemas.objects import WorkerStatus
 from sqlalchemy.orm import Session
 
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import (
     Constant,
     HttpCode,
@@ -154,9 +155,8 @@ async def get_redis_client():
     """Get a singleton Redis client for health checks."""
     global _redis_client
     if _redis_client is None:
-        _redis_client = async_redis.Redis(
-            host=Constant.DEFAULT_REDIS_SERVER_IP,
-            port=Constant.DEFAULT_REDIS_SERVER_PORT,
+        _redis_client = async_redis.Redis.from_url(
+            Config.REDIS.REDIS_URL,
             decode_responses=True,
             socket_connect_timeout=REDIS_CHECK_TIMEOUT,
             socket_timeout=REDIS_CHECK_TIMEOUT,
@@ -481,6 +481,27 @@ async def update_system_health_metrics():
             f"redis={redis_healthy}, "
             f"redis_error={redis_error}"
         )
+
+        # Auto-restart dead workers when prefect is healthy but workers
+        # are not. Skip if prefect itself is down (restarts would fail
+        # anyway because worker registration requires prefect API).
+        if (
+            fastapi_healthy
+            and prefect_healthy
+            and redis_healthy
+            and not worker_healthy
+        ):
+            task_manager = scheduler.get_task_manager()
+            if task_manager:
+                try:
+                    await call_sync_with_timeout(
+                        task_manager.watchdog_restart_dead_workers,
+                        timeout=30.0,
+                    )
+                except TimeoutError:
+                    logger.warning("Watchdog restart timed out")
+                except Exception as e:
+                    logger.warning(f"Watchdog restart error: {e}")
 
     except Exception as e:
         logger.error(
