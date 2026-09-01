@@ -118,10 +118,10 @@ def device_monitor_flow(device_monitor_info):
     driver = driver_task_result["driver"]
 
     # generate redis instance
-    redis_instance = redis.Redis(
-        host=device_monitor_info["redis"]["ip"],
-        port=device_monitor_info["redis"]["port"],
+    redis_instance = redis.Redis.from_url(
+        device_monitor_info["redis"]["url"],
         decode_responses=True,
+        protocol=2,
     )
 
     # set init device status

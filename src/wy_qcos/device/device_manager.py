@@ -45,10 +45,10 @@ class DeviceManager:
             Optional("enable"): bool,
             Optional("device_max_qubits"): int,
         }
-        self.redis_instance = redis.Redis(
-            host=config.REDIS.REDIS_SERVER_IP,
-            port=config.REDIS.REDIS_SERVER_PORT,
+        self.redis_instance = redis.Redis.from_url(
+            config.REDIS.REDIS_URL,
             decode_responses=True,
+            protocol=2,
         )
 
     def load_devices(self):
@@ -164,8 +164,7 @@ class DeviceManager:
             try:
                 print(
                     f"Check connection to redis: "
-                    f"{self.config.REDIS.REDIS_SERVER_IP}:"
-                    f"{self.config.REDIS.REDIS_SERVER_PORT} ... "
+                    f"{self.config.REDIS.REDIS_URL} ... "
                 )
                 self.redis_instance.ping()
                 return True, None, None

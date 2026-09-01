@@ -727,8 +727,7 @@ def job_flow(job_info):
             "user_id": job_data.get("user_id", None),
         },
         "redis": {
-            "ip": global_configs["REDIS"].get("REDIS_SERVER_IP", None),
-            "port": global_configs["REDIS"].get("REDIS_SERVER_PORT", None),
+            "url": global_configs["REDIS"].get("REDIS_URL", None),
         },
         "running": True,
         "driver": None,
@@ -809,10 +808,10 @@ def job_flow(job_info):
             "aggregation_type": src_code_info.aggregation_type,
             "cancel": False,
         }
-        redis_instance = redis.Redis(
-            host=monitor_info["redis"]["ip"],
-            port=monitor_info["redis"]["port"],
+        redis_instance = redis.Redis.from_url(
+            monitor_info["redis"]["url"],
             decode_responses=True,
+            protocol=2,
         )
         try:
             redis_instance.publish(channel_name, json.dumps(flow_agg_info))

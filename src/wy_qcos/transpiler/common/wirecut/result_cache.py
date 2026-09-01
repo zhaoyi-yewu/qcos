@@ -41,21 +41,20 @@ class SubcircuitResultCache:
         redis_config = (
             job_info.get("global", {}).get("configs", {}).get("REDIS", {})
         )
-        host = redis_config.get("REDIS_SERVER_IP")
-        port = redis_config.get("REDIS_SERVER_PORT")
-        if host is None or port is None:
+        url = redis_config.get("REDIS_URL")
+        if url is None:
             logger.debug(
                 "Wire-cut subcircuit cache is disabled: Redis config missing"
             )
             return cls()
 
         return cls(
-            redis.Redis(
-                host=host,
-                port=port,
+            redis.Redis.from_url(
+                url,
                 decode_responses=True,
                 socket_connect_timeout=1,
                 socket_timeout=1,
+                protocol=2,
             )
         )
 
