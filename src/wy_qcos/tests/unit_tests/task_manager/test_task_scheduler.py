@@ -107,8 +107,7 @@ class TestTaskScheduler:
         assert mock_logger.error.called
 
         mock_device_manager.get_device.return_value = mock_device
-        mock_device_manager.config.REDIS.REDIS_SERVER_IP = "localhost"
-        mock_device_manager.config.REDIS.REDIS_SERVER_PORT = 6379
+        mock_device_manager.config.REDIS.REDIS_URL = "redis://localhost:6379/0"
         mock_get_deployment.return_value = {
             "deploy_id": "test_deployment_id",
         }
@@ -331,8 +330,7 @@ class TestTaskScheduler:
 
         mock_device_manager = Mock()
         mock_device_manager.get_device.return_value = None
-        mock_device_manager.config.REDIS.REDIS_SERVER_IP = "127.0.0.1"
-        mock_device_manager.config.REDIS.REDIS_SERVER_PORT = 6379
+        mock_device_manager.config.REDIS.REDIS_URL = "redis://127.0.0.1:6379/0"
         task.set_device_manager(mock_device_manager)
 
         mock_job_info = Mock()
@@ -431,8 +429,9 @@ class TestTaskScheduler:
         mock_device.get_configs.return_value = {}
         scheduler._device_manager = Mock()
         scheduler._device_manager.get_device.return_value = mock_device
-        scheduler._device_manager.config.REDIS.REDIS_SERVER_IP = "127.0.0.1"
-        scheduler._device_manager.config.REDIS.REDIS_SERVER_PORT = 6379
+        scheduler._device_manager.config.REDIS.REDIS_URL = (
+            "redis://127.0.0.1:6379/0"
+        )
         scheduler._policy_handler = Mock()
         scheduler._policy_handler.exec_manage_task.return_value = (
             False,
