@@ -71,7 +71,7 @@ def get_all_commit_branches():
         if res.status_code != 200 or len(res.json()) == 0:
             break
 
-        # Select branches that start with feature_
+        # Select branches that start with feature_new-
         for branch in res.json():
             name = branch["name"]
             if name.startswith(branch_prefix):
