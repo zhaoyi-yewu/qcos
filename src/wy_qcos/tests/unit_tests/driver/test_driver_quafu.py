@@ -32,7 +32,7 @@ from wy_qcos.driver.quafu.driver_quafu import DriverQuafu
 
 driver_quafu = DriverQuafu()
 job_id = "00000000-0000-4000-8000-000000000001"
-task_id = "123456"
+task_id = 123456
 num_qubits = 5
 data = {"index": 0, "source_code": "code", "transpile_results": []}
 data_type = DriverBase.DATA_TYPE_QASM2
@@ -90,19 +90,85 @@ class TestDriverQuafu:
 
     def test_submit_task(self):
         driver_quafu.tmgr = Mock()
-        driver_quafu.tmgr.run.return_value = "123456"
+        driver_quafu.tmgr.run.return_value = task_id
         tid = driver_quafu.submit_task("1")
-        assert tid == "123456"
+        assert tid == task_id
 
-    @patch.object(DriverQuafu, "get_task_results")
-    def test_check_task_status(self, mock_get_task_results):
-        mock_get_task_results.return_value = True, result
+    def test_submit_task_rejects_error_response(self):
+        driver_quafu.tmgr = Mock()
+        driver_quafu.tmgr.run.return_value = {"error": "invalid circuit"}
+        with pytest.raises(ValueError, match="invalid task ID"):
+            driver_quafu.submit_task("1")
+
+    @patch.object(DriverQuafu, "get_task_status")
+    def test_check_task_status(self, mock_get_task_status):
+        mock_get_task_status.return_value = True, result
         success, err_msg, status = driver_quafu.check_task_status(
-            "123456", driver_quafu.task_status_success
+            task_id, driver_quafu.task_status_success
         )
         assert success is True
         assert err_msg is None
         assert status == "Finished"
+
+    @patch.object(DriverQuafu, "get_task_status")
+    def test_check_task_status_accepts_string_response(
+        self, mock_get_task_status
+    ):
+        mock_get_task_status.return_value = True, "Finished"
+        success, _, status = driver_quafu.check_task_status(
+            task_id, [driver_quafu.task_status_success]
+        )
+        assert success is True
+        assert status == "Finished"
+
+    @patch.object(DriverQuafu, "get_task_status")
+    def test_check_task_status_rejects_invalid_response(
+        self, mock_get_task_status
+    ):
+        mock_get_task_status.return_value = True, {"message": "invalid task"}
+        with pytest.raises(ValueError, match="Invalid Quafu task status"):
+            driver_quafu.check_task_status(
+                task_id, [driver_quafu.task_status_success]
+            )
+
+    @patch("wy_qcos.driver.quafu.driver_quafu.logger.error")
+    @patch.object(DriverQuafu, "get_task_results")
+    @patch.object(DriverQuafu, "get_task_status")
+    def test_check_task_status_logs_remote_result_on_failure(
+        self,
+        mock_get_task_status,
+        mock_get_task_results,
+        mock_logger_error,
+    ):
+        mock_get_task_status.return_value = (
+            True,
+            {"status": "Failed"},
+        )
+        remote_result = {
+            "status": "Failed",
+            "error": "unsupported gate: cx",
+            "tid": task_id,
+        }
+        mock_get_task_results.return_value = (
+            True,
+            remote_result,
+        )
+        with pytest.raises(ValueError, match="unsupported gate: cx"):
+            driver_quafu.check_task_status(
+                task_id, [driver_quafu.task_status_success]
+            )
+        mock_get_task_results.assert_called_once_with(task_id)
+        log_message = mock_logger_error.call_args.args[0]
+        assert f"task_id={task_id}" in log_message
+        assert repr(remote_result) in log_message
+
+    def test_get_task_status(self):
+        driver_quafu.tmgr = Mock()
+        driver_quafu.tmgr.status.return_value = {"status": "Running"}
+        success, status = driver_quafu.get_task_status(task_id)
+        assert success is True
+        assert status == {"status": "Running"}
+        driver_quafu.tmgr.status.assert_called_once_with(task_id)
 
     @pytest.mark.smoke
     @patch.object(DriverQuafu, "get_task_results")
@@ -114,7 +180,7 @@ class TestDriverQuafu:
         mock_check_task_status,
         mock_get_task_results,
     ):
-        mock_submit_task.return_value = "123456"
+        mock_submit_task.return_value = task_id
         mock_check_task_status.return_value = True, None, None
         mock_get_task_results.return_value = (
             True,
