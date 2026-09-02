@@ -101,7 +101,7 @@ TranspileResult transpile_from_qasm(
   auto opt1_start = clock::now();
   std::set<std::string> basis_set(supp_basis_gates.begin(),
                                   supp_basis_gates.end());
-  auto optimized_ops = optimize(ops, std::min(1, opt_level), false, basis_set,
+  auto optimized_ops = optimize(ops, std::min(1, opt_level), false, {},
                                 num_threads, fast_mode);
   t.opt_time1 =
       std::chrono::duration<double>(clock::now() - opt1_start).count();
@@ -194,7 +194,7 @@ TranspileResult transpile_na(const std::string& qasm_string,
   std::set<std::string> basis_set(supp_basis_gates.begin(),
                                   supp_basis_gates.end());
   auto optimized_ops =
-      optimize(ops, std::min(1, opt_level), false, basis_set, 0);
+      optimize(ops, std::min(1, opt_level), false, {}, 0);
   t.opt_time1 =
       std::chrono::duration<double>(clock::now() - opt1_start).count();
 
@@ -281,7 +281,7 @@ TranspileResult transpile_from_ir(
   std::set<std::string> basis_set(supp_basis_gates.begin(),
                                   supp_basis_gates.end());
   auto optimized_ops = optimize(ir_ops, std::min(1, opt_level), false,
-                                basis_set, num_threads, fast_mode);
+                                {}, num_threads, fast_mode);
   t.opt_time1 =
       std::chrono::duration<double>(clock::now() - opt1_start).count();
 
