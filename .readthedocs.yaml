@@ -16,6 +16,7 @@ build:
     - fonts-noto-cjk
     - cmake
     - build-essential
+    - libboost-all-dev
   jobs:
     post_install:
       - npm install -g @mermaid-js/mermaid-cli plantuml

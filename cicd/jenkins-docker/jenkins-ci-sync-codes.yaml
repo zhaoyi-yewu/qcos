@@ -6,7 +6,12 @@ pipeline {
     agent any
 
     triggers {
-        cron('10 20 * * *')
+        cron('''
+        # 每个工作日 9点到21点间，每三小时执行一次
+        0 9,12,15,18,21 * * 1-5
+        # 每天晚上12点执行一次
+        0 0 * * *
+        ''')
     }
 
     parameters {
@@ -22,6 +27,12 @@ pipeline {
         persistentString(name: 'CICD_REPORT_EMAIL',
                defaultValue: 'zhaoyi@cmss.chinamobile.com',
                description: 'Email address(es) for CI/CD report notification. Supports single (user@example.com) or multiple comma-separated (a@example.com,b@example.com). Leave empty to skip email notification.')
+        persistentString(name: 'GITEE_SOURCE_OWNER',
+               defaultValue: '',
+               description: 'gitee owner for code review.')
+        persistentString(name: 'GITEE_ACCESS_TOKEN',
+               defaultValue: 'na',
+               description: 'gitee access token')
     }
 
     environment {
@@ -29,6 +40,8 @@ pipeline {
         GIT_BRANCH = "${params.GIT_BRANCH?: ''}"
         GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
         CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
+        GITEE_SOURCE_OWNER = "${params.GITEE_SOURCE_OWNER?: ''}"
+        GITEE_ACCESS_TOKEN = "${params.GITEE_ACCESS_TOKEN?: ''}"
     }
 
     options {
@@ -48,7 +61,7 @@ pipeline {
             steps {
                 script {
                     checkout([
-                        $class: 'GitSCM',
+                       $class: 'GitSCM',
                         branches: [[name: "${params.GIT_BRANCH}"]],
                         doGenerateSubmoduleConfigurations: false,
                         extensions: [[$class: 'CleanBeforeCheckout']],
@@ -69,7 +82,7 @@ pipeline {
             steps {
                 sh """#!/bin/bash
                 set -eo pipefail
-                echo "Sync from gitee"
+                echo "Sync from gitee (skipped)"
                 """
             }
         }
@@ -82,6 +95,54 @@ pipeline {
                 sh """#!/bin/bash
                 set -eo pipefail
                 echo "Sync to gitee"
+
+                # copy merge scripts
+                cp -rf ./cicd/sync-codes/ ./
+
+                # sync forked repo        
+                ./sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
+
+                # add both remotes
+                git rm -rf . > /dev/null 2>&1
+                git remote remove gitee || true
+                git remote add gitee git@gitee.com:\${GITEE_SOURCE_OWNER}/qcos.git
+                git branch -D dev_gitee || true
+                git checkout --orphan dev_gitee || true
+                git pull origin dev_gitee --allow-unrelated-histories
+                git branch --set-upstream-to=origin/dev_gitee dev_gitee
+
+                git branch -D temp || true
+                git checkout --orphan temp || true
+                git rm -rf . > /dev/null 2>&1
+                git branch -D gitee-develop || true
+                git checkout --orphan gitee-develop || true
+                git pull gitee develop --allow-unrelated-histories
+                git branch --set-upstream-to=gitee/develop gitee-develop
+
+                # merge codes
+                git config --global user.email "zhaoyi_yewu@cmss.chinamobile.com"
+                git config --global user.name "Zhao Yi"
+                git checkout dev_gitee
+                # start_date=`date -d "2 week ago" +%Y-%m-%d`
+                start_date="2026-08-27"
+                # test if no conflicts with --dry-run
+                echo "Merge commits (dry-run) ..."
+                python3 ./sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches --dry-run -S -s "\${start_date}"
+                # merge and push
+                echo "Merge commits (with push) ..."
+                python3 ./sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches -S -s "\${start_date}"
+                
+                # create pull-request
+                echo "Create Pull-Request: \${GITEE_SOURCE_OWNER} ..."
+                python3 ./create-pull-request.py --source-owner \${GITEE_SOURCE_OWNER}
+
+                # accept pull-request
+                echo "Accept Pull-Request ..."
+                python3 ./accept-pull-request.py
+
+                # sync forked repo
+                echo "Sync forked repo: \${GITEE_SOURCE_OWNER}:develop"
+                python3 ./sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
                 """
             }
         }
