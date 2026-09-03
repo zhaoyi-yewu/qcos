@@ -66,7 +66,7 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 
 [项目开发规范](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/developer-guidelines.html)
 
-[测试和CICD](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/developer-guide/run-tests.html)
+[测试和CICD](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/run-tests.html)
 
 ## 6. 许可证
 

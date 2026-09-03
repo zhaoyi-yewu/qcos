@@ -20,34 +20,43 @@ pipeline {
             triggerOnClosedPullRequest: false,
             triggerOnApprovedPullRequest: false,
             triggerOnNoteRequest: true,
-            noteRegex: "Retry build",
+            noteRegex: "(?i).*(rebuild|retry|retest).*",
             skipWorkInProgressPullRequest: true,
             ciSkip: true,
             skipLastCommitHasBeenBuild: true,
             cancelPendingBuildsOnUpdate: true,
-            secretToken: "WuYueOs2026SecureToken"
+            cancelIncompleteBuildOnSamePullRequest: true,
+            secretToken: "${params.GITEE_WEBHOOK_TOKEN}"
         )
     }
 
     parameters {
         persistentString(name: 'GIT_CREDENTIALS_ID',
-               defaultValue: 'gitee-ssh-key',
-               description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (gitee-ssh-key) or GitLab (gitlab-ssh-key)')
+               defaultValue: 'cicd-gitee-ssh',
+               description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (cicd-gitee-ssh) or GitLab (gitlab-ssh-key)')
         persistentString(name: 'CICD_REPORT_EMAIL',
                defaultValue: 'zhaoyi@cmss.chinamobile.com',
                description: 'Email address(es) for CI/CD report notification. Supports single (user@example.com) or multiple comma-separated (a@example.com,b@example.com). Leave empty to skip email notification.')
+        persistentString(name: 'GITEE_WEBHOOK_TOKEN',
+               defaultValue: '',
+               description: 'Secret token for Gitee webhook authentication. Must match the token configured in the Gitee repository webhook settings. Set this value via Jenkins UI on first build.')
+        persistentString(name: 'GITEE_TOKEN',
+               defaultValue: '',
+               description: 'Gitee personal access token (private token) for PR review API calls. Used to approve (CI pass) or request changes (CI fail) on pull requests. Must have at least repo-level permissions. Set this value via Jenkins UI on first build.')
     }
 
     environment {
         GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
         CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
+        GITEE_OWNER = 'WUYUEQbit'
+        GITEE_REPO = 'qcos'
     }
 
     options {
         timestamps()
-        timeout(time: 5, unit: 'HOURS')
+        timeout(time: 12, unit: 'HOURS')
         buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '5'))
-        giteeConnection('my-gitee')
+        giteeConnection('cicd-gitee')
         // Prevent concurrent builds (shared Docker daemon, container name conflicts)
         disableConcurrentBuilds()
     }
@@ -59,18 +68,57 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
-                    def git_url = env.giteeSourceUrl ? env.giteeSourceUrl : 'git@gitee.com:WUYUEQbit/qcos.git'
-                    def git_branch = env.giteeSourceBranch ? env.giteeSourceBranch : 'develop'
+                    // Always use the main repo URL. The Jenkins SSH key is
+                    // configured for WUYUEQbit/qcos; fork repo URLs may be
+                    // inaccessible. giteeSourceUrl points to the fork for
+                    // cross-fork PRs, so we ignore it and always clone the
+                    // main repo, fetching PR refs instead.
+                    def git_url = 'git@gitee.com:WUYUEQbit/qcos.git'
+                    def git_branch = env.giteeSourceBranch ?: 'develop'
+                    def refspec = '+refs/heads/*:refs/remotes/origin/*'
+
+                    // For pull requests (especially from forks), the source
+                    // branch does not exist in the main repo's refs/heads.
+                    // Fetch the PR ref via Gitee's refs/pull/<iid>/head and
+                    // checkout that ref instead, so fork commits are resolved
+                    // correctly instead of "originates from another repository".
+                    if (env.giteePullRequestIid) {
+                        def pr_iid = env.giteePullRequestIid
+                        refspec = "+refs/pull/${pr_iid}/head:refs/remotes/origin/pr/${pr_iid}/head " + refspec
+                        git_branch = "origin/pr/${pr_iid}/head"
+                    }
+
                     checkout([
                         $class: 'GitSCM',
                         branches: [[name: "${git_branch}"]],
                         doGenerateSubmoduleConfigurations: false,
                         extensions: [[$class: 'CleanBeforeCheckout']],
                         submoduleCfg: [],
-                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${git_url}"]]
+                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${git_url}", refspec: "${refspec}"]]
                     ])
                     echo ">>> Build #${env.BUILD_NUMBER} on branch ${git_branch}"
                     echo ">>> Repo: ${git_url} | Branch: ${git_branch} | Creds: ${params.GIT_CREDENTIALS_ID}"
+
+                    // Comment on Gitee PR: CI/CD is starting
+                    if (env.giteePullRequestIid) {
+                        echo ">>> Commenting on Gitee PR #${env.giteePullRequestIid} (build starting)"
+                        try {
+                            addGiteeMRComment comment: """### 🔄 CI/CD Pipeline Started
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Source Branch** | ${env.giteeSourceBranch ?: 'N/A'} |
+| **Target Branch** | ${env.giteeTargetBranch ?: 'N/A'} |
+
+Pipeline is running, please wait for the result.
+
+[View Build Progress](${env.BUILD_URL})
+"""
+                        } catch (Exception e) {
+                            echo ">>> Failed to add start comment to PR: ${e.message}"
+                        }
+                    }
                 }
             }
         }
@@ -199,6 +247,47 @@ pipeline {
     post {
         success {
             script {
+                // Comment on Gitee PR: CI/CD succeeded
+                if (env.giteePullRequestIid) {
+                    echo ">>> Commenting on Gitee PR #${env.giteePullRequestIid} (build succeeded)"
+                    try {
+                        addGiteeMRComment comment: """### ✅ CI/CD Pipeline Succeeded
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Source Branch** | ${env.giteeSourceBranch ?: 'N/A'} |
+| **Target Branch** | ${env.giteeTargetBranch ?: 'N/A'} |
+
+All checks passed. ✅
+
+[View Build Logs](${env.BUILD_URL})
+"""
+                    } catch (Exception e) {
+                        echo ">>> Failed to add success comment to PR: ${e.message}"
+                    }
+                }
+
+                // Set Gitee PR test status to passed if CI/CD succeeded (enables merge)
+                // Uses /pulls/{iid}/test endpoint, consistent with accept-pull-request.py
+                if (env.giteePullRequestIid && params.GITEE_TOKEN) {
+                    echo ">>> Setting Gitee PR #${env.giteePullRequestIid} test status to passed"
+                    try {
+                        sh """#!/bin/bash
+                        curl -s -X POST \\
+                            "https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/pulls/${env.giteePullRequestIid}/test" \\
+                            -H "Content-Type: application/json;charset=UTF-8" \\
+                            -d "{\\"access_token\\":\\"${params.GITEE_TOKEN}\\",\\"force\\":true}" \\
+                            -o /dev/null -w "%{http_code}"
+                        """
+                        echo ">>> Gitee PR test status set to passed"
+                    } catch (Exception e) {
+                        echo ">>> Failed to set Gitee PR test status: ${e.message}"
+                    }
+                } else if (env.giteePullRequestIid && !params.GITEE_TOKEN) {
+                    echo ">>> GITEE_TOKEN not set, skipping PR test status update"
+                }
+
                 if (env.CICD_REPORT_EMAIL) {
                     echo "Attempting to send SUCCESS email to: ${env.CICD_REPORT_EMAIL}"
                     try {
@@ -243,6 +332,46 @@ pipeline {
         }
         failure {
             script {
+                // Comment on Gitee PR: CI/CD failed
+                if (env.giteePullRequestIid) {
+                    echo ">>> Commenting on Gitee PR #${env.giteePullRequestIid} (build failed)"
+                    try {
+                        addGiteeMRComment comment: """### ❌ CI/CD Pipeline Failed
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Source Branch** | ${env.giteeSourceBranch ?: 'N/A'} |
+| **Target Branch** | ${env.giteeTargetBranch ?: 'N/A'} |
+
+Some checks failed. ❌
+
+[View Failure Details](${env.BUILD_URL}console)
+"""
+                    } catch (Exception e) {
+                        echo ">>> Failed to add failure comment to PR: ${e.message}"
+                    }
+                }
+
+                // Set Gitee PR test status to failed if CI/CD failed (revokes prior pass, blocks merge)
+                if (env.giteePullRequestIid && params.GITEE_TOKEN) {
+                    echo ">>> Setting Gitee PR #${env.giteePullRequestIid} test status to failed"
+                    try {
+                        sh """#!/bin/bash
+                        curl -s -X PATCH \\
+                            "https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/pulls/${env.giteePullRequestIid}/testers" \\
+                            -H "Content-Type: application/json;charset=UTF-8" \\
+                            -d "{\\"access_token\\":\\"${params.GITEE_TOKEN}\\",\\"reset_all\\":\\"false\\"}" \\
+                            -o /dev/null -w "%{http_code}"
+                        """
+                        echo ">>> Gitee PR test status set to failed"
+                    } catch (Exception e) {
+                        echo ">>> Failed to set Gitee PR test status to failed: ${e.message}"
+                    }
+                } else if (env.giteePullRequestIid && !params.GITEE_TOKEN) {
+                    echo ">>> GITEE_TOKEN not set, skipping PR test status update"
+                }
+
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
                         subject: "[QCOS CI/CD - Gate] ❌ FAILED — Build #${env.BUILD_NUMBER} on ${env.giteeSourceBranch}",
@@ -281,6 +410,27 @@ pipeline {
         }
         unstable {
             script {
+                // Comment on Gitee PR: CI/CD unstable
+                if (env.giteePullRequestIid) {
+                    echo ">>> Commenting on Gitee PR #${env.giteePullRequestIid} (build unstable)"
+                    try {
+                        addGiteeMRComment comment: """### ⚠️ CI/CD Pipeline Unstable
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Source Branch** | ${env.giteeSourceBranch ?: 'N/A'} |
+| **Target Branch** | ${env.giteeTargetBranch ?: 'N/A'} |
+
+Build completed with warnings. ⚠️
+
+[View Details](${env.BUILD_URL})
+"""
+                    } catch (Exception e) {
+                        echo ">>> Failed to add unstable comment to PR: ${e.message}"
+                    }
+                }
+
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
                         subject: "[QCOS CI/CD - Gate] ⚠️ UNSTABLE — Build #${env.BUILD_NUMBER} on ${env.giteeSourceBranch}",
@@ -319,6 +469,27 @@ pipeline {
         }
         aborted {
             script {
+                // Comment on Gitee PR: CI/CD aborted
+                if (env.giteePullRequestIid) {
+                    echo ">>> Commenting on Gitee PR #${env.giteePullRequestIid} (build aborted)"
+                    try {
+                        addGiteeMRComment comment: """### 🚫 CI/CD Pipeline Aborted
+
+| Item | Info |
+|------|------|
+| **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
+| **Source Branch** | ${env.giteeSourceBranch ?: 'N/A'} |
+| **Target Branch** | ${env.giteeTargetBranch ?: 'N/A'} |
+
+Build was aborted or timed out. 🚫
+
+[View Details](${env.BUILD_URL})
+"""
+                    } catch (Exception e) {
+                        echo ">>> Failed to add aborted comment to PR: ${e.message}"
+                    }
+                }
+
                 if (env.CICD_REPORT_EMAIL) {
                     emailext(
                         subject: "[QCOS CI/CD - Gate] 🚫 ABORTED — Build #${env.BUILD_NUMBER} on ${env.giteeSourceBranch}",
