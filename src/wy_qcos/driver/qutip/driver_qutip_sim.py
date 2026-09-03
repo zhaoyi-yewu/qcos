@@ -18,7 +18,7 @@
 import numpy as np
 from loguru import logger
 
-from qutip import basis, tensor, sigmax, sigmay, sigmaz, Qobj
+from qutip import basis, tensor
 from qutip_qip.circuit import CircuitSimulator, QubitCircuit
 from schema import Optional
 
@@ -26,27 +26,6 @@ from wy_qcos.device.device import Device
 from wy_qcos.common.constant import Constant
 from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.base_operation import OperationType
-
-Z = sigmaz()
-Y = sigmay()
-X = sigmax()
-
-
-def ashn(arg_value):
-    """Ashn gate.
-
-    Args:
-        arg_value: arg_value for the gate.
-
-    Returns:
-        the ashn gate Qobj
-    """
-    a = arg_value[0]
-    b = arg_value[1]
-    c = arg_value[2]
-    H = a * tensor(X, X) + b * tensor(Y, Y) + c * tensor(Z, Z)
-    U = (1j * H).expm()
-    return Qobj(U, dims=[[2, 2], [2, 2]])
 
 
 class DriverQutipSim(DriverGateBase):
@@ -223,7 +202,6 @@ class DriverQutipSim(DriverGateBase):
 
         transpile_results = data["transpile_results"]
         qc = self.convert_gates(transpile_results, num_qubits)
-        qc.user_gates["ASHN"] = ashn
         initial_state = basis(2, 0)
         for i in range(num_qubits - 1):
             initial_state = tensor(initial_state, basis(2, 0))

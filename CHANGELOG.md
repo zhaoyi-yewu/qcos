@@ -52,6 +52,7 @@
 - get-job-status命令支持"last"特殊值，自动解析最近作业的状态
 - 支持Metrics容器(Prometheus、Alertmanager、Grafana)自动部署
 - 新增worker的看门狗机制, 可以检查各组件健康状态并自动重启
+- 新增支持ASHN门的Qutip模拟器
 
 ### 变更功能
 

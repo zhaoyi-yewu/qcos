@@ -26,6 +26,12 @@ deps_pyproject_file = "../pyproject.toml"
 deps_sections = ["driver-qutip"]
 envs = ["python3"]
 
+[DriverQutipAshnSim]
+module_name = "driver_qutip_ashn_sim"
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-qutip"]
+envs = ["python3"]
+
 [DriverSpinQRpc]
 module_name = "driver_spinq_rpc"
 deps_pyproject_file = "../pyproject.toml"
