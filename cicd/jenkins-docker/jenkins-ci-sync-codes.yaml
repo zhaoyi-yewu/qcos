@@ -97,10 +97,10 @@ pipeline {
                 echo "Sync to gitee"
 
                 # copy merge scripts
-                cp -rf ./cicd/sync-codes/ ./
+                cp -rf ./cicd/sync-codes/ /tmp/
 
                 # sync forked repo        
-                ./sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
+                /tmp/sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
 
                 # add both remotes
                 git rm -rf . > /dev/null 2>&1
@@ -127,22 +127,22 @@ pipeline {
                 start_date="2026-08-27"
                 # test if no conflicts with --dry-run
                 echo "Merge commits (dry-run) ..."
-                python3 ./sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches --dry-run -S -s "\${start_date}"
+                /tmp/sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches --dry-run -S -s "\${start_date}"
                 # merge and push
                 echo "Merge commits (with push) ..."
-                python3 ./sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches -S -s "\${start_date}"
+                /tmp/sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches -S -s "\${start_date}"
                 
                 # create pull-request
                 echo "Create Pull-Request: \${GITEE_SOURCE_OWNER} ..."
-                python3 ./create-pull-request.py --source-owner \${GITEE_SOURCE_OWNER}
+                /tmp/sync-codes/create-pull-request.py --source-owner \${GITEE_SOURCE_OWNER}
 
                 # accept pull-request
                 echo "Accept Pull-Request ..."
-                python3 ./accept-pull-request.py
+                /tmp/sync-codes/accept-pull-request.py
 
                 # sync forked repo
                 echo "Sync forked repo: \${GITEE_SOURCE_OWNER}:develop"
-                python3 ./sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
+                /tmp/sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
                 """
             }
         }

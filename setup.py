@@ -118,10 +118,28 @@ class CMakeExtension(Extension):
         super().__init__(name, sources=[])
 
 
+def _skip_cpp_build():
+    """Check whether to skip C++ extension build.
+
+    Set SKIP_CPP_EXTENSION=1 to skip (e.g. for Read the Docs).
+    Read the Docs sets READTHEDOCS=True automatically across all build
+    steps, so it is used as a reliable fallback (the pre_install
+    `export SKIP_CPP_EXTENSION=1` does not persist to the pip install step).
+    """
+    if os.environ.get("SKIP_CPP_EXTENSION", "") == "1":
+        return True
+    if os.environ.get("READTHEDOCS", "False").lower() == "true":
+        return True
+    return False
+
+
 class CMakeBuildExt(_build_ext):
     """Run CMake configure/build for the extension."""
 
     def build_extension(self, ext):
+        if _skip_cpp_build():
+            return
+
         ext_path = Path(self.get_ext_fullpath(ext.name))
         ext_path.parent.mkdir(parents=True, exist_ok=True)
 
