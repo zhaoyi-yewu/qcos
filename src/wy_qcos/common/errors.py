@@ -20,9 +20,13 @@
 class BaseException(Exception):
     """Base exception."""
 
-    def __init__(self, message):
+    def __init__(
+        self, message, vendor_error_code=None, vendor_error_message=None
+    ):
         super().__init__(message)
         self.message = str(message)
+        self.vendor_error_code = vendor_error_code
+        self.vendor_error_message = vendor_error_message
 
     def get_error_code(self):
         """Get error code.
@@ -34,6 +38,17 @@ class BaseException(Exception):
 
     def get_err_msgs(self):
         return f"[{self.module_name}] {self.err_type}: {self.message}"
+
+    def get_vendor_error_code(self):
+        """Get vendor error code.
+
+        Returns:
+            vendor error code
+        """
+        return self.vendor_error_code
+
+    def get_vendor_err_msgs(self):
+        return f"{self.vendor_error_message}"
 
 
 class GenericException(BaseException):

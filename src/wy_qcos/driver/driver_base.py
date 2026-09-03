@@ -142,6 +142,7 @@ class DriverBase:
             "max_job_wait_time": Constant.DEFAULT_JOB_WAIT_TIME,
             "job_query_interval": Constant.DEFAULT_JOB_QUERY_INTERVAL,
             "compute_fidelity": False,
+            "enable_raw_results": False,
             "qes": {
                 "dynamical_decoupling": {
                     "enable": False,
@@ -161,6 +162,7 @@ class DriverBase:
             Optional("max_job_wait_time"): int,
             Optional("job_query_interval"): int,
             Optional("compute_fidelity"): bool,
+            Optional("enable_raw_results"): bool,
             Optional("qes"): {
                 Optional("dynamical_decoupling"): {
                     Optional("enable"): bool,

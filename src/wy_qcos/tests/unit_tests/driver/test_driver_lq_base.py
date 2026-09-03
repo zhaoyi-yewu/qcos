@@ -29,7 +29,11 @@ org_path = Library.set_driver_venv_path(
 import pytest
 from unittest.mock import patch, Mock
 
-from wy_qcos.common.cmss.base_operation import BaseOperation
+from wy_qcos.transpiler.high_performance import (
+    H,
+    CZ,
+    OperationType,
+)
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import _s
 from wy_qcos.device.device import Device
@@ -41,7 +45,7 @@ from wy_qcos.driver.driver_base import DriverBase
 # OperationType.DOUBLE_QUBIT_OPERATION has integer value 2;
 # use the literal to avoid importing the compiled
 # high_performance module (Linux-only) at test-collection time.
-_OP_TYPE_DOUBLE_QUBIT = 2
+_OP_TYPE_DOUBLE_QUBIT = OperationType.DOUBLE_QUBIT_OPERATION
 
 driver_logical_qubit = DriverLogicalQubitBase()
 shots = 10
@@ -208,7 +212,7 @@ class TestDriverLogicalQubit:
         success, err_msg, task = driver.submit_task(qc, shots)
 
         assert success is False
-        assert "backend down" in err_msg
+        assert isinstance(err_msg, RuntimeError)
         assert task is None
 
     # -- 6. get_task_results --
@@ -235,7 +239,7 @@ class TestDriverLogicalQubit:
         success, err_msg, result = driver.get_task_results(mock_task)
 
         assert success is False
-        assert "task timeout" in err_msg
+        assert isinstance(err_msg, TimeoutError)
         assert result is None
 
     # -- 7. convert_results --
@@ -330,10 +334,10 @@ class TestDriverLogicalQubit:
     def test_convert_code_to_qasm_valid_operations(self):
         driver = DriverLogicalQubitBase()
         ops = [
-            BaseOperation(name="h", targets=[0]),
-            BaseOperation(
-                name="cz",
+            H(targets=[0]),
+            CZ(
                 targets=[0, 1],
+                arg_value=[],
                 operation_type=_OP_TYPE_DOUBLE_QUBIT,
             ),
         ]
@@ -353,8 +357,10 @@ class TestDriverLogicalQubit:
     def test_get_device_info_success(self):
         driver = DriverLogicalQubitBase()
         driver.provider = Mock()
+        driver.backend = Mock()
         cfg = {"qubits": 5, "status": "active"}
-        driver.provider.get_backend_config.return_value = cfg
+        driver.provider.get_backend.return_value = driver.backend
+        driver.backend.refresh_config.return_value = cfg
 
         success, err_msg, result = driver.get_device_info()
 
@@ -365,9 +371,7 @@ class TestDriverLogicalQubit:
     def test_get_device_info_failure(self):
         driver = DriverLogicalQubitBase()
         driver.provider = Mock()
-        driver.provider.get_backend_config.side_effect = RuntimeError(
-            "network error"
-        )
+        driver.provider.get_backend.side_effect = RuntimeError("network error")
 
         success, err_msg, result = driver.get_device_info()
 
