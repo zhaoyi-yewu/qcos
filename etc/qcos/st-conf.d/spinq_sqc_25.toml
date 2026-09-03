@@ -1,0 +1,257 @@
+﻿[spinq_sqc_25]
+alias_name = "量旋科技 SQC-25 云平台超导驱动"
+driver = "DriverSpinqSqc25"
+description = "量旋科技 SQC-25 云平台超导驱动"
+
+# [Optional] max qubits of device
+# device_max_qubits = 25
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_spinq_sqc_25.log
+device_log_file = "/var/log/qcos/device_spinq_sqc_25.log"
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_mgr_spinq_sqc_25.log
+
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
+# [Optional] max job wait time, default value is 604800 seconds (7 days)
+max_job_wait_time = 604800
+
+# [Optional] job query interval, default value is 5 seconds
+job_query_interval = 5
+
+# [Required] SpinQ Cloud username
+username = "spinq_st_test"
+
+# [Required] path to RSA private key file for authentication
+keyfile = "/etc/qcos/conf.d/spinq_pri.key"
+
+# [Required] SpinQ Cloud API host
+host = "http://127.0.0.1:18625"
+# System test: points to the mock aiohttp server started by
+# spinq_sqc_25_api_server.py (port 18625).
+# Routes are registered without an /api prefix, so the host
+# must not include /api.
+
+# [Optional] SpinQ Cloud machine code for calibration data
+machine_code = "sqc_25_vp"
+
+[spinq_sqc_25.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = true
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_spinq_sqc_25.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
+
+[spinq_sqc_25.transpiler.qpu_configs]
+# SpinQ SQC-25 cloud platform qpu configs from calibration data
+# Source: quantum_topology.csv (T1/T2/f_ro/f_sq/f_cz)
+qubits = 25
+
+# Coupler map: bidirectional edges from calibration data
+coupler_map.CZ0_1 = ["Q0", "Q1"]
+coupler_map.CZ0_5 = ["Q0", "Q5"]
+coupler_map.CZ1_0 = ["Q1", "Q0"]
+coupler_map.CZ1_2 = ["Q1", "Q2"]
+coupler_map.CZ1_6 = ["Q1", "Q6"]
+coupler_map.CZ2_1 = ["Q2", "Q1"]
+coupler_map.CZ2_3 = ["Q2", "Q3"]
+coupler_map.CZ2_7 = ["Q2", "Q7"]
+coupler_map.CZ3_2 = ["Q3", "Q2"]
+coupler_map.CZ3_4 = ["Q3", "Q4"]
+coupler_map.CZ3_8 = ["Q3", "Q8"]
+coupler_map.CZ4_3 = ["Q4", "Q3"]
+coupler_map.CZ4_9 = ["Q4", "Q9"]
+coupler_map.CZ5_0 = ["Q5", "Q0"]
+coupler_map.CZ5_6 = ["Q5", "Q6"]
+coupler_map.CZ5_10 = ["Q5", "Q10"]
+coupler_map.CZ6_1 = ["Q6", "Q1"]
+coupler_map.CZ6_5 = ["Q6", "Q5"]
+coupler_map.CZ6_7 = ["Q6", "Q7"]
+coupler_map.CZ6_11 = ["Q6", "Q11"]
+coupler_map.CZ7_2 = ["Q7", "Q2"]
+coupler_map.CZ7_6 = ["Q7", "Q6"]
+coupler_map.CZ7_8 = ["Q7", "Q8"]
+coupler_map.CZ7_12 = ["Q7", "Q12"]
+coupler_map.CZ8_3 = ["Q8", "Q3"]
+coupler_map.CZ8_7 = ["Q8", "Q7"]
+coupler_map.CZ8_13 = ["Q8", "Q13"]
+coupler_map.CZ9_4 = ["Q9", "Q4"]
+coupler_map.CZ9_14 = ["Q9", "Q14"]
+coupler_map.CZ10_5 = ["Q10", "Q5"]
+coupler_map.CZ10_11 = ["Q10", "Q11"]
+coupler_map.CZ10_15 = ["Q10", "Q15"]
+coupler_map.CZ11_6 = ["Q11", "Q6"]
+coupler_map.CZ11_10 = ["Q11", "Q10"]
+coupler_map.CZ11_12 = ["Q11", "Q12"]
+coupler_map.CZ11_16 = ["Q11", "Q16"]
+coupler_map.CZ12_7 = ["Q12", "Q7"]
+coupler_map.CZ12_11 = ["Q12", "Q11"]
+coupler_map.CZ12_13 = ["Q12", "Q13"]
+coupler_map.CZ12_17 = ["Q12", "Q17"]
+coupler_map.CZ13_8 = ["Q13", "Q8"]
+coupler_map.CZ13_12 = ["Q13", "Q12"]
+coupler_map.CZ13_14 = ["Q13", "Q14"]
+coupler_map.CZ13_18 = ["Q13", "Q18"]
+coupler_map.CZ14_9 = ["Q14", "Q9"]
+coupler_map.CZ14_13 = ["Q14", "Q13"]
+coupler_map.CZ14_19 = ["Q14", "Q19"]
+coupler_map.CZ15_10 = ["Q15", "Q10"]
+coupler_map.CZ15_16 = ["Q15", "Q16"]
+coupler_map.CZ15_20 = ["Q15", "Q20"]
+coupler_map.CZ16_11 = ["Q16", "Q11"]
+coupler_map.CZ16_15 = ["Q16", "Q15"]
+coupler_map.CZ16_17 = ["Q16", "Q17"]
+coupler_map.CZ16_21 = ["Q16", "Q21"]
+coupler_map.CZ17_12 = ["Q17", "Q12"]
+coupler_map.CZ17_16 = ["Q17", "Q16"]
+coupler_map.CZ17_18 = ["Q17", "Q18"]
+coupler_map.CZ17_22 = ["Q17", "Q22"]
+coupler_map.CZ18_13 = ["Q18", "Q13"]
+coupler_map.CZ18_17 = ["Q18", "Q17"]
+coupler_map.CZ18_19 = ["Q18", "Q19"]
+coupler_map.CZ18_23 = ["Q18", "Q23"]
+coupler_map.CZ19_14 = ["Q19", "Q14"]
+coupler_map.CZ19_18 = ["Q19", "Q18"]
+coupler_map.CZ19_24 = ["Q19", "Q24"]
+coupler_map.CZ20_15 = ["Q20", "Q15"]
+coupler_map.CZ20_21 = ["Q20", "Q21"]
+coupler_map.CZ21_16 = ["Q21", "Q16"]
+coupler_map.CZ21_20 = ["Q21", "Q20"]
+coupler_map.CZ21_22 = ["Q21", "Q22"]
+coupler_map.CZ22_17 = ["Q22", "Q17"]
+coupler_map.CZ22_21 = ["Q22", "Q21"]
+coupler_map.CZ22_23 = ["Q22", "Q23"]
+coupler_map.CZ23_18 = ["Q23", "Q18"]
+coupler_map.CZ23_22 = ["Q23", "Q22"]
+coupler_map.CZ23_24 = ["Q23", "Q24"]
+coupler_map.CZ24_19 = ["Q24", "Q19"]
+coupler_map.CZ24_23 = ["Q24", "Q23"]
+
+# Readout error: 1 - readout fidelity (f_ro)
+readout_error.Q0 = 0.1232
+readout_error.Q1 = 0.2126
+readout_error.Q2 = 0.2641
+readout_error.Q3 = 0.077
+readout_error.Q4 = 0.1798
+readout_error.Q5 = 0.1333
+readout_error.Q6 = 0.1192
+readout_error.Q7 = 0.0929
+readout_error.Q8 = 0.2986
+readout_error.Q9 = 0.2046
+readout_error.Q10 = 0.084
+readout_error.Q11 = 0.2705
+readout_error.Q12 = 0.2539
+readout_error.Q13 = 0.0939
+readout_error.Q14 = 0.1339
+readout_error.Q15 = 0.1901
+readout_error.Q16 = 0.3295
+readout_error.Q17 = 0.0641
+readout_error.Q18 = 0.3363
+readout_error.Q19 = 0.0581
+readout_error.Q20 = 0.2268
+readout_error.Q21 = 0.3397
+readout_error.Q22 = 0.1425
+readout_error.Q23 = 0.0897
+readout_error.Q24 = 0.2158
+
+# Coupler error: 1 - two-qubit gate fidelity (f_cz)
+coupler_error.CZ0_1 = 0.0171
+coupler_error.CZ0_5 = 0.0109
+coupler_error.CZ1_0 = 0.0171
+coupler_error.CZ1_2 = 0.0099
+coupler_error.CZ1_6 = 0.0178
+coupler_error.CZ2_1 = 0.0099
+coupler_error.CZ2_3 = 0.0172
+coupler_error.CZ2_7 = 0.017
+coupler_error.CZ3_2 = 0.0172
+coupler_error.CZ3_4 = 0.0176
+coupler_error.CZ3_8 = 0.0132
+coupler_error.CZ4_3 = 0.0176
+coupler_error.CZ4_9 = 0.0093
+coupler_error.CZ5_0 = 0.0109
+coupler_error.CZ5_6 = 0.0131
+coupler_error.CZ5_10 = 0.0068
+coupler_error.CZ6_1 = 0.0178
+coupler_error.CZ6_5 = 0.0131
+coupler_error.CZ6_7 = 0.0073
+coupler_error.CZ6_11 = 0.0037
+coupler_error.CZ7_2 = 0.017
+coupler_error.CZ7_6 = 0.0073
+coupler_error.CZ7_8 = 0.0105
+coupler_error.CZ7_12 = 0.0221
+coupler_error.CZ8_3 = 0.0132
+coupler_error.CZ8_7 = 0.0105
+coupler_error.CZ8_13 = 0.0066
+coupler_error.CZ9_4 = 0.0093
+coupler_error.CZ9_14 = 0.0262
+coupler_error.CZ10_5 = 0.0068
+coupler_error.CZ10_11 = 0.0215
+coupler_error.CZ10_15 = 0.0369
+coupler_error.CZ11_6 = 0.0037
+coupler_error.CZ11_10 = 0.0215
+coupler_error.CZ11_12 = 0.0282
+coupler_error.CZ11_16 = 0.0124
+coupler_error.CZ12_7 = 0.0221
+coupler_error.CZ12_11 = 0.0282
+coupler_error.CZ12_13 = 0.0044
+coupler_error.CZ12_17 = 0.0131
+coupler_error.CZ13_8 = 0.0066
+coupler_error.CZ13_12 = 0.0044
+coupler_error.CZ13_14 = 0.0165
+coupler_error.CZ13_18 = 0.0146
+coupler_error.CZ14_9 = 0.0262
+coupler_error.CZ14_13 = 0.0165
+coupler_error.CZ14_19 = 0.0206
+coupler_error.CZ15_10 = 0.0369
+coupler_error.CZ15_16 = 0.0165
+coupler_error.CZ15_20 = 0.01
+coupler_error.CZ16_11 = 0.0124
+coupler_error.CZ16_15 = 0.0165
+coupler_error.CZ16_17 = 0.0117
+coupler_error.CZ16_21 = 0.0215
+coupler_error.CZ17_12 = 0.0131
+coupler_error.CZ17_16 = 0.0117
+coupler_error.CZ17_18 = 0.0274
+coupler_error.CZ17_22 = 0.0066
+coupler_error.CZ18_13 = 0.0146
+coupler_error.CZ18_17 = 0.0274
+coupler_error.CZ18_19 = 0.0248
+coupler_error.CZ18_23 = 0.0071
+coupler_error.CZ19_14 = 0.0206
+coupler_error.CZ19_18 = 0.0248
+coupler_error.CZ19_24 = 0.0132
+coupler_error.CZ20_15 = 0.01
+coupler_error.CZ20_21 = 0.0199
+coupler_error.CZ21_16 = 0.0215
+coupler_error.CZ21_20 = 0.0199
+coupler_error.CZ21_22 = 0.0066
+coupler_error.CZ22_17 = 0.0066
+coupler_error.CZ22_21 = 0.0066
+coupler_error.CZ22_23 = 0.0075
+coupler_error.CZ23_18 = 0.0071
+coupler_error.CZ23_22 = 0.0075
+coupler_error.CZ23_24 = 0.0189
+coupler_error.CZ24_19 = 0.0132
+coupler_error.CZ24_23 = 0.0189

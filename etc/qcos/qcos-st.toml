@@ -17,7 +17,7 @@ DEVICE_LIST = [
     "stim",
     "wy_hanyuan1", "wy_hanyuan1_sim",
     "tiangong100", "tiangong550_v2",
-    "spinq_rpc", "spinq_gemini", "spinq_triangulum",
+    "spinq_rpc", "spinq_gemini", "spinq_triangulum", "spinq_sqc_25",
     "uqc_matrix2", "ciqtek_ion_1",
     "lq_mq02", "lq_qz01_surface",
     "quafu",

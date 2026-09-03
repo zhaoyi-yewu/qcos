@@ -238,6 +238,9 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 
 .. code-block:: shell
 
+   # SQC-25 云平台超导驱动
+   qcos-cli submit-job --code-type qasm --shots 1024 --backend spinq_sqc_25 --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm.qasm
+
    # 量旋科技 真实运行
    qcos-cli submit-job --code-type qasm --shots 10 --backend spinq_rpc -f ./samples/qasm/2.0/simple-qasm.qasm
 
