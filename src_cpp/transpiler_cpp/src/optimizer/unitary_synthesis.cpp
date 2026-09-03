@@ -167,6 +167,7 @@ struct BlockProcessor {
     }
     bool all_basis_block = bg.has_value() && !has_non_basis_gate;
 
+    // [DBG] 临时诊断: 为什么 cx 拥留
     bool should_replace = false;
     if (replacement.empty() && has_non_basis_gate) {
       should_replace = true;
@@ -258,9 +259,13 @@ int UnitarySynthesis::run(
     }
 
     // Phase 2: 合成 2-qubit 交互块 (max_qubits=2 保证块内 qubit 并集 ≤2,
-    // 可直接做 4x4 酉合成)。
+    // 可直接做 4x4 酉合成)。min_block_size=1: 超宽门 (如 3-qubit ccx) 被
+    // collect 跳过时会把 qubit 链隔断, 产生仅含 1 个 2Q 门的小块; 若用
+    // min_block_size=2 过滤掉它们, 这些 2Q 门 (如非 basis 的 cx) 将永远
+    // 无法被合成转 basis。故此处用 1, 由 process_block 的防震荡逻辑决定
+    // 是否替换。
     while (true) {
-      auto blocks = collect_interacting_blocks(dag, collect_all, 2, 2);
+      auto blocks = collect_interacting_blocks(dag, collect_all, 2, 1);
       if (blocks.empty()) break;
       bool p2_replaced = false;
       for (const auto& block : blocks) {
