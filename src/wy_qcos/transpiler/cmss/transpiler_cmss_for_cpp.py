@@ -463,7 +463,6 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             )
 
         timing_attrs = (
-            "parse_time",
             "opt_time1",
             "decompose_1q2q_time",
             "decompose_rule_time",

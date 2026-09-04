@@ -177,7 +177,7 @@ class TestTranspilerCmdLine:
         mock_cmss_transpiler_perf_exec.return_value = TranspileRuntime()
 
         perf = CMSSTranspilerPerf()
-        perf.run_count = 2
+        perf.total_files = ["file1"]
         params = TranspileParams()
         params.mapping_info = ("0", "1")
         perf.params_list.append(params)
@@ -396,17 +396,17 @@ class TestTranspilerCmdLine:
     )
     @patch(
         "wy_qcos.transpiler.cmss.transpiler_cmd_line."
-        "CMSSTranspilerPerf.output_csv_file"
+        "CMSSTranspilerPerf._init_csv_file"
     )
     def test_main_cmss_transpiler_csv_without_single_ok(
         self,
-        mock_output_csv_file,
+        mock_init_csv_file,
         mock_parse_file_args,
         mock_get_transpile_result,
     ):
         mock_parse_file_args.return_value = None
         mock_get_transpile_result.return_value = None
-        mock_output_csv_file.return_value = None
+        mock_init_csv_file.return_value = None
         perf = CMSSTranspilerPerf()
         conf_path = Path(GLOBAL_CONFIGS["temp_dir"]) / "csv_nosingle_conf.toml"
         conf_path.write_text(
@@ -427,7 +427,7 @@ class TestTranspilerCmdLine:
         assert perf.enable_transpile_single is False
         assert perf.csv_file == "cmss_perf.csv"
         mock_get_transpile_result.assert_called_once()
-        mock_output_csv_file.assert_called_once()
+        mock_init_csv_file.assert_called_once()
 
     def _build_mock_transpiler_for_single(self):
         mock_transpiler = MagicMock()

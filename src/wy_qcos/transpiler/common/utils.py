@@ -20,11 +20,11 @@ import time
 
 class Timer:
     def __enter__(self):
-        self.start = time.time()
+        self.start = time.perf_counter()
         return self
 
     def __exit__(self, *args):
-        self.end = time.time()
+        self.end = time.perf_counter()
         self.elapsed = self.end - self.start
 
 
@@ -46,7 +46,9 @@ class TranspilePerfConstant:
     TRANSPILE_TIME = "转译时间(s)"
     TOTAL_TIME = "总时间(s)"
     TRANSPILED_GATE_COUNT = "转译后门数量"
+    TRANSPILED_TWO_QUBIT_GATE_COUNT = "转译后两比特门数量"
     TRANSPILED_DEPTH = "转译后电路深度"
+    BASIS_GATE_SET = "基础门集"
     CONS_DICT = {
         QASM_FILE: 0,
         NUM_QUBITS: 1,
@@ -66,6 +68,8 @@ class TranspilePerfConstant:
         TOTAL_TIME: 15,
         TRANSPILED_GATE_COUNT: 16,
         TRANSPILED_DEPTH: 17,
+        TRANSPILED_TWO_QUBIT_GATE_COUNT: 18,
+        BASIS_GATE_SET: 19,
     }
 
 
@@ -83,7 +87,9 @@ class TranspileRuntime:
         self.mapping_time = 0.0
         self.routing_time = 0.0
         self.transpiled_gate_count = 0
+        self.transpiled_two_qubit_gate_count = 0
         self.transpiled_depth = 0
+        self.basis_gate_set = ""
 
     def add_runtime(self, runtime: "TranspileRuntime"):
         self.total_time += runtime.total_time
@@ -97,6 +103,9 @@ class TranspileRuntime:
         self.mapping_time += runtime.mapping_time
         self.routing_time += runtime.routing_time
         self.transpiled_gate_count += runtime.transpiled_gate_count
+        self.transpiled_two_qubit_gate_count += (
+            runtime.transpiled_two_qubit_gate_count
+        )
         self.transpiled_depth += runtime.transpiled_depth
 
     def avg_runtime(self, run_count):
@@ -111,4 +120,5 @@ class TranspileRuntime:
         self.mapping_time /= run_count
         self.routing_time /= run_count
         self.transpiled_gate_count //= run_count
+        self.transpiled_two_qubit_gate_count //= run_count
         self.transpiled_depth //= run_count
