@@ -154,5 +154,5 @@ USE_SSL = false
 
 [DEVICES]
 # DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "wy_hanyuan1", "wy_hanyuan1_sim", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "spinq_sqc_25", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim", "ciqtek_ion_1", "quafu", "hanyuan1_pulse", "lq_qz01_surface", "lq_mq02", "lq_agate100", "lq_qz02", "lq_qz01_repetition", "cetc_baihua"]
+# DEVICE_LIST = ["dummy", "hanyuan1", "wy_hanyuan1", "wy_hanyuan1_sim", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "spinq_sqc_25", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim", "qutip_ashn_sim", "ciqtek_ion_1", "quafu", "hanyuan1_pulse", "lq_qz01_surface", "lq_mq02", "lq_agate100", "lq_qz02", "lq_qz01_repetition", "cetc_baihua"]
 DEVICE_LIST = ["dummy", "qutip_sim"]

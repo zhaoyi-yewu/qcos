@@ -42,6 +42,7 @@
 | Qiskit Aer 模拟器驱动 | IBM Qiskit | DriverQiskitAerSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Aer 模拟器驱动 |
 | Qiskit Qasm 模拟器驱动 | IBM Qiskit | DriverQiskitQasmSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Qasm 模拟器驱动 |
 | Qutip 模拟器驱动 | QuTiP 社区 | DriverQutipSim | 0.0.1 | 通用模拟器 | 10 | cmss | Qutip 模拟器驱动 |
+| Qutip 模拟器驱动(支持ASHN) | QuTiP 社区 | DriverQutipAshnSim | 0.0.1 | 通用模拟器 | 10 | cmss | Qutip 模拟器驱动(支持ASHN) |
 | Stim 仿真器驱动 | Stim 社区 | DriverStim | 0.0.1 | 专用仿真器 | 10 | cmss | Stim 仿真器驱动, 专用于QEC场景 |
 
 上表也可以通过QCOS系统命令行查看：
