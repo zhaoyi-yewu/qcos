@@ -58,6 +58,18 @@ copy_from = "logical_qubit"
 module_name = "driver_lq_qz01_surface_code"
 copy_from = "logical_qubit"
 
+[DriverLqQZ01RepetitionCode]
+module_name = "driver_lq_qz01_repetition_code"
+copy_from = "logical_qubit"
+
+[DriverLqQZ02]
+module_name = "driver_lq_qz02"
+copy_from = "logical_qubit"
+
+[DriverLqAGate100]
+module_name = "driver_lq_agate100"
+copy_from = "logical_qubit"
+
 [qiskit]
 deps_pyproject_file = "../pyproject.toml"
 deps_sections = ["driver-qiskit"]

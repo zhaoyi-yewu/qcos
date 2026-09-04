@@ -40,7 +40,7 @@ job_query_interval = 5
 
 chip_name = "MQ02"
 token = ""
-url = "https://cloud.logicalqubit.com"
+url = "http://127.0.0.1:18607"
 
 [lq_mq02.device_monitor]
 # [Optional] enable device monitor

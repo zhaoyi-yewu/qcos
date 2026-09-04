@@ -1,7 +1,7 @@
 [lq_qz01_surface]
-alias_name = "逻辑比特 QZ01-surface_code 超导驱动"
+alias_name = "逻辑比特 QZ01-surface_code"
 driver = "DriverLqQZ01SurfaceCode"
-description = "逻辑比特 QZ01-surface_code 超导驱动"
+description = "逻辑比特 QZ01-surface_code"
 
 # [Optional] enable or disable the device
 # enable = true
