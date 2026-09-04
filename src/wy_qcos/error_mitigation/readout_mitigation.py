@@ -38,6 +38,7 @@ from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.utils import (
     counts_to_probabilities,
     clip_and_normalize,
+    closest_positive_distribution,
     expectation_from_probabilities,
     marginal_samples,
     samples_to_probabilities,
@@ -79,12 +80,18 @@ def mitigate_readout(
 ) -> np.ndarray:
     """Apply pseudo-inverse readout mitigation.
 
+    Computes the inverse of the confusion matrix and applies it to the raw
+    probability vector, then projects the resulting quasi-distribution
+    onto the closest valid probability distribution (mitiq-style L2
+    projection). This is more faithful than clip-and-renormalize when the
+    pseudo-inverse produces large negative quasi-probabilities.
+
     Args:
         probabilities: Raw probability vector.
         confusion_matrix: Readout confusion matrix.
 
     Returns:
-        Mitigated probability vector (clipped and renormalized).
+        Mitigated probability vector (valid probability distribution).
 
     Raises:
         ValueError: If confusion_matrix is not square.
@@ -92,8 +99,8 @@ def mitigate_readout(
     if confusion_matrix.shape[0] != confusion_matrix.shape[1]:
         raise ValueError("confusion_matrix must be square")
     pinv = np.linalg.pinv(confusion_matrix)
-    mitigated = pinv @ probabilities
-    return clip_and_normalize(mitigated)
+    quasi = pinv @ probabilities
+    return closest_positive_distribution(quasi)
 
 
 def build_confusion_matrix_from_counts(
