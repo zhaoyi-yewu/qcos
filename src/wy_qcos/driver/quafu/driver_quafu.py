@@ -38,6 +38,7 @@ class DriverQuafu(DriverGateBase):
     """
 
     task_status_success = "Finished"
+    task_status_failure = frozenset({"Failed", "Canceled", "Cancelled"})
     shots_per_repeat = 1024
 
     def __init__(self):
@@ -71,6 +72,7 @@ class DriverQuafu(DriverGateBase):
         self.default_data_type = DriverBase.DATA_TYPE_QASM2
         self.supported_code_types = [Constant.CODE_TYPE_QASM]
         self.supported_transpilers = [
+            Constant.TRANSPILER_DUMMY,
             Constant.TRANSPILER_CMSS,
             Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
         ]
@@ -293,6 +295,13 @@ class DriverQuafu(DriverGateBase):
             success, error message, task_id
         """
         tid = self.tmgr.run(task_info, repeat=repeat)
+        # QuarkStudio returns an integer task ID on success and an error
+        # response on submission failure.  Do not pass an error dictionary
+        # back into the status/result endpoints as though it were a task ID.
+        if isinstance(tid, bool) or not isinstance(tid, int):
+            raise ValueError(
+                f"Quafu task submission returned an invalid task ID: {tid!r}"
+            )
         return tid
 
     def check_task_status(self, task_id, expect_task_status):
@@ -305,19 +314,92 @@ class DriverQuafu(DriverGateBase):
         Returns:
             success or fail, err_msg, status
         """
-        _, result = self.get_task_results(task_id)
-        if result:
-            status = result["status"]
+        _, response = self.get_task_status(task_id)
+        if not response:
+            return False, "Quafu task status response is empty", None
+
+        if isinstance(response, str):
+            status = response
+        elif isinstance(response, dict):
+            status = response.get("status")
         else:
             status = None
-        if status in expect_task_status:
+
+        if not isinstance(status, str) or not status:
+            raise ValueError(
+                f"Invalid Quafu task status response for {task_id}: "
+                f"{response!r}"
+            )
+
+        expected_statuses = (
+            {expect_task_status}
+            if isinstance(expect_task_status, str)
+            else set(expect_task_status)
+        )
+        if status in expected_statuses:
             return True, None, status
+
+        if status in self.task_status_failure:
+            remote_result = None
+            result_fetch_error = None
+            try:
+                _, remote_result = self.get_task_results(task_id)
+            except Exception as e:
+                result_fetch_error = str(e)
+
+            logger.error(
+                f"Quafu remote task failed: task_id={task_id}, "
+                f"status_response={response!r}, "
+                f"result_response={remote_result!r}, "
+                f"result_fetch_error={result_fetch_error!r}"
+            )
+
+            error_detail = None
+            if isinstance(remote_result, dict):
+                error_detail = (
+                    remote_result.get("error")
+                    or remote_result.get("message")
+                    or remote_result.get("msg")
+                    or remote_result.get("detail")
+                )
+            elif isinstance(remote_result, str) and remote_result:
+                error_detail = remote_result
+
+            if isinstance(response, dict):
+                error_detail = (
+                    error_detail
+                    or response.get("error")
+                    or response.get("message")
+                )
+            if not error_detail and result_fetch_error:
+                error_detail = (
+                    f"failed to fetch remote result: {result_fetch_error}"
+                )
+            suffix = f": {error_detail}" if error_detail else ""
+            raise ValueError(
+                f"Quafu task {task_id} failed with status {status}{suffix}"
+            )
+
         err_msg = (
             "Task status is not in "
-            f"{', '.join(map(str, expect_task_status))}, "
+            f"{', '.join(map(str, expected_statuses))}, "
             f"and current status: {status}"
         )
-        return False, err_msg, None
+        return False, err_msg, status
+
+    def get_task_status(self, task_id):
+        """Get the current status response from QuarkStudio.
+
+        Args:
+            task_id: task id
+
+        Returns:
+            success flag and the remote status response
+        """
+        result = self.tmgr.status(task_id)
+        if result is None:
+            return False, None
+        return True, result
 
     def get_task_results(self, task_id):
         """Get task results.

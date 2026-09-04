@@ -61,7 +61,7 @@ async def submit_handler(request):
 async def get_status_handler(request):
     """Get task status handler."""
     logger.info("get task status request received.")
-    response_data = {}
+    response_data = {"status": "Finished"}
     return web.json_response(response_data)
 
 
@@ -126,7 +126,7 @@ def main(port=18606):
         "/task/run/",
         submit_handler,
     )
-    app.router.add_get("/task/status/", get_status_handler)
+    app.router.add_get("/task/status/{task_id}", get_status_handler)
     app.router.add_get("/task/result/222", get_result_handler)
 
     web.run_app(app, host="", port=port)

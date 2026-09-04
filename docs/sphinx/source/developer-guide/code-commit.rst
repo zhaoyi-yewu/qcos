@@ -81,8 +81,8 @@
 
 .. note::
 
-    具体项目开发规范，参考： :doc:`项目开发规范 <developer-guidelines>`，
-    也可参考和套用 AI Skill： :download:`SKILL.md <../../../../.roo/skills/develop-new-module/SKILL.md>`
+    具体项目开发规范，参考： :doc:`项目开发规范 <developer-guidelines>` 和 :doc:`新功能模块开发 <develop-new-module>`，
+    也可以在AI编程Agent中把下列SKILL作为技能库引用： :download:`SKILL.md <../../../../.roo/skills/develop-new-module/SKILL.md>`
 
 修改代码：
 
@@ -180,8 +180,16 @@
 代码评审
 ------------------------------
 
-提交 PR 后，社区 CICD 自动化测试脚本和评审人员会对代码进行评审。
-至少 **1 名核心开发者** 审批通过后才能合并。
+提交 PR 后，CI/CD 自动化测试和评审人员会对代码进行评审。
+
+.. rubric:: 评审流程包含两个部分：
+
+1. **CICD 自动测试**：由 Jenkins CI/CD Gate 流水线自动执行（详见 :ref:`CICD自动测试评审 <cicd-auto-test-review>` 段落），通过后 PR 测试状态设为通过
+2. **人工代码评审**：至少 **1 名核心开发者** 审批通过后才能合并
+
+.. note::
+
+    代码合并需同时满足两个条件：CI/CD 测试通过 **且** 至少 1 名核心开发者审批通过。
 
 如果评审时发现问题，可以在 Pull Request 中进行代码评审，添加评审意见：
 
@@ -225,9 +233,90 @@
     $ git push -f origin feature_new_author
 
 
+.. _cicd-auto-test-review:
+
+CICD自动测试评审
+------------------------------
+
+开发者提交PR后，Gitee Webhook 会自动触发Jenkins CI/CD Gate 流水线，对本次PR进行自动化测试和代码检查。
+
+.. rubric:: CI/CD 流水线阶段
+
+流水线按以下顺序依次执行，任一阶段失败即终止后续流程：
+
+1. **commit-check**：检查 commit message 格式和文件格式规范
+2. **code-check**：代码静态检查（Linter）、代码风格（Code Style）、Docstring 检查
+3. **docs-check**：文档规范检查
+4. **functional-tests**：C++ 单元测试、Python 代码覆盖率测试、客户端测试
+
+.. rubric:: PR 评审交互
+
+CI/CD 流水线在执行过程中会自动与 Gitee PR 进行交互反馈：
+
+* 构建开始时：自动在 PR 评论区发布"🔄 CI/CD Pipeline Started"评论，附Jenkins构建链接
+* 构建成功后：自动在 PR 评论区发布"✅ CI/CD Pipeline Succeeded"评论，并通过Gitee API将PR测试状态设为通过，准许合并
+* 构建失败后：自动在 PR 评论区发布"❌ CI/CD Pipeline Failed"评论，附失败日志链接，并通过Gitee API将PR测试状态设为失败（撤销之前的通过状态），阻止合并
+* 构建不稳定时：自动发布"⚠️ CI/CD Pipeline Unstable"评论
+* 构建中断时：自动发布"🚫 CI/CD Pipeline Aborted"评论
+
+.. note::
+
+    PR 测试状态是合并的前置条件。只有 CI/CD 测试通过（PR 审核页"测试"列显示绿色通过），核心开发者才能执行合并操作。
+    若 CI/CD 测试不通过（"测试"列显示红色失败），需重新修改代码后再次提交，测试状态会自动更新。
+
+.. rubric:: 排查 CICD 问题
+
+如果CI/CD测试不通过，可以点击Gitee PR评论区中的CICD报错日志链接，进入Jenkins构建页面排查问题原因。
+
+.. figure:: ../_static/developer-guide/cicd-failed.png
+   :alt: Gitee PR评论区CICD报错日志链接
+   :width: 80%
+   :align: center
+
+   Gitee PR评论区CICD报错日志链接
+
+.. figure:: ../_static/developer-guide/cicd-check.png
+   :alt: Jenkins日志界面排查问题
+   :width: 80%
+   :align: center
+
+   CICD日志界面排查问题
+
+.. rubric:: 重新触发CICD测试
+
+有时候可能当时CICD环境有问题或其他非代码问题，导致测试没通过。这种情况下开发者可以让CICD重新跑一下，在PR评论区输入以下任一关键词：
+
+* ``retest``
+* ``retry``
+* ``rebuild``
+
+Jenkins 会接收到评论 Webhook 并重新运行 CI/CD 测试。
+
+.. figure:: ../_static/developer-guide/cicd-retest.png
+   :alt: 通过retest / rebuild / retry 重新运行CICD测试
+   :width: 80%
+   :align: center
+
+   通过retest / rebuild / retry 重新运行CICD测试
+
+
 代码合入
 ------------------------------
 
-经 Code Review 后，社区 CICD 测试脚本和评审人员对代码评审均无问题后，
+当CI/CD测试通过（PR 测试状态显示通过）且至少1名核心开发者审批通过后，
 核心开发者将在 Gitee 上手动合并代码，代码合入成功。
-开发者可在本地通过 ``git pull --rebase`` 更新最新代码
+
+合并后，开发者可在本地拉取最新代码：
+
+.. code-block:: shell
+
+    $ git checkout develop
+    $ git pull --rebase
+
+.. note::
+
+    合并后如勾选了"合并后删除提交分支"，开发者可删除本地对应的feature/bugfix分支：
+
+    .. code-block:: shell
+
+        $ git branch -d feature_new_author

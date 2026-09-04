@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.driver.driver_base import DriverBase
@@ -956,6 +956,7 @@ class TestJobEngine:
         mock_driver.get_enable_wirecut.return_value = True
         mock_driver.get_wirecut_qubit_width.return_value = 2
         mock_driver.get_name.return_value = "TestDevice"
+        mock_driver.enable_circuit_aggregation = True
         mock_transpiler = Mock()
         mock_cut_wire = Mock()
         mock_cut_wire.num_cuts = 1
@@ -1044,6 +1045,103 @@ class TestJobEngine:
             and "executed_count=2" in message
             and "cache_hit_count=0" in message
             for message in log_messages
+        )
+
+    @patch("wy_qcos.engine.job_engine.SubcircuitResultCache.from_job_info")
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "generate_all_variant_subcircuits_for_execute"
+    )
+    @patch("wy_qcos.engine.job_engine._run_code")
+    @patch(
+        "wy_qcos.engine.job_engine."
+        "reconstruct_probability_distribution_wire_cut"
+    )
+    def test_run_circuit_cutting_code_non_aggregating_driver_runs_individually(
+        self,
+        mock_reconstruct,
+        mock_run_code,
+        mock_generate_subs,
+        mock_from_job_info,
+    ):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 8
+        mock_driver.get_wirecut_qubit_width.return_value = 8
+        mock_driver.enable_circuit_aggregation = False
+        mock_transpiler = Mock()
+        mock_cut_wire = Mock()
+        mock_cut_wire.num_cuts = 1
+        mock_generate_subs.return_value = (
+            ["original-1", "original-2"],
+            ["subcircuit-1", "subcircuit-2"],
+            mock_cut_wire,
+        )
+        result_cache = mock_from_job_info.return_value
+        result_cache.get.side_effect = [None, None]
+        first_counts = {"00": 3, "11": 1}
+        second_counts = {"00": 1, "11": 3}
+        mock_run_code.side_effect = [
+            (
+                {
+                    "results": first_counts,
+                    "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+                },
+                mock_driver,
+                mock_transpiler,
+                None,
+            ),
+            (
+                {
+                    "results": second_counts,
+                    "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+                },
+                mock_driver,
+                mock_transpiler,
+                None,
+            ),
+        ]
+        mock_reconstruct.return_value = (
+            np.array([0.5, 0.0, 0.0, 0.5]),
+            {},
+        )
+        job_id = "00000000-0000-4000-8000-000000000001"
+        job_info = {
+            "data": {
+                "job_id": job_id,
+                "code_type": Constant.CODE_TYPE_QASM,
+            }
+        }
+
+        results, _, _, _ = run_circuit_cutting_code(
+            0,
+            {f"{job_id}-0": "source"},
+            2,
+            job_info,
+            mock_driver,
+            mock_transpiler,
+        )
+
+        assert results["metadata"]["status"] == Constant.JOB_STATUS_COMPLETED
+        assert mock_run_code.call_count == 2
+        assert [call.args[0] for call in mock_run_code.call_args_list] == [
+            "0-0",
+            "0-1",
+        ]
+        submitted_batches = [
+            list(call.args[1].values())
+            for call in mock_run_code.call_args_list
+        ]
+        assert submitted_batches == [["subcircuit-1"], ["subcircuit-2"]]
+        result_cache.set.assert_has_calls([
+            call("subcircuit-1", job_info, first_counts),
+            call("subcircuit-2", job_info, second_counts),
+        ])
+        reconstructed_results = mock_reconstruct.call_args.args[1]
+        np.testing.assert_array_equal(
+            reconstructed_results[0], np.array([0.75, 0.0, 0.0, 0.25])
+        )
+        np.testing.assert_array_equal(
+            reconstructed_results[1], np.array([0.25, 0.0, 0.0, 0.75])
         )
 
     @patch("wy_qcos.engine.job_engine.SubcircuitResultCache.from_job_info")

@@ -1751,7 +1751,10 @@ def run_circuit_cutting_code(
             sub_source_code_index = f"{source_code_index}-{i}"
             src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
 
-    if src_sub_code_dict:
+    supports_circuit_aggregation = (
+        getattr(driver, "enable_circuit_aggregation", False) is True
+    )
+    if src_sub_code_dict and supports_circuit_aggregation:
         logger.info(
             f"Wirecut subcircuit batch execution started: job_id={job_id}, "
             f"source_code_index={source_code_index}, "
@@ -1808,6 +1811,66 @@ def run_circuit_cutting_code(
             f"status={execution_status}, "
             f"duration_seconds={execution_duration:.6f}"
         )
+    elif src_sub_code_dict:
+        logger.info(
+            f"Wirecut subcircuit individual execution started: "
+            f"job_id={job_id}, source_code_index={source_code_index}, "
+            f"count={len(src_sub_code_dict)}, "
+            f"reason=driver_does_not_support_circuit_aggregation"
+        )
+        for i in uncached_indices:
+            sub_source_code_index = f"{source_code_index}-{i}"
+            sub_code_key = job_id + sub_source_code_index
+            single_src_code_dict = {
+                sub_code_key: src_sub_code_dict[sub_code_key]
+            }
+            logger.info(
+                f"Wirecut subcircuit execution started: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}"
+            )
+            execution_started_at = time.perf_counter()
+            job_results, driver, transpiler, mapping_dict = _run_code(
+                sub_source_code_index,
+                single_src_code_dict,
+                job_info,
+                driver,
+                transpiler,
+            )
+            execution_duration = time.perf_counter() - execution_started_at
+            execution_status = job_results["metadata"]["status"]
+            if execution_status != Constant.JOB_STATUS_COMPLETED:
+                logger.warning(
+                    f"Wirecut subcircuit execution failed: job_id={job_id}, "
+                    f"source_code_index={source_code_index}, "
+                    f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                    f"status={execution_status}, "
+                    f"duration_seconds={execution_duration:.6f}"
+                )
+                return job_results, driver, transpiler, mapping_dict
+
+            result = job_results.get("results")
+            if result is None:
+                err_msg = f"Wirecut subcircuit {i} completed without results"
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineCircuitCuttingError, err_msg
+                    ),
+                    driver,
+                    transpiler,
+                    mapping_dict,
+                )
+
+            executed_count += 1
+            result_cache.set(subcircuits[i], job_info, result)
+            sub_results[i] = counts_to_probs(result)
+            logger.info(
+                f"Wirecut subcircuit result received: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"status={execution_status}, "
+                f"duration_seconds={execution_duration:.6f}"
+            )
     execution_batch_duration = time.perf_counter() - execution_batch_started_at
     logger.info(
         f"Wirecut subcircuit execution completed: job_id={job_id}, "
