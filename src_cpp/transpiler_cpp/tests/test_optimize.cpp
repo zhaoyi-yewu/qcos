@@ -551,7 +551,9 @@ TEST(OptimizeGateCountTest, SquareHeisenbergN4_HRxRyRzCx_Basis) {
   std::cout << "[gatecount] square_heisenberg_N4 basis={h,rx,ry,rz,cx}\n";
   std::cout << "[gatecount] raw total=" << regular.size() << " -> opt total="
             << result_gates.size()
-            << " (reduced=" << (regular.size() - result_gates.size()) << ")\n";
+            << " (reduced=" << (static_cast<long long>(regular.size())
+                                - static_cast<long long>(result_gates.size()))
+            << ")\n";
   std::cout << "[gatecount] raw hist:";
   for (const auto& [g, c] : raw_hist) std::cout << " " << g << "=" << c;
   std::cout << "\n[gatecount] opt hist:";
@@ -739,4 +741,82 @@ TEST(OptimizeGateCountTest, IsingModel10_U3CZBasis) {
   }
   EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original, synthesized, 1e-6))
       << "optimize() changed ising_model_10 unitary after synthesis";
+}
+
+TEST(OptimizeGateCountTest, adder_n10_HRxRyRzCx_Basis) {
+  const std::string rel_path =
+      "qasm/benchpress/qasmbench-small/adder_n10/adder_n10.qasm";
+  std::string qasm = read_qasm_file(rel_path);
+  ASSERT_FALSE(qasm.empty()) << "Cannot read " << rel_path;
+
+  auto [ops, nq] = qasm_to_ops(qasm);
+  ASSERT_FALSE(ops.empty()) << "Empty op list: " << rel_path;
+  ASSERT_EQ(nq, 10);
+  // 剥离 measure (本电路无 measure, 但保持与流水线一致), 仅留量子门做统计
+  std::vector<std::shared_ptr<BaseOperation>> regular;
+  regular.reserve(ops.size());
+  for (const auto& op : ops) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+    regular.push_back(op);
+  }
+  ASSERT_FALSE(regular.empty());
+
+  std::set<std::string> basis = {"u3", "cz"};
+  std::vector<std::string> basis_vec(basis.begin(), basis.end());
+  auto gate_hist = [](const std::vector<std::shared_ptr<BaseOperation>>& v) {
+    std::map<std::string, size_t> h;
+    for (const auto& op : v) {
+      if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+      h[op->name]++;
+    }
+    return h;
+  };
+
+  auto raw_hist = gate_hist(regular);
+
+  // level=3: 完整优化 + 酉合成
+  auto result = optimize(ops, 3, false, basis);
+
+  // 剥离非量子门后统计输出门
+  std::vector<std::shared_ptr<BaseOperation>> result_gates;
+  result_gates.reserve(result.size());
+  for (const auto& op : result) {
+    if (!dynamic_cast<const GateOperation*>(op.get())) continue;
+    result_gates.push_back(op);
+  }
+  auto opt_hist = gate_hist(result_gates);
+
+  for (const auto& g : result_gates) {
+    std::cout << " " << g->name;
+    if (!g->targets.empty()) {
+      std::cout << "{";
+      for (size_t i = 0; i < g->targets.size(); ++i) {
+        if (i) std::cout << ",";
+        std::cout << g->targets[i];
+      }
+      std::cout << "}";
+    }
+  }
+  std::cout << "\n";
+
+  std::cout << "[gatecount] square_heisenberg_N4 basis={h,rx,ry,rz,cx}\n";
+  std::cout << "[gatecount] raw total=" << regular.size() << " -> opt total="
+            << result_gates.size()
+            << " (reduced=" << (static_cast<long long>(regular.size())
+                                - static_cast<long long>(result_gates.size()))
+            << ")\n";
+  std::cout << "[gatecount] raw hist:";
+  for (const auto& [g, c] : raw_hist) std::cout << " " << g << "=" << c;
+  std::cout << "\n[gatecount] opt hist:";
+  for (const auto& [g, c] : opt_hist) std::cout << " " << g << "=" << c;
+  std::cout << "\n";
+
+  // 酉矩阵等价校验: optimize 前后电路的整体酉须等价 (允许全局相位差)。
+  // adder_n10 含 ccx (3-qubit), ops_unitary 通过 gate_to_matrix + target
+  // 张量提升处理任意 qubit 数的门, 故可覆盖含 ccx 的场景。
+  CMatrix original_unitary = ops_unitary(ops, nq);
+  CMatrix opt_unitary = ops_unitary(result, nq);
+  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original_unitary,
+                                                 opt_unitary, 1e-6))
+      << "optimize() changed adder_n10 circuit unitary after synthesis";
 }

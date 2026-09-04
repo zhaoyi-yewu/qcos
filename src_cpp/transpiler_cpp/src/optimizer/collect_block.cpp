@@ -70,8 +70,10 @@ void init_in_degrees(DAGCircuit& dag,
  * 不匹配的节点放回 pending_nodes, 由后续轮次处理。
  *
  * 当 max_block_width 有效时, 节点加入前还须满足「加入后块内 qubit 并集
- * 宽度 ≤ max_block_width」, 否则视为不匹配留在 pending 池中, 待下一轮
- * 成为新块种子。这样按 qubit 交互范围切分出极大交互块。
+ * 宽度 ≤ max_block_width」。匹配但超宽的节点会立即终止当前块收集 (块已
+ * 达极大), 该节点连同队列中未处理节点退回 pending, 由下一轮以该节点为
+ * 种子开新块。这样每轮调用必产出非空 block 或消费非匹配节点释放入度,
+ * 拓扑必然推进, 不会死循环。
  *
  * @param max_block_width 块内 qubit 并集宽度上限; 为 SIZE_MAX 时不约束
  */
@@ -91,6 +93,12 @@ std::vector<DAGOpNode*> collect_matching_block(
 
     bool matches = (collect_gates.count(node->name()) > 0) != negate;
 
+    // width_ok: 节点能否加入当前块而不超 max_block_width。含两种「不可加」:
+    //  (a) 节点自身 qubit 数已超 max_block_width (self_too_wide, 如 max=2 下
+    //      的 3-qubit ccx) — 永不可能被任何块收下;
+    //  (b) 节点加入后块内 qubit 并集超 max_block_width (块已达极大)。
+    // 两者都必须阻止节点进块, 否则块会被污染 (qubit 并集突破上限) 并
+    // 连锁吞掉后续节点, 既无法合成又可能死循环。
     bool width_ok = true;
     if (matches && max_block_width != SIZE_MAX) {
       size_t new_width = block_qargs.size();
@@ -104,6 +112,16 @@ std::vector<DAGOpNode*> collect_matching_block(
         }
       }
     }
+    // 节点自身宽度 (去重 qubit 数); 与块的当前宽度独立判断。
+    size_t node_qubits = 0;
+    if (matches && max_block_width != SIZE_MAX) {
+      std::set<int> seen;
+      for (int q : node->qargs)
+        if (seen.insert(q).second) ++node_qubits;
+    }
+    bool self_too_wide =
+        max_block_width != SIZE_MAX && node_qubits > max_block_width;
+    if (self_too_wide) width_ok = false;
 
     if (matches && width_ok) {
       block.push_back(node);
@@ -114,8 +132,26 @@ std::vector<DAGOpNode*> collect_matching_block(
         --in_degree[succ];
         if (in_degree[succ] == 0) unprocessed.push_back(succ);
       }
-    } else {
+    } else if (matches && self_too_wide) {
+      // 节点自身就超宽 (如 max_block_width=2 下的 3-qubit ccx), 永不可被收。
+      // 不可能进入任何结果块, 故直接释放入度跳过, 让其后继能继续被处理。
+      // (后续 split_and_filter 仅处理已收块, 此节点保留在 DAG 中原样不动。)
+      for (DAGOpNode* succ : get_active_op_successors(dag, node)) {
+        --in_degree[succ];
+        if (in_degree[succ] == 0) unprocessed.push_back(succ);
+      }
+    } else if (!matches) {
+      // 非匹配节点: 退回 pending, 交后续轮次处理, 不释放入度。
       pending_nodes.push_back(node);
+    } else {
+      // 匹配且自身可收, 但加入当前块后超出 max_block_width: 块已达极大,
+      // 终止收集。该节点退回 pending 作下一轮新块种子; 同时把 unprocessed
+      // 中尚未处理的节点一并退回 pending, 避免丢失。每轮调用必产出 block
+      // 或消费非匹配/超宽节点释放入度, 拓扑必然推进, 不会死循环。
+      pending_nodes.push_back(node);
+      for (DAGOpNode* rest : unprocessed) pending_nodes.push_back(rest);
+      unprocessed.clear();
+      break;
     }
   }
   return block;
