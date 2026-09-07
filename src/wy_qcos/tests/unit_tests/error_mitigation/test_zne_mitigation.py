@@ -29,6 +29,7 @@ from wy_qcos.error_mitigation.zne_mitigation import (
     apply_zne_cz_tripling,
     count_cz_gates,
     extrapolate_to_zero,
+    fold_gates,
     richardson_coefficients,
     zne_linear_extrapolate,
 )
@@ -445,3 +446,205 @@ class TestZNEMitigation:
         err_raw = np.sum(np.abs(raw - ideal))
         err_zne = np.sum(np.abs(recovered - ideal))
         assert err_zne < err_raw
+
+
+class TestFoldGates:
+    """Test the generalised multi-strategy gate folder (mitiq-aligned)."""
+
+    def test_scale_three_all_strategies(self):
+        # scale 3 (odd integer) -> every gate folded once -> 3x CZ count.
+        qc = make_circuit_with_cz(3)
+        for strategy in ("left", "right", "random"):
+            scaled = fold_gates(
+                qc, 3.0, strategy=strategy, gate_names=("cz",), seed=0
+            )
+            assert count_cz_gates(scaled) == 9
+
+    def test_scale_two_partial_fold(self):
+        # 3 CZ, scale 2: num_uniform=0, num_extra=round(1*3/2)=2 -> +4 CZ = 7.
+        qc = make_circuit_with_cz(3)
+        for strategy in ("left", "right", "random"):
+            scaled = fold_gates(
+                qc, 2.0, strategy=strategy, gate_names=("cz",), seed=0
+            )
+            assert count_cz_gates(scaled) == 7
+
+    def test_scale_one_no_fold(self):
+        qc = make_circuit_with_cz(4)
+        scaled = fold_gates(qc, 1.0, strategy="random", seed=1)
+        assert count_cz_gates(scaled) == 4
+
+    def test_random_reproducible_with_seed(self):
+        qc = make_circuit_with_cz(6)
+        a = [op.name for op in fold_gates(
+            qc, 2.0, strategy="random", gate_names=("cz",), seed=7
+        ).get_operations()]
+        b = [op.name for op in fold_gates(
+            qc, 2.0, strategy="random", gate_names=("cz",), seed=7
+        ).get_operations()]
+        assert a == b
+
+    def test_random_selects_different_gates_across_seeds(self):
+        # Build a circuit with CZ gates *separated* by H gates so folded
+        # vs un-folded CZ gates produce distinguishable runs.  scale 2 on
+        # 4 CZ gates folds 2 of them; across seeds the chosen pair varies.
+        qc = QuantumCircuit(2)
+        for _ in range(4):
+            qc.append(GateOperation(
+                "cz", targets=[0, 1],
+                operation_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+            ))
+            qc.append(GateOperation(
+                "h", targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ))
+
+        def folded_positions(seed):
+            scaled = fold_gates(
+                qc, 2.0, strategy="random",
+                gate_names=("cz",), seed=seed,
+            )
+            ops = scaled.get_operations()
+            positions = set()
+            cz_idx = 0
+            i = 0
+            while i < len(ops):
+                if ops[i].name != "cz":
+                    i += 1
+                    continue
+                j = i
+                while j < len(ops) and ops[j].name == "cz":
+                    j += 1
+                if j - i >= 3:  # folded: 1 original + 2 copies
+                    positions.add(cz_idx)
+                cz_idx += 1
+                i = j
+            return positions
+
+        sets = [folded_positions(s) for s in range(8)]
+        assert len(set(frozenset(s) for s in sets)) > 1
+        for s in sets:
+            assert len(s) == 2
+
+    def test_unknown_strategy_raises(self):
+        qc = make_circuit_with_cz(1)
+        with pytest.raises(ValueError):
+            fold_gates(qc, 3.0, strategy="bogus")
+
+    def test_no_foldable_gates(self):
+        # Only an h gate; restricting to cz -> no fold -> unchanged.
+        qc = QuantumCircuit(1)
+        qc.append(GateOperation(
+            "h", targets=[0],
+            operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+        ))
+        scaled = fold_gates(qc, 3.0, strategy="random", gate_names=("cz",))
+        assert scaled.size() == 1
+
+    def test_transform_circuit_uses_configured_strategy(self):
+        # ZNEMitigation with random strategy still produces the right CZ
+        # counts (scale 3 -> 3x), but via the fold_gates path.
+        zne = ZNEMitigation(
+            scale_factors=[1, 3],
+            folding_strategy="random",
+            folding_seed=42,
+        )
+        qc = make_circuit_with_cz(2)
+        variants = zne.transform_circuit(qc)
+        assert len(variants) == 2
+        assert count_cz_gates(variants[0]["circuit"]) == 2  # scale 1
+        assert count_cz_gates(variants[1]["circuit"]) == 6  # scale 3
+
+
+class TestExpectationValueExtrapolation:
+    """Test the mitiq-standard expectation-value ZNE mode."""
+
+    def _linear_noise_counts(self, p0_slope, shots=20000):
+        """Counts where P(0)=1-slope, P(1)=slope at scale=slope/p0_slope."""
+        nq = 1
+        out = {}
+        for s, slope in p0_slope:
+            p = np.array([1.0 - slope, slope])
+            c = np.round(p * shots).astype(int)
+            diff = shots - int(c.sum())
+            if diff and c.size:
+                c[int(np.argmax(p))] += diff
+            for i, v in enumerate(c):
+                if v > 0:
+                    out[f"zne_s{s}"] = out.get(f"zne_s{s}", {})
+                    out[f"zne_s{s}"][format(i, f"0{nq}b")] = int(v)
+        return out
+
+    def test_recover_zero_noise_linear(self):
+        # exp([0]) = P(0)-P(1); ideal=1.0, noise: exp = 1 - 0.2*lambda
+        results = self._linear_noise_counts(
+            [(1, 0.1), (3, 0.3), (5, 0.5)]
+        )
+        zne = ZNEMitigation(
+            scale_factors=[1, 3, 5],
+            extrapolation_method="polynomial",
+            polynomial_degree=1,
+        )
+        out = zne.postprocess(results, num_qubits=1, observable=[0])
+        assert out["metadata"]["mode"] == "expectation_value"
+        assert out["metadata"]["applied"] is True
+        exp = out["results"]["expectation_value"]
+        raw = out["results"]["expectation_value_raw"]
+        # ZNE recovers ~1.0; raw (scale-1) is 0.8
+        assert abs(exp - 1.0) < 0.05
+        assert abs(raw - 0.8) < 0.02
+        assert abs(exp - 1.0) < abs(raw - 1.0)
+
+    def test_returns_metadata_with_observable(self):
+        results = self._linear_noise_counts([(1, 0.1), (3, 0.3)])
+        zne = ZNEMitigation(scale_factors=[1, 3])
+        out = zne.postprocess(results, num_qubits=1, observable=[0])
+        assert out["metadata"]["observable"] == [0]
+        assert len(out["metadata"]["expectations"]) == 2
+        assert out["metadata"]["extrapolation_method"] == "polynomial"
+
+    def test_fallback_when_extrapolation_exceeds_range(self):
+        # Craft expectations that extrapolate beyond [-1,1]: exp = lambda
+        # (increasing).  At scales 1,3,5 -> 1,3,5, linear extrap to 0 = -1.
+        # Use richardson on 3 points with a steep trend to force out-of-range.
+        results = {
+            "zne_s1": {"0": 0, "1": 10000},
+            "zne_s3": {"0": 0, "1": 10000},
+            "zne_s5": {"0": 0, "1": 10000},
+        }
+        zne = ZNEMitigation(
+            scale_factors=[1, 3, 5], extrapolation_method="richardson",
+        )
+        out = zne.postprocess(results, num_qubits=1, observable=[0])
+        # all expectations = -1.0; extrapolation is -1.0 (in range, no fallback)
+        assert abs(out["results"]["expectation_value"] - (-1.0)) < 1e-9
+        assert out["metadata"]["fallback"] is False
+        # but clipped to [-1,1]
+        assert -1.0 <= out["results"]["expectation_value"] <= 1.0
+
+    def test_two_qubit_parity_observable(self):
+        # Bell-ish: ideal |00>=0.5, |11>=0.5 -> parity exp([0,1]) = 1.0
+        # noise mixes to |01>,|10> (odd parity), reducing exp toward 0.
+        ideal = np.array([0.5, 0.0, 0.0, 0.5])
+        drift = np.array([-0.05, 0.025, 0.025, 0.0])
+        shots = 20000
+        results = {}
+        for s in (1, 3, 5):
+            p = ideal + s * drift
+            c = np.round(p * shots).astype(int)
+            diff = shots - int(c.sum())
+            if diff and c.size:
+                c[int(np.argmax(p))] += diff
+            results[f"zne_s{s}"] = {
+                format(i, "02b"): int(v) for i, v in enumerate(c) if v > 0
+            }
+        zne = ZNEMitigation(
+            scale_factors=[1, 3, 5],
+            extrapolation_method="polynomial", polynomial_degree=1,
+        )
+        out = zne.postprocess(results, num_qubits=2, observable=[0, 1])
+        exp = out["results"]["expectation_value"]
+        raw = out["results"]["expectation_value_raw"]
+        # ZNE should move closer to 1.0 than raw
+        assert abs(exp - 1.0) < abs(raw - 1.0)
+

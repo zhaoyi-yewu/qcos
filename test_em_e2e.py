@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from collections import OrderedDict
 
@@ -265,6 +266,13 @@ def create_driver(driver_name, device_configs, **kwargs):
     driver.set_configs(device_configs)
     driver.init_driver()
 
+    # Override the 7-day default wait so a failed/invalid quafu task
+    # can't hang the script for days. update_driver_params_from_options
+    # is never called in this script, so set the attribute directly.
+    max_wait = kwargs.get("max_wait", 0)
+    if max_wait and hasattr(driver, "max_job_wait_time"):
+        driver.max_job_wait_time = max_wait
+
     if driver_name == "quafu":
         driver.chip_name = dc.get("chip_name", "Dongling")
         driver.token = dc.get("token", "")
@@ -318,14 +326,60 @@ def parse_and_transpile(transpiler, driver, qasm_code):
     return tr, transpiler.total_qubits, md
 
 
+class _Heartbeat:
+    """Print a dot every few seconds while a blocking call runs.
+
+    quafu's driver.run() polls the task endpoint internally and blocks the
+    main thread until the task finishes or times out. A background thread
+    emits a dot so the user can tell the script is waiting, not frozen.
+    """
+
+    def __init__(self, interval=15, msg="."):
+        self.interval = interval
+        self.msg = msg
+        self._stop = threading.Event()
+        self._thread = None
+
+    def start(self):
+        def _tick():
+            while not self._stop.wait(self.interval):
+                print(self.msg, end="", flush=True)
+        self._thread = threading.Thread(target=_tick, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=1)
+        if self._thread is not None:
+            print("", flush=True)
+
+
 def run_circuit(driver, job_id, num_qubits, qasm, ops, shots, label):
-    driver.run(
-        job_id,
-        num_qubits,
-        {"index": label, "source_code": qasm, "transpile_results": ops},
-        data_type=driver.get_default_data_type(),
-        shots=shots,
-    )
+    hb = _Heartbeat()
+    if hasattr(driver, "chip_name"):  # quafu driver — network call inside run
+        hb.start()
+    try:
+        driver.run(
+            job_id,
+            num_qubits,
+            {"index": label, "source_code": qasm, "transpile_results": ops},
+            data_type=driver.get_default_data_type(),
+            shots=shots,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if "Failed to get task results" in msg:
+            wait = getattr(driver, "max_job_wait_time", "?")
+            raise RuntimeError(
+                f"Task [{label}] did not finish within {wait}s. "
+                "The task may have failed on the server, the token may be "
+                "invalid, or the network may be down. Raise --max-wait if "
+                "the task genuinely needs more time."
+            ) from exc
+        raise
+    finally:
+        hb.stop()
     counts = driver.get_results(job_id, label)
 
     # Quafu returns little-endian (q2q1q0), convert to big-endian (q0q1q2)
@@ -863,6 +917,15 @@ def main():
         default="em_test.log",
         help="File to save console output (default: em_test.log)",
     )
+    ap.add_argument(
+        "--max-wait",
+        type=int,
+        default=600,
+        help="Max seconds to wait for a single quafu task before giving up "
+        "(default: 600). Quafu's built-in default is 604800s (7 days); "
+        "without this override a failed/invalid task hangs the script "
+        "for days with no output.",
+    )
     args = ap.parse_args()
 
     # Parse gate_times for DD (JSON string -> dict)
@@ -914,7 +977,8 @@ def main():
         print(f"{'=' * 60}")
         try:
             driver = create_driver(
-                args.driver, device_configs, token=args.token, chip=chip
+                args.driver, device_configs, token=args.token, chip=chip,
+                max_wait=args.max_wait,
             )
             transpiler = create_transpiler(device_configs, args.driver)
         except Exception as exc:
@@ -994,20 +1058,26 @@ def main():
 
             circ_results = []
             for strat_name, qem_cfg in mitigation_configs.items():
-                r = _run_strategy(
-                    strat_name,
-                    qem_cfg,
-                    driver,
-                    remapped,
-                    nq_remapped,
-                    qasm,
-                    shots=args.shots,
-                    cz=cz,
-                    ideal=ideal,
-                    measured_phy=measured_contiguous,
-                )
+                try:
+                    r = _run_strategy(
+                        strat_name,
+                        qem_cfg,
+                        driver,
+                        remapped,
+                        nq_remapped,
+                        qasm,
+                        shots=args.shots,
+                        cz=cz,
+                        ideal=ideal,
+                        measured_phy=measured_contiguous,
+                    )
+                except Exception as exc:
+                    print(f"    {strat_name:<10s}  FAILED: {exc}")
+                    r = {"name": strat_name, "fidelity": 0.0,
+                         "error": str(exc)}
                 circ_results.append(r)
-                print(f"    {strat_name:<10s}  fidelity={r['fidelity']:.4f}")
+                if "error" not in r:
+                    print(f"    {strat_name:<10s}  fidelity={r['fidelity']:.4f}")
 
             all_results[chip][circ_name] = circ_results
 
