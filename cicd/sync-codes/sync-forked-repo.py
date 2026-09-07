@@ -35,9 +35,10 @@ Examples:
 
 import os
 import shutil
-import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+import library as lib
 
 # gitee base url
 gitee_base = "git@gitee.com"
@@ -55,42 +56,6 @@ gitee_repo_name = "qcos"
 
 # local temp working directory
 local_work_dir = "/tmp/sync-forked-repo"
-
-
-class SyncException(Exception):
-    """Sync Exception."""
-
-
-def run_command(command, cwd=None, check=True,
-                capture_output=True, text=True):
-    """Run command.
-
-    Args:
-        command: command, a list of args or a shell string
-        cwd: working directory to run the command in
-        check: check exit code
-        capture_output: capture output
-        text: print text
-
-    Returns:
-        command results
-    """
-    if isinstance(command, str):
-        command = command.split()
-    try:
-        results = subprocess.run(
-            command,
-            shell=False,
-            cwd=cwd,
-            check=check,
-            capture_output=capture_output,
-            text=text,
-        )
-        return results
-    except subprocess.CalledProcessError as e:
-        print(f"Command failed: {command}")
-        print(f"Error output: {e.stderr}")
-        raise
 
 
 def clone_forked_repo(forked_owner, repo_name, branch, work_dir):
@@ -113,7 +78,7 @@ def clone_forked_repo(forked_owner, repo_name, branch, work_dir):
     cmd = [
         "git", "clone", "--branch", branch, forked_url, work_dir,
     ]
-    run_command(cmd, cwd=None)
+    lib.run_command(cmd, cwd=None)
     print(f"Cloned to {work_dir}")
 
 
@@ -129,14 +94,14 @@ def add_origin_remote(origin_owner, repo_name, work_dir):
     print(f"Add origin remote: {origin_url}")
 
     # remove existing upstream if any
-    run_command(
+    lib.run_command(
         ["git", "remote", "remove", "upstream"],
         cwd=work_dir,
         check=False,
         capture_output=True,
         text=True,
     )
-    run_command(
+    lib.run_command(
         ["git", "remote", "add", "upstream", origin_url],
         cwd=work_dir,
         capture_output=True,
@@ -167,7 +132,7 @@ def sync_branch(origin_owner, origin_branch,
          f"refs/remotes/upstream/{origin_branch}"],
     ]
     for cmd in cmds:
-        run_command(cmd, cwd=work_dir, capture_output=True, text=True)
+        lib.run_command(cmd, cwd=work_dir, capture_output=True, text=True)
     print(f"Forked branch [{forked_branch}] reset to upstream/{origin_branch}")
 
 
@@ -188,7 +153,7 @@ def push_to_forked(forked_owner, forked_branch, work_dir):
         "git", "push", "-f", "origin",
         f"{forked_branch}:{forked_branch}",
     ]
-    run_command(cmd, cwd=work_dir, capture_output=True, text=True)
+    lib.run_command(cmd, cwd=work_dir, capture_output=True, text=True)
     print("Push to forked repo success!")
 
 
@@ -276,7 +241,7 @@ def main(argv=None):
     except KeyboardInterrupt:
         print("\nUser interrupt", file=sys.stderr)
         return 0
-    except SyncException as e:
+    except lib.SyncException as e:
         print(f"Fatal error: {e}", file=sys.stderr)
         return 2
 

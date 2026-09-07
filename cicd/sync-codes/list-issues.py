@@ -26,64 +26,14 @@ Prerequisite:
 pip3 install --break-system-packages requests
 
 Examples:
-./sync-issues.py QIS-504
-./sync-issues.py QIS-504 --user "test:test --url "http://jira.com"
+./sync-issues.py QCOS-504
+./sync-issues.py QCOS-504 --user "test:test --url "http://jira.com"
 """
 
-import base64
-import json
-import requests
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 import library as lib
-
-
-# default jira base url
-jira_base_url = "http://jira.com"
-
-# default basic auth credentials (username:password)
-jira_auth = "test:test"
-
-
-def fetch_issue(issue_id, base_url, auth):
-    """Fetch a Jira issue via requests and return parsed JSON.
-
-    Args:
-        issue_id: Jira issue key, e.g. QIS-504
-        base_url: Jira base URL
-        auth: basic auth credentials "user:pass"
-
-    Returns:
-        parsed JSON dict of the issue
-    """
-    api_url = f"{base_url}/rest/api/2/issue/{issue_id}"
-    # build Basic auth header from "user:pass"
-    auth_bytes = auth.encode("utf-8")
-    auth_header = "Basic " + base64.b64encode(auth_bytes).decode("utf-8")
-    headers = {
-        "Accept": "application/json",
-        "Authorization": auth_header,
-    }
-    print(f"Fetching issue: {issue_id} from {base_url}")
-    try:
-        response = requests.get(
-            api_url, headers=headers, timeout=30
-        )
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise lib.SyncException(
-            f"Request failed: {e}"
-        ) from e
-    try:
-        data = response.json()
-    except json.JSONDecodeError as e:
-        raise lib.SyncException(
-            f"Failed to parse JSON response: {e}\n"
-            f"Raw output (first 500 chars): "
-            f"{response.text[:500]}"
-        ) from e
-    return data
 
 
 def parse_issue(issue_data):
@@ -118,25 +68,25 @@ def main(argv=None):
             formatter_class=RawDescriptionHelpFormatter,
         )
         parser.add_argument(
-            "issue_id",
-            help="Jira issue ID, e.g. QIS-504",
+            "jira_issue_id",
+            help="Jira issue ID, e.g. QCOS-504",
         )
         parser.add_argument(
-            "--url",
+            "--jira-url",
             dest="base_url",
-            default=jira_base_url,
-            help=f"Jira base URL (default: {jira_base_url})",
+            default=lib.jira_base_url,
+            help=f"Jira base URL (default: {lib.jira_base_url})",
         )
         parser.add_argument(
-            "--user",
+            "--jira-auth",
             dest="auth",
-            default=jira_auth,
+            default=lib.jira_auth,
             help='Basic auth credentials "user:pass" '
-                 f"(default: {jira_auth})",
+                 f"(default: {lib.jira_auth})",
         )
 
         args = parser.parse_args()
-        issue_id = args.issue_id
+        issue_id = args.jira_issue_id
         base_url = args.base_url
         auth = args.auth
 
@@ -144,8 +94,10 @@ def main(argv=None):
         print(f"Issue:   {issue_id}")
         print(f"URL:     {base_url}")
 
-        issue_data = fetch_issue(issue_id, base_url, auth)
-        issue_key, summary, description = parse_issue(issue_data)
+        issue_data = lib.fetch_jira_issue(issue_id, base_url, auth)
+        issue_key = issue_data["key"]
+        summary = issue_data["summary"]
+        description = issue_data["description"]
 
         print("\n========================================")
         print(f"Issue Key:    {issue_key}")
