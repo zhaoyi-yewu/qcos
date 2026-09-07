@@ -28,7 +28,7 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 | 作业管理 | 作业提交、取消、删除、状态查询、结果查询、自动调度 |
 | 自动调度 | Flavor预设调度策略、设备分组、过滤器Filter、权重器Weigher、extra_specs动态约束 |
 | 量子引擎 | QASM解析、逻辑门分解、量子比特映射、编译优化、线路聚合、线路拆分、量子纠错QEC（规划） |
-| 驱动插件 | 各类超导、中性原子、离子阱、光量子以及模拟器等，详见量子硬件兼容性说明 |
+| 驱动插件 | 各类超导、中性原子、离子阱、光量子以及模拟器等，详见：[量子硬件兼容性说明](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#qdevice-compat) |
 | 系统服务 | 配置管理、日志管理、监控告警、运维调试 |
 | 监控告警 | 支持Prometheus指标采集、Alertmanager告警分发及Grafana 可视化面板 |
 
@@ -52,9 +52,9 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 
 ## 4. 兼容性说明
 
-[软硬件执行环境](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E5%85%BC%E5%AE%B9%E6%80%A7)
+[软硬件执行环境](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#soft-env-compat)
 
-[量子设备兼容性](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#%E7%9C%9F%E6%9C%BA%E6%B5%8B%E6%8E%A7%E9%A9%B1%E5%8A%A8%E5%85%BC%E5%AE%B9%E6%80%A7)
+[量子设备兼容性](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#qdevice-compat)
 
 ## 5. 开发者指导
 
