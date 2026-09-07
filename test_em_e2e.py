@@ -10,7 +10,7 @@ Usage:
   python test_em_e2e.py --driver quafu --chip Dongling Baihua Yudu
   python test_em_e2e.py --driver quafu --chip all
   python test_em_e2e.py --driver dummy
-  python test_em_e2e.py --driver quafu --circuit-dir samples/test --shots 4096 --output my_report.md
+  python test_em_e2e.py --driver quafu --circuit-dir samples/test/quick_5_circuits --shots 4096 --output my_report.md
 """
 
 import argparse
@@ -81,6 +81,23 @@ ALL_CHIPS = [
     "Shenglian",
 ]
 
+# Default per-gate durations in microseconds for superconducting devices.
+# Used by DD to detect idle windows and insert echo sequences. Override
+# with --gate-times '{"h":0.02,"cz":0.04,"x":0.02,"y":0.02}'.
+DEFAULT_GATE_TIMES = {
+    "h": 0.02,
+    "rx": 0.02,
+    "ry": 0.02,
+    "rz": 0.02,
+    "x": 0.02,
+    "y": 0.02,
+    "cx": 0.04,
+    "cz": 0.04,
+    "measure": 0.0,
+    "reset": 0.0,
+    "default": 0.02,
+}
+
 MITIGATION_CONFIGS = OrderedDict(
     [
         ("Raw", {}),
@@ -110,8 +127,81 @@ MITIGATION_CONFIGS = OrderedDict(
                 },
             },
         ),
+        (
+            "DD",
+            {
+                "dd": {
+                    "enabled": True,
+                    "sequence": "XY4",
+                    "gate_times": DEFAULT_GATE_TIMES,
+                }
+            },
+        ),
+        (
+            "DD+REM",
+            {
+                "dd": {
+                    "enabled": True,
+                    "sequence": "XY4",
+                    "gate_times": DEFAULT_GATE_TIMES,
+                },
+                "rem": {"enabled": True},
+            },
+        ),
+        (
+            "DD+ZNE",
+            {
+                "dd": {
+                    "enabled": True,
+                    "sequence": "XY4",
+                    "gate_times": DEFAULT_GATE_TIMES,
+                },
+                "zne": {
+                    "enabled": True,
+                    "scale_factors": [1, 2, 3],
+                    "extrapolation_method": "polynomial",
+                    "polynomial_degree": 1,
+                    "enable_fallback": True,
+                },
+            },
+        ),
+        (
+            "DD+REM+ZNE",
+            {
+                "dd": {
+                    "enabled": True,
+                    "sequence": "XY4",
+                    "gate_times": DEFAULT_GATE_TIMES,
+                },
+                "rem": {"enabled": True},
+                "zne": {
+                    "enabled": True,
+                    "scale_factors": [1, 2, 3],
+                    "extrapolation_method": "polynomial",
+                    "polynomial_degree": 1,
+                    "enable_fallback": True,
+                },
+            },
+        ),
     ]
 )
+
+
+def build_mitigation_configs(gate_times):
+    """Return MITIGATION_CONFIGS with DD gate_times overridden.
+
+    Returns a shallow copy so the caller can inject a per-device gate_times
+    without mutating the module-level defaults.
+    """
+    import copy as _copy
+
+    cfgs = _copy.deepcopy(MITIGATION_CONFIGS)
+    if not gate_times:
+        return cfgs
+    for _name, cfg in cfgs.items():
+        if "dd" in cfg:
+            cfg["dd"]["gate_times"] = gate_times
+    return cfgs
 
 
 # ------------------------------------------------------------------
@@ -182,11 +272,13 @@ def create_driver(driver_name, device_configs, **kwargs):
         extra["token"] = driver.token
         extra["chip_name"] = driver.chip_name
         driver.set_configs(extra)
-        if driver.token:
-            try:
-                driver.fetch_configs()
-            except Exception:
-                pass
+        if not driver.token:
+            raise RuntimeError(
+                "Quafu token is empty. Set it via --token <YOUR_TOKEN> "
+                "or fill the 'token' field in etc/qcos/conf.d/quafu.toml "
+                "(obtain one from https://quafu-sqc.baqis.ac.cn/)."
+            )
+        driver.fetch_configs()
     return driver
 
 
@@ -556,7 +648,14 @@ def _run_strategy(
 
 def generate_report(all_results, driver_name, shots, output_path):
     """Generate markdown report. all_results: {chip: {circuit: [results]}}"""
-    strats = list(MITIGATION_CONFIGS.keys())
+    # Infer strategy order from the first chip's first circuit results.
+    strats = []
+    for _circuits in all_results.values():
+        for _results in _circuits.values():
+            strats = [r["name"] for r in _results]
+            break
+        if strats:
+            break
     lines = [
         "# Error Mitigation Fidelity Comparison\n",
         f"**Date:** {time.strftime('%Y-%m-%d %H:%M:%S')}",
@@ -753,11 +852,24 @@ def main():
     )
     ap.add_argument("--output", default="em_comparison_report.md")
     ap.add_argument(
+        "--gate-times",
+        default=None,
+        help='Gate durations (us) as JSON, e.g. '
+        '\'{"h":0.02,"cz":0.04,"x":0.02,"y":0.02}\'. '
+        "Used by DD; defaults to built-in superconducting timings.",
+    )
+    ap.add_argument(
         "--log",
         default="em_test.log",
         help="File to save console output (default: em_test.log)",
     )
     args = ap.parse_args()
+
+    # Parse gate_times for DD (JSON string -> dict)
+    gate_times = DEFAULT_GATE_TIMES
+    if args.gate_times:
+        gate_times = json.loads(args.gate_times)
+    mitigation_configs = build_mitigation_configs(gate_times)
 
     # Set up Tee to write to both stdout and log file
     tee = Tee(args.log)
@@ -788,7 +900,7 @@ def main():
         circuits = OrderedDict([("bell_cz", BELL_CZ_QASM)])
 
     print(f"{'=' * 60}")
-    print(f"  Error Mitigation Comparison")
+    print("  Error Mitigation Comparison")
     print(f"  Driver: {args.driver} | Chips: {', '.join(chips)}")
     print(f"  Circuits: {len(circuits)} | Shots: {args.shots}")
     print(f"{'=' * 60}")
@@ -826,7 +938,6 @@ def main():
                     tr, _ = tr_result
                 else:
                     tr = tr_result
-                nq = transpiler.total_qubits
 
                 # Build ideal from TRANSPILED circuit mapped to contiguous qubits
                 import copy
@@ -871,28 +982,29 @@ def main():
                 print(f"  [SKIP] {circ_name}: {exc}")
                 continue
 
-            cz = sum(1 for op in tr if op.name == "cz")
-            qc = QuantumCircuit(nq)
-            qc.append_operations(tr)
+            cz = sum(1 for op in remapped if op.name == "cz")
+            nq_remapped = len(active_phy)
+            qc = QuantumCircuit(nq_remapped)
+            qc.append_operations(remapped)
             qasm = QasmConverter(qc).to_qasm2()
 
             print(
-                f"\n  --- {circ_name} (qubits={nq}, gates={len(tr)}, cz={cz}, measured={len(measured_phy)}) ---"
+                f"\n  --- {circ_name} (qubits={nq_remapped}, gates={len(remapped)}, cz={cz}, measured={len(measured_contiguous)}) ---"
             )
 
             circ_results = []
-            for strat_name, qem_cfg in MITIGATION_CONFIGS.items():
+            for strat_name, qem_cfg in mitigation_configs.items():
                 r = _run_strategy(
                     strat_name,
                     qem_cfg,
                     driver,
-                    tr,
-                    nq,
+                    remapped,
+                    nq_remapped,
                     qasm,
                     shots=args.shots,
                     cz=cz,
                     ideal=ideal,
-                    measured_phy=measured_phy,
+                    measured_phy=measured_contiguous,
                 )
                 circ_results.append(r)
                 print(f"    {strat_name:<10s}  fidelity={r['fidelity']:.4f}")
@@ -904,7 +1016,7 @@ def main():
         return 1
 
     # ── Console summary: per-circuit and per-algorithm stats ──
-    strats = list(MITIGATION_CONFIGS.keys())
+    strats = list(mitigation_configs.keys())
     global_stats = {s: [] for s in strats}  # strategy -> list of (raw, fid)
     for circuits in all_results.values():
         for results in circuits.values():

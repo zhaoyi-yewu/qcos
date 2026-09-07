@@ -23,6 +23,7 @@ from __future__ import annotations
 from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
 from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
+from wy_qcos.error_mitigation.dd_mitigation import DDMitigation
 
 
 class MitigationFactory:
@@ -43,6 +44,7 @@ class MitigationFactory:
             "readout": ReadoutMitigation,
             "rem": ReadoutMitigation,
             "zne": ZNEMitigation,
+            "dd": DDMitigation,
         }
 
     def register(self, name: str, cls: type[MitigationBase]) -> None:

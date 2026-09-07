@@ -27,6 +27,7 @@ from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.mitigation_factory import MitigationFactory
 from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
 from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
+from wy_qcos.error_mitigation.dd_mitigation import DDMitigation
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,20 @@ class MitigationManager:
             {"label": "original", "circuit": circuit, "scale_factor": 1}
         ]
 
+        dd = self._techniques.get("dd")
+        if dd and isinstance(dd, DDMitigation) and dd.enabled:
+            applied_variants: list[dict[str, Any]] = []
+            for variant in current_variants:
+                dd_variants = dd.transform_circuit(variant["circuit"])
+                for dv in dd_variants:
+                    dv["label"] = variant["label"]
+                    dv["scale_factor"] = variant.get("scale_factor", 1)
+                    dd_meta = dv.get("dd_metadata", {})
+                    if dd_meta:
+                        dv.setdefault("dd_metadata", dd_meta)
+                    applied_variants.append(dv)
+            current_variants = applied_variants
+
         zne = self._techniques.get("zne")
         if zne and isinstance(zne, ZNEMitigation) and zne.enabled:
             expanded: list[dict[str, Any]] = []
@@ -205,6 +220,16 @@ class MitigationManager:
             "raw_results": dict(variant_results),
             "pipeline_steps": [],
         }
+
+        dd = self._techniques.get("dd")
+        if dd and isinstance(dd, DDMitigation) and dd.enabled:
+            dd_output = dd.postprocess(current_results)
+            current_results = dd_output.get("results", current_results)
+            pipeline_metadata["techniques_applied"].append("dd")
+            pipeline_metadata["pipeline_steps"].append({
+                "technique": "dd",
+                "metadata": dd_output.get("metadata"),
+            })
 
         rem = self._techniques.get("readout") or self._techniques.get("rem")
         if rem and isinstance(rem, ReadoutMitigation) and rem.enabled:
