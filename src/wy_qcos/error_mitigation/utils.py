@@ -146,3 +146,52 @@ def clip_and_normalize(probs: np.ndarray) -> np.ndarray:
     if total == 0:
         return clipped
     return clipped / total
+
+
+def closest_positive_distribution(
+    quasi_probabilities: np.ndarray,
+) -> np.ndarray:
+    """Project a quasi-distribution onto the nearest valid probability one.
+
+    Minimizes the L2 distance to the input subject to the probability
+    simplex constraints (non-negative, sums to 1). This matches mitiq's
+    REM projection and is more faithful than clip-and-renormalize when the
+    pseudo-inverse produces large negative quasi-probabilities: clip
+    silently discards the negative mass and renormalizes, biasing the
+    result, whereas the L2 projection redistributes it optimally.
+
+    Args:
+        quasi_probabilities: Real coefficients (may be negative, need not
+            sum to 1).
+
+    Returns:
+        Valid probability vector of the same length.
+    """
+    q = np.asarray(quasi_probabilities, dtype=np.float64)
+    init = q.clip(min=0.0)
+    total = init.sum()
+    n = len(q)
+    if total > 0:
+        init = init / total
+    else:
+        init = np.full(n, 1.0 / n)
+
+    try:
+        import scipy.optimize as _opt
+
+        def _dist(p: np.ndarray) -> float:
+            return float(np.linalg.norm(p - q))
+
+        bounds = _opt.Bounds(np.zeros(n), np.ones(n))
+        constraint = _opt.LinearConstraint(np.ones(n), 1.0, 1.0)
+        result = _opt.minimize(
+            _dist, init, bounds=bounds, constraints=constraint
+        )
+        if result.success:
+            return np.asarray(result.x, dtype=np.float64)
+    except Exception:
+        pass
+
+    # Fallback: clip-and-renormalize when scipy is unavailable or the
+    # optimizer fails to converge.
+    return clip_and_normalize(q)

@@ -24,6 +24,7 @@ from wy_qcos.error_mitigation.utils import (
     marginal_samples,
     expectation_from_probabilities,
     clip_and_normalize,
+    closest_positive_distribution,
 )
 
 
@@ -191,3 +192,48 @@ class TestClipAndNormalize:
         assert np.all(result >= 0)
         assert np.all(result <= 1)
         np.testing.assert_allclose(np.sum(result), 1.0)
+
+
+class TestClosestPositiveDistribution:
+    """Test closest_positive_distribution (mitiq-style L2 projection)."""
+
+    def test_already_valid(self):
+        probs = np.array([0.3, 0.7])
+        result = closest_positive_distribution(probs)
+        np.testing.assert_allclose(result, [0.3, 0.7])
+
+    def test_negative_elements_reach_zero(self):
+        # [-1, 0.1, -1, 0.2] -> [0, ~0.4503, 0, ~0.5497]
+        result = closest_positive_distribution(np.array([-1.0, 0.1, -1.0, 0.2]))
+        assert np.all(result >= 0)
+        np.testing.assert_allclose(np.sum(result), 1.0)
+        np.testing.assert_allclose(result[0], 0.0, atol=1e-6)
+        np.testing.assert_allclose(result[2], 0.0, atol=1e-6)
+        # Positive mass redistributed proportionally, not equally.
+        assert result[3] > result[1] > 0.0
+
+    def test_matches_mitiq_reference_values(self):
+        # Reference values from mitiq's test_closest_positive_distribution.
+        cases = [
+            ([0.3, 0.7], [0.3, 0.7]),
+            ([-0.1, 1.1], [0.0, 1.0]),
+            ([10, 10], [0.5, 0.5]),
+            ([-1, 1, -1, 1], [0.0, 0.5, 0.0, 0.5]),
+            ([-1, 0.1, -1, 0.2], [0.0, 0.450317, 0.0, 0.549683]),
+        ]
+        for quasi, expected in cases:
+            result = closest_positive_distribution(np.array(quasi))
+            np.testing.assert_allclose(result, expected, atol=1e-4)
+
+    def test_sum_to_one_and_nonneg(self):
+        rng = np.random.default_rng(0)
+        for _ in range(20):
+            q = rng.normal(-0.5, 1.5, size=8)
+            result = closest_positive_distribution(q)
+            assert np.all(result >= -1e-9)
+            np.testing.assert_allclose(np.sum(result), 1.0, atol=1e-6)
+
+    def test_all_zero_input(self):
+        # Degenerate input: projection is the uniform distribution.
+        result = closest_positive_distribution(np.zeros(4))
+        np.testing.assert_allclose(result, [0.25, 0.25, 0.25, 0.25])
