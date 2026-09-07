@@ -37,7 +37,6 @@ from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.utils import (
     counts_to_probabilities,
-    clip_and_normalize,
     closest_positive_distribution,
     expectation_from_probabilities,
     marginal_samples,

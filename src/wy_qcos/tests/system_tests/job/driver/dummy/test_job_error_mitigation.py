@@ -21,7 +21,8 @@ Tests the full error mitigation pipeline through the API layer,
 using the dummy driver as backend.
 
 Run command:
-    python -m pytest src/wy_qcos/tests/system_tests/job/driver/dummy/test_job_error_mitigation.py -v -s
+    python -m pytest src/wy_qcos/tests/system_tests/job/driver/\
+dummy/test_job_error_mitigation.py -v -s
 """
 
 import logging

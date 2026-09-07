@@ -19,9 +19,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def counts_to_probabilities(
@@ -190,7 +193,7 @@ def closest_positive_distribution(
         if result.success:
             return np.asarray(result.x, dtype=np.float64)
     except Exception:
-        pass
+        logger.exception("Convex projection via scipy failed; falling back")
 
     # Fallback: clip-and-renormalize when scipy is unavailable or the
     # optimizer fails to converge.

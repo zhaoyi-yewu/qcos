@@ -24,7 +24,7 @@ gates on qubits, suppressing decoherence during idle periods.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -94,11 +94,11 @@ def _make_gate(name: str, qubit: int) -> GateOperation:
 
 
 def detect_idle_windows(
-    operations: List[BaseOperation],
+    operations: list[BaseOperation],
     num_qubits: int,
-    gate_times: Dict[str, float],
+    gate_times: dict[str, float],
     include_trailing: bool = False,
-) -> Dict[int, List[Dict[str, float]]]:
+) -> dict[int, list[dict[str, float]]]:
     """Detect idle windows for each qubit.
 
     Walks the circuit building a per-qubit timeline (mitiq's approach):
@@ -121,7 +121,7 @@ def detect_idle_windows(
         "start" and "duration" keys.
     """
     current_time = [0.0] * num_qubits
-    idle_windows: Dict[int, List[Dict[str, float]]] = {
+    idle_windows: dict[int, list[dict[str, float]]] = {
         q: [] for q in range(num_qubits)
     }
 
@@ -170,9 +170,9 @@ def detect_idle_windows(
 def generate_dd_sequence(
     idle_duration: float,
     sequence: str,
-    gate_times: Dict[str, float],
+    gate_times: dict[str, float],
     qubit: int,
-) -> List[BaseOperation]:
+) -> list[BaseOperation]:
     """Generate a DD pulse sequence filling an idle window.
 
     The window is bookended by free-evolution delays, with the pulse axes
@@ -201,7 +201,7 @@ def generate_dd_sequence(
     if idle_duration <= total_pulse_time:
         return []
 
-    free_time = idle_duration - total_pulse_time
+    idle_duration - total_pulse_time
 
     # Pulse *centres* relative to window start, as a fraction of the
     # total window.  Equal spacing for named sequences; Uhrig spacing for
@@ -218,7 +218,7 @@ def generate_dd_sequence(
     # Convert centre fractions to absolute times within the window, then
     # interleave Delay + pulse so the emitted op stream reproduces them.
     centres = [c * idle_duration for c in centres_frac]
-    ops: List[BaseOperation] = []
+    ops: list[BaseOperation] = []
     prev_edge = 0.0
     for k, gate_name in enumerate(pulses):
         pulse_start = centres[k] - pulse_duration / 2.0
@@ -261,8 +261,8 @@ def _make_delay(duration: float, qubit: int) -> Delay:
 def insert_dd_into_circuit(
     circuit: QuantumCircuit,
     sequence: str = "XY4",
-    gate_times: Optional[Dict[str, float]] = None,
-) -> Tuple[QuantumCircuit, Dict[str, Any]]:
+    gate_times: dict[str, float] | None = None,
+) -> tuple[QuantumCircuit, dict[str, Any]]:
     """Insert DD sequences into idle windows of a circuit.
 
     Args:
@@ -284,7 +284,7 @@ def insert_dd_into_circuit(
     min_pulse_time = gate_times.get("x", gate_times.get("default", 0.02))
     min_idle = 4 * min_pulse_time
 
-    dd_insertions: Dict[int, List[Tuple[float, List[BaseOperation]]]] = {
+    dd_insertions: dict[int, list[tuple[float, list[BaseOperation]]]] = {
         q: [] for q in range(num_qubits)
     }
     windows_filled = 0
@@ -306,9 +306,9 @@ def insert_dd_into_circuit(
             "windows_detected": sum(len(w) for w in idle_windows.values()),
         }
 
-    new_ops: List[BaseOperation] = []
+    new_ops: list[BaseOperation] = []
     current_time = [0.0] * num_qubits
-    inserted_at: Dict[int, set] = {q: set() for q in range(num_qubits)}
+    inserted_at: dict[int, set] = {q: set() for q in range(num_qubits)}
 
     for op in operations:
         if op.name in ("measure", "reset"):
@@ -375,7 +375,7 @@ class DDMitigation(MitigationBase):
     def __init__(
         self,
         sequence: str = "XY4",
-        gate_times: Optional[Dict[str, float]] = None,
+        gate_times: dict[str, float] | None = None,
     ):
         """Initialize DD mitigation.
 
@@ -387,11 +387,11 @@ class DDMitigation(MitigationBase):
         self._sequence = sequence
         self._gate_times = gate_times
 
-    def set_config(self, config: Dict[str, Any]) -> None:
+    def set_config(self, config: dict[str, Any]) -> None:
         super().set_config(config)
         self._sequence = config.get("sequence", self._sequence)
 
-    def validate_device(self, device_config: Dict[str, Any]) -> tuple:
+    def validate_device(self, device_config: dict[str, Any]) -> tuple:
         gate_times = device_config.get("gate_times")
         if not gate_times:
             em_config = device_config.get("error_mitigation", {})
@@ -407,7 +407,7 @@ class DDMitigation(MitigationBase):
 
     def transform_circuit(
         self, circuit: QuantumCircuit
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Insert DD sequences into the circuit.
 
         DD is applied at the circuit level (before execution).
@@ -434,10 +434,10 @@ class DDMitigation(MitigationBase):
 
     def postprocess(
         self,
-        results: Dict[str, Dict[str, int]],
-        calibration: Optional[Dict[str, Any]] = None,
+        results: dict[str, dict[str, int]],
+        calibration: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """DD post-processing (passthrough).
 
         DD modifies the circuit before execution, so no result
@@ -446,6 +446,7 @@ class DDMitigation(MitigationBase):
         Args:
             results: Measurement counts.
             calibration: Not used.
+            **kwargs: Additional keyword arguments (ignored).
 
         Returns:
             Results unchanged.
