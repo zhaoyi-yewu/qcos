@@ -170,10 +170,11 @@ TranspileResult transpile_from_qasm(
   return result;
 }
 
-TranspileResult transpile_na(const std::string& qasm_string,
-                             const std::vector<std::string>& supp_basis_gates,
-                             const NAQpuConfig& qpu_config, int opt_level,
-                             const std::string& na_mapping_type) {
+TranspileResult transpile_na_from_qasm(
+    const std::string& qasm_string,
+    const std::vector<std::string>& supp_basis_gates,
+    const NAQpuConfig& qpu_config, int opt_level,
+    const std::string& na_mapping_type) {
   using clock = std::chrono::high_resolution_clock;
 
   TranspileResult result;
@@ -237,6 +238,89 @@ TranspileResult transpile_na(const std::string& qasm_string,
       std::chrono::duration<double>(clock::now() - apply_start).count();
 
   // Step 7: Optimize #2 — full post-routing optimization (full opt_level +
+  // basis_gates filter).
+  auto opt2_start = clock::now();
+  result.basis_gate_list =
+      optimize(decomposed_circuit, opt_level, false, basis_set, 0);
+  t.opt_time2 =
+      std::chrono::duration<double>(clock::now() - opt2_start).count();
+
+  // Aggregate timings.
+  t.total_time =
+      std::chrono::duration<double>(clock::now() - total_start).count();
+  t.decomposed_time =
+      t.decompose_rule_time + t.decompose_1q2q_time + t.decompose_apply_time;
+  t.transpile_time =
+      t.opt_time1 + t.decomposed_time + t.mapping_time + t.opt_time2;
+
+  return result;
+}
+
+TranspileResult transpile_na_from_ir(
+    const std::vector<std::shared_ptr<BaseOperation>>& ir_ops, int num_qubits,
+    const std::vector<std::string>& supp_basis_gates,
+    const NAQpuConfig& qpu_config, int opt_level,
+    const std::string& na_mapping_type) {
+  using clock = std::chrono::high_resolution_clock;
+
+  TranspileResult result;
+  TranspileTimings& t = result.timings;
+  result.num_qubits = num_qubits;
+
+  // Parse step skipped, parse_time stays 0.
+  t.parse_time = 0.0;
+
+  auto total_start = clock::now();
+
+  // Step 1: Optimize #1 — lightweight pre-mapping optimization (opt_level
+  // capped at 1).
+  auto opt1_start = clock::now();
+  std::set<std::string> basis_set(supp_basis_gates.begin(),
+                                  supp_basis_gates.end());
+  auto optimized_ops =
+      optimize(ir_ops, std::min(1, opt_level), false, {}, 0);
+  t.opt_time1 =
+      std::chrono::duration<double>(clock::now() - opt1_start).count();
+
+  // Step 2: Decompose to 1q2q — break multi-qubit gates into 1q/2q gates.
+  auto decomp_start = clock::now();
+  auto decomposed_ops = decompose_gates_to_1q2q(optimized_ops);
+  t.decompose_1q2q_time =
+      std::chrono::duration<double>(clock::now() - decomp_start).count();
+
+  // Step 3: Get decompose rules — build the decomposition rule table from the
+  // basis gates.
+  // Neutral-atom routing does not insert SWAPs and the basis gate set may
+  // lack a two-qubit gate to decompose SWAP, so SWAP decomposition is
+  // skipped here (see build_full_decomposition_table).
+  auto rule_start = clock::now();
+  auto gate_names = collect_gate_names(decomposed_ops);
+  Decomposer decomposer;
+  auto [decompose_table, usage_stats] =
+      decomposer.get_decompose_rules(gate_names, supp_basis_gates,
+                                     /*enable_mapping=*/true,
+                                     /*is_neutral_atom=*/true);
+  t.decompose_rule_time =
+      std::chrono::duration<double>(clock::now() - rule_start).count();
+
+  // Step 4: NA mapping — dispatch by na_mapping_type (default: NADefaultRoute),
+  // inserting MOVE to shuttle atoms so two-qubit gates act on adjacent sites.
+  auto map_start = clock::now();
+  auto routed_ops = na_mapping(decomposed_ops, qpu_config, num_qubits,
+                               /*na_support_move=*/true, na_mapping_type,
+                               /*optimize=*/false);
+  t.mapping_time =
+      std::chrono::duration<double>(clock::now() - map_start).count();
+
+  // Step 5: Apply decompose rules — replace routed gates with basis gates per
+  // the rules.
+  auto apply_start = clock::now();
+  auto decomposed_circuit =
+      decomposer.apply_decompose_rules(routed_ops, decompose_table);
+  t.decompose_apply_time =
+      std::chrono::duration<double>(clock::now() - apply_start).count();
+
+  // Step 6: Optimize #2 — full post-routing optimization (full opt_level +
   // basis_gates filter).
   auto opt2_start = clock::now();
   result.basis_gate_list =

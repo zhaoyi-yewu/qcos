@@ -152,17 +152,17 @@ void bind_transpile(nb::module_& m) {
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
               )");
 
-  // Bind transpile_na: neutral-atom NA mapping, single-circuit path.
+  // Bind transpile_na_from_qasm: neutral-atom NA mapping, single-circuit path.
   m.def(
-      "transpile_na",
+      "transpile_na_from_qasm",
       [](const std::string& qasm_string,
          const std::vector<std::string>& supp_basis_gates,
          const nb::dict& qpu_cfg, int opt_level,
          const std::string& na_mapping_type) {
         auto cfg = parse_na_qpu_config(qpu_cfg);
         nb::gil_scoped_release release;
-        return transpile_na(qasm_string, supp_basis_gates, cfg, opt_level,
-                            na_mapping_type);
+        return transpile_na_from_qasm(qasm_string, supp_basis_gates, cfg,
+                                     opt_level, na_mapping_type);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"), nb::arg("qpu_cfg"),
       nb::arg("opt_level") = 1, nb::arg("na_mapping_type") = "default",
@@ -186,6 +186,45 @@ void bind_transpile(nb::module_& m) {
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+      )");
+
+  // Bind transpile_na_from_ir: neutral-atom NA mapping on a pre-parsed IR
+  // (no QASM parse step).
+  m.def(
+      "transpile_na_from_ir",
+      [](const std::vector<std::shared_ptr<BaseOperation>>& ir_ops,
+         int num_qubits, const std::vector<std::string>& supp_basis_gates,
+         const nb::dict& qpu_cfg, int opt_level,
+         const std::string& na_mapping_type) {
+        auto cfg = parse_na_qpu_config(qpu_cfg);
+        nb::gil_scoped_release release;
+        return transpile_na_from_ir(ir_ops, num_qubits, supp_basis_gates, cfg,
+                                    opt_level, na_mapping_type);
+      },
+      nb::arg("ir_ops"), nb::arg("num_qubits"), nb::arg("supp_basis_gates"),
+      nb::arg("qpu_cfg"), nb::arg("opt_level") = 1,
+      nb::arg("na_mapping_type") = "default",
+      R"(
+        Transpile a pre-parsed IR with neutral-atom NA mapping (no QASM parsing step).
+
+        Same pipeline as ``transpile_na_from_qasm`` but skips the QASM parse step.
+        The caller supplies the already-parsed operation list and the logical
+        qubit count directly.
+
+        Args:
+            ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
+            num_qubits (int): Number of logical qubits in the circuit.
+            supp_basis_gates (list[str]): Supported basis gate names.
+            qpu_cfg (dict): Neutral-atom QPU configuration with keys
+                ``storage_area``, ``operate_area``, ``coupler_map`` and
+                ``readout_error``.
+            opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+            na_mapping_type (str, optional): NA mapping algorithm type; only
+                "default" is supported by the C++ backend. Defaults to "default".
+
+        Returns:
+            TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+            parse_time is always 0.
       )");
 
   // Bind transpile_from_ir: transpile a pre-parsed IR (no QASM parse

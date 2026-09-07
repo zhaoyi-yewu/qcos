@@ -48,7 +48,8 @@ from wy_qcos.transpiler.high_performance import (
     sabre_routing as cpp_sabre_routing,
     transpile_from_qasm as cpp_transpile_from_qasm,
     transpile_from_ir as cpp_transpile_from_ir,
-    transpile_na as cpp_transpile_na,
+    transpile_na_from_qasm as cpp_transpile_na_from_qasm,
+    transpile_na_from_ir as cpp_transpile_na_from_ir,
     cpp_na_default_routing,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
@@ -338,7 +339,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     "neutral atom topology. "
                 )
             try:
-                return cpp_transpile_na(
+                return cpp_transpile_na_from_qasm(
                     qasm_string,
                     supp_basis_gates,
                     qpu_cfg,
@@ -346,7 +347,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                 )
             except RuntimeError as e:
                 raise TranspilerException(
-                    f"C++ transpile_na failed: {e}"
+                    f"C++ transpile_na_from_qasm failed: {e}"
                 ) from e
         elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
             # Other (including superconducting SABRE) paths
@@ -445,6 +446,9 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
 
+        tech_type = trans_cfg_inst.get_tech_type()
+        is_na = tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM and enable_na_move
+
         qpu_cfg = trans_cfg_inst.get_qpu_cfg() or {}
         if enable_mapping and not qpu_cfg:
             err_msg = "Missing qpu configs"
@@ -478,16 +482,27 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         final_layout_dict = {}
         for job_id, (num_qubits, ir_ops) in parse_result.items():
             try:
-                result = cpp_transpile_from_ir(
-                    ir_ops,
-                    num_qubits,
-                    supp_basis_gates,
-                    opt_level,
-                    coupling_list,
-                    edge_fidelities=edge_fidelities,
-                    single_qubit_fidelities=single_qubit_fidelities,
-                    target_bits=target_bits if enable_mapping else [],
-                )
+                if is_na:
+                    # neutral atom route: NA mapping with MOVE support
+                    result = cpp_transpile_na_from_ir(
+                        ir_ops=ir_ops,
+                        num_qubits=num_qubits,
+                        supp_basis_gates=supp_basis_gates,
+                        qpu_cfg=qpu_cfg,
+                        opt_level=opt_level,
+                    )
+                else:
+                    # superconducting route: SABRE routing
+                    result = cpp_transpile_from_ir(
+                        ir_ops=ir_ops,
+                        num_qubits=num_qubits,
+                        supp_basis_gates=supp_basis_gates,
+                        opt_level=opt_level,
+                        coupling_list=coupling_list,
+                        edge_fidelities=edge_fidelities,
+                        single_qubit_fidelities=single_qubit_fidelities,
+                        target_bits=target_bits if enable_mapping else [],
+                    )
             except RuntimeError as exc:
                 raise TranspilerException(
                     f"C++ transpile failed: {exc}"
