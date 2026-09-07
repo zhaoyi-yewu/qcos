@@ -226,7 +226,9 @@ Pipeline is running, please wait for the result.
                         sh """#!/bin/bash
                         source /var/lib/qcos/venv/sandbox/bin/activate
                         ./cicd/run-tests.sh -b
-                        ./cicd/run-tests.sh -c default
+                        set -o pipefail
+                        ./cicd/run-tests.sh -c default 2>&1 | tee /tmp/qcos_coverage.txt
+                        grep -E '^TOTAL' /tmp/qcos_coverage.txt > cicd/reports/wy_qcos/coverage_total.txt 2>/dev/null || true
                         """
                     }
                 }
@@ -236,8 +238,68 @@ Pipeline is running, please wait for the result.
                     steps {
                         sh """#!/bin/bash
                         source /var/lib/qcos/venv/sandbox/bin/activate
-                        ./cicd/run-tests.sh -e all
+                        set -o pipefail
+                        ./cicd/run-tests.sh -e all 2>&1 | tee /tmp/client_coverage.txt
+                        grep -E '^TOTAL' /tmp/client_coverage.txt > cicd/reports/wy_qcos_client/coverage_total.txt 2>/dev/null || true
                         """
+                    }
+                }
+            }
+        }
+
+        // =============================================================
+        // Group: coverage-report
+        // =============================================================
+        stage('coverage-report') {
+            stages {
+                // Stage: coverage-report-qcos
+                stage('Coverage Report - QCOS') {
+                    steps {
+                        script {
+                            // Use recordCoverage to collect and display coverage
+                            // COBERTURA parser reads standard coverage.xml
+                            // with full metrics: LINE, BRANCH, METHOD, CLASS
+                            recordCoverage(
+                                id: 'qcos',
+                                name: 'QCOS',
+                                tools: [[
+                                    parser: 'COBERTURA',
+                                    pattern: 'cicd/reports/wy_qcos/coverage.xml'
+                                ]],
+                                qualityGates: [
+                                    [metric: 'LINE', baseline: 'PROJECT',
+                                     threshold: 80.0,
+                                     criticality: 'UNSTABLE'],
+                                    [metric: 'BRANCH', baseline: 'PROJECT',
+                                     threshold: 60.0,
+                                     criticality: 'UNSTABLE']
+                                ]
+                            )
+                        }
+                    }
+                }
+
+                // Stage: coverage-report-qcos-client
+                stage('Coverage Report - QCOS Client') {
+                    steps {
+                        script {
+                            recordCoverage(
+                                id: 'qcos_client',
+                                name: 'QCOS Client',
+                                tools: [[
+                                    parser: 'COBERTURA',
+                                    pattern: 'cicd/reports/wy_qcos_client/coverage.xml'
+                                ]],
+                                qualityGates: [
+                                    [metric: 'LINE', baseline: 'PROJECT',
+                                     threshold: 80.0,
+                                     criticality: 'UNSTABLE'],
+                                    [metric: 'BRANCH', baseline: 'PROJECT',
+                                     threshold: 60.0,
+                                     criticality: 'UNSTABLE']
+                                ]
+                            )
+                        }
                     }
                 }
             }
@@ -251,6 +313,25 @@ Pipeline is running, please wait for the result.
                 if (env.giteePullRequestIid) {
                     echo ">>> Commenting on Gitee PR #${env.giteePullRequestIid} (build succeeded)"
                     try {
+                        def qcos_cov = 'N/A'
+                        def client_cov = 'N/A'
+                        // Parse coverage percentage from coverage.xml
+                        // Cobertura XML: <coverage line-rate="0.85" ...>
+                        try {
+                            def xml1 = readFile 'cicd/reports/wy_qcos/coverage.xml'
+                            def m1 = (xml1 =~ /line-rate="([0-9.]+)"/)
+                            if (m1.find()) {
+                                qcos_cov = Math.round(m1[0][1].toDouble() * 100) + '%'
+                            }
+                        } catch (Exception e) { echo ">>> No QCOS coverage data: ${e.message}" }
+                        try {
+                            def xml2 = readFile 'cicd/reports/wy_qcos_client/coverage.xml'
+                            def m2 = (xml2 =~ /line-rate="([0-9.]+)"/)
+                            if (m2.find()) {
+                                client_cov = Math.round(m2[0][1].toDouble() * 100) + '%'
+                            }
+                        } catch (Exception e) { echo ">>> No Client coverage data: ${e.message}" }
+
                         addGiteeMRComment comment: """### ✅ CI/CD Pipeline Succeeded
 
 | Item | Info |
@@ -258,6 +339,8 @@ Pipeline is running, please wait for the result.
 | **Build Number** | [#${env.BUILD_NUMBER}](${env.BUILD_URL}) |
 | **Source Branch** | ${env.giteeSourceBranch ?: 'N/A'} |
 | **Target Branch** | ${env.giteeTargetBranch ?: 'N/A'} |
+| **QCOS Coverage** | ${qcos_cov} |
+| **Client Coverage** | ${client_cov} |
 
 All checks passed. ✅
 
