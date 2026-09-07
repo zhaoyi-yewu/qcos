@@ -474,7 +474,6 @@ def driver_run(job_info, driver, num_qubits, data, transpiler=None):
     Returns:
         results
     """
-
     try:
         job_data = job_info["data"]
         job_id = job_data["job_id"]
@@ -547,8 +546,7 @@ def driver_run(job_info, driver, num_qubits, data, transpiler=None):
                                     "readout", calib_data
                                 )
                                 logger.info(
-                                    "REM calibration complete for "
-                                    "{} qubits",
+                                    "REM calibration complete for {} qubits",
                                     len(
                                         calib_data.get(
                                             "per_qubit_confusion", {}
@@ -2349,7 +2347,6 @@ def flow_run_driver(job_info, num_qubits, driver, data, transpiler=None):
     Returns:
         results, profiling_time
     """
-
     # call run() in driver
     # record driver_run start_time
     driver_run_started_at = time.time()

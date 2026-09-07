@@ -63,8 +63,9 @@ def probs_to_counts(probs, shots=10000):
     if diff != 0 and counts.size:
         counts[int(np.argmax(probs))] += diff
     nq = int(round(np.log2(counts.size)))
-    return {format(i, f"0{nq}b"): int(c)
-            for i, c in enumerate(counts) if c > 0}
+    return {
+        format(i, f"0{nq}b"): int(c) for i, c in enumerate(counts) if c > 0
+    }
 
 
 class TestApplyZneCzScaling:
@@ -225,7 +226,7 @@ class TestRichardsonCoefficients:
         scales = np.array([1.0, 3.0, 5.0])
         coeffs = richardson_coefficients(scales)
         for k in range(1, len(scales)):
-            moment = np.sum(coeffs * scales ** k)
+            moment = np.sum(coeffs * scales**k)
             assert abs(moment) < 1e-10
 
     def test_recovers_linear_signal(self):
@@ -243,9 +244,7 @@ class TestExtrapolateToZero:
         scales = [1.0, 3.0, 5.0]
         ideal = np.array([0.7, 0.0, 0.0, 0.3])
         drift = np.array([0.1, -0.05, -0.05, 0.0])
-        mat = np.vstack(
-            [ideal + s * drift for s in scales]
-        )
+        mat = np.vstack([ideal + s * drift for s in scales])
         out = extrapolate_to_zero(scales, mat, method="richardson")
         np.testing.assert_allclose(out, ideal, atol=1e-10)
 
@@ -262,9 +261,9 @@ class TestExtrapolateToZero:
     def test_exponential_runs_and_finite(self):
         scales = [1.0, 3.0, 5.0]
         base = np.array([0.5, 0.5])
-        mat = np.vstack(
-            [base + 0.02 * np.array([1.0, -1.0]) * s for s in scales]
-        )
+        mat = np.vstack([
+            base + 0.02 * np.array([1.0, -1.0]) * s for s in scales
+        ])
         out = extrapolate_to_zero(scales, mat, method="exponential")
         assert np.all(np.isfinite(out))
 
@@ -309,17 +308,17 @@ class TestZNEMitigation:
 
     def test_validate_device_with_cz(self):
         zne = ZNEMitigation()
-        valid, msg = zne.validate_device(
-            {"basis_gates": ["u3", "cz", "measure"]}
-        )
+        valid, msg = zne.validate_device({
+            "basis_gates": ["u3", "cz", "measure"]
+        })
         assert valid is True
         assert msg is None
 
     def test_validate_device_without_cz(self):
         zne = ZNEMitigation()
-        valid, msg = zne.validate_device(
-            {"basis_gates": ["u3", "cx", "measure"]}
-        )
+        valid, msg = zne.validate_device({
+            "basis_gates": ["u3", "cx", "measure"]
+        })
         assert valid is False
         assert "CZ" in msg
 

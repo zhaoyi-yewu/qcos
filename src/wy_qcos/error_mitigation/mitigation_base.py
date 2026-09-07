@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
@@ -31,7 +31,7 @@ class MitigationBase(ABC):
     def __init__(self, name: str):
         self._name = name
         self._enabled = False
-        self._config: Dict[str, Any] = {}
+        self._config: dict[str, Any] = {}
 
     @property
     def name(self) -> str:
@@ -41,7 +41,7 @@ class MitigationBase(ABC):
     def enabled(self) -> bool:
         return self._enabled
 
-    def set_config(self, config: Dict[str, Any]) -> None:
+    def set_config(self, config: dict[str, Any]) -> None:
         """Set configuration for this mitigation technique.
 
         Args:
@@ -50,7 +50,7 @@ class MitigationBase(ABC):
         self._config = config
         self._enabled = config.get("enabled", False)
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         """Get current configuration."""
         return self._config.copy()
 
@@ -66,9 +66,9 @@ class MitigationBase(ABC):
         self,
         circuit: QuantumCircuit,
         device_id: str,
-        target_qubits: Optional[List[int]] = None,
+        target_qubits: list[int] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run calibration procedure.
 
         Default implementation returns empty dict (no calibration needed).
@@ -86,7 +86,7 @@ class MitigationBase(ABC):
 
     def transform_circuit(
         self, circuit: QuantumCircuit
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Transform the circuit for this mitigation technique.
 
         Default implementation returns the original circuit unchanged.
@@ -105,10 +105,10 @@ class MitigationBase(ABC):
     @abstractmethod
     def postprocess(
         self,
-        results: Dict[str, Dict[str, int]],
-        calibration: Optional[Dict[str, Any]] = None,
+        results: dict[str, dict[str, int]],
+        calibration: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Post-process raw measurement results.
 
         Args:
@@ -126,7 +126,7 @@ class MitigationBase(ABC):
             "postprocess() must be implemented by subclass"
         )
 
-    def validate_device(self, device_config: Dict[str, Any]) -> tuple:
+    def validate_device(self, device_config: dict[str, Any]) -> tuple:
         """Validate that the device supports this technique.
 
         Args:

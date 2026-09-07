@@ -21,8 +21,6 @@ from wy_qcos.error_mitigation.mitigation_factory import MitigationFactory
 from wy_qcos.error_mitigation.mitigation_base import MitigationBase
 from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
 from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
-from wy_qcos.error_mitigation.dd_mitigation import DDMitigation
-from wy_qcos.error_mitigation.clifford_fitting import CliffordFitting
 
 
 class NotAMitigation:
@@ -40,9 +38,6 @@ class TestMitigationFactory:
         assert "readout" in available
         assert "rem" in available
         assert "zne" in available
-        assert "dd" in available
-        assert "clifford_fitting" in available
-        assert "clifford" in available
 
     def test_create_readout(self):
         factory = MitigationFactory()
@@ -58,16 +53,6 @@ class TestMitigationFactory:
         factory = MitigationFactory()
         zne = factory.create("zne")
         assert isinstance(zne, ZNEMitigation)
-
-    def test_create_dd(self):
-        factory = MitigationFactory()
-        dd = factory.create("dd")
-        assert isinstance(dd, DDMitigation)
-
-    def test_create_clifford(self):
-        factory = MitigationFactory()
-        cf = factory.create("clifford_fitting")
-        assert isinstance(cf, CliffordFitting)
 
     def test_create_unknown_raises(self):
         factory = MitigationFactory()

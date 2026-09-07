@@ -669,33 +669,32 @@ class Client:
     ):
         """Submit new job.
 
-                Args:
-                    source_code: source code
-                    code_type: code type
-                    circuit_aggregation: circuit aggregation
-                    job_id: job uuid
-                    job_name: job name
-                    job_type: job type
-                    job_priority: job priority. Values: 1-10, Default: 5.
-                                  Highest priority: 1, Lowest Priority: 10
-                    description: job description
-                    shots: shots
-                    backend: backend name
-                    driver_options: driver options
-                    transpiler: transpiler name
-                    transpiler_options: transpiler options
-                    profiling: profiling types
-                    callbacks: callbacks
-                    dry_run: dry run
-                    qec_options: qec options
-                    flavor_id: flavor UUID for auto scheduling
-                    qem_options: error mitigation options
-                    extra_specs: extra scheduling specifications
+        Args:
+            source_code: source code
+            code_type: code type
+            circuit_aggregation: circuit aggregation
+            job_id: job uuid
+            job_name: job name
+            job_type: job type
+            job_priority: job priority. Values: 1-10, Default: 5.
+                          Highest priority: 1, Lowest Priority: 10
+            description: job description
+            shots: shots
+            backend: backend name
+            driver_options: driver options
+            transpiler: transpiler name
+            transpiler_options: transpiler options
+            profiling: profiling types
+            callbacks: callbacks
+            dry_run: dry run
+            qec_options: qec options
+            flavor_id: flavor UUID for auto scheduling
+            qem_options: error mitigation options
+            extra_specs: extra scheduling specifications
 
-                Returns:
-                    submit_job result
+        Returns:
+            submit_job result
         """
-
         method_name = "submit_job"
 
         # construct data and call json rpc
