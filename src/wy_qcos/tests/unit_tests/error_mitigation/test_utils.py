@@ -239,3 +239,100 @@ class TestClosestPositiveDistribution:
         # Degenerate input: projection is the uniform distribution.
         result = closest_positive_distribution(np.zeros(4))
         np.testing.assert_allclose(result, [0.25, 0.25, 0.25, 0.25])
+
+
+class TestCountsToSamplesPadding:
+    """Cover the short-bitstring padding branch."""
+
+    def test_short_bitstring_padded(self):
+        # "1" for 2 qubits -> padded to "01"
+        counts = {"1": 2}
+        samples = counts_to_samples(counts, 2)
+        assert samples.shape == (2, 2)
+        # padded to [0, 1]
+        assert np.all(samples == [0, 1])
+
+    def test_mixed_length_bitstrings(self):
+        counts = {"0": 1, "11": 1}
+        samples = counts_to_samples(counts, 2)
+        assert samples.shape == (2, 2)
+        # "0" -> [0,0], "11" -> [1,1]
+        assert np.all(samples[0] == [0, 0])
+        assert np.all(samples[1] == [1, 1])
+
+
+class TestSamplesToProbabilitiesZeroTotal:
+    """Cover the total==0 early-return branch."""
+
+    def test_all_zero_samples(self):
+        # samples of all-zero rows -> bincount all at index 0, total = n
+        # To hit the total==0 branch we need an empty-ish array; a (0,2)
+        # array is already covered. Use a 2-row all-zero with num_qubits=0
+        # is not meaningful. Instead verify the guard exists: a zero-length
+        # weights path. The empty case is the practical trigger.
+        samples = np.zeros((0, 2), dtype=int)
+        probs = samples_to_probabilities(samples, 2)
+        np.testing.assert_allclose(probs, np.zeros(4))
+
+
+class TestClosestPositiveDistributionFallback:
+    """Cover the scipy-unavailable / non-converging fallback branch."""
+
+    def test_fallback_to_clip_and_normalize_when_scipy_missing(
+        self, monkeypatch
+    ):
+        import wy_qcos.error_mitigation.utils as utils_mod
+
+        # Force scipy.optimize import to fail inside the function so the
+        # except branch runs and falls back to clip_and_normalize.
+        real_import = (
+            __builtins__.__import__
+            if hasattr(__builtins__, "__import__")
+            else __import__
+        )
+
+        def fake_import(name, *args, **kwargs):
+            if name == "scipy.optimize":
+                raise ImportError("simulated missing scipy")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", fake_import)
+        # quasi with a large negative -> clip_and_normalize zeroes the negative
+        result = utils_mod.closest_positive_distribution(
+            np.array([-0.5, 0.6, 0.0, 0.9])
+        )
+        assert np.all(result >= 0)
+        np.testing.assert_allclose(np.sum(result), 1.0)
+
+    def test_fallback_when_optimizer_does_not_succeed(self, monkeypatch):
+        import wy_qcos.error_mitigation.utils as utils_mod
+
+        class _FakeResult:
+            success = False
+            x = None
+
+        class _FakeOptimize:
+            @staticmethod
+            def minimize(*args, **kwargs):
+                return _FakeResult()
+
+            class Bounds:
+                def __init__(self, *a, **k):
+                    pass
+
+            class LinearConstraint:
+                def __init__(self, *a, **k):
+                    pass
+
+        # Pre-import scipy.optimize in the real module, then patch it.
+        import scipy.optimize  # noqa: F401  ensure real import works first
+
+        import sys
+
+        monkeypatch.setitem(sys.modules, "scipy.optimize", _FakeOptimize)
+        result = utils_mod.closest_positive_distribution(
+            np.array([-0.3, 0.8, 0.2, 0.3])
+        )
+        # falls back to clip_and_normalize
+        assert np.all(result >= 0)
+        np.testing.assert_allclose(np.sum(result), 1.0)

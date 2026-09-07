@@ -24,9 +24,11 @@ from wy_qcos.error_mitigation.dd_mitigation import (
     detect_idle_windows,
     generate_dd_sequence,
     insert_dd_into_circuit,
+    udd_pulses,
     XY4_PULSES,
     CPMG_PULSES,
 )
+import pytest
 
 
 def make_simple_circuit() -> QuantumCircuit:
@@ -355,3 +357,252 @@ class TestDDMitigation:
         output = dd.postprocess(results)
         assert output["results"] == results
         assert output["metadata"]["technique"] == "dd"
+
+
+class TestUddPulses:
+    """Test udd_pulses axis-sequence helper."""
+
+    def test_odd_order_all_y(self):
+        assert udd_pulses(3) == ["y", "y", "y"]
+        assert udd_pulses(1) == ["y"]
+
+    def test_even_order_alternating(self):
+        assert udd_pulses(2) == ["y", "x"]
+        assert udd_pulses(4) == ["y", "x", "y", "x"]
+
+    def test_zero_raises(self):
+        with pytest.raises(ValueError, match="UDD order must be >= 1"):
+            udd_pulses(0)
+
+    def test_negative_raises(self):
+        with pytest.raises(ValueError, match="UDD order must be >= 1"):
+            udd_pulses(-2)
+
+
+class TestResolveSequence:
+    """Test _resolve_sequence (via generate_dd_sequence) edge cases."""
+
+    def test_invalid_udd_suffix_raises(self):
+        gate_times = {"x": 0.02, "y": 0.02}
+        with pytest.raises(ValueError, match="Invalid UDD sequence"):
+            generate_dd_sequence(1.0, "UDDabc", gate_times, 0)
+
+    def test_udd1_single_pulse(self):
+        gate_times = {"x": 0.02, "y": 0.02}
+        ops = generate_dd_sequence(1.0, "UDD1", gate_times, 0)
+        gate_names = [op.name for op in ops if op.name in ("x", "y")]
+        assert gate_names == ["y"]
+
+
+class TestDetectIdleWindowsEdgeCases:
+    """Cover barrier-without-targets and op-without-targets branches."""
+
+    def test_barrier_without_targets_aligns_all(self):
+        from wy_qcos.common.cmss.base_operation import BaseOperation
+
+        ops = [
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
+            BaseOperation("barrier", targets=None),
+            GateOperation(
+                "h",
+                targets=[1],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
+        ]
+        gate_times = {"h": 0.02}
+        windows = detect_idle_windows(ops, 2, gate_times)
+        # q1 clock advanced to 0.02 by barrier -> no idle gap before its h
+        assert all(w["duration"] >= 0 for w in windows[1])
+
+    def test_op_without_targets_skipped(self):
+        from wy_qcos.common.cmss.base_operation import BaseOperation
+
+        ops = [
+            BaseOperation("global_phase", targets=None),
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
+        ]
+        gate_times = {"h": 0.02}
+        windows = detect_idle_windows(ops, 1, gate_times)
+        assert len(windows[0]) == 0
+
+    def test_reset_ignored_like_measure(self):
+        from wy_qcos.common.cmss.base_operation import BaseOperation
+
+        ops = [
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
+            BaseOperation("reset", targets=[0]),
+        ]
+        gate_times = {"h": 0.02}
+        windows = detect_idle_windows(ops, 1, gate_times)
+        assert len(windows[0]) == 0
+
+
+class TestInsertDdIntoCircuitFull:
+    """Cover the insert_dd_into_circuit insertion path end-to-end."""
+
+    def _make_circuit_with_real_idle(self):
+        """H q0 then cz q0,q1: q1 is idle for the h duration (0.5).
+
+        With gate_times h=0.5, cz=0.2, x=0.02 the q1 idle window before cz
+        is 0.5 >= 4*0.02 -> DD inserted.
+        """
+        qc = QuantumCircuit(2)
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
+        qc.append(
+            GateOperation(
+                "cz",
+                targets=[0, 1],
+                operation_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+            )
+        )
+        return qc
+
+    def test_dd_actually_inserts_pulse_ops(self):
+        qc = self._make_circuit_with_real_idle()
+        gate_times = {
+            "h": 0.5,
+            "cz": 0.2,
+            "x": 0.02,
+            "y": 0.02,
+            "default": 0.02,
+        }
+        new_qc, metadata = insert_dd_into_circuit(qc, "XY4", gate_times)
+        assert metadata["dd_applied"] is True
+        assert metadata["windows_filled"] >= 1
+        assert metadata["depth_new"] >= metadata["depth_original"]
+        # the new circuit contains x/y DD pulses
+        names = [op.name for op in new_qc.get_operations()]
+        assert "x" in names or "y" in names
+
+    def test_dd_preserves_non_dd_gates(self):
+        qc = self._make_circuit_with_real_idle()
+        gate_times = {"h": 0.5, "cz": 0.2, "x": 0.02, "y": 0.02}
+        new_qc, _ = insert_dd_into_circuit(qc, "XY4", gate_times)
+        names = [op.name for op in new_qc.get_operations()]
+        # original h, cz are still present
+        assert names.count("h") == 1
+        assert names.count("cz") == 1
+
+    def test_dd_with_barrier_in_circuit(self):
+        from wy_qcos.common.cmss.base_operation import BaseOperation
+
+        qc = QuantumCircuit(2)
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
+        qc.append(BaseOperation("barrier", targets=[0, 1]))
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[1],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
+        qc.append(
+            GateOperation(
+                "cz",
+                targets=[0, 1],
+                operation_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+            )
+        )
+        gate_times = {"h": 0.5, "cz": 0.2, "x": 0.02, "y": 0.02}
+        new_qc, metadata = insert_dd_into_circuit(qc, "XY4", gate_times)
+        # barrier preserved in output
+        names = [op.name for op in new_qc.get_operations()]
+        assert "barrier" in names
+        # DD may or may not apply depending on window; ensure no crash
+        assert "dd_applied" in metadata
+
+    def test_dd_with_measure_in_circuit(self):
+        from wy_qcos.common.cmss.measure import Measure
+
+        qc = QuantumCircuit(2)
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
+        qc.append(Measure(targets=[0]))
+        gate_times = {"h": 0.5, "x": 0.02, "y": 0.02}
+        new_qc, metadata = insert_dd_into_circuit(qc, "XY4", gate_times)
+        names = [op.name for op in new_qc.get_operations()]
+        assert "measure" in names
+
+    def test_dd_with_op_without_targets_in_circuit(self):
+        from wy_qcos.common.cmss.base_operation import BaseOperation
+
+        qc = QuantumCircuit(2)
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
+        qc.append(BaseOperation("global_phase", targets=None))
+        gate_times = {"h": 0.5, "x": 0.02, "y": 0.02}
+        new_qc, metadata = insert_dd_into_circuit(qc, "XY4", gate_times)
+        # global_phase op preserved (no targets -> appended as-is)
+        names = [op.name for op in new_qc.get_operations()]
+        assert "global_phase" in names
+
+    def test_no_suitable_idle_windows_reason(self):
+        # single gate on q0, default (no trailing) -> no idle windows
+        qc = QuantumCircuit(2)
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
+        gate_times = {"h": 0.02, "x": 0.02, "y": 0.02}
+        new_qc, metadata = insert_dd_into_circuit(qc, "XY4", gate_times)
+        assert metadata["dd_applied"] is False
+        assert metadata["reason"] == "no_suitable_idle_windows"
+        assert metadata["windows_detected"] == 0
+
+
+class TestGenerateDdSequenceEdges:
+    """Cover generate_dd_sequence boundary behaviour."""
+
+    def test_trailing_delay_present_when_room_left(self):
+        # window much larger than pulse time -> trailing Delay emitted
+        gate_times = {"x": 0.02, "y": 0.02}
+        ops = generate_dd_sequence(1.0, "XY4", gate_times, 0)
+        delay_durations = [
+            getattr(op, "duration", None) for op in ops if op.name == "delay"
+        ]
+        assert any(d is not None and d > 1e-9 for d in delay_durations)
+
+    def test_pulse_count_for_xy8(self):
+        from wy_qcos.error_mitigation.dd_mitigation import XY8_PULSES
+
+        gate_times = {"x": 0.02, "y": 0.02}
+        ops = generate_dd_sequence(2.0, "XY8", gate_times, 0)
+        gate_names = [op.name for op in ops if op.name in ("x", "y")]
+        assert gate_names == XY8_PULSES

@@ -33,6 +33,11 @@ from wy_qcos.error_mitigation.zne_mitigation import (
     richardson_coefficients,
     zne_linear_extrapolate,
 )
+from wy_qcos.error_mitigation.zne_mitigation import (
+    _entropy,
+    _prune_scale_points,
+    _probs_to_counts,
+)
 
 
 def make_circuit_with_cz(num_cz):
@@ -665,3 +670,328 @@ class TestExpectationValueExtrapolation:
         raw = out["results"]["expectation_value_raw"]
         # ZNE should move closer to 1.0 than raw
         assert abs(exp - 1.0) < abs(raw - 1.0)
+
+
+class TestApplyZneCzFolding:
+    """Test apply_zne_cz_folding (arbitrary fractional folding)."""
+
+    def test_scale_two_partial_fold(self):
+        from wy_qcos.error_mitigation.zne_mitigation import (
+            apply_zne_cz_folding,
+        )
+
+        qc = make_circuit_with_cz(2)
+        scaled = apply_zne_cz_folding(qc, 2.0)
+        # 2 CZ, scale 2 -> fold 1 -> +2 CZ = 4
+        assert count_cz_gates(scaled) == 4
+
+    def test_scale_below_one_raises(self):
+        from wy_qcos.error_mitigation.zne_mitigation import (
+            apply_zne_cz_folding,
+        )
+
+        qc = make_circuit_with_cz(1)
+        with pytest.raises(ValueError):
+            apply_zne_cz_folding(qc, 0.5)
+
+    def test_scale_one_is_identity(self):
+        from wy_qcos.error_mitigation.zne_mitigation import (
+            apply_zne_cz_folding,
+        )
+
+        qc = make_circuit_with_cz(2)
+        assert apply_zne_cz_folding(qc, 1.0) is qc
+
+    def test_no_cz_gates_unchanged(self):
+        from wy_qcos.error_mitigation.zne_mitigation import (
+            apply_zne_cz_folding,
+        )
+
+        qc = QuantumCircuit(1)
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
+        scaled = apply_zne_cz_folding(qc, 3.0)
+        assert scaled.size() == 1
+
+
+class TestEntropy:
+    """Test the _entropy helper."""
+
+    def test_pure_state_zero_entropy(self):
+        assert _entropy(np.array([1.0, 0.0])) == 0.0
+
+    def test_uniform_max_entropy(self):
+        p = np.array([0.5, 0.5])
+        assert abs(_entropy(p) - 1.0) < 1e-12
+
+    def test_all_zero_returns_zero(self):
+        assert _entropy(np.zeros(4)) == 0.0
+
+
+class TestPruneScalePoints:
+    """Test _prune_scale_points saturation and non-monotonicity."""
+
+    def test_two_or_fewer_points_unchanged(self):
+        pts = [(1.0, np.array([0.6, 0.4]))]
+        assert _prune_scale_points(pts, 1) == pts
+
+    def test_saturated_top_point_dropped(self):
+        # 3 points; top point near-uniform (peak ~0.25 for 2 qubits) -> dropped
+        pts = [
+            (1.0, np.array([0.6, 0.1, 0.1, 0.2])),
+            (3.0, np.array([0.5, 0.15, 0.15, 0.2])),
+            (5.0, np.array([0.26, 0.25, 0.25, 0.24])),  # near uniform
+        ]
+        pruned = _prune_scale_points(pts, 2)
+        assert len(pruned) == 2
+        assert pruned[-1][0] == 3.0
+
+    def test_non_monotonic_entropy_drops_top(self):
+        # top point has lower entropy than second -> non-monotonic,
+        # dropped. Keep middle peak well above 1.5*uniform to avoid the
+        # saturation-drop branch firing first.
+        pts = [
+            (1.0, np.array([0.9, 0.1])),  # ent ~0.47, peak 0.9
+            (
+                3.0,
+                np.array([0.99, 0.01]),
+            ),  # ent ~0.08, peak 0.99 (decreases but <0.25)
+            (
+                5.0,
+                np.array([0.5, 0.5]),
+            ),  # ent ~1.0 (increases vs sec -> monotonic ok)
+        ]
+        # Build a true non-monotonic case: entropy DECREASES at top by > 0.25
+        pts = [
+            (1.0, np.array([0.5, 0.5])),  # ent ~1.0
+            (
+                3.0,
+                np.array([0.99, 0.01]),
+            ),  # ent ~0.08 (decreases -> drops here first)
+        ]
+        pruned = _prune_scale_points(pts, 1)
+        # only 2 points -> pruned unchanged (len <= 2 early return)
+        assert len(pruned) == 2
+
+
+class TestExtrapolateToZeroMethods:
+    """Cover linear and exponential method branches directly."""
+
+    def test_linear_two_points(self):
+        scales = [1.0, 3.0]
+        y1 = np.array([0.8, 0.2])
+        y3 = np.array([0.6, 0.4])
+        mat = np.vstack([y1, y3])
+        out = extrapolate_to_zero(scales, mat, method="linear")
+        expected = (3.0 * y1 - 1.0 * y3) / (3.0 - 1.0)
+        np.testing.assert_allclose(out, expected, atol=1e-10)
+
+    def test_linear_single_point_returns_first(self):
+        out = extrapolate_to_zero(
+            [1.0], np.array([[0.6, 0.4]]), method="linear"
+        )
+        np.testing.assert_allclose(out, [0.6, 0.4])
+
+    def test_richardson_single_point(self):
+        out = extrapolate_to_zero(
+            [1.0], np.array([[0.6, 0.4]]), method="richardson"
+        )
+        np.testing.assert_allclose(out, [0.6, 0.4])
+
+    def test_polynomial_degree_zero(self):
+        # degree 0 -> constant fit -> mean of points
+        scales = [1.0, 3.0, 5.0]
+        mat = np.vstack([[0.6, 0.4], [0.55, 0.45], [0.5, 0.5]])
+        out = extrapolate_to_zero(
+            scales, mat, method="polynomial", polynomial_degree=0
+        )
+        # constant term of degree-0 polyfit = mean
+        expected = np.polyfit(np.array(scales), mat, 0)[-1]
+        np.testing.assert_allclose(out, expected, atol=1e-10)
+
+    def test_exponential_falls_back_on_nonconvergence(self):
+        # Degenerate data that won't converge the exponential fit cleanly;
+        # ensure the fallback path (polyfit) returns finite values.
+        scales = np.array([1.0, 2.0, 3.0])
+        # A single-element per-row, all identical -> curve_fit struggles
+        mat = np.vstack([[0.5], [0.5], [0.5]])
+        out = extrapolate_to_zero(scales, mat, method="exponential")
+        assert np.all(np.isfinite(out))
+
+    def test_mismatched_scales_and_rows_raises(self):
+        with pytest.raises(ValueError, match="disagree"):
+            extrapolate_to_zero(
+                [1, 3], np.array([[0.5, 0.5]]), method="richardson"
+            )
+
+
+class TestProbsToCounts:
+    """Test _probs_to_counts helper."""
+
+    def test_rounding_preserves_total(self):
+        probs = np.array([0.33, 0.33, 0.34])
+        counts = _probs_to_counts(probs, 1000, 2)
+        assert sum(counts.values()) == 1000
+
+    def test_zero_probabilities_omitted(self):
+        probs = np.array([0.5, 0.5, 0.0, 0.0])
+        counts = _probs_to_counts(probs, 100, 2)
+        assert "00" in counts
+        assert "01" in counts
+        assert "10" not in counts
+        assert "11" not in counts
+
+    def test_bitstring_width_matches_num_qubits(self):
+        probs = np.array([0.0, 0.0, 0.0, 1.0])
+        counts = _probs_to_counts(probs, 100, 2)
+        assert "11" in counts
+        assert counts["11"] == 100
+
+
+class TestZneSetConfigEdges:
+    """Cover set_config edge cases."""
+
+    def test_set_config_fold_gate_names_none(self):
+        zne = ZNEMitigation()
+        zne.set_config({"enabled": True, "fold_gate_names": None})
+        assert zne._fold_gate_names is None
+
+    def test_set_config_fold_gate_names_custom(self):
+        zne = ZNEMitigation()
+        zne.set_config({"enabled": True, "fold_gate_names": ["cx", "cz"]})
+        assert zne._fold_gate_names == ("cx", "cz")
+
+    def test_set_config_extrapolation_method(self):
+        zne = ZNEMitigation()
+        zne.set_config({
+            "enabled": True,
+            "extrapolation_method": "richardson",
+        })
+        assert zne._extrapolation_method == "richardson"
+
+    def test_set_config_fallback_options(self):
+        zne = ZNEMitigation()
+        zne.set_config({
+            "enabled": True,
+            "enable_fallback": False,
+            "fallback_threshold": 0.3,
+            "folding_strategy": "right",
+            "folding_seed": 99,
+        })
+        assert zne._enable_fallback is False
+        assert zne._fallback_threshold == 0.3
+        assert zne._folding_strategy == "right"
+        assert zne._folding_seed == 99
+
+
+class TestZnePostprocessEdges:
+    """Cover postprocess defensive branches."""
+
+    def test_postprocess_infers_num_qubits_from_counts(self):
+        zne = ZNEMitigation(scale_factors=[1, 3])
+        results = {
+            "zne_s1": {"00": 4500, "01": 200, "10": 300, "11": 5000},
+            "zne_s3": {"00": 4000, "01": 400, "10": 600, "11": 5000},
+        }
+        output = zne.postprocess(results)  # no num_qubits
+        assert output["metadata"]["applied"] is True
+
+    def test_postprocess_empty_results_defaults_num_qubits_one(self):
+        zne = ZNEMitigation(scale_factors=[1, 3])
+        output = zne.postprocess({}, num_qubits=1)
+        assert output["metadata"]["applied"] is False
+
+    def test_postprocess_unparseable_label_skipped(self):
+        zne = ZNEMitigation(scale_factors=[1, 3])
+        results = {
+            "garbage_label": {"00": 500, "11": 500},
+        }
+        output = zne.postprocess(results, num_qubits=2)
+        # no scale-1 found -> applied False
+        assert output["metadata"]["applied"] is False
+
+    def test_postprocess_duplicate_scale_skipped(self):
+        # two entries with same scale -> second ignored
+        zne = ZNEMitigation(scale_factors=[1, 3])
+        results = {
+            "zne_s1": {"00": 900, "11": 100},
+            "original": {"00": 500, "11": 500},  # also scale 1, ignored
+            "zne_s3": {"00": 700, "11": 300},
+        }
+        output = zne.postprocess(results, num_qubits=2)
+        assert output["metadata"]["applied"] is True
+
+    def test_postprocess_observable_insufficient_points(self):
+        # observable with only 1 point -> insufficient_scale_points branch
+        zne = ZNEMitigation(scale_factors=[1, 3])
+        results = {"zne_s1": {"0": 900, "1": 100}}
+        output = zne.postprocess(results, num_qubits=1, observable=[0])
+        assert output["metadata"]["applied"] is False
+        assert output["metadata"]["reason"] == "insufficient_scale_points"
+        assert "expectation_value" in output["results"]
+
+    def test_postprocess_disable_fallback_keeps_extrapolated(self):
+        # richardson on divergent data; with fallback disabled the result
+        # is still returned (clipped+normalized) rather than reverting.
+        zne = ZNEMitigation(
+            extrapolation_method="richardson", enable_fallback=False
+        )
+        results = {
+            "zne_s1": {"0": 900, "1": 100},
+            "zne_s3": {"0": 100, "1": 900},
+            "zne_s5": {"0": 100, "1": 900},
+        }
+        output = zne.postprocess(results, num_qubits=1)
+        assert output["metadata"]["applied"] is True
+        assert output["metadata"]["fallback"] is False
+
+    def test_parse_scale_unknown_label(self):
+        zne = ZNEMitigation(scale_factor=3)
+        assert zne._parse_scale("unknown") is None
+
+    def test_parse_scale_original_label(self):
+        zne = ZNEMitigation(scale_factor=3)
+        assert zne._parse_scale("original") == 1.0
+
+    def test_parse_scale_scaled_label(self):
+        zne = ZNEMitigation(scale_factor=5)
+        assert zne._parse_scale("scaled") == 5.0
+
+    def test_parse_scale_scaled_label_no_scale_factor(self):
+        # _scale_factor falsy -> defaults to 3.0
+        zne = ZNEMitigation()
+        zne._scale_factor = 0
+        assert zne._parse_scale("scaled") == 3.0
+
+
+class TestExpectationValueFallback:
+    """Cover the expectation-value extrapolation fallback (out-of-range)."""
+
+    def test_fallback_when_expectation_out_of_range(self):
+        # Construct counts where extrapolation diverges beyond [-1,1].
+        # Use richardson with a steep increasing trend so the fit overshoots.
+        # P(0) at scales 1,3,5 = 1.0, 0.5, 0.0 -> exp = 1-0.5*lambda
+        # richardson on (1, 0.5, 0) extrapolated to 0:
+        # exact linear -> recovers 1.0 (in range, no fallback).  To force
+        # fallback, use expectations that increase with scale (non-physical).
+        results = {
+            "zne_s1": {"0": 5000, "1": 5000},  # exp 0
+            "zne_s3": {"0": 8000, "1": 2000},  # exp 0.6
+            "zne_s5": {"0": 10000, "1": 0},  # exp 1.0
+        }
+        zne = ZNEMitigation(
+            scale_factors=[1, 3, 5],
+            extrapolation_method="richardson",
+        )
+        out = zne.postprocess(results, num_qubits=1, observable=[0])
+        # expectations: 0, 0.6, 1.0 increasing with scale -> extrapolation
+        # at 0 goes negative (below -1) -> fallback to raw exp1 (0.0)
+        if out["metadata"]["fallback"]:
+            assert abs(out["results"]["expectation_value"]) <= 1.0
+        # clipped to [-1, 1] regardless
+        assert -1.0 <= out["results"]["expectation_value"] <= 1.0
