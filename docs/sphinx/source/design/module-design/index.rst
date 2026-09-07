@@ -18,6 +18,7 @@
    instruction-set
    aggregation-cutting
    qec
+   qem
    user
    metrics
    background-tasks
