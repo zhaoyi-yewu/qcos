@@ -204,7 +204,9 @@ class TestClosestPositiveDistribution:
 
     def test_negative_elements_reach_zero(self):
         # [-1, 0.1, -1, 0.2] -> [0, ~0.4503, 0, ~0.5497]
-        result = closest_positive_distribution(np.array([-1.0, 0.1, -1.0, 0.2]))
+        result = closest_positive_distribution(
+            np.array([-1.0, 0.1, -1.0, 0.2])
+        )
         assert np.all(result >= 0)
         np.testing.assert_allclose(np.sum(result), 1.0)
         np.testing.assert_allclose(result[0], 0.0, atol=1e-6)

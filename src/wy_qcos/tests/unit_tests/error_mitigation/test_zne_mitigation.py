@@ -476,12 +476,18 @@ class TestFoldGates:
 
     def test_random_reproducible_with_seed(self):
         qc = make_circuit_with_cz(6)
-        a = [op.name for op in fold_gates(
-            qc, 2.0, strategy="random", gate_names=("cz",), seed=7
-        ).get_operations()]
-        b = [op.name for op in fold_gates(
-            qc, 2.0, strategy="random", gate_names=("cz",), seed=7
-        ).get_operations()]
+        a = [
+            op.name
+            for op in fold_gates(
+                qc, 2.0, strategy="random", gate_names=("cz",), seed=7
+            ).get_operations()
+        ]
+        b = [
+            op.name
+            for op in fold_gates(
+                qc, 2.0, strategy="random", gate_names=("cz",), seed=7
+            ).get_operations()
+        ]
         assert a == b
 
     def test_random_selects_different_gates_across_seeds(self):
@@ -490,19 +496,28 @@ class TestFoldGates:
         # 4 CZ gates folds 2 of them; across seeds the chosen pair varies.
         qc = QuantumCircuit(2)
         for _ in range(4):
-            qc.append(GateOperation(
-                "cz", targets=[0, 1],
-                operation_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
-            ))
-            qc.append(GateOperation(
-                "h", targets=[0],
-                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
-            ))
+            qc.append(
+                GateOperation(
+                    "cz",
+                    targets=[0, 1],
+                    operation_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+                )
+            )
+            qc.append(
+                GateOperation(
+                    "h",
+                    targets=[0],
+                    operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+                )
+            )
 
         def folded_positions(seed):
             scaled = fold_gates(
-                qc, 2.0, strategy="random",
-                gate_names=("cz",), seed=seed,
+                qc,
+                2.0,
+                strategy="random",
+                gate_names=("cz",),
+                seed=seed,
             )
             ops = scaled.get_operations()
             positions = set()
@@ -534,10 +549,13 @@ class TestFoldGates:
     def test_no_foldable_gates(self):
         # Only an h gate; restricting to cz -> no fold -> unchanged.
         qc = QuantumCircuit(1)
-        qc.append(GateOperation(
-            "h", targets=[0],
-            operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
-        ))
+        qc.append(
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            )
+        )
         scaled = fold_gates(qc, 3.0, strategy="random", gate_names=("cz",))
         assert scaled.size() == 1
 
@@ -577,9 +595,7 @@ class TestExpectationValueExtrapolation:
 
     def test_recover_zero_noise_linear(self):
         # exp([0]) = P(0)-P(1); ideal=1.0, noise: exp = 1 - 0.2*lambda
-        results = self._linear_noise_counts(
-            [(1, 0.1), (3, 0.3), (5, 0.5)]
-        )
+        results = self._linear_noise_counts([(1, 0.1), (3, 0.3), (5, 0.5)])
         zne = ZNEMitigation(
             scale_factors=[1, 3, 5],
             extrapolation_method="polynomial",
@@ -613,10 +629,11 @@ class TestExpectationValueExtrapolation:
             "zne_s5": {"0": 0, "1": 10000},
         }
         zne = ZNEMitigation(
-            scale_factors=[1, 3, 5], extrapolation_method="richardson",
+            scale_factors=[1, 3, 5],
+            extrapolation_method="richardson",
         )
         out = zne.postprocess(results, num_qubits=1, observable=[0])
-        # all expectations = -1.0; extrapolation is -1.0 (in range, no fallback)
+        # all expectations = -1.0; extrapolation is -1.0 (in range)
         assert abs(out["results"]["expectation_value"] - (-1.0)) < 1e-9
         assert out["metadata"]["fallback"] is False
         # but clipped to [-1,1]
@@ -640,11 +657,11 @@ class TestExpectationValueExtrapolation:
             }
         zne = ZNEMitigation(
             scale_factors=[1, 3, 5],
-            extrapolation_method="polynomial", polynomial_degree=1,
+            extrapolation_method="polynomial",
+            polynomial_degree=1,
         )
         out = zne.postprocess(results, num_qubits=2, observable=[0, 1])
         exp = out["results"]["expectation_value"]
         raw = out["results"]["expectation_value_raw"]
         # ZNE should move closer to 1.0 than raw
         assert abs(exp - 1.0) < abs(raw - 1.0)
-

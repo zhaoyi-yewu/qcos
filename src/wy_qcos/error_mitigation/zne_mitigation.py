@@ -208,9 +208,18 @@ def count_cz_gates(circuit: QuantumCircuit) -> int:
 # Gate names that are self-inverse (G^dag = G) and thus safe to fold by
 # repetition (G G G is logically G).  ZNE folding replaces a gate with
 # ``G G^dag G``; for self-inverse gates this is three identical copies.
-_SELF_INVERSE_GATES = frozenset(
-    {"cz", "cx", "x", "y", "z", "h", "s", "t", "sdg", "tdg"}
-)
+_SELF_INVERSE_GATES = frozenset({
+    "cz",
+    "cx",
+    "x",
+    "y",
+    "z",
+    "h",
+    "s",
+    "t",
+    "sdg",
+    "tdg",
+})
 
 
 def _is_foldable(op: BaseOperation) -> bool:
@@ -288,7 +297,7 @@ def fold_gates(
     num_extra = max(0, min(num_extra, n))
 
     if strategy == "right":
-        extra_idx = set(foldable_idx[n - num_extra:])
+        extra_idx = set(foldable_idx[n - num_extra :])
     elif strategy == "random":
         rng = random.Random(seed)
         shuffled = foldable_idx[:]
@@ -601,6 +610,8 @@ class ZNEMitigation(MitigationBase):
     DEFAULT_POLYNOMIAL_DEGREE: int = 1
     DEFAULT_FOLDING_STRATEGY: str = "left"
 
+    _fold_gate_names: tuple[str, ...] | None
+
     def __init__(
         self,
         scale_factors: Sequence[float] | None = None,
@@ -869,8 +880,13 @@ class ZNEMitigation(MitigationBase):
             scales = np.array([p[0] for p in points], dtype=float)
             probs_matrix = np.vstack([p[1] for p in points])
             return self._extrapolate_expectation(
-                scales, probs_matrix, self._extrapolation_method,
-                observable, scale1_probs, total_counts, num_qubits,
+                scales,
+                probs_matrix,
+                self._extrapolation_method,
+                observable,
+                scale1_probs,
+                total_counts,
+                num_qubits,
             )
 
         # Drop saturated / non-monotonic trailing points so extrapolation
@@ -966,17 +982,24 @@ class ZNEMitigation(MitigationBase):
         """
         support = list(observable)
         expectations = np.array(
-            [expectation_from_probabilities(probs_matrix[i], support)
-             for i in range(scales.size)],
+            [
+                expectation_from_probabilities(probs_matrix[i], support)
+                for i in range(scales.size)
+            ],
             dtype=float,
         )
         raw_exp1 = float(expectations[0]) if scales.size else 0.0
 
-        extrapolated = extrapolate_to_zero(
-            scales, expectations.reshape(-1, 1), method,
-            self._polynomial_degree,
+        extrapolated: float = float(
+            np.asarray(
+                extrapolate_to_zero(
+                    [float(s) for s in scales],
+                    expectations.reshape(-1, 1),
+                    method,
+                    self._polynomial_degree,
+                )
+            ).ravel()[0]
         )
-        extrapolated = float(np.asarray(extrapolated).ravel()[0])
 
         finite = bool(np.isfinite(extrapolated))
         # Expectation values are bounded in [-1, 1]; a divergent fit
@@ -988,7 +1011,9 @@ class ZNEMitigation(MitigationBase):
             logger.warning(
                 "ZNE expectation extrapolation unstable (method=%s, "
                 "value=%.4f, finite=%s); falling back to scale-1",
-                method, extrapolated, finite,
+                method,
+                extrapolated,
+                finite,
             )
             extrapolated = raw_exp1
             used_fallback = True

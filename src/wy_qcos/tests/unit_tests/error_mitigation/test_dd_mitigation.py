@@ -15,7 +15,6 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
@@ -143,6 +142,7 @@ class TestNewDdSequences:
 
     def test_xy8_pulses(self):
         from wy_qcos.error_mitigation.dd_mitigation import XY8_PULSES
+
         gate_times = {"x": 0.02, "y": 0.02}
         ops = generate_dd_sequence(2.0, "XY8", gate_times, 0)
         gate_names = [op.name for op in ops if op.name in ("x", "y")]
@@ -150,6 +150,7 @@ class TestNewDdSequences:
 
     def test_xxyx_pulses(self):
         from wy_qcos.error_mitigation.dd_mitigation import XXYX_PULSES
+
         gate_times = {"x": 0.02, "y": 0.02}
         ops = generate_dd_sequence(1.0, "XXYX", gate_times, 0)
         gate_names = [op.name for op in ops if op.name in ("x", "y")]
@@ -157,6 +158,7 @@ class TestNewDdSequences:
 
     def test_xx_pulses(self):
         from wy_qcos.error_mitigation.dd_mitigation import XX_PULSES
+
         gate_times = {"x": 0.02}
         ops = generate_dd_sequence(1.0, "XX", gate_times, 0)
         gate_names = [op.name for op in ops if op.name in ("x", "y")]
@@ -176,9 +178,12 @@ class TestNewDdSequences:
         # equal multiples.
         import numpy as np
         from wy_qcos.error_mitigation.dd_mitigation import udd_pulses
+
         n = 4
-        centres = [float((np.sin(np.pi * k / (2 * (n + 1)))) ** 2)
-                   for k in range(1, n + 1)]
+        centres = [
+            float((np.sin(np.pi * k / (2 * (n + 1)))) ** 2)
+            for k in range(1, n + 1)
+        ]
         # adjacent gaps are not all equal
         gaps = [centres[k] - centres[k - 1] for k in range(1, n)]
         assert len(set(round(g, 6) for g in gaps)) > 1
@@ -201,12 +206,19 @@ class TestIdleWindowDetection:
         # it starts at 0.02, so q1 has no idle window before its gate
         # (the barrier already advanced its clock).
         from wy_qcos.common.cmss.base_operation import BaseOperation
+
         ops = [
-            GateOperation("h", targets=[0],
-                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
             BaseOperation("barrier", targets=[0, 1]),
-            GateOperation("h", targets=[1],
-                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+            GateOperation(
+                "h",
+                targets=[1],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
         ]
         gate_times = {"h": 0.02, "barrier": 0.0}
         windows = detect_idle_windows(ops, 2, gate_times)
@@ -216,19 +228,27 @@ class TestIdleWindowDetection:
     def test_include_trailing(self):
         # h on q0 only; q1 never touched -> trailing window = full depth.
         ops = [
-            GateOperation("h", targets=[0],
-                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
         ]
         gate_times = {"h": 0.02}
-        windows = detect_idle_windows(ops, 2, gate_times, include_trailing=True)
+        windows = detect_idle_windows(
+            ops, 2, gate_times, include_trailing=True
+        )
         # q1 has one trailing window of 0.02us
         assert len(windows[1]) == 1
         assert abs(windows[1][0]["duration"] - 0.02) < 1e-9
 
     def test_no_trailing_by_default(self):
         ops = [
-            GateOperation("h", targets=[0],
-                          operation_type=OperationType.SINGLE_QUBIT_OPERATION.value),
+            GateOperation(
+                "h",
+                targets=[0],
+                operation_type=OperationType.SINGLE_QUBIT_OPERATION.value,
+            ),
         ]
         gate_times = {"h": 0.02}
         windows = detect_idle_windows(ops, 2, gate_times)
