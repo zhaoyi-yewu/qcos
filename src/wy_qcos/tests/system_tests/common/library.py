@@ -81,6 +81,7 @@ class StLibrary:
         callbacks = job_info.get("callbacks", None)
         dry_run = job_info.get("dry_run", False)
         qec_options = job_info.get("qec_options", None)
+        qem_options = job_info.get("qem_options", None)
         status_code, reason, text, response = client.submit_job(
             source_code_list,
             code_type=code_type,
@@ -101,6 +102,7 @@ class StLibrary:
             callbacks=callbacks,
             dry_run=dry_run,
             qec_options=qec_options,
+            qem_options=qem_options,
         )
         if status_code != HttpCode.SUCCESS_OK:
             raise AssertionError(

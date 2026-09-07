@@ -88,6 +88,7 @@ def submit_job(
     transpiler_name = body.transpiler
     transpiler_options = body.transpiler_options
     qec_options = body.qec_options
+    qem_options = body.qem_options
     profiling = body.profiling
     callbacks = body.callbacks
     dry_run = body.dry_run
@@ -492,6 +493,25 @@ def submit_job(
             param_name="qec_options",
         )
 
+    # validate: qem_options
+    if qem_options:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(
+                qem_options,
+                args_schema.QEM_OPTIONS,
+                allow_none=True,
+            ),
+        )
+        if not isinstance(qem_options, dict):
+            jsonrpc_errors.handle_error_bad_request(
+                module_name,
+                func_name,
+                message="qem_options must be a dict",
+                param_name="qem_options",
+            )
+
     # get supported_code_types
     supported_code_types = transpiler.get_supported_code_types()
     if supported_code_types is None or len(supported_code_types) == 0:
@@ -719,6 +739,7 @@ def submit_job(
         "code_compression_level": code_compression_level,
         "tags": tags,
         "qec_options": qec_options,
+        "qem_options": qem_options,
         "created_at": created_at,
         "updated_at": created_at,
         "started_at": started_at,

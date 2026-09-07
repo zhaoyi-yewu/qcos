@@ -28,6 +28,9 @@ from typing import Any
 import redis
 from loguru import logger
 from prefect import flow, task, pause_flow_run
+
+from wy_qcos.error_mitigation.mitigation_manager import MitigationManager
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from prefect.input import RunInput
 from prefect.runtime import flow_run
 
@@ -339,19 +342,139 @@ def transpile(parsed_gates, driver, transpiler):
         }
 
 
+def _run_calibration_circuits(driver, transpiler, job_info, cal_circuits):
+    """Execute calibration circuits through the driver pipeline.
+
+    Generates QASM from each calibration QuantumCircuit, parses and
+    transpiles it, then runs it through the driver to collect counts.
+
+    Args:
+        driver: Initialized driver instance.
+        transpiler: Initialized transpiler instance.
+        job_info: Job info dict.
+        cal_circuits: List of calibration circuit descriptors from
+            MitigationManager.get_calibration_circuits().
+
+    Returns:
+        Dict mapping (qubit, prepared_state) to counts dict.
+    """
+    job_data = job_info["data"]
+    job_id = job_data["job_id"]
+    shots = job_data.get("shots", Constant.DEFAULT_SHOTS)
+    code_type = job_data.get("code_type", Constant.CODE_TYPE_QASM)
+
+    calibration_results = {}
+
+    for cal_desc in cal_circuits:
+        qc = cal_desc["circuit"]
+        qubit = cal_desc.get("qubit")
+        prepared_state = cal_desc.get("prepared_state")
+        cal_shots = cal_desc.get("shots", shots)
+
+        try:
+            converter = QasmConverter(qc)
+            qasm_str = converter.to_qasm2()
+        except Exception as exc:
+            logger.warning(
+                "Failed to convert calibration circuit (qubit={}, state={}) "
+                "to QASM: {}",
+                qubit,
+                prepared_state,
+                exc,
+            )
+            continue
+
+        cal_src_dict = {f"{job_id}-cal-{qubit}-{prepared_state}": qasm_str}
+        try:
+            parse_result, _ = flow_parse(cal_src_dict, transpiler, code_type)
+            if "error" in parse_result and parse_result["error"]:
+                logger.warning(
+                    "Calibration parse failed (qubit={}, state={}): {}",
+                    qubit,
+                    prepared_state,
+                    parse_result["error"],
+                )
+                continue
+
+            transpile_result, _ = flow_transpile(
+                parse_result["parsed_src_code"], transpiler, driver
+            )
+            if "error" in transpile_result and transpile_result["error"]:
+                logger.warning(
+                    "Calibration transpile failed (qubit={}, state={}): {}",
+                    qubit,
+                    prepared_state,
+                    transpile_result["error"],
+                )
+                continue
+
+            cal_data = {
+                "index": f"cal_{qubit}_{prepared_state}",
+                "source_code": qasm_str,
+                "transpile_results": transpile_result.get("transpile_results"),
+            }
+
+            driver.run(
+                job_id,
+                qc.num_qubits,
+                cal_data,
+                data_type=driver.get_default_data_type(),
+                shots=cal_shots,
+            )
+
+            cal_counts = driver.get_results(job_id, cal_data["index"])
+            if cal_counts:
+                if qubit not in calibration_results:
+                    calibration_results[qubit] = {}
+                calibration_results[qubit][prepared_state] = cal_counts
+
+        except Exception as exc:
+            logger.warning(
+                "Calibration circuit execution failed "
+                "(qubit={}, state={}): {}",
+                qubit,
+                prepared_state,
+                exc,
+            )
+
+    return calibration_results
+
+
+def _apply_zne_circuit_transform(transpile_results):
+    """Apply ZNE CZ-tripling to transpiled gate sequence.
+
+    Args:
+        transpile_results: List of transpiled gate operations.
+
+    Returns:
+        New gate list with each CZ gate tripled.
+    """
+    from wy_qcos.error_mitigation.zne_mitigation import apply_zne_cz_tripling
+    from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+
+    if transpile_results is None:
+        return None
+
+    qc = QuantumCircuit.from_ir(transpile_results)
+    scaled_qc = apply_zne_cz_tripling(qc)
+    return scaled_qc.get_operations()
+
+
 @task(persist_result=False)
-def driver_run(job_info, driver, num_qubits, data):
-    """Driver: run job.
+def driver_run(job_info, driver, num_qubits, data, transpiler=None):
+    """Driver: run job with optional error mitigation.
 
     Args:
         job_info: job info
         driver: driver
         num_qubits: number of qubits
         data: data
+        transpiler: transpiler instance (needed for calibration circuits)
 
     Returns:
         results
     """
+
     try:
         job_data = job_info["data"]
         job_id = job_data["job_id"]
@@ -359,6 +482,80 @@ def driver_run(job_info, driver, num_qubits, data):
         dry_run = job_data.get("dry_run", False)
         data_type = driver.get_default_data_type()
         qec_options = job_data.get("qec_options", None)
+        qem_options = job_data.get("qem_options", None)
+
+        mitigation_mgr = None
+        mitigation_metadata = None
+
+        if qem_options and not dry_run:
+            mitigation_mgr = MitigationManager()
+            mitigation_mgr.configure(qem_options)
+
+            if mitigation_mgr.has_enabled():
+                device_configs = job_info.get("device", {}).get("configs", {})
+                valid, err_msg = mitigation_mgr.validate_device(device_configs)
+                if not valid:
+                    logger.warning(
+                        "Error mitigation device validation failed: {}",
+                        err_msg,
+                    )
+                    mitigation_mgr = None
+                else:
+                    needs_calib = mitigation_mgr.needs_calibration()
+                    if needs_calib and transpiler is not None:
+                        from wy_qcos.common.cmss.quantum_circuit import (
+                            QuantumCircuit,
+                        )
+
+                        dummy_qc = QuantumCircuit(num_qubits)
+                        target_qubits = list(range(num_qubits))
+                        cal_circuits_dict = (
+                            mitigation_mgr.get_calibration_circuits(
+                                dummy_qc, target_qubits
+                            )
+                        )
+
+                        all_cal_circuits = []
+                        for tech_name, circuits in cal_circuits_dict.items():
+                            all_cal_circuits.extend(circuits)
+
+                        if all_cal_circuits:
+                            logger.info(
+                                "Running {} calibration circuits for {}",
+                                len(all_cal_circuits),
+                                needs_calib,
+                            )
+                            cal_results = _run_calibration_circuits(
+                                driver,
+                                transpiler,
+                                job_info,
+                                all_cal_circuits,
+                            )
+
+                            rem_tech = mitigation_mgr.get_technique(
+                                "rem"
+                            ) or mitigation_mgr.get_technique("readout")
+                            if rem_tech and hasattr(
+                                rem_tech, "process_calibration_results"
+                            ):
+                                calib_data = (
+                                    rem_tech.process_calibration_results(
+                                        cal_results, target_qubits
+                                    )
+                                )
+                                mitigation_mgr.store_calibration_data(
+                                    "readout", calib_data
+                                )
+                                logger.info(
+                                    "REM calibration complete for "
+                                    "{} qubits",
+                                    len(
+                                        calib_data.get(
+                                            "per_qubit_confusion", {}
+                                        )
+                                    ),
+                                )
+
         if dry_run:
             driver.dry_run(
                 job_id,
@@ -384,7 +581,78 @@ def driver_run(job_info, driver, num_qubits, data):
         # done
         driver.set_progress_by_task(driver.TASK_STAGE_COMPLETE)
 
-        return format_run_results(driver, job_id, data["index"])
+        run_results = format_run_results(driver, job_id, data["index"])
+
+        if mitigation_mgr and mitigation_mgr.has_enabled():
+            original_counts = run_results.get("results")
+            if original_counts and isinstance(original_counts, dict):
+                variant_results = {"original": original_counts}
+
+                zne_tech = mitigation_mgr.get_technique("zne")
+                if zne_tech and zne_tech.enabled and not dry_run:
+                    try:
+                        scaled_ops = _apply_zne_circuit_transform(
+                            data.get("transpile_results")
+                        )
+                        if scaled_ops is not None:
+                            scaled_data = {
+                                "index": f"{data['index']}_zne_scaled",
+                                "source_code": data.get("source_code", ""),
+                                "transpile_results": scaled_ops,
+                            }
+                            driver.run(
+                                job_id,
+                                num_qubits,
+                                scaled_data,
+                                data_type=data_type,
+                                shots=shots,
+                                qec_options=qec_options,
+                            )
+                            scaled_counts = driver.get_results(
+                                job_id, scaled_data["index"]
+                            )
+                            if scaled_counts:
+                                variant_results["scaled"] = scaled_counts
+                                logger.info(
+                                    "ZNE scaled circuit executed successfully"
+                                )
+                    except Exception as exc:
+                        logger.warning(
+                            "ZNE scaled circuit execution failed: {}", exc
+                        )
+
+                mitigated_output = mitigation_mgr.postprocess_results(
+                    variant_results,
+                    num_qubits=num_qubits,
+                    target_qubits=list(range(num_qubits)),
+                )
+
+                mitigated_counts = mitigated_output.get("results", {})
+                if isinstance(mitigated_counts, dict):
+                    first_key = next(iter(mitigated_counts), None)
+                    if first_key and isinstance(
+                        mitigated_counts[first_key], dict
+                    ):
+                        best_result = next(iter(mitigated_counts.values()))
+                        run_results["results"] = best_result
+                    elif first_key and isinstance(
+                        mitigated_counts[first_key], int
+                    ):
+                        run_results["results"] = mitigated_counts
+
+                mitigation_metadata = mitigated_output.get(
+                    "mitigation_metadata"
+                )
+                if mitigation_metadata:
+                    if "metadata" not in run_results:
+                        run_results["metadata"] = {}
+                    run_results["metadata"]["mitigation"] = mitigation_metadata
+                    logger.info(
+                        "Error mitigation applied: techniques={}",
+                        mitigation_metadata.get("techniques_applied", []),
+                    )
+
+        return run_results
     except Exception as e:
         err = e.args[0]
         error_message = None
@@ -1069,7 +1337,7 @@ def _run_code(
         }
 
         run_results, driver_run_profiling = flow_run_driver(
-            job_info, num_qubits, driver, data
+            job_info, num_qubits, driver, data, transpiler=transpiler
         )
 
         job_results["profiling"][
@@ -2068,7 +2336,7 @@ def flow_task_monitor(monitor_info):
     task_monitor.submit(monitor_info)
 
 
-def flow_run_driver(job_info, num_qubits, driver, data):
+def flow_run_driver(job_info, num_qubits, driver, data, transpiler=None):
     """Flow: run driver.
 
     Args:
@@ -2076,10 +2344,12 @@ def flow_run_driver(job_info, num_qubits, driver, data):
         num_qubits: number of qubits
         driver: driver
         data: data
+        transpiler: transpiler instance (for error mitigation calibration)
 
     Returns:
         results, profiling_time
     """
+
     # call run() in driver
     # record driver_run start_time
     driver_run_started_at = time.time()
@@ -2087,7 +2357,12 @@ def flow_run_driver(job_info, num_qubits, driver, data):
     wait_for = [init_driver, transpile]
 
     run_task = driver_run.submit(
-        job_info, driver, num_qubits, data, wait_for=wait_for
+        job_info,
+        driver,
+        num_qubits,
+        data,
+        transpiler=transpiler,
+        wait_for=wait_for,
     )
 
     run_task_results = run_task.result()
