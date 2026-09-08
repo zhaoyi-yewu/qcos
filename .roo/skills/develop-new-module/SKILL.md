@@ -183,7 +183,7 @@ src/wy_qcos/tests/system_tests/<module_name>/
 
 **API 接口文档：**
 
-- 如有 API 变更，更新 `docs/sphinx/source/design/module-design/api/` 下的相关 `.rst` 文档
+- 如有 API 变更，更新 `docs/sphinx/source/design/api/` 下的相关 `.rst` 文档
 - 按组件对应文件：`job.rst`（作业）、`device.rst`（设备）、`user.rst`（用户）等
 - 新增 API 接口需补充：请求参数、响应格式、错误码、使用示例
 - 修改现有接口需同步更新参数说明和示例
@@ -208,6 +208,7 @@ src/wy_qcos/tests/system_tests/<module_name>/
 - [ ] LF 换行符
 - [ ] 路径使用 `pathlib` 或 `os.path.join`
 - [ ] 无硬编码路径字符串
+- [ ] 无硬编码密码等敏感信息
 - [ ] shell.py 中可追加的参数使用 `nargs="+"` 形式，而非 `action="append"`
 - [ ] 导入（import/from）必须放在文件开始处，不得在代码中间使用延迟导入
 
