@@ -286,7 +286,7 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 .. code-block:: shell
 
    # 逻辑比特 超导量子计算机 真实运行
-   qcos-cli submit-job --code-type qasm --shots 100 --backend logical_qubit -f ./samples/qasm/2.0/simple-qasm.qasm
+   qcos-cli submit-job --code-type qasm --shots 100 --backend lq_qz01_surface -f ./samples/qasm/2.0/simple-qasm.qasm
 
 - stim 驱动 (量子纠错用)
 

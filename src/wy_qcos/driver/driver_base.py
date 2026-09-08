@@ -143,6 +143,8 @@ class DriverBase:
             "job_query_interval": Constant.DEFAULT_JOB_QUERY_INTERVAL,
             "compute_fidelity": False,
             "enable_raw_results": False,
+            "compiler": None,
+            "target_qubits": [],
             "qes": {
                 "dynamical_decoupling": {
                     "enable": False,
@@ -163,6 +165,8 @@ class DriverBase:
             Optional("job_query_interval"): int,
             Optional("compute_fidelity"): bool,
             Optional("enable_raw_results"): bool,
+            Optional("compiler"): str,
+            Optional("target_qubits"): list,
             Optional("qes"): {
                 Optional("dynamical_decoupling"): {
                     Optional("enable"): bool,
