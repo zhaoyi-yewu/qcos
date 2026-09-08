@@ -45,6 +45,22 @@ Fork QCOS 代码仓库
    Fork QCOS 代码仓库
 
 
+申请QCOS开发者权限
+------------------------------
+
+使用自己的 Gitee 账户登录，点击下面的链接申请QCOS项目的开发者权限，用于创建PR/issue、推送代码等操作：
+`申请QCOS项目开发者权限 <https://gitee.com/WUYUEQbit/qcos/invite_link?invite=c86b5d608edb0c86659c61dfab4250d2c6def4b6218d2c0ae511b1509403e86e1c4c60cac6d7a883a5d0c3055102a31377d723a507919dab>`_
+
+点击"接受"
+
+.. figure:: ../_static/developer-guide/gitee-accept-developer-invitation.png
+   :alt: 接受邀请加入WUYUEQbit/QCOS仓库成为开发者
+   :width: 80%
+   :align: center
+
+   接受邀请加入WUYUEQbit/QCOS仓库成为开发者
+
+
 签署贡献者许可协议（CLA）
 ------------------------------
 

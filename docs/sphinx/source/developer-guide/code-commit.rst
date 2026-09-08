@@ -247,7 +247,7 @@ CICD自动测试评审
 1. **commit-check**：检查 commit message 格式和文件格式规范
 2. **code-check**：代码静态检查（Linter）、代码风格（Code Style）、Docstring 检查
 3. **docs-check**：文档规范检查
-4. **functional-tests**：C++ 单元测试、Python 代码覆盖率测试、客户端测试
+4. **functional-tests**：QCOS单元测试和代码覆盖率、QCOS转译器(C++)单元测试、QCOS Client客户端单元测试和代码覆盖率
 
 .. rubric:: PR 评审交互
 
@@ -275,12 +275,23 @@ CI/CD 流水线在执行过程中会自动与 Gitee PR 进行交互反馈：
 
    Gitee PR评论区CICD报错日志链接
 
-.. figure:: ../_static/developer-guide/cicd-check.png
-   :alt: Jenkins日志界面排查问题
+Jenkins测试流水线以及具体报错日志：
+
+.. figure:: ../_static/developer-guide/cicd-failed-logs.png
+   :alt: Jenkins测试流水线以及具体报错日志
    :width: 80%
    :align: center
 
-   CICD日志界面排查问题
+   Jenkins测试流水线以及具体报错日志
+
+也可以查看Jenkins测试时所有的console日志：
+
+.. figure:: ../_static/developer-guide/cicd-check.png
+   :alt: Jenkins Console日志界面排查问题
+   :width: 80%
+   :align: center
+
+   Jenkins Console日志界面排查问题
 
 .. rubric:: 重新触发CICD测试
 
