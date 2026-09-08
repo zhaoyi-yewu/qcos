@@ -111,6 +111,24 @@ class TestSubcircuitResultCache:
 
         assert cache.get("OPENQASM;", _job_info()) is None
 
+    def test_empty_cached_result_is_treated_as_cache_miss(self):
+        redis_client = Mock()
+        redis_client.get.return_value = json.dumps({
+            "version": 1,
+            "result": {},
+        })
+        cache = SubcircuitResultCache(redis_client)
+
+        assert cache.get("OPENQASM;", _job_info()) is None
+
+    def test_empty_result_is_not_cached(self):
+        redis_client = Mock()
+        cache = SubcircuitResultCache(redis_client)
+
+        cache.set("OPENQASM;", _job_info(), {})
+
+        redis_client.set.assert_not_called()
+
     def test_missing_redis_config_disables_cache(self):
         cache = SubcircuitResultCache.from_job_info({"data": {}})
 

@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -187,6 +188,8 @@ class TestDriverBase:
     def test_get_driver_info(self):
         driver_info = driver_base.get_driver_info()
         assert "Quantum Computer base driver" in driver_info
+        assert "enable_batch_submission: False" in driver_info
+        assert "max_batch_circuits: 1" in driver_info
 
     def test_set_module_name_and_get_module_name(self):
         driver_base.set_module_name("Library")
@@ -215,8 +218,27 @@ class TestDriverBase:
             f"must implement method: run"
         )
 
+    def test_run_batch(self):
+        with pytest.raises(NotImplementedError, match="run_batch"):
+            driver_base.run_batch(job_id, [data])
+
     def test_dry_run(self):
         assert driver_base.dry_run(job_id, num_qubits, data) is None
+
+    def test_get_fake_results_accepts_bound_measure_operation(self):
+        bound_operations = [
+            SimpleNamespace(name="h", targets=[0]),
+            SimpleNamespace(name="measure", targets=[3, 4]),
+        ]
+
+        results = driver_base.get_fake_results(
+            num_qubits,
+            1024,
+            {"transpile_results": bound_operations},
+        )
+
+        assert sum(results.values()) == 1024
+        assert all(len(bit_string) == 2 for bit_string in results)
 
     def test_get_default_data_type(self):
         data_type = driver_base.get_default_data_type()

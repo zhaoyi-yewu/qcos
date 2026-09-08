@@ -678,6 +678,49 @@ def driver_run(job_info, driver, num_qubits, data, transpiler=None):
     }
 
 
+@task(persist_result=False)
+def driver_run_batch(job_info, driver, data_list):
+    """Run multiple independent circuits through a native driver batch API."""
+    try:
+        job_data = job_info["data"]
+        job_id = job_data["job_id"]
+        shots = job_data.get("shots", Constant.DEFAULT_SHOTS)
+        dry_run = job_data.get("dry_run", False)
+        data_type = driver.get_default_data_type()
+        qec_options = job_data.get("qec_options", None)
+
+        if dry_run:
+            for data in data_list:
+                driver.dry_run(
+                    job_id,
+                    data["num_qubits"],
+                    data,
+                    data_type=data_type,
+                    shots=shots,
+                    qec_options=qec_options,
+                )
+        else:
+            driver.run_batch(
+                job_id,
+                data_list,
+                data_type=data_type,
+                shots=shots,
+                qec_options=qec_options,
+            )
+
+        post_run(driver)
+        driver.set_progress_by_task(driver.TASK_STAGE_COMPLETE)
+        return {
+            "results": [
+                format_run_results(driver, job_id, data["index"])
+                for data in data_list
+            ],
+            "error": None,
+        }
+    except Exception as e:
+        return {"results": None, "error": ValueError(str(e))}
+
+
 def post_run(driver):
     """Post run task.
 
@@ -1906,6 +1949,88 @@ def run_circuit_code(
     return job_results, driver, transpiler, mapping_dict
 
 
+def _prepare_wirecut_batch_data(
+    batch_indices,
+    source_code_index,
+    src_sub_code_dict,
+    job_info,
+    driver,
+    transpiler,
+):
+    """Compile wirecut subcircuits independently for native batch execution.
+
+    Native batch submission is not circuit aggregation. Each subcircuit must
+    therefore be parsed, mapped, and transpiled independently before the
+    driver receives a list of circuits.
+    """
+    job_id = job_info["data"]["job_id"]
+    code_type = job_info["data"]["code_type"]
+    batch_data = []
+    batch_mapping = {}
+
+    for subcircuit_index in batch_indices:
+        sub_source_code_index = f"{source_code_index}-{subcircuit_index}"
+        sub_code_key = job_id + sub_source_code_index
+        source_code = src_sub_code_dict[sub_code_key]
+        single_src_code_dict = {sub_code_key: source_code}
+
+        parse_results, _ = flow_parse(
+            single_src_code_dict, transpiler, code_type
+        )
+        err_msg = parse_results.get("error", None)
+        if err_msg:
+            return (
+                None,
+                format_error_results(
+                    driver, errors.JobEngineParseError, err_msg
+                ),
+                batch_mapping,
+            )
+
+        transpile_results, _ = flow_transpile(
+            parse_results["parsed_src_code"], transpiler, driver
+        )
+        err_msg = transpile_results.get("error", None)
+        if err_msg:
+            return (
+                None,
+                format_error_results(
+                    driver, errors.JobEngineTranspileError, err_msg
+                ),
+                batch_mapping,
+            )
+
+        final_code = transpile_results.get("transpile_results", None)
+        num_qubits = transpile_results.get("num_qubits", None)
+        if final_code is None or num_qubits is None:
+            return (
+                None,
+                format_error_results(
+                    driver,
+                    errors.JobEngineTranspileError,
+                    "unexpected transpile_results or num_qubits",
+                ),
+                batch_mapping,
+            )
+
+        circuit_mapping = transpile_results.get("mapping_dict", None)
+        if isinstance(circuit_mapping, dict):
+            batch_mapping.update(circuit_mapping)
+        else:
+            batch_mapping[sub_code_key] = num_qubits
+        batch_data.append({
+            "index": sub_source_code_index,
+            "source_code": source_code,
+            "transpile_results": final_code,
+            "final_layout_dict": transpile_results.get(
+                "final_layout_dict", None
+            ),
+            "num_qubits": num_qubits,
+        })
+
+    return batch_data, None, batch_mapping
+
+
 def run_circuit_cutting_code(
     source_code_index,
     src_code_dict,
@@ -2030,7 +2155,111 @@ def run_circuit_cutting_code(
     supports_circuit_aggregation = (
         getattr(driver, "enable_circuit_aggregation", False) is True
     )
-    if src_sub_code_dict and supports_circuit_aggregation:
+    supports_batch_submission = (
+        getattr(driver, "enable_batch_submission", False) is True
+    )
+    if src_sub_code_dict and supports_batch_submission:
+        max_batch_circuits = getattr(driver, "max_batch_circuits", 1)
+        if (
+            isinstance(max_batch_circuits, bool)
+            or not isinstance(max_batch_circuits, int)
+            or max_batch_circuits < 1
+        ):
+            max_batch_circuits = 1
+
+        for batch_start in range(0, len(uncached_indices), max_batch_circuits):
+            batch_indices = uncached_indices[
+                batch_start : batch_start + max_batch_circuits
+            ]
+            logger.info(
+                f"Wirecut subcircuit native batch execution started: "
+                f"job_id={job_id}, source_code_index={source_code_index}, "
+                f"batch_size={len(batch_indices)}"
+            )
+            batch_started_at = time.perf_counter()
+            batch_data, preparation_error, batch_mapping = (
+                _prepare_wirecut_batch_data(
+                    batch_indices,
+                    source_code_index,
+                    src_sub_code_dict,
+                    job_info,
+                    driver,
+                    transpiler,
+                )
+            )
+            if preparation_error is not None:
+                return (
+                    preparation_error,
+                    driver,
+                    transpiler,
+                    batch_mapping or mapping_dict,
+                )
+            if mapping_dict is None:
+                mapping_dict = {}
+            mapping_dict.update(batch_mapping)
+
+            batch_run_results, _ = flow_run_driver_batch(
+                job_info, driver, batch_data
+            )
+            err_msg = batch_run_results.get("error", None)
+            if err_msg:
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineDriverRunError, err_msg
+                    ),
+                    driver,
+                    transpiler,
+                    mapping_dict,
+                )
+
+            batch_results = batch_run_results.get("results", None)
+            if not isinstance(batch_results, list) or len(
+                batch_results
+            ) != len(batch_indices):
+                err_msg = (
+                    "Wirecut native batch result count does not match "
+                    "submitted subcircuits"
+                )
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineCircuitCuttingError, err_msg
+                    ),
+                    driver,
+                    transpiler,
+                    mapping_dict,
+                )
+
+            for i, batch_result in zip(batch_indices, batch_results):
+                execution_status = batch_result["metadata"]["status"]
+                if execution_status != Constant.JOB_STATUS_COMPLETED:
+                    return batch_result, driver, transpiler, mapping_dict
+                result = batch_result.get("results")
+                if result is None:
+                    err_msg = (
+                        f"Wirecut subcircuit {i} completed without results"
+                    )
+                    return (
+                        format_error_results(
+                            driver,
+                            errors.JobEngineCircuitCuttingError,
+                            err_msg,
+                        ),
+                        driver,
+                        transpiler,
+                        mapping_dict,
+                    )
+                executed_count += 1
+                result_cache.set(subcircuits[i], job_info, result)
+                sub_results[i] = counts_to_probs(result)
+
+            batch_duration = time.perf_counter() - batch_started_at
+            logger.info(
+                f"Wirecut subcircuit native batch result received: "
+                f"job_id={job_id}, source_code_index={source_code_index}, "
+                f"batch_size={len(batch_indices)}, "
+                f"duration_seconds={batch_duration:.6f}"
+            )
+    elif src_sub_code_dict and supports_circuit_aggregation:
         logger.info(
             f"Wirecut subcircuit batch execution started: job_id={job_id}, "
             f"source_code_index={source_code_index}, "
@@ -2381,6 +2610,23 @@ def flow_run_driver(job_info, num_qubits, driver, data, transpiler=None):
         "driver_run_started_at": driver_run_started_at,
         "driver_run_ended_at": driver_run_ended_at,
         "driver_run_duration": driver_run_duration,
+    }
+    return run_task_results, driver_run_profiling
+
+
+def flow_run_driver_batch(job_info, driver, data_list):
+    """Submit a prepared circuit list through a driver's native batch API."""
+    driver_run_started_at = time.time()
+    wait_for = [init_driver, transpile]
+    run_task = driver_run_batch.submit(
+        job_info, driver, data_list, wait_for=wait_for
+    )
+    run_task_results = run_task.result()
+    driver_run_ended_at = time.time()
+    driver_run_profiling = {
+        "driver_run_started_at": driver_run_started_at,
+        "driver_run_ended_at": driver_run_ended_at,
+        "driver_run_duration": driver_run_ended_at - driver_run_started_at,
     }
     return run_task_results, driver_run_profiling
 

@@ -111,7 +111,7 @@ class SubcircuitResultCache:
             if payload.get("version") != SUBCIRCUIT_RESULT_CACHE_VERSION:
                 return None
             result = payload.get("result")
-            if not isinstance(result, dict):
+            if not isinstance(result, dict) or not result:
                 logger.warning("Invalid subcircuit result cache entry: result")
                 return None
             return result
@@ -121,7 +121,7 @@ class SubcircuitResultCache:
 
     def set(self, subcircuit, job_info, result):
         """Cache a successful raw execution result for twelve hours."""
-        if self.redis_client is None or result is None:
+        if self.redis_client is None or not result:
             return
 
         cache_key = self.cache_key(subcircuit, job_info)
