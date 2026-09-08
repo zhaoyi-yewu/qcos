@@ -60,6 +60,7 @@ MD_FILES=$(find ${TOP_DIR} \
   -not -path "*/dist/*" \
   -not -path "*/.pytest_cache/*" \
   -not -path "*/.roo/*" \
+  -not -path "*/plans/*" \
   -not -path "*/webui/*" \
   -type f -name "*.md" \
 )
