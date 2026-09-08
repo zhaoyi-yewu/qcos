@@ -24,6 +24,12 @@ pipeline {
         persistentString(name: 'GIT_CREDENTIALS_ID',
                defaultValue: 'gitee-ssh-key',
                description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (gitee-ssh-key) or GitLab (gitlab-ssh-key)')
+        persistentString(name: 'GITLAB_TOKEN',
+               defaultValue: '',
+               description: 'Gitlab token')
+        persistentString(name: 'JIRA_AUTH',
+               defaultValue: 'test:test',
+               description: 'Jira auth')
         persistentString(name: 'CICD_REPORT_EMAIL',
                defaultValue: 'zhaoyi@cmss.chinamobile.com',
                description: 'Email address(es) for CI/CD report notification. Supports single (user@example.com) or multiple comma-separated (a@example.com,b@example.com). Leave empty to skip email notification.')
@@ -33,15 +39,21 @@ pipeline {
         persistentString(name: 'GITEE_ACCESS_TOKEN',
                defaultValue: 'na',
                description: 'gitee access token')
+        persistentString(name: 'GITEE_USER_ACCOUNTS',
+               defaultValue: '{"test": {"gitee_user_name": "test", "gitee_token": "test-token"}}',
+               description: 'gitee user accounts')
     }
 
     environment {
         GIT_REPO_URL = "${params.GIT_REPO_URL?: ''}"
         GIT_BRANCH = "${params.GIT_BRANCH?: ''}"
         GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
+        GITLAB_TOKEN = "${params.GITLAB_TOKEN?: ''}"
+        JIRA_AUTH = "${params.JIRA_AUTH?: ''}"
         CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
         GITEE_SOURCE_OWNER = "${params.GITEE_SOURCE_OWNER?: ''}"
         GITEE_ACCESS_TOKEN = "${params.GITEE_ACCESS_TOKEN?: ''}"
+        GITEE_USER_ACCOUNTS = "${params.GITEE_USER_ACCOUNTS?: ''}"
     }
 
     options {
@@ -88,13 +100,27 @@ pipeline {
         }
 
         // =============================================================
-        // Stage 2: Sync to gitee
+        // Stage 2: Sync issues to gitee
         // =============================================================
-        stage('Sync to gitee') {
+        stage('Sync issues to gitee') {
             steps {
                 sh """#!/bin/bash
                 set -eo pipefail
-                echo "Sync to gitee"
+                echo "Sync issues to gitee"
+
+                ./cicd/sync-codes/sync-issues.py --gitlab-url "http://gitlab.cmss.com" --gitlab-token "\${GITLAB_TOKEN}" --gitlab-project-id "OCRI/WuYueOs" --jira-url "http://jira.cmss.com" --jira-auth "\${JIRA_AUTH}" --gitee-access-token "\${GITEE_ACCESS_TOKEN}" --gitee-user-accounts '\${GITEE_USER_ACCOUNTS}'
+                """
+            }
+        }
+
+        // =============================================================
+        // Stage 3: Sync commits to gitee
+        // =============================================================
+        stage('Sync commits to gitee') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                echo "Sync commits to gitee"
 
                 # copy merge scripts
                 cp -rf ./cicd/sync-codes/ /tmp/
