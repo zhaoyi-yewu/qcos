@@ -29,110 +29,11 @@ Examples:
 ./sync-code-reviews.py 1155 --token "token" --url "http://gitlab.com" --project WuYueOs
 """
 
-import requests
 import sys
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from urllib.parse import quote
 
 import library as lib
-
-
-# default gitlab base url
-gitlab_base_url = "http://gitlab.com"
-
-# default project path
-gitlab_project = "WuYueOs"
-
-# default private token
-gitlab_token = ""
-
-
-def fetch_mr_info(mr_iid, project, base_url, token):
-    """Fetch merge request info from GitLab API.
-
-    Args:
-        mr_iid: merge request internal ID, e.g. 1155
-        project: project path, e.g. WuYueOs
-        base_url: GitLab base URL
-        token: private access token
-
-    Returns:
-        parsed JSON dict of the merge request
-    """
-    project_encoded = quote(project, safe="")
-    api_url = (
-        f"{base_url}/api/v4/projects/"
-        f"{project_encoded}/merge_requests/{mr_iid}"
-    )
-    headers = {"PRIVATE-TOKEN": token}
-    print(f"Fetching MR info: {project}!{mr_iid} from {base_url}")
-    try:
-        response = requests.get(
-            api_url, headers=headers, timeout=30
-        )
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise lib.SyncException(f"Request failed: {e}") from e
-    return response.json()
-
-
-def fetch_mr_discussions(mr_iid, project, base_url, token):
-    """Fetch merge request discussions from GitLab API.
-
-    Args:
-        mr_iid: merge request internal ID, e.g. 1155
-        project: project path, e.g. WuYueOs
-        base_url: GitLab base URL
-        token: private access token
-
-    Returns:
-        parsed JSON list of discussions
-    """
-    project_encoded = quote(project, safe="")
-    api_url = (
-        f"{base_url}/api/v4/projects/"
-        f"{project_encoded}/merge_requests/{mr_iid}/discussions"
-    )
-    headers = {"PRIVATE-TOKEN": token}
-    print(f"Fetching MR discussions: {project}!{mr_iid}")
-    try:
-        response = requests.get(
-            api_url, headers=headers, timeout=30
-        )
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise lib.SyncException(f"Request failed: {e}") from e
-    return response.json()
-
-
-def fetch_mr_pipelines(mr_iid, project, base_url, token):
-    """Fetch pipelines associated with a merge request.
-
-    Args:
-        mr_iid: merge request internal ID, e.g. 1155
-        project: project path, e.g. WuYueOs
-        base_url: GitLab base URL
-        token: private access token
-
-    Returns:
-        parsed JSON list of pipelines
-    """
-    project_encoded = quote(project, safe="")
-    api_url = (
-        f"{base_url}/api/v4/projects/"
-        f"{project_encoded}/merge_requests/{mr_iid}/pipelines"
-    )
-    headers = {"PRIVATE-TOKEN": token}
-    print(f"Fetching MR pipelines: {project}!{mr_iid}")
-    try:
-        response = requests.get(
-            api_url, headers=headers, timeout=30
-        )
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise lib.SyncException(f"Request failed: {e}") from e
-    return response.json()
 
 
 def parse_mr_info(mr_data):
@@ -233,46 +134,47 @@ def main(argv=None):
             help="Merge request IID, e.g. 1155",
         )
         parser.add_argument(
-            "--project",
-            dest="project",
-            default=gitlab_project,
-            help=f"Project path (default: {gitlab_project})",
+            "--gitlab-project-id",
+            dest="gitlab_project_id",
+            default=lib.gitlab_project,
+            help=f"GitLab project path or ID "
+                 f"(default: {lib.gitlab_project})",
         )
         parser.add_argument(
-            "--url",
+            "--gitlab-url",
             dest="base_url",
-            default=gitlab_base_url,
-            help=f"GitLab base URL (default: {gitlab_base_url})",
+            default=lib.gitlab_base_url,
+            help=f"GitLab base URL (default: {lib.gitlab_base_url})",
         )
         parser.add_argument(
-            "--token",
-            dest="token",
-            default=gitlab_token,
+            "--gitlab-token",
+            dest="gitlab_token",
+            default="",
             help="GitLab private access token",
         )
 
         args = parser.parse_args()
         mr_iid = args.mr_iid
-        project = args.project
+        project = args.gitlab_project_id
         base_url = args.base_url
-        token = args.token
+        token = args.gitlab_token
 
         print("==== Fetch GitLab MR code reviews ====")
         print(f"MR IID:  {mr_iid}")
         print(f"Project: {project}")
         print(f"URL:     {base_url}")
 
-        mr_data = fetch_mr_info(
+        mr_data = lib.fetch_mr_info(
             mr_iid, project, base_url, token
         )
         mr_info = parse_mr_info(mr_data)
 
-        discussions = fetch_mr_discussions(
+        discussions = lib.fetch_mr_discussions(
             mr_iid, project, base_url, token
         )
         comments = parse_discussions(discussions)
 
-        pipelines = fetch_mr_pipelines(
+        pipelines = lib.fetch_mr_pipelines(
             mr_iid, project, base_url, token
         )
         pipeline_infos = parse_pipelines(pipelines)
