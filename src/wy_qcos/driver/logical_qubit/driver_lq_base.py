@@ -25,6 +25,7 @@ from schema import And, Optional, Or, Schema
 
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.common.constant import Constant, HttpMethod
+from wy_qcos.common.errors import BaseException
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_gate_base import DriverGateBase
@@ -410,12 +411,14 @@ class DriverLogicalQubitBase(DriverGateBase):
             vendor_error_code, vendor_error_message = (
                 self.convert_error_message(err_cls)
             )
-            err = {
-                "error_message": "failed to submit task",
-                "vendor_error_code": vendor_error_code,
-                "vendor_error_message": vendor_error_message,
-            }
-            raise ValueError(err)
+            error_msg = "failed to submit task"
+            vendor_error_code = vendor_error_code
+            vendor_error_message = vendor_error_message
+            raise BaseException(
+                error_msg,
+                vendor_error_code=vendor_error_code,
+                vendor_error_message=vendor_error_message,
+            )
 
         # 3. Wait task results
         logger.info("3. wait task results")
@@ -425,12 +428,14 @@ class DriverLogicalQubitBase(DriverGateBase):
             vendor_error_code, vendor_error_message = (
                 self.convert_error_message(err_cls)
             )
-            err = {
-                "error_message": "failed to get task result",
-                "vendor_error_code": vendor_error_code,
-                "vendor_error_message": vendor_error_message,
-            }
-            raise ValueError(err)
+            error_msg = "failed to get task result"
+            vendor_error_code = vendor_error_code
+            vendor_error_message = vendor_error_message
+            raise BaseException(
+                error_msg,
+                vendor_error_code=vendor_error_code,
+                vendor_error_message=vendor_error_message,
+            )
 
         # 4. Get task results
         logger.info("4. get task results")

@@ -36,6 +36,10 @@ class BaseException(Exception):
         """
         return self.error_code
 
+    def get_message(self):
+        """Get error message."""
+        return self.message
+
     def get_err_msgs(self):
         return f"[{self.module_name}] {self.err_type}: {self.message}"
 
@@ -48,7 +52,7 @@ class BaseException(Exception):
         return self.vendor_error_code
 
     def get_vendor_err_msgs(self):
-        return f"{self.vendor_error_message}"
+        return self.vendor_error_message
 
 
 class GenericException(BaseException):
