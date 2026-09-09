@@ -33,6 +33,7 @@ from prefect.runtime import flow_run
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common import errors
+from wy_qcos.common.errors import BaseException
 from wy_qcos.common.library import (
     Library,
     _is_allowed_module,
@@ -110,6 +111,7 @@ def init_driver(
                 f"allowed import whitelist"
             )
         # load driver module
+        logger.info(f"init_driver: loading module {driver_module_name}")
         driver_module = _import_module(driver_module_name)
 
         # security: validate class name before dynamic attribute access
@@ -121,6 +123,7 @@ def init_driver(
             )
 
         # initialize driver class
+        logger.info(f"init_driver: instantiating {driver_class_name}")
         driver_class = getattr(driver_module, driver_class_name)
         driver = driver_class()
         device_configs = device.get("configs", None)
@@ -130,6 +133,7 @@ def init_driver(
             driver.update_driver_options(driver_options)
 
         # validate device configs
+        logger.info("init_driver: validating driver configs")
         success, err_msg = driver.validate_driver_configs(device_configs)
         # error handling
         if not success:
@@ -140,6 +144,7 @@ def init_driver(
         driver.set_configs(device_configs)
 
         # init driver
+        logger.info("init_driver: calling driver.init_driver()")
         driver.init_driver()
 
         if driver_options:
@@ -150,7 +155,9 @@ def init_driver(
             job_data = job_info["data"]
             remote_transpiler_configs = None
             if not job_data.get("dry_run", False):
+                logger.info("init_driver: calling driver.fetch_configs()")
                 remote_transpiler_configs = driver.fetch_configs()
+                logger.info("init_driver: fetch_configs completed")
 
             # copy cfgs to transpiler cfg inst
             static_transpiler_configs = device_configs.get("transpiler", None)
@@ -473,6 +480,9 @@ def driver_run(job_info, driver, num_qubits, data, transpiler=None):
     Returns:
         results
     """
+    error_message = None
+    vendor_error_code = None
+    vendor_error_message = None
     try:
         job_data = job_info["data"]
         job_id = job_data["job_id"]
@@ -650,27 +660,22 @@ def driver_run(job_info, driver, num_qubits, data, transpiler=None):
                     )
 
         return run_results
+    except BaseException as e:
+        error_message = e.get_message()
+        vendor_error_code = e.get_vendor_error_code()
+        vendor_error_message = e.get_vendor_err_msgs()
     except Exception as e:
-        err = e.args[0]
-        error_message = None
-        vendor_error_code = None
-        vendor_error_message = None
-        if isinstance(err, dict):
-            error_message = err["error_message"]
-            vendor_error_code = err["vendor_error_code"]
-            vendor_error_message = err["vendor_error_message"]
-        else:
-            error_message = err[0]
+        error_message = str(e)
 
-        return {
-            "results": None,
-            "metadata": {},
-            "error": {
-                "error": error_message,
-                "vendor_error_code": vendor_error_code,
-                "vendor_error_message": vendor_error_message,
-            },
-        }
+    return {
+        "results": None,
+        "metadata": {},
+        "error": {
+            "error": error_message,
+            "vendor_error_code": vendor_error_code,
+            "vendor_error_message": vendor_error_message,
+        },
+    }
 
 
 def post_run(driver):
@@ -1048,15 +1053,18 @@ def job_flow(job_info):
 
     # init db engine
     try:
+        logger.info(f"Initializing database for job_id: {job_id}")
         db_url = global_configs["DATABASE"]["QCOS_DATABASE_CONNECTION_URL"]
         db_engine = init_database(db_url)
         monitor_info["db_engine"] = db_engine
         db_utils.set_db_engine(db_engine)
+        logger.info(f"Database initialized for job_id: {job_id}")
     except Exception as e:
         logger.error(f"Failed to initialize database: {str(e)}")
         db_engine = None
 
     # update job status to RUNNING and set started_at
+    logger.info(f"Updating job status to RUNNING for job_id: {job_id}")
     db_utils.db_update_job(
         job_id,
         db_engine,
@@ -1066,13 +1074,16 @@ def job_flow(job_info):
     )
 
     # register signals for job cancelling
+    logger.info(f"Registering signals for job_id: {job_id}")
     register_signals(job_id, monitor_info)
 
     # record parse start_time
     profiling_code_start = time.time()
 
     # start task-monitor
+    logger.info(f"Starting task_monitor for job_id: {job_id}")
     flow_task_monitor(monitor_info)
+    logger.info(f"task_monitor started for job_id: {job_id}")
 
     # handle aggregation jobs
     aggregation_info = None

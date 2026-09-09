@@ -82,7 +82,7 @@ def device_manager_flow(device_mgr_info):
         log_rotate_backup_count=log_rotate_backup_count,
         log_rotate_compression=log_rotate_compression,
     )
-    logger.info(f"Processing device manage flow:device_name: {device_name}")
+    logger.info(f"Start device manager: {device_name}")
 
     # init driver
     future_driver = init_driver.submit(

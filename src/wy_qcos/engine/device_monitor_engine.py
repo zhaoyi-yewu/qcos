@@ -100,10 +100,7 @@ def device_monitor_flow(device_monitor_info):
         log_rotate_backup_count=log_rotate_backup_count,
         log_rotate_compression=log_rotate_compression,
     )
-    logger.info(
-        f"Processing device monitor flow: job_engine. "
-        f"device_name: {device_name}"
-    )
+    logger.info(f"Start device monitor: {device_name}")
 
     # init driver
     future_driver = init_driver.submit(

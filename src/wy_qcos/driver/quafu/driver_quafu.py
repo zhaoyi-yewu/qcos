@@ -142,13 +142,18 @@ class DriverQuafu(DriverGateBase):
 
     def fetch_configs(self):
         """Fetch configs."""
+        logger.info("fetch_configs: calling get_configs()")
         extra_configs = self.get_configs()
         self.chip_name = extra_configs.get("chip_name", "")
         self.token = extra_configs.get("token", "")
         url = extra_configs.get("url", "")
         if url:
             Task.URL = url
+        logger.info(
+            f"fetch_configs: creating Task(token={self.token}, url={url})"
+        )
         self.tmgr = Task(self.token)
+        logger.info("fetch_configs: Task created successfully")
 
     def convert_code(self, num_qubits: int, src_code: str, transpile_results):
         """Convert code.
