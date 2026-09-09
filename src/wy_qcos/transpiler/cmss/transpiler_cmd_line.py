@@ -18,6 +18,7 @@
 import os
 import sys
 import csv
+import re
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -207,6 +208,32 @@ class CMSSTranspilerPerf:
             logger.error(f"read file error: {e}")
             return None
 
+    @staticmethod
+    def _infer_tech_type_from_config(config_file):
+        """Infer tech_type from the driver field in the config file.
+
+        The driver value is matched case-insensitively: a driver containing
+        "spinq" maps to superconducting, "hanyuan" maps to neutral_atom.
+        Returns None when the driver field is absent or matches neither
+        keyword, in which case no matching check is enforced.
+        """
+        try:
+            config_path = Path(config_file).resolve()
+            with open(config_path, encoding="utf-8") as f:
+                content = f.read()
+        except OSError as e:
+            logger.error(f"read config file error: {e}")
+            return None
+        match = re.search(r'driver\s*=\s*"([^"]*)"', content, re.IGNORECASE)
+        if not match:
+            return None
+        driver = match.group(1).lower()
+        if "spinq" in driver:
+            return Constant.TECH_TYPE_SUPERCONDUCTING
+        if "hanyuan" in driver:
+            return Constant.TECH_TYPE_NEUTRAL_ATOM
+        return None
+
     def init_transpile_params(self, extra_configs):
         """Init transpile parameters."""
         if extra_configs is None or "transpile" not in extra_configs:
@@ -281,6 +308,15 @@ class CMSSTranspilerPerf:
             raise ValueError("mapping config file is not configured!")
 
         self.mapping_info = list(zip(self.tech_type, self.mapping_config_file))
+
+        # verify each tech_type matches the driver declared in its config file
+        for tech_type, config_file in self.mapping_info:
+            inferred = self._infer_tech_type_from_config(config_file)
+            if inferred is not None and inferred != tech_type:
+                raise ValueError(
+                    f"tech_type[{tech_type}] does not match config file"
+                    f"[{config_file}], whose driver indicates[{inferred}]"
+                )
 
         # mapping config
         sc_mapping_options = extra_configs["transpile"]["mapping"].get(

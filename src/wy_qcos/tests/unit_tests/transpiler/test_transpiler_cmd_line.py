@@ -695,3 +695,71 @@ class TestTranspilerCmdLine:
 
         finally:
             trans_cfg_inst.set_max_qubits(orig_max_qubits)
+
+    def test_init_transpile_params_tech_type_mismatch_raises(self):
+        """tech_type 与 config_file 中 driver 声明不一致时应报错."""
+        perf = CMSSTranspilerPerf()
+        extra_configs = {
+            "transpile": {
+                "files": [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"],
+                "transpiler": {"base_gates": ["rx, ry, cx"]},
+                "optimize": {"opt_level": [1]},
+                "mapping": {
+                    # spinq_rpc.toml 的 driver 含 spinq，应为超导，
+                    # 此处故意配成中性原子以触发不匹配
+                    "tech_type": ["neutral_atom"],
+                    "config_file": [
+                        f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
+                    ],
+                },
+            }
+        }
+        with pytest.raises(ValueError) as e:
+            perf.init_transpile_params(extra_configs)
+        assert "does not match" in str(e.value)
+
+    def test_init_transpile_params_tech_type_matched_ok(self):
+        """tech_type 与 config_file 中 driver 声明一致时通过."""
+        perf = CMSSTranspilerPerf()
+        extra_configs = {
+            "transpile": {
+                "files": [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"],
+                "transpiler": {"base_gates": ["rx, ry, cz"]},
+                "optimize": {"opt_level": [1]},
+                "mapping": {
+                    "tech_type": ["neutral_atom"],
+                    "config_file": [
+                        f"{self.etc_dir}/qcos/conf.d/hanyuan1.toml"
+                    ],
+                },
+            }
+        }
+        perf.init_transpile_params(extra_configs)
+        assert perf.mapping_info == [
+            (
+                Constant.TECH_TYPE_NEUTRAL_ATOM,
+                f"{self.etc_dir}/qcos/conf.d/hanyuan1.toml",
+            )
+        ]
+
+    def test_init_transpile_params_no_driver_skips_check(self):
+        """config_file 无 driver 字段时不做匹配校验."""
+        perf = CMSSTranspilerPerf()
+        conf_path = Path(GLOBAL_CONFIGS["temp_dir"]) / "no_driver.toml"
+        conf_path.write_text(
+            '[unknown_chip]\nalias_name = "no driver chip"\nqubits = 4\n',
+            encoding="utf-8",
+        )
+        extra_configs = {
+            "transpile": {
+                "files": [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"],
+                "transpiler": {"base_gates": ["rx, ry, cx"]},
+                "optimize": {"opt_level": [1]},
+                "mapping": {
+                    "tech_type": ["superconducting"],
+                    "config_file": [str(conf_path)],
+                },
+            }
+        }
+        perf.init_transpile_params(extra_configs)
+        assert perf.mapping_info == [("superconducting", str(conf_path))]
