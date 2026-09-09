@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -190,5 +191,20 @@ std::vector<int> restore_logical_mapping(
 void validate_mapping_inputs(
     const std::vector<std::pair<int, int>>& coupling_list,
     const std::vector<double>& edge_fidelities, int num_logical);
+
+/**
+ * @brief 按单比特保真度降序返回未占用的物理比特
+ *
+ * 遍历 single_qubit_fidelities 中保真度 > 0 且不在 used 中的物理比特,
+ * 按保真度降序排列, 返回前 count 个. 无保真度数据时返回空.
+ *
+ * @param single_qubit_fidelities 按物理比特 ID 索引的单比特保真度
+ * @param used 已占用的物理比特 ID 集合
+ * @param count 需要返回的比特数
+ * @return 按保真度降序排列的物理比特 ID 列表
+ */
+std::vector<int> select_best_single_qubits(
+    const std::vector<double>& single_qubit_fidelities,
+    const std::set<int>& used, int count);
 
 }  // namespace qcos

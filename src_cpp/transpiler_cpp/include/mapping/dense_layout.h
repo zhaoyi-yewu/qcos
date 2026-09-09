@@ -45,6 +45,7 @@ namespace qcos {
  * @param gates_list 逻辑门序列
  * @param coupling_list 物理耦合边列表（有向）
  * @param edge_fidelities 与 coupling_list 对应的边保真度
+ * @param single_qubit_fidelities 按物理比特 ID 索引的单比特保真度
  * @param num_logical 电路声明的逻辑比特总数
  * @param fidelity_weight 保真度权重，取值 [0, 1]，默认 0.5
  * @return std::vector<int> 逻辑到物理映射
@@ -52,7 +53,8 @@ namespace qcos {
 std::vector<int> dense_layout_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<double>& edge_fidelities, int num_logical,
+    const std::vector<double>& edge_fidelities,
+    const std::vector<double>& single_qubit_fidelities, int num_logical,
     double fidelity_weight = 0.5);
 
 }  // namespace qcos

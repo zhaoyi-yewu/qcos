@@ -64,7 +64,7 @@ TEST(DenseLayout, BasicConnectivity) {
   std::vector<GateOperation> gates_list = {GateOperation(
       "cx", {0, 1}, {}, OperationType::DOUBLE_QUBIT_OPERATION, false)};
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 2);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 2);
 
   ASSERT_EQ(mapping.size(), 2u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -92,7 +92,7 @@ TEST(DenseLayout, DenseSubgraphSelection) {
                     false),
   };
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 3);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 3);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -114,7 +114,7 @@ TEST(DenseLayout, DuplicateEdgesInCouplingList) {
   std::vector<GateOperation> gates_list = {GateOperation(
       "cx", {0, 1}, {}, OperationType::DOUBLE_QUBIT_OPERATION, false)};
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 2);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 2);
 
   ASSERT_EQ(mapping.size(), 2u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -136,7 +136,7 @@ TEST(DenseLayout, UnidirectionalCouplingList) {
                     false),
   };
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 3);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 3);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -156,7 +156,7 @@ TEST(DenseLayout, SparsePhysicalQubitIds) {
   std::vector<GateOperation> gates_list = {GateOperation(
       "cx", {0, 1}, {}, OperationType::DOUBLE_QUBIT_OPERATION, false)};
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 2);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 2);
 
   ASSERT_EQ(mapping.size(), 2u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -182,7 +182,7 @@ TEST(DenseLayout, AllPhysicalQubitsUsed) {
                     false),
   };
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 3);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 3);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -210,9 +210,10 @@ TEST(DenseLayout, EdgeFidelityInfluence) {
                     false),
   };
 
-  auto mapping_no_fid = dense_layout_mapping(gates_list, coupling_list, {}, 3);
+  auto mapping_no_fid =
+      dense_layout_mapping(gates_list, coupling_list, {}, {}, 3);
   auto mapping_with_fid =
-      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3);
+      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, {}, 3);
 
   ASSERT_EQ(mapping_no_fid.size(), 3u);
   ASSERT_EQ(mapping_with_fid.size(), 3u);
@@ -232,7 +233,7 @@ TEST(DenseLayout, SingleLogicalQubit) {
   std::vector<GateOperation> gates_list = {GateOperation(
       "h", {0}, {}, OperationType::SINGLE_QUBIT_OPERATION, true)};
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 1);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 1);
 
   ASSERT_EQ(mapping.size(), 1u);
   EXPECT_GE(mapping[0], 0);
@@ -250,7 +251,7 @@ TEST(DenseLayout, EmptyGates) {
       {0, 1}, {1, 0}, {1, 2}, {2, 1}};
   std::vector<GateOperation> gates_list = {};
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 0);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 0);
 
   EXPECT_TRUE(mapping.empty());
 }
@@ -271,7 +272,7 @@ TEST(DenseLayout, TooManyLogicalQubits) {
                     false),
   };
 
-  EXPECT_THROW(dense_layout_mapping(gates_list, coupling_list, {}, 4),
+  EXPECT_THROW(dense_layout_mapping(gates_list, coupling_list, {}, {}, 4),
                std::invalid_argument);
 }
 
@@ -286,7 +287,7 @@ TEST(DenseLayout, EmptyCouplingList) {
   std::vector<GateOperation> gates_list = {GateOperation(
       "h", {0}, {}, OperationType::SINGLE_QUBIT_OPERATION, true)};
 
-  EXPECT_THROW(dense_layout_mapping(gates_list, coupling_list, {}, 1),
+  EXPECT_THROW(dense_layout_mapping(gates_list, coupling_list, {}, {}, 1),
                std::invalid_argument);
 }
 
@@ -306,7 +307,7 @@ TEST(DenseLayout, DisconnectedGraph) {
                     false),
   };
 
-  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, 3);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list, {}, {}, 3);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -330,8 +331,8 @@ TEST(DenseLayout, FidelityWeightDefault) {
   };
 
   // 使用默认 fidelity_weight=0.5
-  auto mapping =
-      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 0.5);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list,
+                                      edge_fidelities, {}, 3, 0.5);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -355,14 +356,14 @@ TEST(DenseLayout, FidelityWeightExtremeValues) {
   };
 
   // fidelity_weight=0.0: 纯密度优先
-  auto mapping_density =
-      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 0.0);
+  auto mapping_density = dense_layout_mapping(gates_list, coupling_list,
+                                              edge_fidelities, {}, 3, 0.0);
   ASSERT_EQ(mapping_density.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping_density));
 
   // fidelity_weight=1.0: 纯保真度优先
-  auto mapping_fidelity =
-      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 1.0);
+  auto mapping_fidelity = dense_layout_mapping(gates_list, coupling_list,
+                                               edge_fidelities, {}, 3, 1.0);
   ASSERT_EQ(mapping_fidelity.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping_fidelity));
 }
@@ -387,8 +388,8 @@ TEST(DenseLayout, DensityNormalization) {
   };
 
   // 3 个逻辑比特在线性拓扑中，所有子图都有相同的边数
-  auto mapping =
-      dense_layout_mapping(gates_list, coupling_list, edge_fidelities, 3, 0.5);
+  auto mapping = dense_layout_mapping(gates_list, coupling_list,
+                                      edge_fidelities, {}, 3, 0.5);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
