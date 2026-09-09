@@ -182,6 +182,11 @@ class TestReadoutMitigation:
         assert rem.name == "readout"
         assert rem._calibration_shots == 4096
         assert rem._cache_ttl == 3600
+        assert rem._max_correction_threshold == 0.30
+
+    def test_initialization_custom_threshold(self):
+        rem = ReadoutMitigation(max_correction_threshold=0.5)
+        assert rem._max_correction_threshold == 0.5
 
     def test_set_config(self):
         rem = ReadoutMitigation()
@@ -405,3 +410,39 @@ class TestReadoutPostprocessEdgeCases:
         # no calibration kwarg -> uses self._calibration_data
         output = rem.postprocess(results, num_qubits=1, target_qubits=[0])
         assert output["metadata"]["variants"][0]["applied"] is True
+
+    def test_postprocess_fallback_on_correction_too_large(self):
+        # A biased confusion matrix + mismatched counts push the
+        # pseudo-inverse correction past the safety threshold; the guard
+        # should fall back to raw counts with a warning marker.
+        rem = ReadoutMitigation(max_correction_threshold=0.05)
+        # cm with column 0 (prep |0>) -> [0.6, 0.4], column 1 -> [0.4, 0.6]
+        rem._calibration_data = {
+            "per_qubit_confusion": {
+                0: np.array([[0.6, 0.4], [0.4, 0.6]]),
+            },
+            "target_qubits": [0],
+        }
+        # counts {0:2000, 1:8000} -> probs [0.2, 0.8]; mitigation pushes to
+        # [0, 1], a correction of 0.2 > 0.05 threshold -> fallback.
+        results = {"original": {"0": 2000, "1": 8000}}
+        output = rem.postprocess(results, num_qubits=1, target_qubits=[0])
+        variant = output["metadata"]["variants"][0]
+        assert variant["applied"] is False
+        assert variant.get("warning") == "correction_too_large"
+        # raw counts returned unchanged
+        assert output["results"]["original"] == {"0": 2000, "1": 8000}
+
+    def test_postprocess_threshold_zero_disables_guard(self):
+        # threshold=0 disables the guard -> always applies correction
+        rem = ReadoutMitigation(max_correction_threshold=0.0)
+        rem._calibration_data = {
+            "per_qubit_confusion": {
+                0: np.array([[0.6, 0.4], [0.4, 0.6]]),
+            },
+            "target_qubits": [0],
+        }
+        results = {"original": {"0": 2000, "1": 8000}}
+        output = rem.postprocess(results, num_qubits=1, target_qubits=[0])
+        variant = output["metadata"]["variants"][0]
+        assert variant["applied"] is True

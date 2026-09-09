@@ -223,16 +223,23 @@ class ReadoutMitigation(MitigationBase):
         self,
         calibration_shots: int = 8192,
         cache_ttl: int = 43200,
+        max_correction_threshold: float = 0.30,
     ):
         """Initialize readout mitigation.
 
         Args:
             calibration_shots: Number of shots for calibration circuits.
             cache_ttl: Calibration cache time-to-live in seconds.
+            max_correction_threshold: Safety threshold (0-1). If the
+                pseudo-inverse shifts any probability by more than this
+                fraction, REM treats the correction as noise amplification
+                and falls back to the raw counts for that circuit. 0.30 by
+                default; set to 0 to disable the guard.
         """
         super().__init__("readout")
         self._calibration_shots = calibration_shots
         self._cache_ttl = cache_ttl
+        self._max_correction_threshold = max_correction_threshold
         self._calibration_data: dict[str, Any] | None = None
 
     def set_config(self, config: dict[str, Any]) -> None:
@@ -241,6 +248,10 @@ class ReadoutMitigation(MitigationBase):
             "calibration_shots", self._calibration_shots
         )
         self._cache_ttl = config.get("cache_ttl", self._cache_ttl)
+        if "max_correction_threshold" in config:
+            self._max_correction_threshold = float(
+                config["max_correction_threshold"]
+            )
 
     def needs_calibration(self) -> bool:
         return True
@@ -386,6 +397,34 @@ class ReadoutMitigation(MitigationBase):
 
                 mitigated_probs = mitigate_readout(probs, local_cm)
                 total_counts = sum(counts.values())
+                max_correction = float(np.max(np.abs(mitigated_probs - probs)))
+
+                # Safety guard: if the pseudo-inverse moved any
+                # probability by more than the threshold, the correction is
+                # amplifying noise rather than removing it -- fall back to
+                # the raw counts for this circuit.
+                if (
+                    self._max_correction_threshold > 0
+                    and max_correction > self._max_correction_threshold
+                ):
+                    logger.warning(
+                        "REM correction too large (max_correction=%.4f > "
+                        "threshold=%.4f) for qubits %s, falling back to "
+                        "raw counts",
+                        max_correction,
+                        self._max_correction_threshold,
+                        active_qubits,
+                    )
+                    mitigated_results[label] = counts
+                    metadata_list.append({
+                        "label": label,
+                        "applied": False,
+                        "warning": "correction_too_large",
+                        "max_correction": max_correction,
+                        "condition_number": float(cond),
+                    })
+                    continue
+
                 mitigated_counts = {}
                 for idx, p in enumerate(mitigated_probs):
                     bitstring = format(idx, f"0{num_qubits}b")
@@ -393,7 +432,6 @@ class ReadoutMitigation(MitigationBase):
                     if c > 0:
                         mitigated_counts[bitstring] = c
 
-                max_correction = float(np.max(np.abs(mitigated_probs - probs)))
                 mitigated_results[label] = mitigated_counts
                 metadata_list.append({
                     "label": label,
