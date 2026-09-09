@@ -208,15 +208,27 @@ class CMSSTranspilerPerf:
             logger.error(f"read file error: {e}")
             return None
 
+    # driver 字段值到芯片类型的精确映射。
+    # 超导: DriverSpinQRpc-156 / DriverBaihua / DriverIBMMarrakesh
+    # 中性原子: DriverHanyuan1-36 / DriverHanyuan1-100
+    DRIVER_TECH_TYPE_MAP = {
+        "DriverSpinQRpc-156": Constant.TECH_TYPE_SUPERCONDUCTING,
+        "DriverBaihua": Constant.TECH_TYPE_SUPERCONDUCTING,
+        "DriverIBMMarrakesh": Constant.TECH_TYPE_SUPERCONDUCTING,
+        "DriverHanyuan1-36": Constant.TECH_TYPE_NEUTRAL_ATOM,
+        "DriverHanyuan1-100": Constant.TECH_TYPE_NEUTRAL_ATOM,
+    }
+
     @staticmethod
     def _infer_tech_type_from_config(config_file):
         """Infer tech_type from the driver field in the config file.
 
-        The driver value is matched case-insensitively: a driver containing
-        "spinq" maps to superconducting, "hanyuan" maps to neutral_atom.
-        Returns None when the driver field is absent or matches neither
-        keyword, in which case no matching check is enforced.
+        The driver value is matched exactly against DRIVER_TECH_TYPE_MAP.
+        Returns None when the driver field is absent or matches no known
+        driver, in which case no matching check is enforced here (the caller
+        raises for an unknown driver during validation).
         """
+
         try:
             config_path = Path(config_file).resolve()
             with open(config_path, encoding="utf-8") as f:
@@ -224,15 +236,10 @@ class CMSSTranspilerPerf:
         except OSError as e:
             logger.error(f"read config file error: {e}")
             return None
-        match = re.search(r'driver\s*=\s*"([^"]*)"', content, re.IGNORECASE)
+        match = re.search(r'driver\s*=\s*"([^"]*)"', content)
         if not match:
             return None
-        driver = match.group(1).lower()
-        if "spinq" in driver:
-            return Constant.TECH_TYPE_SUPERCONDUCTING
-        if "hanyuan" in driver:
-            return Constant.TECH_TYPE_NEUTRAL_ATOM
-        return None
+        return CMSSTranspilerPerf.DRIVER_TECH_TYPE_MAP.get(match.group(1))
 
     def init_transpile_params(self, extra_configs):
         """Init transpile parameters."""
@@ -289,34 +296,30 @@ class CMSSTranspilerPerf:
         self.enable_mapping = extra_configs["transpile"]["mapping"].get(
             "enable_mapping", True
         )
-        self.tech_type = extra_configs["transpile"]["mapping"].get(
-            "tech_type", []
-        )
         self.mapping_config_file = extra_configs["transpile"]["mapping"].get(
             "config_file", []
         )
         self.na_mapping_type = extra_configs["transpile"]["mapping"].get(
             "na_mapping_type", "default"
         )
-        if len(self.tech_type) != len(self.mapping_config_file):
-            raise ValueError(
-                "tech_type and mapping config fileshould be in pair!"
-            )
-        if self.tech_type == []:
-            raise ValueError("tech_type is not configured!")
         if self.mapping_config_file == []:
             raise ValueError("mapping config file is not configured!")
 
-        self.mapping_info = list(zip(self.tech_type, self.mapping_config_file))
-
-        # verify each tech_type matches the driver declared in its config file
-        for tech_type, config_file in self.mapping_info:
+        # tech_type is inferred from the driver field declared in each
+        # config file; an unknown or missing driver is rejected.
+        self.tech_type = []
+        for config_file in self.mapping_config_file:
             inferred = self._infer_tech_type_from_config(config_file)
-            if inferred is not None and inferred != tech_type:
+            if inferred is None:
                 raise ValueError(
-                    f"tech_type[{tech_type}] does not match config file"
-                    f"[{config_file}], whose driver indicates[{inferred}]"
+                    f"cannot infer tech_type from config file"
+                    f"[{config_file}], whose driver is not in the supported"
+                    f" driver-to-tech-type map: "
+                    f"{list(self.DRIVER_TECH_TYPE_MAP.keys())}"
                 )
+            self.tech_type.append(inferred)
+
+        self.mapping_info = list(zip(self.tech_type, self.mapping_config_file))
 
         # mapping config
         sc_mapping_options = extra_configs["transpile"]["mapping"].get(
@@ -331,8 +334,7 @@ class CMSSTranspilerPerf:
         if len_option > len(self.mapping_info):
             raise ValueError(
                 "mapping options should not be more than"
-                " the number of pairs of tech_type and mapping"
-                " config file!"
+                " the number of mapping config files!"
             )
         for _ in range(len(self.mapping_info) - len_option):
             self.sc_mapping_options.append({})

@@ -1,6 +1,6 @@
 [spinq_rpc_156]
 alias_name = "量旋科技 超导驱动 (RPC版本)"
-driver = "DriverSpinQRpc"
+driver = "DriverSpinQRpc-156"
 description = "量旋科技 超导驱动 (RPC版本)"
 
 rpc_host = "127.0.0.1"
