@@ -209,6 +209,7 @@ src/wy_qcos/tests/system_tests/<module_name>/
 - [ ] 路径使用 `pathlib` 或 `os.path.join`
 - [ ] 无硬编码路径字符串
 - [ ] 无硬编码密码等敏感信息
+- [ ] 密码不允许明文显示到日志或屏幕上，必须打印时需调用 `Library._mask_connection_url`、`Library.mask_password` 或 `Library.mask_password_from_pydantic` 等方法进行脱敏处理
 - [ ] shell.py 中可追加的参数使用 `nargs="+"` 形式，而非 `action="append"`
 - [ ] 导入（import/from）必须放在文件开始处，不得在代码中间使用延迟导入
 

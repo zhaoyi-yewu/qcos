@@ -162,10 +162,10 @@ class DeviceManager:
 
         def is_connected():
             try:
-                print(
-                    f"Check connection to redis: "
-                    f"{self.config.REDIS.REDIS_URL} ... "
+                masked_url = Library._mask_connection_url(
+                    self.config.REDIS.REDIS_URL
                 )
+                logger.info(f"Check connection to redis: {masked_url} ... ")
                 self.redis_instance.ping()
                 return True, None, None
             except Exception as e:

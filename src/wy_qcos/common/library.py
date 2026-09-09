@@ -2043,7 +2043,7 @@ class Library:
         """
         # Pattern: scheme://user:password@host:port/db
         # Replace password between : and @
-        pattern = r"(://[^:]+:)[^@]+(@)"
+        pattern = r"(://[^:]*:)[^@]+(@)"
         return re.sub(pattern, f"\\1{mask_value}\\2", url)
 
     @staticmethod
