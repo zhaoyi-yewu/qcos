@@ -7,8 +7,8 @@ pipeline {
 
     triggers {
         cron('''
-        # 每个工作日 9点到21点间，每三小时执行一次
-        0 9,12,15,18,21 * * 1-5
+        # 每个工作日 9点到21点间，每小时执行一次
+        0 9-21 * * 1-5
         # 每天晚上12点执行一次
         0 0 * * *
         ''')
@@ -109,6 +109,7 @@ pipeline {
                 echo "Sync issues to gitee"
 
                 ./cicd/sync-codes/sync-issues.py --gitlab-url "http://gitlab.cmss.com" --gitlab-token "\${GITLAB_TOKEN}" --gitlab-project-id "OCRI/WuYueOs" --jira-url "http://jira.cmss.com" --jira-auth "\${JIRA_AUTH}" --gitee-access-token "\${GITEE_ACCESS_TOKEN}" --gitee-user-accounts '\${GITEE_USER_ACCOUNTS}'
+                ./cicd/sync-codes/sync-issues.py --gitlab-url "http://gitlab.cmss.com" --gitlab-token "\${GITLAB_TOKEN}" --gitlab-project-id "OCRI/WuYueOs" --jira-url "http://jira.cmss.com" --jira-auth "\${JIRA_AUTH}" --gitee-access-token "\${GITEE_ACCESS_TOKEN}" --gitee-user-accounts "\${GITEE_USER_ACCOUNTS}"
                 """
             }
         }

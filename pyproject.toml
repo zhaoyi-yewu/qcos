@@ -88,6 +88,7 @@ dependencies = [
     "psycopg==3.3.3",
     "pulp==3.3.2",
     "pwdlib==0.3.0",
+    "py-spy==0.4.2",
     "nanobind==2.13.0",
     "nanobind-stubgen==0.1.5",
     "pycasbin==2.8.0",
