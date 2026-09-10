@@ -7,12 +7,16 @@
 # csv_file = ""
 
 # 测试集必须配置，绝对路径或项目的相对路径
+# 100比特5万深度测试线路：./samples/qasm/2.0/random_circuit_n100_d50000.qasm
 files = ["./samples/qasm/2.0/simple-qasm.qasm"]
 dirs = []
 
-# 性能日志开关，true 时允许 PERF 级别日志输出
-# perf_enabled = true
+# 性能日志开关，true 时允许 PERF 级别日志输出，默认为false
 perf_enabled = false
+# 性能日志信息开关，默认为false
+# true 时，输出完整的各阶段时间
+# false 时，只输出 parse/transpile/total 时间
+# enable_detail = false
 
 # 是否启用 C++ 一体化 transpile（单电路 sabre 路由路径），默认 true
 # 注意：当开启时，无法使用csv文件格式输出
@@ -28,33 +32,35 @@ perf_enabled = false
 [transpile.transpiler]
 # 默认为true
 # enable_transpiler = true
-# base_gates中元素与拓扑类型强相关, 支持多组基础门集输入
-base_gates = ["rx, ry, cx"]
+# base_gates 基础门集, 支持多组输入; 未配置时根据 tech_type 自动选择:
+#   超导 (superconducting) -> rx, ry, cx
+#   中性原子 (neutral_atom) -> rx, ry, cz
+# base_gates = ["rx, ry, cx"]
 
 [transpile.optimize]
 # 默认opt_level为[1]
-opt_level = [0, 1]
+opt_level = [1]
 
 [transpile.mapping]
 # 默认为true
 # enable_mapping = true
-# 拓扑类型由配置文件中的 driver 字段自动判定，无需显式配置 tech_type：
-#   DriverSpinQRpc-156/DriverBaihua/DriverIBMMarrakesh -> 超导 (superconducting)
-#   DriverHanyuan1-36/DriverHanyuan1-100 -> 中性原子 (neutral_atom)
-# 拓扑类型配置文件, 当enable_mapping不为false时， 必须配置，绝对路径或项目的相对路径
-# superconducting: 超导量子计算机拓扑类型
-config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
-# neutral_atom: 中性原子量子计算机拓扑类型
-# config_file = ["./etc/qcos/conf.d/hanyuan1.toml"]
+# 拓扑类型，可选 "superconducting" 或 "neutral_atom"，支持单个或多个输入
+# 未配置时从 config_file 的 driver 字段自动推断
+# 配置 tech_type 但未配置 config_file 时使用默认值:
+#   superconducting -> etc/topology/spinq_rpc_156.toml
+#   neutral_atom -> etc/topology/hanyuan1_100.toml
+# 同时配置 tech_type 和 config_file 时, 会验证 driver 是否匹配
+tech_type = ["superconducting"]
+# config_file = ["./etc/topology/spinq_rpc_156.toml"]
 
 # 拓扑类型选择中性原子（neutral_atom）时，支持配置选择mapping算法
 # 支持的算法："default"、"ZAP"、"ZAC"（大小写不敏感）
 # - default / ZAP：走 C++ 一体化 transpile 路径（enable_transpile_single）
 # - ZAC：走 Python mapping 路径
-na_mapping_type = "default"
+# na_mapping_type = "default"
 
-# json格式的字符串，表示不同算法组合输入，默认不输入，
-# 但元素必须与config_file一一对应
+# 超导（superconducting）时，支持配置选择mapping算法
+# json格式的字符串，表示不同算法组合输入，默认不输入，但元素必须与config_file一一对应
 # sc_mapping_options = ["""
 #     {
 #             "routing_algorithm": "sc",
