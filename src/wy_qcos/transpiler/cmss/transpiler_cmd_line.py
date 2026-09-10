@@ -212,9 +212,11 @@ class CMSSTranspilerPerf:
     # 超导: DriverSpinQRpc-156 / DriverBaihua / DriverIBMMarrakesh
     # 中性原子: DriverHanyuan1-36 / DriverHanyuan1-100
     DRIVER_TECH_TYPE_MAP = {
+        "DriverSpinQRpc": Constant.TECH_TYPE_SUPERCONDUCTING,
         "DriverSpinQRpc-156": Constant.TECH_TYPE_SUPERCONDUCTING,
         "DriverBaihua": Constant.TECH_TYPE_SUPERCONDUCTING,
         "DriverIBMMarrakesh": Constant.TECH_TYPE_SUPERCONDUCTING,
+        "DriverHanyuan1": Constant.TECH_TYPE_NEUTRAL_ATOM,
         "DriverHanyuan1-36": Constant.TECH_TYPE_NEUTRAL_ATOM,
         "DriverHanyuan1-100": Constant.TECH_TYPE_NEUTRAL_ATOM,
     }
@@ -240,6 +242,26 @@ class CMSSTranspilerPerf:
         if not match:
             return None
         return CMSSTranspilerPerf.DRIVER_TECH_TYPE_MAP.get(match.group(1))
+
+    @staticmethod
+    def _normalize_na_mapping_type(value):
+        """Normalize na_mapping_type case-insensitively.
+
+        Accepts any case spelling (e.g. "zap", "Zap", "ZAP") and returns the
+        canonical form expected by downstream code ("default" / "ZAP" / "ZAC").
+        """
+        canonical = {
+            "default": "default",
+            "zap": "ZAP",
+            "zac": "ZAC",
+        }
+        key = (value or "default").strip().lower()
+        if key not in canonical:
+            raise ValueError(
+                f"na_mapping_type[{value}] is not supported; "
+                f"valid values: {list(canonical.keys())}"
+            )
+        return canonical[key]
 
     def init_transpile_params(self, extra_configs):
         """Init transpile parameters."""
@@ -299,8 +321,10 @@ class CMSSTranspilerPerf:
         self.mapping_config_file = extra_configs["transpile"]["mapping"].get(
             "config_file", []
         )
-        self.na_mapping_type = extra_configs["transpile"]["mapping"].get(
-            "na_mapping_type", "default"
+        self.na_mapping_type = self._normalize_na_mapping_type(
+            extra_configs["transpile"]["mapping"].get(
+                "na_mapping_type", "default"
+            )
         )
         if self.mapping_config_file == []:
             raise ValueError("mapping config file is not configured!")
@@ -1081,7 +1105,7 @@ class CMSSTranspilerPerf:
             )
             is_na = (
                 tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM
-                and self.na_mapping_type == "default"
+                and self.na_mapping_type in ("default", "ZAP")
             )
             is_sc_sabre = (
                 tech_type == Constant.TECH_TYPE_SUPERCONDUCTING

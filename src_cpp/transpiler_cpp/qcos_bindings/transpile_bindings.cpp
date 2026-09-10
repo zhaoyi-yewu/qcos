@@ -181,8 +181,8 @@ void bind_transpile(nb::module_& m) {
                 ``storage_area``, ``operate_area``, ``coupler_map`` and
                 ``readout_error``.
             opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-            na_mapping_type (str, optional): NA mapping algorithm type; only
-                "default" is supported by the C++ backend. Defaults to "default".
+            na_mapping_type (str, optional): NA mapping algorithm type; "default"
+                or "ZAP" are supported by the C++ backend. Defaults to "default".
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
@@ -219,8 +219,8 @@ void bind_transpile(nb::module_& m) {
                 ``storage_area``, ``operate_area``, ``coupler_map`` and
                 ``readout_error``.
             opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-            na_mapping_type (str, optional): NA mapping algorithm type; only
-                "default" is supported by the C++ backend. Defaults to "default".
+            na_mapping_type (str, optional): NA mapping algorithm type; "default"
+                or "ZAP" are supported by the C++ backend. Defaults to "default".
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.

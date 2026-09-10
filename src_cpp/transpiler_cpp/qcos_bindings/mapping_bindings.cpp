@@ -160,26 +160,29 @@ nb::tuple bind_na_routing(
 }
 
 /**
- * @brief Python entry point for NA default routing.
+ * @brief Python entry point for NA routing.
  *
- * Thin wrapper around na_mapping() fixed to the "default" strategy
- * (NADefaultRoute), exposing only the inputs a single-circuit neutral-atom
- * mapping needs. Equivalent to na_routing(..., na_support_move=True,
- * na_mapping_type="default", optimize=...).
+ * Thin wrapper around na_mapping() with MOVE support enabled, exposing only
+ * the inputs a single-circuit neutral-atom mapping needs. Dispatches to the
+ * concrete strategy (NADefaultRoute or NAZAPRoute) via na_mapping_type,
+ * mirroring the Python-side MappingFactory. Equivalent to
+ * na_routing(..., na_support_move=True, na_mapping_type=..., optimize=...).
  *
  * @param gates_list_raw Python-side BaseOperation list.
  * @param qpu_cfg QPU config dict
  * (storage_area/operate_area/coupler_map/readout_error).
  * @param qbit_num Number of logical qubits.
+ * @param na_mapping_type NA mapping algorithm type ("default" or "ZAP").
  * @param optimize Whether to enable overlap optimization (execute_with_opt).
  * @return nb::tuple (mapped_ops, final_layout); final_layout is always empty.
  */
-nb::tuple bind_cpp_na_default_routing(
+nb::tuple bind_cpp_na_routing(
     const std::vector<qcos::BaseOperation*>& gates_list_raw,
-    const nb::dict& qpu_cfg, int qbit_num, bool optimize) {
+    const nb::dict& qpu_cfg, int qbit_num,
+    const std::string& na_mapping_type, bool optimize) {
   return bind_na_routing(gates_list_raw, qpu_cfg, qbit_num,
                          /*na_support_move=*/true,
-                         /*na_mapping_type=*/"default", optimize);
+                         /*na_mapping_type=*/na_mapping_type, optimize);
 }
 
 }  // namespace
@@ -454,17 +457,18 @@ Returns:
             na_support_move is True) and an empty final layout dict.
         )");
 
-  m.def("cpp_na_default_routing", &bind_cpp_na_default_routing,
+  m.def("cpp_na_routing", &bind_cpp_na_routing,
         nb::arg("gates_list"), nb::arg("qpu_cfg"), nb::arg("qbit_num"),
-        nb::arg("optimize") = false,
+        nb::arg("na_mapping_type") = "default", nb::arg("optimize") = false,
         R"(
-        Execute neutral-atom default routing (NADefaultRoute).
+        Execute neutral-atom routing (NADefaultRoute or NAZAPRoute).
 
-        Thin wrapper around ``na_routing`` fixed to the "default" NA mapping
-        strategy with MOVE support enabled, exposing only the inputs a
-        single-circuit neutral-atom mapping needs. Inserts MOVE operations to
-        shuttle atoms between the storage and operate areas so that two-qubit
-        gates act on adjacent sites.
+        Thin wrapper around ``na_routing`` with MOVE support enabled,
+        exposing only the inputs a single-circuit neutral-atom mapping needs.
+        Dispatches to the concrete strategy via ``na_mapping_type``:
+        ``"default"`` -> NADefaultRoute, ``"ZAP"`` -> NAZAPRoute (matching is
+        case-insensitive). Inserts MOVE operations to shuttle atoms between the
+        storage and operate areas so that two-qubit gates act on adjacent sites.
 
         Args:
             gates_list (list[BaseOperation]): Logical operation sequence.
@@ -472,6 +476,9 @@ Returns:
             qpu_cfg (dict): QPU configuration with keys ``storage_area``,
                 ``operate_area``, ``coupler_map`` and ``readout_error``.
             qbit_num (int): Number of logical qubits.
+            na_mapping_type (str, optional): NA mapping algorithm type; only
+                "default" and "ZAP" are supported by the C++ backend. Defaults
+                to "default".
             optimize (bool, optional): Whether to enable the overlap
                 optimization (``execute_with_opt``). Defaults to False.
 
