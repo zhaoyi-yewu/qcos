@@ -61,7 +61,7 @@ function usage {
     echo ""
 }
 
-opts=$(getopt -o pbu:t:c:j:e:s:m:h --long pep8,build-cpp,unit-test:,cpp-unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:pytest-mark:,help -- "$@")
+opts=$(getopt -o pbu:t:c:j:e:s:m:h --long pep8,build-cpp,unit-test:,cpp-unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:,pytest-mark:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
