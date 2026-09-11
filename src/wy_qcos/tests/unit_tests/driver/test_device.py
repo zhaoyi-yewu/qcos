@@ -87,45 +87,51 @@ class TestDevice:
         res = device.get_max_queued_jobs()
         assert res == 10
 
-    def test_manual_maintain_mode_default_false(self):
-        assert device.get_manual_maintain_mode() is False
+    def test_state_default_auto(self):
+        assert device.get_state() == device.DEVICE_STATE_AUTO
 
-    def test_set_manual_maintain_mode_true(self):
-        device.set_manual_maintain_mode(True)
-        assert device.get_manual_maintain_mode() is True
+    def test_set_state_maintain(self):
+        device.set_state(device.DEVICE_STATUS_MAINTAIN)
+        assert device.get_state() == device.DEVICE_STATUS_MAINTAIN
         # Clean up
-        device.set_manual_maintain_mode(False)
+        device.set_state(device.DEVICE_STATE_AUTO)
 
-    def test_set_manual_maintain_mode_false(self):
-        device.set_manual_maintain_mode(True)
-        device.set_manual_maintain_mode(False)
-        assert device.get_manual_maintain_mode() is False
+    def test_set_state_auto(self):
+        device.set_state(device.DEVICE_STATUS_MAINTAIN)
+        device.set_state(device.DEVICE_STATE_AUTO)
+        assert device.get_state() == device.DEVICE_STATE_AUTO
 
-    def test_set_status_does_not_affect_manual_maintain_mode(self):
-        device.set_manual_maintain_mode(True)
+    def test_get_effective_status_auto(self):
+        device.set_state(device.DEVICE_STATE_AUTO)
         device.set_status(device.DEVICE_STATUS_ONLINE)
-        assert device.get_manual_maintain_mode() is True
-        device.set_status(device.DEVICE_STATUS_MAINTAIN)
-        assert device.get_manual_maintain_mode() is True
-        # Clean up
-        device.set_manual_maintain_mode(False)
+        status, is_manual = device.get_effective_status()
+        assert status == device.DEVICE_STATUS_ONLINE
+        assert is_manual is False
 
-    def test_set_device_running_info_skipped_when_manual_maintain(self):
-        # Setup: set device to maintain with manual maintain mode on
-        device.set_status(device.DEVICE_STATUS_MAINTAIN)
-        device.set_manual_maintain_mode(True)
+    def test_get_effective_status_manual(self):
+        device.set_state(device.DEVICE_STATUS_MAINTAIN)
+        status, is_manual = device.get_effective_status()
+        assert status == device.DEVICE_STATUS_MAINTAIN
+        assert is_manual is True
+        # Clean up
+        device.set_state(device.DEVICE_STATE_AUTO)
+
+    def test_set_device_running_info_skipped_manual_state(self):
+        # Setup: set device state to maintain (manual override)
+        device.set_state(device.DEVICE_STATUS_MAINTAIN)
 
         # Simulate monitor reporting online status
         device.set_device_running_info({"status": "online"})
 
-        # Status should still be maintain (not overwritten)
-        assert device.get_status() == device.DEVICE_STATUS_MAINTAIN
+        # Effective status should still be maintain
+        status, _ = device.get_effective_status()
+        assert status == device.DEVICE_STATUS_MAINTAIN
         # Clean up
-        device.set_manual_maintain_mode(False)
+        device.set_state(device.DEVICE_STATE_AUTO)
 
-    def test_set_device_running_info_applied_when_no_manual_maintain(self):
+    def test_set_device_running_info_applied_auto_state(self):
+        device.set_state(device.DEVICE_STATE_AUTO)
         device.set_status(device.DEVICE_STATUS_ONLINE)
-        device.set_manual_maintain_mode(False)
 
         # Simulate monitor reporting busy status
         device.set_device_running_info({"status": "busy"})
@@ -136,33 +142,33 @@ class TestDevice:
         device.set_status(device.DEVICE_STATUS_ONLINE)
 
     def test_set_device_running_info_maintain_from_monitor(self):
+        device.set_state(device.DEVICE_STATE_AUTO)
         device.set_status(device.DEVICE_STATUS_ONLINE)
-        device.set_manual_maintain_mode(False)
 
         # Monitor reports maintain
         device.set_device_running_info({"status": "maintain"})
         assert device.get_status() == device.DEVICE_STATUS_MAINTAIN
 
-        # Monitor then reports online again - should be applied
+        # Monitor then reports online again
         device.set_device_running_info({"status": "online"})
         assert device.get_status() == device.DEVICE_STATUS_ONLINE
 
     def test_set_device_running_info_details_still_updated(self):
-        device.set_status(device.DEVICE_STATUS_MAINTAIN)
-        device.set_manual_maintain_mode(True)
+        device.set_state(device.DEVICE_STATUS_MAINTAIN)
 
         device.set_device_running_info({
             "status": "online",
             "details": {"calibration": {"step": 0.5}},
         })
 
-        # Status should remain maintain
-        assert device.get_status() == device.DEVICE_STATUS_MAINTAIN
+        # Status should remain maintain (manual override)
+        status, _ = device.get_effective_status()
+        assert status == device.DEVICE_STATUS_MAINTAIN
         # But details should still be updated
         assert device.calibrate_info is not None
         assert device.calibrate_info["step"] == 0.5
         # Clean up
-        device.set_manual_maintain_mode(False)
+        device.set_state(device.DEVICE_STATE_AUTO)
 
     def test_set_status_disconnected(self):
         """Test setting device status to disconnected."""
@@ -175,8 +181,8 @@ class TestDevice:
 
     def test_set_device_running_info_disconnected(self):
         """Test that monitor can set device to disconnected status."""
+        device.set_state(device.DEVICE_STATE_AUTO)
         device.set_status(device.DEVICE_STATUS_ONLINE)
-        device.set_manual_maintain_mode(False)
 
         # Monitor reports disconnected
         device.set_device_running_info({
@@ -184,6 +190,6 @@ class TestDevice:
         })
         assert device.get_status() == device.DEVICE_STATUS_DISCONNECTED
 
-        # Monitor then reports online again - should be applied
+        # Monitor then reports online again
         device.set_device_running_info({"status": "online"})
         assert device.get_status() == device.DEVICE_STATUS_ONLINE

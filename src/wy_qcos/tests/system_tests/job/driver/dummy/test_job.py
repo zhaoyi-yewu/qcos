@@ -543,12 +543,12 @@ class TestJob:
             )
         assert success is True
 
-    def _restore_device(self, enable=True, status="online"):
-        """Restore device to enabled and online state."""
+    def _restore_device(self, enable=True, state="auto"):
+        """Restore device to auto state and enabled."""
         self.admin_client.set_device(
             Constant.DEVICE_DUMMY,
             enable=enable,
-            status=status,
+            state=state,
         )
 
     @pytest.mark.smoke
@@ -615,7 +615,7 @@ class TestJob:
 
     @pytest.mark.smoke
     def test_submit_job_offline_device(self):
-        """Submit job to an offline device (status=offline) should fail."""
+        """Submit job to an offline device (state=offline) should fail."""
         job_info = {
             "job_id": str(Library.create_uuid(prefix=[0xF0])),
             "job_name": "test_submit_job_offline_device",
@@ -635,7 +635,7 @@ class TestJob:
             "dry_run": False,
         }
         # set device offline
-        self.admin_client.set_device(Constant.DEVICE_DUMMY, status="offline")
+        self.admin_client.set_device(Constant.DEVICE_DUMMY, state="offline")
         try:
             status_code, reason, text, response = self.admin_client.submit_job(
                 job_info["source_code_list"],
