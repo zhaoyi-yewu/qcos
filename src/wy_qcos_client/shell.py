@@ -787,6 +787,10 @@ class GetDevices(Lister):
                 dev_info["availability_total"] = metrics.get(
                     "availability_total"
                 )
+                # add [auto]/[manual] suffix to status
+                is_manual = dev_info.get("is_manual", False)
+                suffix = "[manual]" if is_manual else "[auto]"
+                dev_info["status"] = f"{dev_info['status']} {suffix}"
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
@@ -838,6 +842,11 @@ class GetDevice(ShowOne):
         json_results = CommandHelper.check_results(
             resource, "get_device", status_code, reason, text
         )
+        # add [auto]/[manual] suffix to status
+        if json_results:
+            is_manual = json_results.get("is_manual", False)
+            suffix = "[manual]" if is_manual else "[auto]"
+            json_results["status"] = f"{json_results['status']}{suffix}"
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 
@@ -1032,77 +1041,21 @@ class GetDeviceOptions(ShowOne):
             print("json_results is None or json_results['details'] is None")
 
 
-class SetDeviceMaintainMode(Command):
-    """Set device maintain mode (on/off).
-
-    Examples:
-        qcos set-device-maintain-mode on --backend hanyuan1
-        qcos set-device-maintain-mode off --backend hanyuan1
-    """
-
-    group = QcosShell.CMD_GROUP_DEVICE
-
-    def get_parser(self, prog_name):
-        """Get parser for this command.
-
-        Args:
-            prog_name: program name
-
-        Returns:
-            parser
-        """
-        parser = super().get_parser(prog_name)
-        parser.add_argument(
-            "mode",
-            type=str,
-            choices=["on", "off"],
-            help="Maintain mode: on (set to maintain) or off (set to online)",
-        )
-        parser.add_argument(
-            "--backend",
-            dest="backend",
-            type=str,
-            required=True,
-            help="Device name (backend)",
-        )
-        return parser
-
-    def take_action(self, parsed_args):
-        """Take action for command line arguments.
-
-        Args:
-            parsed_args: command line arguments
-        """
-        resource = self.group
-        mode = parsed_args.mode
-        backend = parsed_args.backend
-
-        status_code, reason, text, result = (
-            self.app.client.set_device_maintain_mode(backend, mode)
-        )
-        json_results = CommandHelper.check_results(
-            resource, "set_device_maintain_mode", status_code, reason, text
-        )
-        print(
-            f"Device {json_results['name']} status "
-            f"set to: {json_results['status']}"
-        )
-
-
 class SetDevice(Command):
-    """Set device attributes (status, enable, max_qubits, etc.).
+    """Set device attributes (state, enable, max_qubits, etc.).
 
-    At least one of --status, --enable, --max-qubits, or
+    At least one of --state, --enable, --max-qubits, or
     --available-qubits must be specified.
 
     Examples:
-        qcos set-device hanyuan1 --status online
+        qcos set-device hanyuan1 --state online
+        qcos set-device hanyuan1 --state maintain
         qcos set-device hanyuan1 --enable false
         qcos set-device hanyuan1 --max-qubits 100
         qcos set-device hanyuan1 --max-qubits auto
         qcos set-device hanyuan1 --available-qubits 50
         qcos set-device hanyuan1 --available-qubits auto
-        qcos set-device hanyuan1 --status online \
+        qcos set-device hanyuan1 --state online \
             --enable true --max-qubits auto
     """
 
@@ -1124,8 +1077,8 @@ class SetDevice(Command):
             help="Device name (backend)",
         )
         parser.add_argument(
-            "--status",
-            dest="status",
+            "--state",
+            dest="state",
             type=str,
             choices=[
                 "auto",
@@ -1138,8 +1091,9 @@ class SetDevice(Command):
                 "unknown",
             ],
             default=None,
-            help="Device status: auto (no change), online, offline, "
-            "busy, disconnected, calibrating, maintain, unknown",
+            help="Device state: auto (use in-memory status), "
+            "online, offline, busy, disconnected, "
+            "calibrating, maintain, unknown",
         )
         parser.add_argument(
             "--enable",
@@ -1175,20 +1129,20 @@ class SetDevice(Command):
         """
         resource = self.group
         backend = parsed_args.backend
-        status = parsed_args.status
+        state = parsed_args.state
         enable_str = parsed_args.enable
         max_qubits = parsed_args.max_qubits
         available_qubits = parsed_args.available_qubits
 
         # at least one option must be specified
         if (
-            status is None
+            state is None
             and enable_str is None
             and max_qubits is None
             and available_qubits is None
         ):
             print(
-                "Error: at least one of --status, --enable, "
+                "Error: at least one of --state, --enable, "
                 "--max-qubits, or --available-qubits must be "
                 "specified"
             )
@@ -1201,7 +1155,7 @@ class SetDevice(Command):
 
         status_code, reason, text, result = self.app.client.set_device(
             backend,
-            status=status,
+            state=state,
             enable=enable,
             max_qubits=max_qubits,
             available_qubits=available_qubits,
@@ -5081,7 +5035,6 @@ command_manager.add_command("calibrate-device", CalibrateDevice)
 command_manager.add_command("get-calibrate-results", GetCalibrateResults)
 command_manager.add_command("set-device-options", SetDeviceOptions)
 command_manager.add_command("get-device-options", GetDeviceOptions)
-command_manager.add_command("set-device-maintain-mode", SetDeviceMaintainMode)
 command_manager.add_command("set-device", SetDevice)
 command_manager.add_command("list-devices", GetDevices)
 # device group command
