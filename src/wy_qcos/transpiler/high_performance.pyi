@@ -2674,13 +2674,14 @@ def transpile_from_qasm(
     """
     ...
 
-def transpile_na(
+def transpile_na_from_qasm(
     qasm_string: str,
     supp_basis_gates: collections.abc.Sequence[str],
     qpu_cfg: dict,
     opt_level: int = 1,
+    na_mapping_type: str = "default",
 ) -> high_performance.TranspileResult:
-    """All-in-one transpile function (neutral-atom NA mappin).
+    """All-in-one transpile function (neutral-atom NA mapping).
 
     Same pipeline as ``transpile`` (sabre) but the routing stage uses NARoute,
     inserting MOVE operations between the storage and operate areas so that
@@ -2693,10 +2694,43 @@ def transpile_na(
         ``storage_area``, ``operate_area``, ``coupler_map`` and
         ``readout_error``.
     opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    na_mapping_type (str, optional): NA mapping algorithm type; only
+        "default" is supported by the C++ backend. Defaults to "default".
 
     Returns:
     TranspileResult: Contains basis_gate_list, num_qubits, and timings.
     """
+
+def transpile_na_from_ir(
+    ir_ops: collections.abc.Sequence[high_performance.BaseOperation],
+    num_qubits: int,
+    supp_basis_gates: collections.abc.Sequence[str],
+    qpu_cfg: dict,
+    opt_level: int = 1,
+    na_mapping_type: str = "default",
+) -> high_performance.TranspileResult:
+    """Transpile a pre-parsed IR with neutral-atom NA mapping.
+
+    Same pipeline as ``transpile_na_from_qasm`` but skips the QASM parse step.
+    The caller supplies the already-parsed operation list and the logical
+    qubit count directly.
+
+    Args:
+    ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
+    num_qubits (int): Number of logical qubits in the circuit.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    qpu_cfg (dict): Neutral-atom QPU configuration with keys
+        ``storage_area``, ``operate_area``, ``coupler_map`` and
+        ``readout_error``.
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    na_mapping_type (str, optional): NA mapping algorithm type; only
+        "default" is supported by the C++ backend. Defaults to "default".
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+        parse_time is always 0.
+    """
+    ...
 
 def transpile_from_ir(
     ir_ops: collections.abc.Sequence[high_performance.BaseOperation],

@@ -113,7 +113,7 @@ class RandomCircuitGen:
         seed: None | int = None,
         gate_type: int = 0,
         density: float = 0.05,
-        two_qubits_rate: float = 0.1,
+        two_qubits_rate: float = 0.10,
         outfile: None | str = None,
         custom_gates: None | list = None,
     ):

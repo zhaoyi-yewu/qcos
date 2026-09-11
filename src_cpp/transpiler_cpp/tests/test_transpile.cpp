@@ -391,26 +391,26 @@ TEST(TranspileFromIr, OptLevel0) {
 }
 
 // ---------------------------------------------------------------------------
-// transpile_na
+// transpile_na_from_qasm
 // ---------------------------------------------------------------------------
 
 TEST(TranspileNa, BellState) {
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(kBellQasm, kBasisGates, cfg);
+  auto result = transpile_na_from_qasm(kBellQasm, kBasisGates, cfg);
   EXPECT_EQ(result.num_qubits, 2);
   EXPECT_FALSE(result.basis_gate_list.empty());
 }
 
 TEST(TranspileNa, Ghz4) {
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(kGhz4Qasm, kBasisGates, cfg);
+  auto result = transpile_na_from_qasm(kGhz4Qasm, kBasisGates, cfg);
   EXPECT_EQ(result.num_qubits, 4);
   EXPECT_FALSE(result.basis_gate_list.empty());
 }
 
 TEST(TranspileNa, TimingsConsistency) {
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(kGhz4Qasm, kBasisGates, cfg);
+  auto result = transpile_na_from_qasm(kGhz4Qasm, kBasisGates, cfg);
   const auto& t = result.timings;
   EXPECT_NEAR(
       t.decomposed_time,
@@ -431,7 +431,7 @@ TEST(TranspileNa, TimingsConsistency) {
 // SWAP insertion (see build_full_decomposition_table).
 TEST(TranspileNa, HanyuanSingleQubitBasis) {
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(kSingleQubitQasm, kHanyuanBasis, cfg);
+  auto result = transpile_na_from_qasm(kSingleQubitQasm, kHanyuanBasis, cfg);
   EXPECT_EQ(result.num_qubits, 1);
   EXPECT_FALSE(result.basis_gate_list.empty());
   assertGatesInBasis(result, kHanyuanBasis);
@@ -441,7 +441,7 @@ TEST(TranspileNa, HanyuanSingleQubitBasis) {
 // Bell state, and the result may include NA-specific move gates.
 TEST(TranspileNa, WuyueHanyuanBasisBell) {
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(kBellQasm, kWuyueHanyuanBasis, cfg);
+  auto result = transpile_na_from_qasm(kBellQasm, kWuyueHanyuanBasis, cfg);
   EXPECT_EQ(result.num_qubits, 2);
   EXPECT_FALSE(result.basis_gate_list.empty());
   assertGatesInBasis(result, kWuyueHanyuanBasis, {"measure", "move"});
@@ -451,7 +451,7 @@ TEST(TranspileNa, WuyueHanyuanBasisBell) {
 // should appear in the output (h decomposes into rotations).
 TEST(TranspileNa, HanyuanSingleQubitNoMoveGate) {
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(kSingleQubitQasm, kHanyuanBasis, cfg);
+  auto result = transpile_na_from_qasm(kSingleQubitQasm, kHanyuanBasis, cfg);
   bool has_move = false;
   for (const auto& op : result.basis_gate_list) {
     if (op->name == "move") has_move = true;
@@ -461,7 +461,7 @@ TEST(TranspileNa, HanyuanSingleQubitNoMoveGate) {
 }
 
 // ---------------------------------------------------------------------------
-// transpile_na — file-driven tests (for issue reproduction)
+// transpile_na_from_qasm — file-driven tests (for issue reproduction)
 // ---------------------------------------------------------------------------
 
 // Read a single-qubit qasm file (h/x + measure) from samples/ and
@@ -471,7 +471,7 @@ TEST(TranspileNa, HanyuanSingleQubitNoMoveGate) {
 TEST(TranspileNaFromFile, HanyuanSingleQubitBasis) {
   auto qasm = read_qasm_or_skip("qasm/2.0/simple-qasm-1-bit.qasm");
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(qasm, kHanyuanBasis, cfg);
+  auto result = transpile_na_from_qasm(qasm, kHanyuanBasis, cfg);
   EXPECT_EQ(result.num_qubits, 1);
   EXPECT_FALSE(result.basis_gate_list.empty());
   assertGatesInBasis(result, kHanyuanBasis);
@@ -482,7 +482,7 @@ TEST(TranspileNaFromFile, HanyuanSingleQubitBasis) {
 TEST(TranspileNaFromFile, TwoQubitBasisWithCz) {
   auto qasm = read_qasm_or_skip("qasm/2.0/simple-qasm.qasm");
   auto cfg = make_na_qpu_config();
-  auto result = transpile_na(qasm, kWuyueHanyuanBasis, cfg);
+  auto result = transpile_na_from_qasm(qasm, kWuyueHanyuanBasis, cfg);
   EXPECT_EQ(result.num_qubits, 2);
   EXPECT_FALSE(result.basis_gate_list.empty());
   assertGatesInBasis(result, kWuyueHanyuanBasis, {"measure", "move"});
