@@ -214,11 +214,6 @@ class Server:
             transpiler_manager.load_transpilers()
             transpiler_manager.init_transpilers()
 
-            # init and load devices
-            device_manager = DeviceManager(Config, driver_manager)
-            device_manager.load_devices()
-            device_manager.init_devices()
-
             # init database BEFORE starting multiprocessing
             # (multiprocessing can reset Config in child processes)
             logger.info("Initializing database...")
@@ -244,12 +239,20 @@ class Server:
                 security_manager = SecurityManager(user_manager)
                 app.state._security_manager = security_manager
 
+            # init and load devices
+            device_manager = DeviceManager(Config, driver_manager)
+            device_manager.load_devices()
+            device_manager.init_devices()
+            # init device DB entries and load persisted states
+            device_repo = device_manager.init_db(db_engine)
+
             # set driver manager, transpiler in scheduler and device manager
             logger.info("Init scheduler")
             scheduler.set_driver_manager(driver_manager)
             scheduler.set_transpiler_manager(transpiler_manager)
             scheduler.set_device_manager(device_manager)
             scheduler.set_db_engine(db_engine)
+            scheduler.set_device_repo(device_repo)
             scheduler.init_device_group_manager()
             scheduler.init_flavor_manager()
             scheduler.init_auto_scheduler()

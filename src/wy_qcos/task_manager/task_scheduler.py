@@ -38,6 +38,7 @@ class TaskScheduler:
         self._transpiler_manager = None
         self._driver_manager = None
         self._device_manager = None
+        self._device_repo = None
         self._db_engine = None
         self._auto_scheduler = None
         self._flavor_manager = None
@@ -189,6 +190,22 @@ class TaskScheduler:
             device manager
         """
         return self._device_manager
+
+    def set_device_repo(self, device_repo):
+        """Set device repository.
+
+        Args:
+            device_repo: DeviceRepository instance
+        """
+        self._device_repo = device_repo
+
+    def get_device_repo(self):
+        """Get device repository.
+
+        Returns:
+            DeviceRepository instance or None
+        """
+        return self._device_repo
 
     def submit(self, job_info, tags=None, extra_job_data_info={}):
         """Submit job to scheduler.

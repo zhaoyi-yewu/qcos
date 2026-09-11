@@ -87,10 +87,12 @@ class DeviceState:
             supported_code_types = transpiler.get_supported_code_types()
         if supported_code_types is None or len(supported_code_types) == 0:
             supported_code_types = driver.get_supported_code_types()
+        # use effective status (considers manual state override)
+        eff_status, _ = device.get_effective_status()
         return cls(
             device=device,
             name=device.get_name(),
-            status=device.get_status(),
+            status=eff_status,
             enable=device.get_enable(),
             max_qubits=driver.get_max_qubits(),
             available_qubits=driver.get_available_qubits(),
