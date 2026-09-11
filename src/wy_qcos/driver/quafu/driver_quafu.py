@@ -229,15 +229,22 @@ class DriverQuafu(DriverGateBase):
         # 2. Submit task
         logger.info("2. submit task")
         self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
+        compiler = self.driver_options.get("compiler", "quarkcircuit")
+        if compiler == "None":
+            compiler = None
+        target_qubits = self.driver_options.get("target_qubits", [])
+        enable_readout_correction = False
+        enable_dynamic_decoupling = None
+
         task = {
-            "chip": self.chip_name,  # chip name
-            "name": job_id,  # task name
-            "circuit": final_code,  # circuit written in OpenQASM2.0
+            "chip": self.chip_name,
+            "name": job_id,
+            "circuit": final_code,
             "options": {
-                "compiler": "quarkcircuit",  # defaults to 'quarkcircuit'
-                "correct": False,  # readout error correction
-                "open_dd": None,  # dynamical decoupling, defaults to None
-                "target_qubits": [],  # [0, 1]
+                "compiler": compiler,
+                "correct": enable_readout_correction,
+                "open_dd": enable_dynamic_decoupling,
+                "target_qubits": target_qubits,
             },
         }
         task_id = self.submit_task(task, repeat=repeat)

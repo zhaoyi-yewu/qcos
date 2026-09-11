@@ -96,6 +96,11 @@ class DriverBase:
         self.tech_type = Constant.TECH_TYPE_NONE
         # enable circuit aggregation or not
         self.enable_circuit_aggregation = False
+        # enable native multi-circuit submission or not. This is distinct from
+        # circuit aggregation: batch submission keeps circuits independent and
+        # sends them to the backend in one request.
+        self.enable_batch_submission = False
+        self.max_batch_circuits = 1
         # max number of qubits
         self.max_qubits = 0
         # available number of qubits.
@@ -143,6 +148,8 @@ class DriverBase:
             "job_query_interval": Constant.DEFAULT_JOB_QUERY_INTERVAL,
             "compute_fidelity": False,
             "enable_raw_results": False,
+            "compiler": None,
+            "target_qubits": [],
             "qes": {
                 "dynamical_decoupling": {
                     "enable": False,
@@ -163,6 +170,8 @@ class DriverBase:
             Optional("job_query_interval"): int,
             Optional("compute_fidelity"): bool,
             Optional("enable_raw_results"): bool,
+            Optional("compiler"): str,
+            Optional("target_qubits"): list,
             Optional("qes"): {
                 Optional("dynamical_decoupling"): {
                     Optional("enable"): bool,
@@ -265,6 +274,8 @@ class DriverBase:
             f"version: {self.version}",
             f"transpiler: {self.transpiler}",
             f"enable_circuit_aggregation: {self.enable_circuit_aggregation}",
+            f"enable_batch_submission: {self.enable_batch_submission}",
+            f"max_batch_circuits: {self.max_batch_circuits}",
             f"results_fetch_mode: {self.results_fetch_mode}",
             f"max_qubits: {self.max_qubits}",
             f"enable_device_monitor: {self.enable_device_monitor}",
@@ -476,6 +487,25 @@ class DriverBase:
         """
         raise NotImplementedError(
             f"Driver: {self.__class__.__name__} must implement method: run"
+        )
+
+    def run_batch(
+        self,
+        job_id,
+        data,
+        data_type=DATA_TYPE_GATE_SEQUENCE,
+        shots=1,
+        qec_options=None,
+    ):
+        """Run multiple independent circuits in one backend submission.
+
+        Drivers must opt in with ``enable_batch_submission`` and override this
+        method. Each item in ``data`` carries the same fields as a single
+        ``run`` call plus its own ``num_qubits`` value.
+        """
+        raise NotImplementedError(
+            f"Driver: {self.__class__.__name__} "
+            "must implement method: run_batch"
         )
 
     def dry_run(
@@ -697,8 +727,14 @@ class DriverBase:
         measure_qubits = set()
         if gate_list:
             for obj in gate_list:
-                if isinstance(obj, Measure):
-                    measure_qubits.update(obj.targets)
+                # The high-performance transpiler returns nanobind operation
+                # objects, which do not inherit from the Python Measure class.
+                # Both implementations expose the same operation protocol.
+                is_measure = isinstance(obj, Measure) or (
+                    getattr(obj, "name", "") == "measure"
+                )
+                if is_measure:
+                    measure_qubits.update(getattr(obj, "targets", []))
             bit_length = len(measure_qubits)
         else:
             if not num_qubits:

@@ -6,6 +6,8 @@
 
 ### 新增功能
 
+- 新增北京量子院夸父驱动: DriverQuafu, 逻辑比特驱动: DriverLqQZ01SurfaceCode, DriverLqQZ01RepetitionCode,
+  DriverLqMQ02, DriverLqQZ02, DriverLqAGate100, QUTIP模拟器(支持ASHN门): DriverQutipAshnSim
 - 新增Flavor（预设资源调度策略）管理功能：支持通过API和CLI创建、查询、删除Flavor
 - 新增Device Group（设备分组）功能：支持设备逻辑分组管理，包含增删改查API和CLI命令
 - 新增DeviceGroupFilter调度过滤器，根据device group成员列表过滤候选设备
@@ -52,7 +54,6 @@
 - get-job-status命令支持"last"特殊值，自动解析最近作业的状态
 - 支持Metrics容器(Prometheus、Alertmanager、Grafana)自动部署
 - 新增worker的看门狗机制, 可以检查各组件健康状态并自动重启
-- 新增支持ASHN门的Qutip模拟器
 
 ### 变更功能
 

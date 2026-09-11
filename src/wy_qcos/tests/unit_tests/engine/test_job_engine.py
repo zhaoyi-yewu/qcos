@@ -25,14 +25,17 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.driver.driver_base import DriverBase
 from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 from wy_qcos.engine.job_engine import (
+    _prepare_wirecut_batch_data,
     _run_code,
     attach_fidelity_benchmark,
     counts_to_probs,
     create_src_code_info,
     driver_cancel,
     driver_run,
+    driver_run_batch,
     flow_parse,
     flow_run_driver,
+    flow_run_driver_batch,
     flow_task_monitor,
     flow_transpile,
     format_error_results,
@@ -1047,6 +1050,179 @@ class TestJobEngine:
             for message in log_messages
         )
 
+    def test_run_circuit_cutting_code_uses_native_batch_submission(self):
+        mock_driver = Mock()
+        mock_driver.get_max_qubits.return_value = 8
+        mock_driver.get_wirecut_qubit_width.return_value = 8
+        mock_driver.enable_batch_submission = True
+        mock_driver.max_batch_circuits = 2
+        mock_driver.enable_circuit_aggregation = False
+        mock_transpiler = Mock()
+        mock_cut_wire = Mock(num_cuts=1)
+        job_id = "00000000-0000-4000-8000-000000000001"
+        job_info = {
+            "data": {
+                "job_id": job_id,
+                "code_type": Constant.CODE_TYPE_QASM,
+            }
+        }
+        subcircuits = ["subcircuit-0", "subcircuit-1", "subcircuit-2"]
+        first_batch_data = [
+            {"index": "0-0", "num_qubits": 2},
+            {"index": "0-1", "num_qubits": 2},
+        ]
+        second_batch_data = [{"index": "0-2", "num_qubits": 2}]
+        completed = lambda counts: {
+            "results": counts,
+            "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+        }
+
+        with (
+            patch(
+                "wy_qcos.engine.job_engine."
+                "generate_all_variant_subcircuits_for_execute"
+            ) as mock_generate,
+            patch(
+                "wy_qcos.engine.job_engine._prepare_wirecut_batch_data"
+            ) as mock_prepare,
+            patch(
+                "wy_qcos.engine.job_engine.flow_run_driver_batch"
+            ) as mock_run_batch,
+            patch(
+                "wy_qcos.engine.job_engine."
+                "reconstruct_probability_distribution_wire_cut"
+            ) as mock_reconstruct,
+            patch(
+                "wy_qcos.engine.job_engine.SubcircuitResultCache.from_job_info"
+            ) as mock_from_job_info,
+        ):
+            mock_generate.return_value = (
+                ["original-0", "original-1", "original-2"],
+                subcircuits,
+                mock_cut_wire,
+            )
+            mock_prepare.side_effect = [
+                (first_batch_data, None, {"job-0": 2, "job-1": 2}),
+                (second_batch_data, None, {"job-2": 2}),
+            ]
+            mock_run_batch.side_effect = [
+                (
+                    {
+                        "results": [
+                            completed({"00": 3, "11": 1}),
+                            completed({"00": 2, "11": 2}),
+                        ],
+                        "error": None,
+                    },
+                    {},
+                ),
+                (
+                    {
+                        "results": [completed({"00": 1, "11": 3})],
+                        "error": None,
+                    },
+                    {},
+                ),
+            ]
+            result_cache = mock_from_job_info.return_value
+            result_cache.get.side_effect = [None, None, None]
+            mock_reconstruct.return_value = (
+                np.array([0.5, 0.0, 0.0, 0.5]),
+                {},
+            )
+
+            results, _, _, mapping = run_circuit_cutting_code(
+                0,
+                {f"{job_id}-0": "source"},
+                2,
+                job_info,
+                mock_driver,
+                mock_transpiler,
+            )
+
+        assert results["metadata"]["status"] == Constant.JOB_STATUS_COMPLETED
+        assert [call.args[0] for call in mock_prepare.call_args_list] == [
+            [0, 1],
+            [2],
+        ]
+        assert [call.args[2] for call in mock_run_batch.call_args_list] == [
+            first_batch_data,
+            second_batch_data,
+        ]
+        assert mapping == {"job-0": 2, "job-1": 2, "job-2": 2}
+        result_cache.set.assert_has_calls([
+            call(subcircuits[0], job_info, {"00": 3, "11": 1}),
+            call(subcircuits[1], job_info, {"00": 2, "11": 2}),
+            call(subcircuits[2], job_info, {"00": 1, "11": 3}),
+        ])
+        reconstructed_results = mock_reconstruct.call_args.args[1]
+        np.testing.assert_array_equal(
+            reconstructed_results[0], np.array([0.75, 0.0, 0.0, 0.25])
+        )
+        np.testing.assert_array_equal(
+            reconstructed_results[1], np.array([0.5, 0.0, 0.0, 0.5])
+        )
+        np.testing.assert_array_equal(
+            reconstructed_results[2], np.array([0.25, 0.0, 0.0, 0.75])
+        )
+
+    @patch("wy_qcos.engine.job_engine.flow_transpile")
+    @patch("wy_qcos.engine.job_engine.flow_parse")
+    def test_prepare_wirecut_batch_data_transpiles_circuits_independently(
+        self, mock_flow_parse, mock_flow_transpile
+    ):
+        job_id = "00000000-0000-4000-8000-000000000001"
+        first_key = f"{job_id}0-0"
+        second_key = f"{job_id}0-1"
+        source_codes = {
+            first_key: "subcircuit-0",
+            second_key: "subcircuit-1",
+        }
+        mock_flow_parse.side_effect = [
+            ({"parsed_src_code": {first_key: (2, ["parsed-0"])}}, {}),
+            ({"parsed_src_code": {second_key: (2, ["parsed-1"])}}, {}),
+        ]
+        mock_flow_transpile.side_effect = [
+            (
+                {
+                    "transpile_results": ["gate-0"],
+                    "mapping_dict": {first_key: 2},
+                    "num_qubits": 2,
+                    "final_layout_dict": {first_key: {0: 0, 1: 1}},
+                },
+                {},
+            ),
+            (
+                {
+                    "transpile_results": ["gate-1"],
+                    "mapping_dict": {second_key: 2},
+                    "num_qubits": 2,
+                    "final_layout_dict": {second_key: {0: 0, 1: 1}},
+                },
+                {},
+            ),
+        ]
+
+        batch_data, error, mapping = _prepare_wirecut_batch_data(
+            [0, 1],
+            0,
+            source_codes,
+            {"data": {"job_id": job_id, "code_type": "qasm"}},
+            Mock(),
+            Mock(),
+        )
+
+        assert error is None
+        assert [item["source_code"] for item in batch_data] == [
+            "subcircuit-0",
+            "subcircuit-1",
+        ]
+        assert [call.args[0] for call in mock_flow_parse.call_args_list] == [
+            {first_key: "subcircuit-0"},
+            {second_key: "subcircuit-1"},
+        ]
+        assert mapping == {first_key: 2, second_key: 2}
+
     @patch("wy_qcos.engine.job_engine.SubcircuitResultCache.from_job_info")
     @patch(
         "wy_qcos.engine.job_engine."
@@ -1339,6 +1515,12 @@ class TestJobEngine:
         result, _ = flow_run_driver({}, 6, DriverBase(), {})
         assert isinstance(result, Mock) is True
 
+    @patch("wy_qcos.engine.job_engine.driver_run_batch.submit")
+    def test_flow_run_driver_batch(self, mock_driver_run_batch):
+        mock_driver_run_batch.return_value = Mock()
+        result, _ = flow_run_driver_batch({}, DriverBase(), [])
+        assert isinstance(result, Mock) is True
+
     @patch.object(DriverBase, "get_results")
     def test_format_run_results(self, mock_get_results):
         mock_get_results.return_value = "result"
@@ -1376,6 +1558,44 @@ class TestJobEngine:
     def test_driver_run(self):
         return_value = driver_run.fn([], DriverBase, 5, self.job_data)
         assert return_value["results"] is None
+
+    @patch("wy_qcos.engine.job_engine.format_run_results")
+    def test_driver_run_batch(self, mock_format_results):
+        mock_format_results.side_effect = [
+            {"results": {"00": 1}},
+            {"results": {"11": 1}},
+        ]
+        driver = Mock()
+        driver.driver_options = {}
+        driver.get_default_data_type.return_value = (
+            DriverBase.DATA_TYPE_GATE_SEQUENCE
+        )
+        data_list = [
+            {"index": "0-0", "num_qubits": 2},
+            {"index": "0-1", "num_qubits": 2},
+        ]
+        job_info = {
+            "data": {
+                "job_id": self.job_data["job_id"],
+                "shots": 100,
+                "dry_run": False,
+            }
+        }
+
+        return_value = driver_run_batch.fn(job_info, driver, data_list)
+
+        assert return_value["error"] is None
+        assert return_value["results"] == [
+            {"results": {"00": 1}},
+            {"results": {"11": 1}},
+        ]
+        driver.run_batch.assert_called_once_with(
+            self.job_data["job_id"],
+            data_list,
+            data_type=DriverBase.DATA_TYPE_GATE_SEQUENCE,
+            shots=100,
+            qec_options=None,
+        )
 
     @patch("wy_qcos.engine.job_engine.init_logger")
     @patch("wy_qcos.engine.job_engine.register_signals")

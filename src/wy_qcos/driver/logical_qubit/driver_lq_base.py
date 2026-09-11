@@ -65,10 +65,14 @@ class DriverLogicalQubitBase(DriverGateBase):
             Constant.TWO_QUBIT_GATE_CZ,
         ]
         self.supported_transpilers = [
+            Constant.TRANSPILER_DUMMY,
             Constant.TRANSPILER_CMSS,
             Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
         ]
         self.enable_circuit_aggregation = False
+        self.enable_batch_submission = True
+        # LQCloud SDK 0.4.2 MAX_BATCH_CIRCUITS.
+        self.max_batch_circuits = 64
         self.optimized_circuit = None
         self.max_qubits = 17
         # task stages and percentages
@@ -274,6 +278,51 @@ class DriverLogicalQubitBase(DriverGateBase):
         except Exception as e:
             return False, str(e) if str(e) else "request failed", None
 
+    @staticmethod
+    def _phys_to_logical(final_layout):
+        """Convert one transpiled circuit layout for LQCloud measurement."""
+        if not isinstance(final_layout, dict) or not final_layout:
+            raise ValueError("final_layout_dict is required")
+        layout = next(iter(final_layout.values()))
+        return {
+            int(physical): int(logical) for logical, physical in layout.items()
+        }
+
+    @staticmethod
+    def _machine_profiling(results):
+        """Extract QCOS machine profiling fields from an LQCloud result."""
+        metadata = getattr(results, "metadata", {}) or {}
+        machine_profiling = {}
+        machine_started_at = metadata.get("started_at", None)
+        if machine_started_at:
+            machine_started_at = datetime.fromisoformat(machine_started_at)
+            dt_utc = machine_started_at.replace(tzinfo=timezone.utc)
+            dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+            machine_profiling["machine_started_at"] = dt_beijing.timestamp()
+
+        result_metadata = metadata.get("result", {}).get("metadata", None)
+        if result_metadata:
+            machine_ended_at = result_metadata.get("date", None)
+            if machine_ended_at:
+                machine_ended_at = machine_ended_at.rstrip("Z")
+        else:
+            machine_ended_at = metadata.get("completed_at", None)
+        if machine_ended_at:
+            machine_ended_at = datetime.fromisoformat(machine_ended_at)
+            if result_metadata:
+                dt_beijing = machine_ended_at.replace(
+                    tzinfo=ZoneInfo("Asia/Shanghai")
+                )
+            else:
+                dt_utc = machine_ended_at.replace(tzinfo=timezone.utc)
+                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+            machine_profiling["machine_ended_at"] = dt_beijing.timestamp()
+
+        machine_duration = metadata.get("execution_time", None)
+        if machine_duration:
+            machine_profiling["machine_duration"] = float(machine_duration)
+        return machine_profiling
+
     def fetch_running_info(self):
         """Fetch running info.
 
@@ -389,10 +438,7 @@ class DriverLogicalQubitBase(DriverGateBase):
         )
         src_code = data["source_code"]
         final_layout = data["final_layout_dict"]
-        final_layout_dict = list(final_layout.values())[0]
-        phys_to_logical = {
-            int(p): int(l) for l, p in final_layout_dict.items()
-        }
+        phys_to_logical = self._phys_to_logical(final_layout)
 
         self.set_progress_by_task(self.TASK_STAGE_START)
         self.set_device_status(Device.DEVICE_STATUS_BUSY)
@@ -445,39 +491,7 @@ class DriverLogicalQubitBase(DriverGateBase):
             num_qubits, src_code, transpile_results
         )
 
-        # machine profiling
-        machine_profiling = {}
-        machine_started_at = _results.metadata.get("started_at", None)
-        if machine_started_at:
-            machine_started_at = datetime.fromisoformat(machine_started_at)
-            dt_utc = machine_started_at.replace(tzinfo=timezone.utc)
-            dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
-            ts = dt_beijing.timestamp()
-            machine_profiling["machine_started_at"] = ts
-        _metadata = _results.metadata.get("result", {}).get("metadata", None)
-        if _metadata:
-            machine_ended_at = _metadata.get("date", None)
-            if machine_ended_at:
-                machine_ended_at = machine_ended_at.rstrip("Z")
-        else:
-            machine_ended_at = _results.metadata.get("completed_at", None)
-        if machine_ended_at:
-            machine_ended_at = datetime.fromisoformat(machine_ended_at)
-            ts = None
-            if _metadata:
-                dt_beijing = machine_ended_at.replace(
-                    tzinfo=ZoneInfo("Asia/Shanghai")
-                )
-                ts = dt_beijing.timestamp()
-            else:
-                dt_utc = machine_ended_at.replace(tzinfo=timezone.utc)
-                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
-                ts = dt_beijing.timestamp()
-            machine_profiling["machine_ended_at"] = ts
-        machine_duration = _results.metadata.get("execution_time", None)
-        if machine_duration:
-            machine_duration = float(machine_duration)
-            machine_profiling["machine_duration"] = machine_duration
+        machine_profiling = self._machine_profiling(_results)
 
         # set results
         enable_raw_results = self.driver_options.get(
@@ -496,6 +510,90 @@ class DriverLogicalQubitBase(DriverGateBase):
         )
         self.set_optimized_circuit(optimization)
         # 5. Save results and set driver status to ONLINE
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+
+    def run_batch(self, job_id, data, data_type, shots=1, qec_options=None):
+        """Submit independent circuits through LQCloud's native batch API.
+
+        ``backend.run(list[QuantumCircuit])`` creates one cloud batch task and
+        returns per-circuit results in submission order. QCOS stores those
+        results under the individual wirecut subcircuit indexes.
+        """
+        if not isinstance(data, list) or not data:
+            raise ValueError("batch data must be a non-empty list")
+        if len(data) > self.max_batch_circuits:
+            raise ValueError(
+                f"batch contains {len(data)} circuits, exceeding LQCloud's "
+                f"{self.max_batch_circuits}-circuit limit"
+            )
+
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, batch_size: {len(data)}, "
+            f"data_type: {data_type}"
+        )
+        self.set_progress_by_task(self.TASK_STAGE_START)
+        self.set_device_status(Device.DEVICE_STATUS_BUSY)
+
+        circuits = []
+        optimized_circuits = {}
+        for item in data:
+            phys_to_logical = self._phys_to_logical(item["final_layout_dict"])
+            transpile_results = item["transpile_results"]
+            circuits.append(
+                self.convert_code(transpile_results, phys_to_logical)
+            )
+            optimized_circuits[item["index"]] = self.convert_code_to_qasm(
+                item["num_qubits"],
+                item["source_code"],
+                transpile_results,
+            )
+
+        logger.info("2. submit batch task")
+        self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
+        success, err_msg, task = self.submit_task(circuits, shots)
+        if not success:
+            raise ValueError(f"failed to submit batch task: {err_msg}")
+
+        logger.info("3. wait batch task results")
+        self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
+        success, err_msg, batch_result = self.get_task_results(task)
+        if not success:
+            raise ValueError(f"failed to get batch task result: {err_msg}")
+
+        logger.info("4. get batch task results")
+        self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
+        counts_list = self.convert_results(batch_result)
+        if not isinstance(counts_list, list):
+            raise ValueError("LQCloud batch result must contain a counts list")
+        if len(counts_list) != len(data):
+            raise ValueError(
+                "LQCloud batch result count does not match submitted circuits"
+            )
+
+        child_results = getattr(batch_result, "results", [])
+        batch_metadata = getattr(batch_result, "metadata", None)
+        for position, (item, counts) in enumerate(zip(data, counts_list)):
+            child_result = (
+                child_results[position]
+                if position < len(child_results)
+                else None
+            )
+            raw_results = getattr(child_result, "metadata", batch_metadata)
+            machine_profiling = (
+                self._machine_profiling(child_result)
+                if child_result is not None
+                else {}
+            )
+            self.set_results(
+                job_id,
+                item["index"],
+                results=counts,
+                raw_results=raw_results,
+                result_type=Constant.RESULT_TYPE_SAMPLING,
+                machine_profiling=machine_profiling,
+            )
+
+        self.set_optimized_circuit(optimized_circuits)
         self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 
     def submit_task(self, qc, shots):
@@ -522,7 +620,9 @@ class DriverLogicalQubitBase(DriverGateBase):
                     "enable"
                 )
             if enable_dynamic_decoupling:
-                qc.dynamic_decoupling = True
+                circuits = qc if isinstance(qc, (list, tuple)) else [qc]
+                for circuit in circuits:
+                    circuit.dynamic_decoupling = True
             task = self.backend.run(
                 qc,
                 shots=shots,
@@ -561,6 +661,11 @@ class DriverLogicalQubitBase(DriverGateBase):
             converted task results
         """
         dict_result = results.get_counts()
+        if isinstance(dict_result, list):
+            return [
+                {key: value for key, value in counts.items() if value != 0}
+                for counts in dict_result
+            ]
         cleaned_dict_result = {k: v for k, v in dict_result.items() if v != 0}
         return cleaned_dict_result
 

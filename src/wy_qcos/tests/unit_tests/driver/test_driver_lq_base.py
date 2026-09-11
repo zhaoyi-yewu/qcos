@@ -27,7 +27,7 @@ org_path = Library.set_driver_venv_path(
 )
 
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import call, patch, Mock
 
 from wy_qcos.transpiler.high_performance import (
     H,
@@ -91,10 +91,13 @@ class TestDriverLogicalQubit:
             Constant.TWO_QUBIT_GATE_CZ,
         ]
         assert driver_logical_qubit.supported_transpilers == [
+            Constant.TRANSPILER_DUMMY,
             Constant.TRANSPILER_CMSS,
             Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
         ]
         assert driver_logical_qubit.enable_circuit_aggregation is False
+        assert driver_logical_qubit.enable_batch_submission is True
+        assert driver_logical_qubit.max_batch_circuits == 64
         assert driver_logical_qubit.max_qubits == 17
         assert driver_logical_qubit.enable_device_monitor is True
         assert driver_logical_qubit.backend is None
@@ -215,6 +218,25 @@ class TestDriverLogicalQubit:
         assert isinstance(err_msg, RuntimeError)
         assert task is None
 
+    def test_submit_task_batch_sets_dynamic_decoupling_per_circuit(self):
+        driver = DriverLogicalQubitBase()
+        driver.backend = Mock()
+        driver.driver_options["qes"] = {
+            "dynamical_decoupling": {"enable": True}
+        }
+        circuits = [Mock(), Mock()]
+
+        success, err_msg, _ = driver.submit_task(circuits, shots)
+
+        assert success is True
+        assert err_msg is None
+        assert all(qc.dynamic_decoupling is True for qc in circuits)
+        driver.backend.run.assert_called_once_with(
+            circuits,
+            shots=shots,
+            readout_correction=False,
+        )
+
     # -- 6. get_task_results --
     def test_get_task_results_success(self):
         driver = DriverLogicalQubitBase()
@@ -252,6 +274,21 @@ class TestDriverLogicalQubit:
         result = driver.convert_results(mock_task)
 
         assert result == {"00000": 9, "11111": 1}
+
+    def test_convert_batch_results(self):
+        driver = DriverLogicalQubitBase()
+        mock_task = Mock()
+        mock_task.get_counts.return_value = [
+            {"00": 3, "01": 0, "11": 1},
+            {"00": 1, "10": 0, "11": 3},
+        ]
+
+        result = driver.convert_results(mock_task)
+
+        assert result == [
+            {"00": 3, "11": 1},
+            {"00": 1, "11": 3},
+        ]
 
     # -- 8. run (smoke) --
     @pytest.mark.smoke
@@ -311,6 +348,83 @@ class TestDriverLogicalQubit:
         }
         # optimized circuit set
         mock_set_optimized_circuit.assert_called_once_with("qasm")
+
+    @patch.object(DriverLogicalQubitBase, "set_results")
+    @patch.object(DriverLogicalQubitBase, "set_optimized_circuit")
+    @patch.object(DriverLogicalQubitBase, "convert_code_to_qasm")
+    @patch.object(DriverLogicalQubitBase, "get_task_results")
+    @patch.object(DriverLogicalQubitBase, "submit_task")
+    @patch.object(DriverLogicalQubitBase, "convert_code")
+    @patch.object(DriverLogicalQubitBase, "set_device_status")
+    def test_run_batch(
+        self,
+        mock_set_status,
+        mock_convert_code,
+        mock_submit_task,
+        mock_get_task_results,
+        mock_convert_code_to_qasm,
+        mock_set_optimized_circuit,
+        mock_set_results,
+    ):
+        driver = DriverLogicalQubitBase()
+        circuits = [Mock(name="circuit-0"), Mock(name="circuit-1")]
+        mock_convert_code.side_effect = circuits
+        mock_convert_code_to_qasm.side_effect = ["qasm-0", "qasm-1"]
+        mock_submit_task.return_value = (True, None, Mock(name="batch-job"))
+        child_results = [Mock(metadata={}), Mock(metadata={})]
+        batch_result = Mock()
+        batch_result.results = child_results
+        batch_result.metadata = {}
+        batch_result.get_counts.return_value = [
+            {"00": 3, "11": 1},
+            {"00": 1, "11": 3},
+        ]
+        mock_get_task_results.return_value = (True, None, batch_result)
+        batch_data = [
+            {
+                "index": "0-0",
+                "source_code": "source-0",
+                "transpile_results": [Mock()],
+                "final_layout_dict": {"job-0": {0: 0, 1: 1}},
+                "num_qubits": 2,
+            },
+            {
+                "index": "0-1",
+                "source_code": "source-1",
+                "transpile_results": [Mock()],
+                "final_layout_dict": {"job-1": {0: 0, 1: 1}},
+                "num_qubits": 2,
+            },
+        ]
+
+        driver.run_batch(job_id, batch_data, data_type, shots)
+
+        submitted_circuits = mock_submit_task.call_args.args[0]
+        assert submitted_circuits == circuits
+        mock_set_results.assert_has_calls([
+            call(
+                job_id,
+                "0-0",
+                results={"00": 3, "11": 1},
+                raw_results={},
+                result_type=Constant.RESULT_TYPE_SAMPLING,
+                machine_profiling={},
+            ),
+            call(
+                job_id,
+                "0-1",
+                results={"00": 1, "11": 3},
+                raw_results={},
+                result_type=Constant.RESULT_TYPE_SAMPLING,
+                machine_profiling={},
+            ),
+        ])
+        mock_set_optimized_circuit.assert_called_once_with({
+            "0-0": "qasm-0",
+            "0-1": "qasm-1",
+        })
+        mock_set_status.assert_any_call(Device.DEVICE_STATUS_BUSY)
+        mock_set_status.assert_any_call(Device.DEVICE_STATUS_ONLINE)
 
     # -- 9. convert_code_to_qasm --
     def test_convert_code_to_qasm_empty_transpile(self):
