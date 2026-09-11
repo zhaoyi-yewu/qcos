@@ -436,10 +436,10 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
    qcos-cli get-job-results last
    qcos-cli get-job-results LAST -o results.txt -y
 
-作业删除和取消
+作业删除
 *************************
 
-作业的删除和取消
+作业的删除
 
 命令行参数
 ~~~~~~~~~~~~~~~
@@ -459,6 +459,26 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
    -y, --yes        Answer yes for all question
    -f, --force      Force delete jobs regardless of status
 
+典型场景示例
+~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+
+   # 删除作业
+   qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
+   qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002
+   qcos-cli delete-jobs -y all
+
+   # 强制删除作业
+   qcos-cli delete-jobs -f -y all
+
+作业取消
+*************************
+
+作业取消
+
+命令行参数
+~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
@@ -478,14 +498,6 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 ~~~~~~~~~~~~~~~
 
 .. code-block:: shell
-
-   # 删除作业
-   qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001
-   qcos-cli delete-jobs 00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002
-   qcos-cli delete-jobs -y all
-
-   # 强制删除作业
-   qcos-cli delete-jobs -f -y all
 
    # 取消作业
    qcos-cli cancel-jobs 00000000-0000-4000-8000-000000000001
