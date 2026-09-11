@@ -326,8 +326,9 @@ std::vector<int> run_vf2_search(const InteractionData& interaction,
  * @param coupling 耦合图数据
  * @param num_logical 逻辑比特总数
  */
-void assign_remaining_qubits(std::vector<int>& mapping,
-                             const CouplingData& coupling, int num_logical) {
+void assign_remaining_qubits(
+    std::vector<int>& mapping, const CouplingData& coupling, int num_logical,
+    const std::vector<double>& single_qubit_fidelities) {
   const int num_physical =
       static_cast<int>(coupling.remap.dense_to_orig.size());
 
@@ -337,16 +338,35 @@ void assign_remaining_qubits(std::vector<int>& mapping,
     if (mapped_phy >= 0) used_physical.insert(mapped_phy);
   }
 
-  // 遍历物理比特，将空闲的分配给未映射的逻辑比特
-  int logical_idx = 0;
-  for (int candidate_phy = 0; candidate_phy < num_physical; ++candidate_phy) {
-    if (used_physical.count(candidate_phy)) continue;
-    // 跳过已映射的逻辑比特，找到下一个待分配位置
-    while (logical_idx < num_logical && mapping[logical_idx] >= 0)
-      ++logical_idx;
-    if (logical_idx >= num_logical) break;
-    mapping[logical_idx] = candidate_phy;
-    ++logical_idx;
+  // 收集空闲物理比特(稠密编号)
+  std::vector<int> candidates;
+  for (int i = 0; i < num_physical; ++i) {
+    if (!used_physical.count(i)) candidates.push_back(i);
+  }
+
+  // 有保真度数据时按降序排序
+  if (!single_qubit_fidelities.empty()) {
+    std::sort(candidates.begin(), candidates.end(), [&](int a, int b) {
+      int orig_a = coupling.remap.dense_to_orig[a];
+      int orig_b = coupling.remap.dense_to_orig[b];
+      auto get_fid = [&](int orig) {
+        return (orig >= 0 &&
+                orig < static_cast<int>(single_qubit_fidelities.size()))
+                   ? single_qubit_fidelities[orig]
+                   : 0.0;
+      };
+      return get_fid(orig_a) > get_fid(orig_b);
+    });
+  }
+
+  // 按顺序分配给未映射的逻辑比特
+  int candidate_idx = 0;
+  for (int logical_idx = 0;
+       logical_idx < num_logical &&
+       candidate_idx < static_cast<int>(candidates.size());
+       ++logical_idx) {
+    if (mapping[logical_idx] >= 0) continue;
+    mapping[logical_idx] = candidates[candidate_idx++];
   }
 }
 
@@ -367,7 +387,8 @@ void restore_original_ids(std::vector<int>& mapping, const IdRemap& remap) {
 std::vector<int> vf2_layout_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<double>& edge_fidelities, int num_logical) {
+    const std::vector<double>& edge_fidelities,
+    const std::vector<double>& single_qubit_fidelities, int num_logical) {
   if (num_logical <= 0) return {};
 
   validate_mapping_inputs(coupling_list, edge_fidelities, num_logical);
@@ -387,7 +408,8 @@ std::vector<int> vf2_layout_mapping(
   if (mapping.empty()) return {};
 
   // 4. 分配未参与两比特门的逻辑比特
-  assign_remaining_qubits(mapping, coupling, num_logical);
+  assign_remaining_qubits(mapping, coupling, num_logical,
+                          single_qubit_fidelities);
 
   // 5. 还原原始物理编号
   restore_original_ids(mapping, coupling.remap);

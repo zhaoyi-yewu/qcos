@@ -396,4 +396,22 @@ void validate_mapping_inputs(
   }
 }
 
+std::vector<int> select_best_single_qubits(
+    const std::vector<double>& single_qubit_fidelities,
+    const std::set<int>& used, int count) {
+  std::vector<int> candidates;
+  for (int i = 0; i < static_cast<int>(single_qubit_fidelities.size()); ++i) {
+    if (used.count(i)) continue;
+    if (single_qubit_fidelities[i] <= 0.0) continue;
+    candidates.push_back(i);
+  }
+  std::sort(candidates.begin(), candidates.end(), [&](int a, int b) {
+    return single_qubit_fidelities[a] > single_qubit_fidelities[b];
+  });
+  if (static_cast<int>(candidates.size()) > count) {
+    candidates.resize(count);
+  }
+  return candidates;
+}
+
 }  // namespace qcos

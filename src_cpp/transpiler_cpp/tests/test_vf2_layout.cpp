@@ -75,7 +75,7 @@ TEST(Vf2Layout, ChainCircuitPerfectEmbedding) {
       {0, 1}, {1, 2}, {2, 3}, {3, 4}};
   std::vector<GateOperation> gates = {cx(0, 1), cx(1, 2)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 3);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 3);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -93,7 +93,7 @@ TEST(Vf2Layout, StarCircuitPerfectEmbedding) {
       {0, 1}, {0, 2}, {0, 3}, {0, 4}, {1, 2}};
   std::vector<GateOperation> gates = {cx(0, 1), cx(0, 2), cx(0, 3)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 4);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 4);
 
   ASSERT_EQ(mapping.size(), 4u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -112,7 +112,7 @@ TEST(Vf2Layout, NoSolutionTriangleOnLine) {
   std::vector<std::pair<int, int>> coupling_list = {{0, 1}, {1, 2}, {2, 3}};
   std::vector<GateOperation> gates = {cx(0, 1), cx(1, 2), cx(0, 2)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 3);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 3);
 
   EXPECT_TRUE(mapping.empty());
 }
@@ -127,7 +127,7 @@ TEST(Vf2Layout, NoTwoQubitGates) {
       GateOperation("h", {1}, {}, OperationType::SINGLE_QUBIT_OPERATION, true),
   };
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 2);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 2);
   EXPECT_TRUE(mapping.empty());
 }
 
@@ -146,7 +146,8 @@ TEST(Vf2Layout, FidelityScoring) {
                                          0.99, 0.99};  // 路径 B: error=0.01
   std::vector<GateOperation> gates = {cx(0, 1), cx(1, 2)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, edge_fidelities, 3);
+  auto mapping =
+      vf2_layout_mapping(gates, coupling_list, edge_fidelities, {}, 3);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -168,7 +169,7 @@ TEST(Vf2Layout, MultipleGatesSamePair) {
   std::vector<std::pair<int, int>> coupling_list = {{0, 1}, {1, 2}, {2, 3}};
   std::vector<GateOperation> gates = {cx(0, 1), cx(0, 1), cx(1, 2)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 3);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 3);
 
   ASSERT_EQ(mapping.size(), 3u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -190,7 +191,7 @@ TEST(Vf2Layout, IsolatedLogicalQubit) {
       GateOperation("h", {3}, {}, OperationType::SINGLE_QUBIT_OPERATION, true),
   };
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 4);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 4);
 
   ASSERT_EQ(mapping.size(), 4u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -216,7 +217,7 @@ TEST(Vf2Layout, LongChainCircuit) {
     gates.push_back(cx(i, i + 1));
   }
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 10);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 10);
 
   ASSERT_EQ(mapping.size(), 10u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -234,7 +235,7 @@ TEST(Vf2Layout, RingCircuitOnRingTopology) {
                                                     {3, 0}, {3, 4}, {4, 5}};
   std::vector<GateOperation> gates = {cx(0, 1), cx(1, 2), cx(2, 3), cx(3, 0)};
 
-  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, 4);
+  auto mapping = vf2_layout_mapping(gates, coupling_list, {}, {}, 4);
 
   ASSERT_EQ(mapping.size(), 4u);
   EXPECT_FALSE(has_duplicate(mapping));
@@ -248,7 +249,7 @@ TEST(Vf2Layout, EmptyCouplingList) {
   std::vector<std::pair<int, int>> coupling_list;
   std::vector<GateOperation> gates = {cx(0, 1)};
 
-  EXPECT_THROW(vf2_layout_mapping(gates, coupling_list, {}, 2),
+  EXPECT_THROW(vf2_layout_mapping(gates, coupling_list, {}, {}, 2),
                std::invalid_argument);
 }
 
@@ -259,6 +260,6 @@ TEST(Vf2Layout, LogicalExceedsPhysical) {
   std::vector<std::pair<int, int>> coupling_list = {{0, 1}};
   std::vector<GateOperation> gates = {cx(0, 1), cx(1, 2)};
 
-  EXPECT_THROW(vf2_layout_mapping(gates, coupling_list, {}, 3),
+  EXPECT_THROW(vf2_layout_mapping(gates, coupling_list, {}, {}, 3),
                std::invalid_argument);
 }

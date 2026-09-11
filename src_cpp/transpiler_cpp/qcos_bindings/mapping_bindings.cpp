@@ -365,8 +365,8 @@ Returns:
 
   m.def("dense_layout_mapping", &qcos::dense_layout_mapping,
         nb::arg("gates_list"), nb::arg("coupling_list"),
-        nb::arg("edge_fidelities"), nb::arg("num_logical"),
-        nb::arg("fidelity_weight") = 0.5,
+        nb::arg("edge_fidelities"), nb::arg("single_qubit_fidelities"),
+        nb::arg("num_logical"), nb::arg("fidelity_weight") = 0.5,
         R"(
         Compute initial layout using DenseLayout + SABRE refinement.
 
@@ -379,6 +379,8 @@ Returns:
             coupling_list (list[tuple[int, int]]): Physical coupling list (directed).
             edge_fidelities (list[float]): Edge fidelities corresponding to coupling_list.
                 Pass empty list to disable fidelity-aware scoring.
+            single_qubit_fidelities (list[float]): Single-qubit fidelity array
+                indexed by physical qubit ID.
             num_logical (int): Number of logical qubits declared in the circuit.
             fidelity_weight (float, optional): Fidelity weight in [0, 1] for subgraph scoring.
                 0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
@@ -389,7 +391,7 @@ Returns:
 
   m.def("vf2_layout_mapping", &qcos::vf2_layout_mapping, nb::arg("gates_list"),
         nb::arg("coupling_list"), nb::arg("edge_fidelities"),
-        nb::arg("num_logical"),
+        nb::arg("single_qubit_fidelities"), nb::arg("num_logical"),
         R"(
         Compute initial layout using VF2 subgraph isomorphism.
 
@@ -403,6 +405,8 @@ Returns:
             coupling_list (list[tuple[int, int]]): Physical coupling list (directed).
             edge_fidelities (list[float]): Edge fidelities corresponding to
                 coupling_list. Pass empty list to disable fidelity-aware scoring.
+            single_qubit_fidelities (list[float]): Single-qubit fidelity array
+                indexed by physical qubit ID.
             num_logical (int): Number of logical qubits declared in the circuit.
 
         Returns:

@@ -38,12 +38,14 @@ namespace qcos {
  * @param gates_list 逻辑门序列
  * @param coupling_list 物理耦合边列表（有向，内部按无向处理）
  * @param edge_fidelities 与 coupling_list 对应的边保真度，空则不使用保真度评分
+ * @param single_qubit_fidelities 按物理比特 ID 索引的单比特保真度
  * @param num_logical 电路声明的逻辑比特总数
  * @return std::vector<int> 逻辑到物理映射，空表示未找到完美嵌入
  */
 std::vector<int> vf2_layout_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<double>& edge_fidelities, int num_logical);
+    const std::vector<double>& edge_fidelities,
+    const std::vector<double>& single_qubit_fidelities, int num_logical);
 
 }  // namespace qcos

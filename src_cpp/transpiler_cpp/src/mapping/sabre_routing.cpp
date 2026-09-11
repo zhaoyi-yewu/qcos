@@ -128,18 +128,9 @@ std::vector<int> build_single_qubit_mapping(
           "); not enough target qubits");
     }
   } else if (!single_qubit_fidelities.empty()) {
-    // 无 target_bits: 全芯片保真度 top-N, 按降序选前 N 个物理位
-    int total_qubits = static_cast<int>(single_qubit_fidelities.size());
-    std::vector<int> qubit_indices(total_qubits);
-    std::iota(qubit_indices.begin(), qubit_indices.end(), 0);
-    std::sort(qubit_indices.begin(), qubit_indices.end(),
-              [&](int qubit_a, int qubit_b) {
-                return single_qubit_fidelities[qubit_a] >
-                       single_qubit_fidelities[qubit_b];
-              });
-    int select_count = std::min(used_count, total_qubits);
-    physical_targets.assign(qubit_indices.begin(),
-                            qubit_indices.begin() + select_count);
+    // 无 target_bits: 全芯片保真度 top-N
+    physical_targets =
+        select_best_single_qubits(single_qubit_fidelities, {}, used_count);
     if (static_cast<int>(physical_targets.size()) < used_count) {
       // 物理位不足以容纳所有逻辑位
       return {};
@@ -380,7 +371,8 @@ void SABRE::execute(
       if (it == comp_map.end()) {
         throw std::invalid_argument(
             "target_bits do not form a connected graph: target_bit " +
-            std::to_string(target_bit) + " is isolated in the induced subgraph");
+            std::to_string(target_bit) +
+            " is isolated in the induced subgraph");
       }
       if (root == -1) {
         root = it->second;
@@ -398,12 +390,14 @@ void SABRE::execute(
     // 含双比特门 -> vf2/dense + SABRE 路由
     std::vector<int> initial_l2p;
     if (layout_method_ == "vf2_layout") {
-      initial_l2p = vf2_layout_mapping(gate_ops, coupling_list_,
-                                       edge_fidelities_, logic_qubit_num_);
+      initial_l2p =
+          vf2_layout_mapping(gate_ops, coupling_list_, edge_fidelities_,
+                             single_qubit_fidelities_, logic_qubit_num_);
     }
     if (initial_l2p.empty()) {
-      initial_l2p = dense_layout_mapping(gate_ops, coupling_list_,
-                                         edge_fidelities_, logic_qubit_num_);
+      initial_l2p = dense_layout_mapping(
+          gate_ops, coupling_list_, edge_fidelities_, single_qubit_fidelities_,
+          logic_qubit_num_, 0.5);
     }
     routed_gate_ops = execute_routing(gate_ops, initial_l2p);
   }

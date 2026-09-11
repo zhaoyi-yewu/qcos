@@ -205,7 +205,8 @@ SubgraphEnumerationResult enumerate_subgraph_candidates(
 std::vector<int> dense_layout_mapping(
     const std::vector<GateOperation>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<double>& edge_fidelities, int num_logical,
+    const std::vector<double>& edge_fidelities,
+    const std::vector<double>& single_qubit_fidelities, int num_logical,
     double fidelity_weight) {
   const int num_physical = count_physical_qubits(coupling_list);
 
@@ -262,7 +263,15 @@ std::vector<int> dense_layout_mapping(
   }
 
   if (best_subgraph.empty()) {
-    return make_identity_mapping(num_logical);
+    if (single_qubit_fidelities.empty()) {
+      return make_identity_mapping(num_logical);
+    }
+    auto best =
+        select_best_single_qubits(single_qubit_fidelities, {}, num_logical);
+    if (static_cast<int>(best.size()) < num_logical) {
+      return {};
+    }
+    return best;
   }
 
   // 以 DenseLayout 选出的区域为起点，通过 SABRE forward-backward 精化排列
