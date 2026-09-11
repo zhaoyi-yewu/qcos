@@ -249,13 +249,16 @@ def _get_device_info(
         "avg_1q_fidelity": avg_1q_fidelity,
         "avg_2q_fidelity": avg_2q_fidelity,
     }
+    # get effective status with manual override info
+    eff_status, is_manual = device.get_effective_status()
     _device_info = {
         "name": device.name,
         "alias_name": device.alias_name,
         "description": device.description,
         "driver_name": device.driver.get_name(),
         "enable": device.enable,
-        "status": device.status,
+        "status": eff_status,
+        "is_manual": is_manual,
         "tech_type": device.tech_type,
         "max_qubits": device.max_qubits,
         "available_qubits": device.available_qubits,
@@ -529,69 +532,13 @@ def get_device_options(
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
-def set_device_maintain_mode(
-    body: schemas.SetDeviceMaintainModeRequest,
-    auth_data: dict | None = Depends(auth),
-) -> schemas.SetDeviceMaintainModeResponse:
-    """Set device maintain mode.
-
-    Args:
-        body: SetDeviceMaintainModeRequest body
-        auth_data: auth data
-
-    Returns:
-        Set device maintain mode response
-    """
-    func_name = "set_device_maintain_mode"
-    logger.info(f"Call {func_name}: {body}")
-
-    device_name = body.device_name
-    mode = body.mode
-
-    device_manager = scheduler.get_device_manager()
-    device = device_manager.get_device(device_name)
-    if device is None:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Device: '{device_name}' is not found"),
-        )
-
-    if mode == "on":
-        device.set_manual_maintain_mode(True)
-        device.set_status(device.DEVICE_STATUS_MAINTAIN)
-    elif mode == "off":
-        device.set_manual_maintain_mode(False)
-        device.set_status(device.DEVICE_STATUS_ONLINE)
-    else:
-        jsonrpc_errors.handle_error_not_found(
-            module_name,
-            func_name,
-            (False, f"Invalid mode: '{mode}'. Must be 'on' or 'off'"),
-        )
-
-    _response_info = {
-        "name": device.name,
-        "status": device.status,
-    }
-    response_info = schemas.SetDeviceMaintainModeResponse.model_validate(
-        _response_info
-    )
-    return response_info
-
-
-@device_api_v1.method(
-    tags=[module_name.lower()],
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
-    errors=[jsonrpc_errors.NotFoundError],
-)
 def set_device(
     body: schemas.SetDeviceRequest,
     auth_data: dict | None = Depends(auth),
 ) -> schemas.SetDeviceResponse:
-    """Set device attributes (status, enable, max_qubits, available_qubits).
+    """Set device attributes (state, enable, max_qubits, etc.).
 
-    Allows updating device status, enable flag, max qubits, and
+    Allows updating device state, enable flag, max qubits, and
     available qubits in a single call. Each field is optional;
     when omitted (None) the corresponding attribute is not changed.
 
@@ -606,7 +553,7 @@ def set_device(
     logger.info(f"Call {func_name}: {body}")
 
     device_name = body.device_name
-    status = body.status
+    state = body.state
     enable = body.enable
     max_qubits = body.max_qubits
     available_qubits = body.available_qubits
@@ -620,27 +567,30 @@ def set_device(
             (False, f"Device: '{device_name}' is not found"),
         )
 
-    # update status when provided and not "auto"
-    if status is not None and status != "auto":
-        if status not in device.DEVICE_STATUSES:
+    # update state when provided
+    if state is not None:
+        if state not in device.DEVICE_STATES_WITH_AUTO:
             jsonrpc_errors.handle_error_not_found(
                 module_name,
                 func_name,
                 (
                     False,
-                    f"Invalid status: '{status}'. "
+                    f"Invalid state: '{state}'. "
                     f"Must be one of: "
-                    f"{', '.join(device.DEVICE_STATUSES)}",
+                    f"{', '.join(device.DEVICE_STATES_WITH_AUTO)}",
                 ),
             )
-        if status == device.DEVICE_STATUS_MAINTAIN:
-            device.set_manual_maintain_mode(True)
-        else:
-            # switching to a non-maintain status clears the
-            # manual maintain flag so monitor updates can resume
-            if device.get_manual_maintain_mode():
-                device.set_manual_maintain_mode(False)
-        device.set_status(status)
+        device.set_state(state)
+        # persist state to database
+        device_repo = scheduler.get_device_repo()
+        if device_repo is not None:
+            success, err, _ = device_repo.upsert_device_state(
+                device_name, state
+            )
+            if not success:
+                logger.error(
+                    f"Failed to persist device state for {device_name}: {err}"
+                )
 
     # update enable flag when provided
     if enable is not None:
@@ -687,9 +637,11 @@ def set_device(
                     ),
                 )
 
+    eff_status, _ = device.get_effective_status()
     _response_info = {
         "name": device.name,
-        "status": device.status,
+        "state": device.get_state(),
+        "status": eff_status,
         "enable": device.enable,
         "max_qubits": device.max_qubits,
         "available_qubits": device.available_qubits,

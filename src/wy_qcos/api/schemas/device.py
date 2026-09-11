@@ -60,6 +60,11 @@ class GetDeviceResponse(BaseModel):
     enable: bool = Field(description="Device enable status")
     # device status
     status: str = Field(description="Device status")
+    # whether status is manually overridden
+    is_manual: bool = Field(
+        default=False,
+        description="Whether status is manually overridden",
+    )
     # tech type
     tech_type: str = Field(description="Technology type")
     # max qubits
@@ -217,48 +222,24 @@ class GetDeviceOptionsResponse(BaseModel):
     )
 
 
-class SetDeviceMaintainModeRequest(BaseModel):
-    """Set Device Maintain Mode Request.
-
-    Pydantic Model for Set Device Maintain Mode Request.
-    """
-
-    # device name
-    device_name: str = Field(description="Device name")
-    # maintain mode: on/off
-    mode: str = Field(description="Maintain mode: on or off")
-
-
-class SetDeviceMaintainModeResponse(BaseModel):
-    """Set Device Maintain Mode Response.
-
-    Pydantic Model for Set Device Maintain Mode Response.
-    """
-
-    # device name
-    name: str = Field(description="Device name")
-    # device status after operation
-    status: str = Field(description="Device status after operation")
-
-
 class SetDeviceRequest(BaseModel):
     """Set Device Request.
 
     Pydantic Model for Set Device Request. Allows updating device
-    status, enable flag, and max qubits in a single call.
+    state, enable flag, and max qubits in a single call.
 
     """
 
     # device name
     device_name: str = Field(description="Device name")
-    # device status: auto/online/offline/busy/calibrating/
+    # device state: auto/online/offline/busy/calibrating/
     # maintain/unknown
-    # None means no change; "auto" also means no change
-    status: str | None = Field(
+    # None means no change; "auto" means use in-memory status
+    state: str | None = Field(
         default=None,
-        description="Device status: auto, online, offline, busy, "
+        description="Device state: auto, online, offline, busy, "
         "calibrating, maintain, unknown. "
-        "None or 'auto' means no change",
+        "None means no change; 'auto' means use in-memory status",
     )
     # enable flag: true/false
     # None means no change
@@ -293,8 +274,10 @@ class SetDeviceResponse(BaseModel):
 
     # device name
     name: str = Field(description="Device name")
-    # device status after operation
-    status: str = Field(description="Device status after operation")
+    # device state after operation
+    state: str = Field(description="Device state after operation")
+    # device effective status after operation
+    status: str = Field(description="Device effective status after operation")
     # device enable flag after operation
     enable: bool = Field(description="Device enable flag after operation")
     # device max qubits after operation
