@@ -201,46 +201,11 @@ DELETED）统计该设备上各状态的作业数量，数据来源于 qcos 数�
    # 获取设备 dummy 的选项
    qcos-cli get-device-options dummy
 
-设置设备维护模式
-********************
-
-将设备设为维护模式或恢复在线模式。设备处于维护模式时，设备监控进程不会覆盖其维护状态。
-
-需要 admin 角色权限。
-
-命令行参数
-~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   # 设置设备维护模式
-   usage: qcos-cli set-device-maintain-mode [-h] [--backend BACKEND] {on,off}
-
-   Set device maintain mode (on/off).
-
-   positional arguments:
-     {on,off}              Maintain mode: on (set to maintain) or off (set to online)
-
-   options:
-     -h, --help            show this help message and exit
-     --backend BACKEND     Device name (backend) (required)
-
-典型场景示例
-~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-   # 将设备 hanyuan1 设为维护模式
-   qcos-cli set-device-maintain-mode on --backend hanyuan1
-
-   # 将设备 hanyuan1 恢复在线模式
-   qcos-cli set-device-maintain-mode off --backend hanyuan1
-
 set-device
 ^^^^^^^^^^
 
 设置设备属性（状态、启用/禁用、最大比特数、可用比特数）。至少指定
-``--status``、``--enable``、``--max-qubits`` 或 ``--available-qubits``
+``--state``、``--enable``、``--max-qubits`` 或 ``--available-qubits``
 中的一个参数。
 
 需要 admin 角色权限。
@@ -252,13 +217,13 @@ set-device
 
    # 设置设备属性
    usage: qcos-cli set-device [-h]
-       [--status {auto,online,offline,busy,disconnected,calibrating,maintain,unknown}]
+       [--state {auto,online,offline,busy,disconnected,calibrating,maintain,unknown}]
        [--enable {true,false}]
        [--max-qubits MAX_QUBITS]
        [--available-qubits AVAILABLE_QUBITS]
        BACKEND
 
-   Set device attributes (status, enable, max_qubits,
+   Set device attributes (state, enable, max_qubits,
    available_qubits).
 
    positional arguments:
@@ -266,8 +231,8 @@ set-device
 
    options:
      -h, --help            show this help message and exit
-     --status {auto,online,offline,busy,disconnected,calibrating,maintain,unknown}
-                           Device status
+     --state {auto,online,offline,busy,disconnected,calibrating,maintain,unknown}
+                           Device state
      --enable {true,false}
                            Enable or disable the device
      --max-qubits MAX_QUBITS
@@ -282,10 +247,13 @@ set-device
 .. code-block:: shell
 
    # 设置设备状态为在线
-   qcos-cli set-device hanyuan1 --status online
+   qcos-cli set-device hanyuan1 --state online
 
    # 设置设备状态为维护
-   qcos-cli set-device hanyuan1 --status maintain
+   qcos-cli set-device hanyuan1 --state maintain
+
+   # 恢复为自动状态（使用内存监控状态）
+   qcos-cli set-device hanyuan1 --state auto
 
    # 禁用设备
    qcos-cli set-device hanyuan1 --enable false
@@ -303,4 +271,4 @@ set-device
    qcos-cli set-device hanyuan1 --available-qubits auto
 
    # 组合设置
-   qcos-cli set-device hanyuan1 --status online --enable true --max-qubits auto
+   qcos-cli set-device hanyuan1 --state online --enable true --max-qubits auto
