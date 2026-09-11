@@ -18,6 +18,8 @@
 #include "optimizer/gate_optimizer.h"
 
 #include <algorithm>
+#include <chrono>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <thread>
@@ -76,6 +78,41 @@ size_t compute_parallel_threads(size_t num_threads, size_t ir_size,
 }
 
 /**
+ * @brief 循环执行 pass 列表直到电路规模不再减小
+ *
+ * @param passes pass 列表，每项为 (名称, 可调用对象)
+ * @param dag 待优化的 DAG（原地修改）
+ * @param fast_mode true=只跑一轮，false=跑到收敛
+ * @param stats 统计输出（可为 nullptr）
+ * @param analysis 是否逐 pass 计时（多线程下应传 false）
+ * @return int 总减少门数
+ */
+int run_pass_loop(
+    std::vector<std::pair<const char*, std::function<int()>>>& passes,
+    DAGCircuit& dag, bool fast_mode, OptimizeMetrics* stats, bool analysis) {
+  int total_reduced = 0;
+  while (true) {
+    int init_size = dag.size();
+    for (auto& [name, fn] : passes) {
+      if (stats && analysis && name[0] != '_') {
+        auto time_start = std::chrono::steady_clock::now();
+        int reduced = fn();
+        auto time_end = std::chrono::steady_clock::now();
+        stats->pass_time_ms[name] +=
+            std::chrono::duration<double, std::milli>(time_end - time_start)
+                .count();
+        stats->pass_reduced[name] += reduced;
+        total_reduced += reduced;
+      } else {
+        total_reduced += fn();
+      }
+    }
+    if (fast_mode || dag.size() >= init_size) break;
+  }
+  return total_reduced;
+}
+
+/**
  * @brief 对 IR 执行优化：ir_to_dag → 优化 pass 列表 → 返回优化后的 ops
  *
  * @param ir 待优化的操作序列
@@ -87,7 +124,7 @@ size_t compute_parallel_threads(size_t num_threads, size_t ir_size,
 std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level,
     bool verbose, const std::optional<std::set<std::string>>& basis_gates,
-    bool fast_mode) {
+    bool fast_mode, OptimizeMetrics* stats, bool analysis) {
   DAGCircuit dag = DAGCircuit::ir_to_dag(ir);
 
   InverseCancellation inverse_optimizer(
@@ -112,53 +149,72 @@ std::vector<std::shared_ptr<BaseOperation>> optimize_ir(
   PhasePolynomialMerging phase_polynomial_merging(verbose);
   UnitarySynthesis unitary_synth(basis_gates, 1.0, 2, verbose);
 
-  // 若基础门集为 u,cz 或 u3,cz，只执行 UnitarySynthesis
-  if (basis_gates.has_value() &&
-      (basis_gates.value() == std::set<std::string>{"u", "cz"} ||
-       basis_gates.value() == std::set<std::string>{"u3", "cz"})) {
-    int total_reduced = unitary_synth.run(dag, basis_gates);
-    if (verbose) {
-      std::clog << "Optimization total: " << total_reduced
-                << " gates reduced\n";
-    }
+  // 按 opt_level 构建 pass 列表（name, function）
+  // name 以 _ 开头的是 inter-pass 逻辑，不计时
+  using Action = std::function<int()>;
+  std::vector<std::pair<const char*, Action>> passes;
+
+  bool u_cz_basis = basis_gates.has_value() &&
+                    (basis_gates.value() == std::set<std::string>{"u", "cz"} ||
+                     basis_gates.value() == std::set<std::string>{"u3", "cz"});
+
+  if (u_cz_basis) {
+    // u,cz 基础门集：只执行 UnitarySynthesis
+    passes.emplace_back("UnitarySynthesis",
+                        [&] { return unitary_synth.run(dag, basis_gates); });
   } else {
-    int total_reduced = 0;
-    while (true) {
-      int init_size = dag.size();
+    // Level 1
+    passes.emplace_back("InverseCancellation", [&] {
+      return inverse_optimizer.run(dag, basis_gates);
+    });
+    passes.emplace_back("AdjacentPhaseOpt", [&] {
+      return adjacent_phase_optimizer.run(dag, basis_gates);
+    });
+    passes.emplace_back("EquivalencePass", [&] {
+      return equivalence_optimizer.run(dag, basis_gates);
+    });
 
-      // Level 1: 轻量 pass，不需 parameterize
-      total_reduced += inverse_optimizer.run(dag, basis_gates);
-      total_reduced += adjacent_phase_optimizer.run(dag, basis_gates);
-      total_reduced += equivalence_optimizer.run(dag, basis_gates);
-
-      if (opt_level >= 2) {
-        // HadamardGateReduction 需要原始 s/sdg 门名，必须在 parameterize 之前
-        total_reduced += hadamard_reduction.run(dag, basis_gates);
-
-        // 统一 parameterize 供 rz-merging pass 使用
+    if (opt_level >= 2) {
+      // HadamardGateReduction 需要原始 s/sdg 门名，必须在 parameterize 之前
+      passes.emplace_back("HadamardGateReduction", [&] {
+        return hadamard_reduction.run(dag, basis_gates);
+      });
+      // 统一 parameterize 供 rz-merging pass 使用
+      passes.emplace_back("_parameterize", [&] {
         dag.parameterize_all_rz();
-        total_reduced += rz_commute_optimizer.run(dag, basis_gates);
-        total_reduced += cx_commute_optimizer.run(dag, basis_gates);
-        total_reduced += phase_polynomial_merging.run(dag, basis_gates);
-        // deparameterize 仅当 basis 允许离散相位门
+        return 0;
+      });
+      passes.emplace_back("RzCommuteOptimization", [&] {
+        return rz_commute_optimizer.run(dag, basis_gates);
+      });
+      passes.emplace_back("CxCommuteOptimization", [&] {
+        return cx_commute_optimizer.run(dag, basis_gates);
+      });
+      passes.emplace_back("PhasePolynomialMerging", [&] {
+        return phase_polynomial_merging.run(dag, basis_gates);
+      });
+      // deparameterize 仅当 basis 允许离散相位门
+      passes.emplace_back("_deparameterize", [&] {
         if (!basis_gates ||
             std::includes(basis_gates->begin(), basis_gates->end(),
-                          kRzPhaseGates.begin(), kRzPhaseGates.end())) {
+                          kRzPhaseGates.begin(), kRzPhaseGates.end()))
           dag.deparameterize_all_rz();
-        }
-      }
-
-      // Level 3: UnitarySynthesis
-      if (opt_level >= 3) {
-        total_reduced += unitary_synth.run(dag, basis_gates);
-      }
-
-      if (fast_mode || dag.size() >= init_size) break;
+        return 0;
+      });
     }
-    if (verbose) {
-      std::clog << "Optimization total: " << total_reduced
-                << " gates reduced\n";
+
+    // Level 3
+    if (opt_level >= 3) {
+      passes.emplace_back("UnitarySynthesis",
+                          [&] { return unitary_synth.run(dag, basis_gates); });
     }
+  }
+
+  // 循环执行 pass 列表直到收敛
+  int total_reduced = run_pass_loop(passes, dag, fast_mode, stats, analysis);
+
+  if (verbose) {
+    std::clog << "Optimization total: " << total_reduced << " gates reduced\n";
   }
 
   std::vector<std::shared_ptr<BaseOperation>> result;
@@ -224,7 +280,8 @@ std::vector<std::vector<std::shared_ptr<BaseOperation>>> split_ir_by_layers(
 std::vector<std::shared_ptr<BaseOperation>> optimize(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level,
     bool verbose, const std::optional<std::set<std::string>>& basis_gates,
-    size_t num_threads, bool fast_mode) {
+    size_t num_threads, bool fast_mode, OptimizeMetrics* stats,
+    bool analysis) {
   if (opt_level == 0) {
     return ir;
   }
@@ -250,8 +307,8 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
 
   std::vector<std::shared_ptr<BaseOperation>> optimized;
   if (N <= 1) {
-    optimized =
-        optimize_ir(regular_ops, opt_level, verbose, basis_gates, fast_mode);
+    optimized = optimize_ir(regular_ops, opt_level, verbose, basis_gates,
+                            fast_mode, stats, analysis);
   } else {
     // 并行：从 IR 按层拆分 → 各线程 optimize_ir → 合并
     auto op_layers = ir_layers(regular_ops);
@@ -267,8 +324,10 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
     for (size_t seg_idx = 0; seg_idx < segments.size(); ++seg_idx) {
       threads.emplace_back([&segments, &opt_segments, seg_idx, opt_level,
                             verbose, &basis_gates, fast_mode]() {
-        opt_segments[seg_idx] = optimize_ir(segments[seg_idx], opt_level,
-                                            verbose, basis_gates, fast_mode);
+        // 并行不统计时间
+        opt_segments[seg_idx] =
+            optimize_ir(segments[seg_idx], opt_level, verbose, basis_gates,
+                        fast_mode, nullptr, false);
       });
     }
     for (auto& worker : threads) {

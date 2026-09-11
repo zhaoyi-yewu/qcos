@@ -18,8 +18,8 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 #include "circuit/base_operation.h"
 
@@ -131,9 +131,9 @@ class QuantumCircuit {
 
   /**
    * @brief 返回操作数量
-   * @return int 操作个数
+   * @return int 操作个数（不含 sync/reset/move 等非门操作）
    */
-  int size() const { return static_cast<int>(operations_.size()); }
+  int size() const;
 
  private:
   int num_qubits_;

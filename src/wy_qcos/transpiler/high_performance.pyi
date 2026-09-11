@@ -2343,6 +2343,7 @@ def optimize(
     verbose: bool = False,
     basis_gates: collections.abc.Set[str] | None = None,
     num_threads: int = 1,
+    fast_mode: bool = False,
 ) -> list[high_performance.BaseOperation]:
     """对 IR 执行优化.
 
@@ -2364,9 +2365,47 @@ def optimize(
     basis_gates (set[str] | None, optional): basis gate 过滤集合.
     num_threads (int, optional): 并行线程数：1=串行，0=自动，>1=指定.
                                  Defaults to 1.
+    fast_mode (bool, optional): true=只跑一轮, false=跑到收敛.
+                                 Defaults to False.
 
     Returns:
     list[BaseOperation]: 优化后的操作序列
+    """
+    ...
+
+class OptimizeMetrics:
+    """优化统计信息（逐 pass 耗时和减少门数）."""
+
+    pass_time_ms: dict[str, float]
+    pass_reduced: dict[str, int]
+
+    def __init__(self) -> None: ...
+
+def optimize_with_analysis(
+    ir: collections.abc.Sequence[high_performance.BaseOperation],
+    opt_level: int = 1,
+    verbose: bool = False,
+    basis_gates: collections.abc.Set[str] | None = None,
+    num_threads: int = 1,
+    fast_mode: bool = False,
+) -> tuple[list[high_performance.BaseOperation], OptimizeMetrics]:
+    """执行优化并返回逐 pass 统计信息.
+
+    参数同 optimize, 额外启用 analysis 模式：
+    逐 pass 记录耗时和减少门数（仅串行模式有效）。
+
+    Args:
+    ir (list[BaseOperation]): 待优化的操作序列
+    opt_level (int, optional): 优化级别. Defaults to 1.
+    verbose (bool, optional): 是否打印优化详情. Defaults to False.
+    basis_gates (set[str] | None, optional): basis gate 过滤集合.
+    num_threads (int, optional): 并行线程数. Defaults to 1.
+    fast_mode (bool, optional): true=只跑一轮, false=跑到收敛.
+                                 Defaults to False.
+
+    Returns:
+    tuple[list[BaseOperation], OptimizeMetrics]:
+        (optimized_ops, metrics)
     """
     ...
 

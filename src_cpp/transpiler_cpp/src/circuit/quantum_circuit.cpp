@@ -92,4 +92,16 @@ int QuantumCircuit::depth() const {
              : *std::max_element(qubit_ops.begin(), qubit_ops.end());
 }
 
+int QuantumCircuit::size() const {
+  static const std::unordered_set<std::string> ignore_gates = {"sync", "reset",
+                                                               "move"};
+  int count = 0;
+  for (const auto& operation : operations_) {
+    if (ignore_gates.count(operation->name) == 0) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 }  // namespace qcos

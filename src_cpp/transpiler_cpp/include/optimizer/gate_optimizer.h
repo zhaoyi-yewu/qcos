@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -54,6 +55,17 @@ std::vector<std::vector<std::shared_ptr<BaseOperation>>> split_ir_by_layers(
     const std::vector<int>& op_layers, int num_chunks);
 
 /**
+ * @brief 优化过程统计信息
+ *
+ * 记录各 pass 的耗时和减少门数。
+ * 仅在串行模式且 analysis=true 时填充。
+ */
+struct OptimizeMetrics {
+  std::map<std::string, double> pass_time_ms;
+  std::map<std::string, int> pass_reduced;
+};
+
+/**
  * @brief 对 IR 执行多层优化
  *
  * opt_level:
@@ -84,6 +96,7 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int opt_level = 1,
     bool verbose = false,
     const std::optional<std::set<std::string>>& basis_gates = std::nullopt,
-    size_t num_threads = 1, bool fast_mode = false);
+    size_t num_threads = 1, bool fast_mode = false,
+    OptimizeMetrics* stats = nullptr, bool analysis = false);
 
 }  // namespace qcos
