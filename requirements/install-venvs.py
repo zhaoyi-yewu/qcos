@@ -368,6 +368,14 @@ USAGE
                  "exporting requirements files. Only effective with "
                  "--export-requirements",
         )
+        parser.add_argument(
+            "--name",
+            dest="name",
+            default=None,
+            help="Only install venv for the specified config name "
+                 "(e.g. DriverQuafu, DriverQutipSim). "
+                 "Comma-separated list is supported.",
+        )
 
         # parse arguments
         args = parser.parse_args()
@@ -391,6 +399,29 @@ USAGE
         configs = load_driver_env_file(file_path,
                                        envs=envs,
                                        skip_env_list=skip_env_list)
+
+        # filter by --name if specified
+        if args.name:
+            name_list = [
+                n.strip() for n in args.name.split(",")
+                if n.strip()
+            ]
+            configs = OrderedDict(
+                (k, v) for k, v in configs.items()
+                if k in name_list
+            )
+            if not configs:
+                all_names = list(
+                    load_driver_env_file(
+                        file_path, envs=envs
+                    ).keys()
+                )
+                print(
+                    f"Error: no config matched --name "
+                    f"'{args.name}'. Available: "
+                    f"{', '.join(all_names)}"
+                )
+                return 1
 
         if export_requirements_flag:
             output_dir = "requirements"

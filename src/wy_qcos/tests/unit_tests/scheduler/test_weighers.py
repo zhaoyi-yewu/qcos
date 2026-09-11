@@ -242,6 +242,7 @@ class TestAutoScheduler:
         device = MagicMock()
         device.get_name.return_value = "device1"
         device.get_status.return_value = "online"
+        device.get_effective_status.return_value = ("online", False)
         device.get_enable.return_value = True
         device.get_max_queued_jobs.return_value = -1
         device.tech_type = "superconducting"
@@ -281,6 +282,7 @@ class TestAutoScheduler:
             device = MagicMock()
             device.get_name.return_value = name
             device.get_status.return_value = "online"
+            device.get_effective_status.return_value = ("online", False)
             device.get_enable.return_value = True
             device.get_max_queued_jobs.return_value = -1
             device.tech_type = "superconducting"
@@ -351,6 +353,7 @@ class TestAutoScheduler:
         device = MagicMock()
         device.get_name.return_value = "device1"
         device.get_status.return_value = "offline"
+        device.get_effective_status.return_value = ("offline", False)
         device.get_enable.return_value = True
         device.get_max_queued_jobs.return_value = -1
         device.tech_type = "superconducting"

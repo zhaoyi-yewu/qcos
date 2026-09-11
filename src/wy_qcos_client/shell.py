@@ -846,7 +846,7 @@ class GetDevice(ShowOne):
         if json_results:
             is_manual = json_results.get("is_manual", False)
             suffix = "[manual]" if is_manual else "[auto]"
-            json_results["status"] = f"{json_results['status']}{suffix}"
+            json_results["status"] = f"{json_results['status']} {suffix}"
         table_values = CommandHelper.get_table_data(json_results)
         return table_values
 

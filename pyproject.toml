@@ -138,6 +138,7 @@ base = [
     "memray==1.19.3",
     "poetry==2.4.1",
     "requests==2.34.2",
+    "rpdb==0.2.0",
     "schema==0.7.8",
     "uv==0.9.13",
     # other requirements

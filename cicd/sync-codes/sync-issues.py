@@ -37,6 +37,9 @@ Environment variables (defaults, overridable by CLI args):
 - JIRA_AUTH: Jira basic auth "user:pass"
 - GITEE_ACCESS_TOKEN: Gitee API token
 
+Gitee API:
+https://gitee.com/api/v5/swagger
+
 Examples:
 ./sync-issues.py
 ./sync-issues.py --gitlab-url http://gitlab.com --gitlab-token "xxxxxxxxxx" --gitlab-project-id WuYueOs --jira-url "http://jira.com" --jira-auth "test:test" --gitee-access-token "xxxxxxxxx" --gitee-user-tokens '{"test": {"gitee_token": "abc123", "user_name": "test"}}'
@@ -47,6 +50,7 @@ import json
 import os
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from datetime import datetime, timedelta
 
 import library as lib
 
@@ -168,12 +172,28 @@ def main(argv=None):
         print(f"Dry-run:        {args.dry_run}")
         print("==================================\n")
 
-        # Step 1: Read all open MRs from GitLab
-        print(">>> Step 1: Fetching open MRs from GitLab...")
-        mr_dict = lib.get_merge_requests(
-            args.gitlab_url, args.gitlab_token, args.gitlab_project_id
+        # Step 1: Read all open and recently merged MRs
+        print(">>> Step 1: Fetching MRs from GitLab...")
+        opened_mr_dict = lib.get_merge_requests(
+            args.gitlab_url, args.gitlab_token,
+            args.gitlab_project_id,
+            state="opened", per_page=100,
         )
-        print(f"    Found {len(mr_dict)} open MR(s)")
+        # fetch merged MRs from the last 3 days
+        three_days_go = (
+            datetime.now() - timedelta(days=3)
+        ).strftime("%Y-%m-%d")
+        merged_mr_dict = lib.get_merge_requests(
+            args.gitlab_url, args.gitlab_token,
+            args.gitlab_project_id,
+            state="merged", per_page=100,
+            updated_after=three_days_go,
+        )
+        # merge dicts
+        mr_dict = {**opened_mr_dict, **merged_mr_dict}
+        print(f"    Found {len(mr_dict)} MR(s) "
+              f"({len(opened_mr_dict)} opened, "
+              f"{len(merged_mr_dict)} merged)")
 
         # Step 2: Read commits for each MR
         print("\n>>> Step 2: Fetching commits for each MR...")
@@ -213,6 +233,7 @@ def main(argv=None):
             if issue_data:
                 jira_dict[jira_id] = issue_data
                 print(f"    {jira_id}: status={issue_data['status']}, "
+                      f"resolution={issue_data['resolution']}, "
                       f"summary={issue_data['summary'][:50]}")
             else:
                 print(f"    {jira_id}: NOT FOUND")
@@ -250,15 +271,16 @@ def main(argv=None):
             gitee_jira_id = f"jira-{jira_num}"
             jira_type = jira_info.get("jira_type")
             gitee_issue = gitee_jira_map.get(gitee_jira_id)
+            fixed_version = jira_info.get("fixed_version")
 
             if gitee_issue:
                 # Community issue already exists
                 if jira_closed and not args.dry_run:
                     print(f"    {jira_id}: Jira closed, "
-                          f"closing Gitee issue "
-                          f"#{gitee_issue['number']}")
+                          f"closing Gitee issue: "
+                          f"{gitee_issue['number']} ({jira_id})")
                     lib.close_gitee_issue(
-                        gitee_access_token,
+                        gitee_developer_token,
                         lib.gitee_owner, lib.gitee_repo,
                         gitee_issue["number"],
                     )
@@ -298,25 +320,39 @@ def main(argv=None):
         # Step 7: Check for closed Jira issues with open community issues
         print("\n>>> Step 7: Checking for closed Jira issues "
               "with open community issues...")
-        for jira_id, gitee_issue in gitee_jira_map.items():
-            if jira_id not in jira_ids:
-                jira_info = lib.fetch_jira_issue(
-                    jira_id, args.jira_url, args.jira_auth
-                )
-                if jira_info and lib.is_jira_closed(jira_info):
-                    if not args.dry_run:
-                        print(f"    {jira_id}: Jira closed, "
-                              f"closing Gitee issue "
-                              f"#{gitee_issue['number']}")
-                        lib.close_gitee_issue(
-                            gitee_developer_token,
-                            lib.gitee_owner, lib.gitee_repo,
-                            gitee_issue["number"],
-                        )
-                    else:
-                        print(f"    {jira_id}: [DRY-RUN] Would close "
-                              f"Gitee issue "
-                              f"#{gitee_issue['number']}")
+        for gitee_jira_id, gitee_issue in gitee_jira_map.items():
+            jira_num = lib.extract_jira_num(gitee_jira_id)
+            jira_id = f"QIS-{jira_num}"
+            jira_info = lib.fetch_jira_issue(
+                jira_id, args.jira_url, args.jira_auth
+            )
+            if jira_info and lib.is_jira_closed(jira_info):
+                gitee_issue_number = gitee_issue["number"]
+                reporter_name = jira_info["reporter_name"]
+                jira_user_name = f"{reporter_name}"
+                gitee_developer_account = lib.get_gitee_developer_account(
+                    jira_user_name, gitee_user_accounts)
+                if not gitee_developer_account:
+                    print(
+                        f"    Invalid gitee developer account: {jira_user_name}")
+                    continue
+                gitee_developer_token = gitee_developer_account.get(
+                    "gitee_token", None)
+                if not gitee_developer_token:
+                    print(
+                        f"    Invalid gitee developer token from user: {jira_user_name}")
+                    continue
+                if not args.dry_run:
+                    print(f"    {jira_id}: Jira closed, "
+                          f"closing Gitee issue: {gitee_issue_number} ({gitee_jira_id})")
+                    lib.close_gitee_issue(
+                        gitee_developer_token,
+                        lib.gitee_owner, lib.gitee_repo,
+                        gitee_issue_number,
+                    )
+                else:
+                    print(f"    {jira_id}: [DRY-RUN] Would close "
+                          f"Gitee issue: {gitee_issue_number} ({gitee_jira_id})")
 
         print("\n==== Sync Complete ====")
         return 0

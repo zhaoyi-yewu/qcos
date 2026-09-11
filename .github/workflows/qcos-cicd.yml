@@ -52,6 +52,9 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
+          if [ -n "${{ vars.DOCKER_COMPOSE_BIN_MIRROR }}" ]; then
+            sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=${{ vars.DOCKER_COMPOSE_BIN_MIRROR }}@" ./.env
+          fi
           df -h
           ./build-images.sh -b -t dev
 
