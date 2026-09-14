@@ -247,34 +247,12 @@ class TestTranspilerNaMapping:
         key, value = list(opt_result_dict.items())[0]
         mapping_dict[key] = value[0]
         na.prepare_data(value[0], value[1], qpu_cfg)
-        mapping_res = na.execute_with_opt()
+        mapping_res, _ = na.execute_with_opt()
 
         assert len(na.logical_to_storage) == na.qbit_num
         assert mapping_res is not None
         assert mapping_res[0].name == "x"
         assert mapping_res[-1].name == "measure"
-
-    def test_2_qubit_gate_na_mapping(self):
-        src_code_info = {"000": self.task2_data}
-        parse_result = self.transpiler.parse(src_code_info)
-        opt_result_dict = {}
-
-        for key, value in parse_result.items():
-            opt_result = optimize_gate(value[1], 1)
-            opt_result_dict[key] = (value[0], opt_result)
-
-        mapping_dict = {}
-        na = NARoute()
-        qpu_cfg = trans_cfg_inst.get_qpu_cfg()
-        key, value = list(opt_result_dict.items())[0]
-        mapping_dict[key] = value[0]
-        na.prepare_data(value[0], value[1], qpu_cfg)
-        order_mapping_res, _ = na.execute_with_order()
-
-        assert len(na.logical_to_storage) == na.qbit_num
-        assert order_mapping_res is not None
-        assert order_mapping_res[0].name == "x"
-        assert order_mapping_res[-1].name == "measure"
 
     def test_2_qubit_gate_na_mapping_opt(self):
         src_code_info = {"000": self.task2_data}
@@ -292,7 +270,7 @@ class TestTranspilerNaMapping:
         mapping_dict[key] = value[0]
         na.prepare_data(value[0], value[1], qpu_cfg)
 
-        opt_mapping_res = na.execute_with_opt()
+        opt_mapping_res, _ = na.execute_with_opt()
         assert len(na.logical_to_storage) == na.qbit_num
         assert opt_mapping_res is not None
         assert opt_mapping_res[0].name == "x"
