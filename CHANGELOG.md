@@ -18,7 +18,9 @@
 - 新增show-mem命令：查询API服务端进程内存占用（RSS/VMS/线程数/GC对象数/CPU使用率）
 - 新增gc命令：手动触发Python垃圾回收，支持指定回收代数（0/1/2）
 - 新增trace-mem命令：通过tracemalloc追踪内存分配，返回当前/峰值内存及Top内存分配统计
-- 新增设置设备维护模式功能：支持通过API和CLI将设备设为维护模式
+- 新增设备状态（state）持久化功能：支持配置设备state为
+  auto/online/offline/busy/disconnected/calibrating/maintain/unknown，
+  state持久化到devices数据库表，重启后自动恢复
 - 新增设备可用率（availability）统计功能：通过Redis订阅采集设备运行状态，
   内存计数器实时累计，整点聚合落库到device_availability_hourly表
 - 新增DeviceAvailabilityCollector单例：后台线程psubscribe设备运行信息频道，
@@ -61,41 +63,12 @@
 - CLI中所有可追加参数（--property、--device、--role-name）从action="append"改为nargs="+"形式
 - 解决prefect-server内存泄露问题: 1. prefect升级到3.7.8;
   2\. 默认配置PREFECT_SERVER_DOCKET_URL为redis://IP:PORT/1
-- 自动调度器_build_device_states注入availability_hourly和availability_total
-  到DeviceState，供DeviceAvailabilityWeigher和DeviceAvailabilityFilter使用
-- DEFAULT_FILTERS追加DeviceGroupFilter，统一通过BaseFilterHandler注入
-  device_group_manager，不再特殊化处理
-- DEFAULT_WEIGHERS追加DeviceAvailabilityWeigher
-- 数据库时间统一为本地时间（datetime.now），移除所有datetime.utcnow
-- DeviceState的set_availability合并为一个方法，参数availability_hourly
-  和availability_total均可选（None表示不变）
-- GateFidelityFilter处理fidelity返回None的情况，无数据时不阻塞设备
-- DeviceGroupFilter改用spec.device_groups属性（支持extra_specs覆盖flavor）
-- TechTypeFilter改用qc:tech_types多值匹配，修复key不匹配bug
-- CodeTypeFilter支持qcos:code_types覆盖job的code_type约束
-- FlavorManager的EXTRA_PROPERTY常量复用FlavorConstant，保持单一真相源
-- ENABLED_FILTERS配置补充DeviceNameFilter和DeviceAvailabilityWeigher
-- 代码命名统一：uptime_rate→availability相关命名（字段、方法、类、文件名）
-- RequestSpec新增device_groups/tech_types/code_types/devices/exclude_devices
-  属性，extra_specs覆盖flavor同名字段
-- device_availability_hourly表的created_at/updated_at/hour改为本地时间，
-  迁移脚本server_default改为NOW()
-- webui/src/api/目录重构：device/driver/transpiler/job/version等6个API文件
-  统一使用jsonrpcRequest/httpRequest封装
-- webui/src/下所有.js文件添加版权头
-- 自动调度器availability计算逻辑抽取到DeviceAvailabilityCollector
-  .compute_availability_rates统一方法，auto_scheduler和device.py共用
 - DriverWuyueBase和DriverLogicalQubitBase继承关系从DriverBase
   改为DriverGateBase，统一使用DriverGateBase的transpiler_options_schema
 - driver_run统一调用post_run(driver)处理sleep/进度逻辑，
   各驱动不再自行实现set_progress_by_task(TASK_STAGE_COMPLETE)
 - init_transpiler新增从driver.transpiler_options_schema填充
   转译器选项默认值的逻辑，用户未指定的选项自动使用schema声明的default
-- submit_job路由将shots、circuit_aggregation、driver_options、
-  transpiler_options传入build_request_spec，供调度器过滤使用
-- DEFAULT_FILTERS追加InputConstraintsFilter，位于QueueLimitFilter之后
-- DeviceState新增input_constrains、enable_circuit_aggregation、
-  driver_options_schema、transpiler_options_schema字段，从driver属性映射
 
 ### 修复问题
 

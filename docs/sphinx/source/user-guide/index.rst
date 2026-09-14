@@ -10,3 +10,4 @@
    operations
    compatibility
    cli/index
+   sdk
