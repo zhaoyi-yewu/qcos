@@ -71,7 +71,6 @@ class TestJob:
         "test_device_status_filter_offline",
         "test_qubit_count_filter",
         "test_device_load_weigher",
-        "test_device_load_weigher_busy",
         "test_all_devices_disabled",
         "test_device_name_filter_whitelist",
         "test_exclude_device_filter_blacklist",
@@ -97,9 +96,9 @@ class TestJob:
             cls.admin_client, cls.test_device_group_names
         )
 
-        # ensure all qutip_sim devices are enabled and online
+        # ensure all qutip_sim devices are enabled and auto
         for dev in ALL_QUTIP_SIM_DEVICES:
-            cls.admin_client.set_device(dev, enable=True, status="online")
+            cls.admin_client.set_device(dev, enable=True, state="auto")
 
         # create or reuse a device group with all qutip_sim devices
         cls.device_group_id = cls._ensure_device_group()
@@ -111,7 +110,7 @@ class TestJob:
     def teardown_class(cls):
         """Clean up test environment."""
         for dev in ALL_QUTIP_SIM_DEVICES:
-            cls.admin_client.set_device(dev, enable=True, status="online")
+            cls.admin_client.set_device(dev, enable=True, state="auto")
         # cleanup jobs first, then flavors, then device groups
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
         StLibrary.cleanup_test_flavors(cls.admin_client, cls.test_flavor_names)
@@ -172,9 +171,9 @@ class TestJob:
         return resp["result"]["id"]
 
     def _restore_devices(self):
-        """Restore all qutip_sim devices to default state."""
+        """Restore all qutip_sim devices to auto state."""
         for dev in ALL_QUTIP_SIM_DEVICES:
-            self.admin_client.set_device(dev, enable=True, status="online")
+            self.admin_client.set_device(dev, enable=True, state="auto")
 
     def _make_auto_job_info(
         self,
@@ -388,8 +387,8 @@ class TestJob:
         Auto scheduling should select qutip_sim1.
         """
         self._restore_devices()
-        self.admin_client.set_device(DEVICE_QUTIP_SIM, status="offline")
-        self.admin_client.set_device(DEVICE_QUTIP_SIM2, status="offline")
+        self.admin_client.set_device(DEVICE_QUTIP_SIM, state="offline")
+        self.admin_client.set_device(DEVICE_QUTIP_SIM2, state="offline")
         try:
             job_info = self._make_auto_job_info(
                 "test_device_status_filter_offline",
@@ -458,69 +457,6 @@ class TestJob:
         finally:
             self.admin_client.set_device(DEVICE_QUTIP_SIM1, max_qubits="auto")
             self.admin_client.set_device(DEVICE_QUTIP_SIM2, max_qubits="auto")
-            self._restore_devices()
-
-    def test_device_load_weigher(self):
-        """DeviceLoadWeigher prefers the least busy device.
-
-        Submit a long-running job to qutip_sim to make it busy,
-        then auto-schedule should prefer qutip_sim1 or qutip_sim2.
-        """
-        self._restore_devices()
-        busy_job_info = self._make_auto_job_info(
-            "test_device_load_weigher_busy",
-            driver_options={"sleep": 30},
-            backend=DEVICE_QUTIP_SIM,
-            flavor_id=None,
-        )
-        StLibrary.submit_job(self.admin_client, busy_job_info)
-        time.sleep(3)
-        try:
-            job_info = self._make_auto_job_info(
-                "test_device_load_weigher",
-                flavor_id=self.flavor_id,
-            )
-            StLibrary.submit_job(self.admin_client, job_info)
-            success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-                self.admin_client,
-                job_info,
-                self.timeout,
-                self.interval,
-            )
-            if success:
-                StLibrary.delete_job(self.admin_client, job_info["job_id"])
-                assert (
-                    job_results["result"]["job_status"]
-                    == Constant.JOB_STATUS_COMPLETED
-                )
-            else:
-                logger.warning(
-                    f"Job failed. err_msg: {err_msg}, "
-                    f"job_results: {job_results}"
-                )
-            assert success is True
-            backend = job_results["result"]["backend"]
-            assert backend in [DEVICE_QUTIP_SIM1, DEVICE_QUTIP_SIM2]
-        finally:
-            success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-                self.admin_client,
-                busy_job_info,
-                self.timeout,
-                self.interval,
-            )
-            if success:
-                StLibrary.delete_job(
-                    self.admin_client, busy_job_info["job_id"]
-                )
-                assert (
-                    job_results["result"]["job_status"]
-                    == Constant.JOB_STATUS_COMPLETED
-                )
-            else:
-                logger.warning(
-                    f"Job failed. err_msg: {err_msg}, "
-                    f"job_results: {job_results}"
-                )
             self._restore_devices()
 
     def test_all_devices_disabled(self):

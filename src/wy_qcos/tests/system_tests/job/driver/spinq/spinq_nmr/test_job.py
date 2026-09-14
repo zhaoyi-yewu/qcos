@@ -69,7 +69,7 @@ class TestJob:
         # report disconnected during startup; force the status here so
         # the scheduler treats the device as eligible.
         cls.admin_client.set_device(
-            "spinq_triangulum", enable=True, status="online"
+            "spinq_triangulum", enable=True, state="online"
         )
 
         # Initialize and clean up test resources
@@ -79,6 +79,11 @@ class TestJob:
     def teardown_class(cls):
         """Clean up test environment."""
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
+        # restore device state to auto
+        cls.admin_client.set_device(
+            "spinq_triangulum", enable=True, state="auto"
+        )
 
         print("Stop NMR server")
         cls.nmr_process.terminate()

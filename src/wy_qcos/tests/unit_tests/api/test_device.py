@@ -371,73 +371,81 @@ class TestSetDevice:
         """Create a real Device instance for testing."""
         return Device("dummy", DriverDummy())
 
+    @patch.object(TaskScheduler, "get_device_repo")
     @patch.object(DeviceManager, "get_device")
     @patch.object(TaskScheduler, "get_device_manager")
-    def test_set_status_online(self, mock_get_device_manager, mock_get_device):
-        """Set device status to online clears manual maintain."""
+    def test_set_state_online(
+        self, mock_get_device_manager, mock_get_device, mock_get_device_repo
+    ):
+        """Set device state to online."""
         device = self._make_device()
-        device.set_manual_maintain_mode(True)
         mock_get_device.return_value = device
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
         )
+        mock_get_device_repo.return_value = None
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = "online"
+        body.state = "online"
         body.enable = None
         body.max_qubits = None
         body.available_qubits = None
 
         result = set_device(body)
         assert result.name == "dummy"
+        assert result.state == "online"
         assert result.status == "online"
-        assert device.get_manual_maintain_mode() is False
 
+    @patch.object(TaskScheduler, "get_device_repo")
     @patch.object(DeviceManager, "get_device")
     @patch.object(TaskScheduler, "get_device_manager")
-    def test_set_status_maintain(
-        self, mock_get_device_manager, mock_get_device
+    def test_set_state_maintain(
+        self, mock_get_device_manager, mock_get_device, mock_get_device_repo
     ):
-        """Set device status to maintain enables manual maintain."""
+        """Set device state to maintain."""
         device = self._make_device()
         mock_get_device.return_value = device
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
         )
+        mock_get_device_repo.return_value = None
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = "maintain"
+        body.state = "maintain"
         body.enable = None
         body.max_qubits = None
         body.available_qubits = None
 
         result = set_device(body)
+        assert result.state == "maintain"
         assert result.status == "maintain"
-        assert device.get_manual_maintain_mode() is True
 
+    @patch.object(TaskScheduler, "get_device_repo")
     @patch.object(DeviceManager, "get_device")
     @patch.object(TaskScheduler, "get_device_manager")
-    def test_set_status_auto_no_change(
-        self, mock_get_device_manager, mock_get_device
+    def test_set_state_auto(
+        self, mock_get_device_manager, mock_get_device, mock_get_device_repo
     ):
-        """status='auto' does not change device status."""
+        """state='auto' uses in-memory status."""
         device = self._make_device()
         device.set_status("offline")
         mock_get_device.return_value = device
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
         )
+        mock_get_device_repo.return_value = None
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = "auto"
+        body.state = "auto"
         body.enable = None
         body.max_qubits = None
         body.available_qubits = None
 
         result = set_device(body)
+        assert result.state == "auto"
         assert result.status == "offline"
 
     @patch.object(DeviceManager, "get_device")
@@ -453,7 +461,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = None
+        body.state = None
         body.enable = False
         body.max_qubits = None
         body.available_qubits = None
@@ -474,7 +482,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = None
+        body.state = None
         body.enable = None
         body.max_qubits = "50"
         body.available_qubits = None
@@ -497,7 +505,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = None
+        body.state = None
         body.enable = None
         body.max_qubits = "auto"
         body.available_qubits = None
@@ -510,7 +518,7 @@ class TestSetDevice:
     def test_set_all_attributes(
         self, mock_get_device_manager, mock_get_device
     ):
-        """Set status, enable, and max_qubits together."""
+        """Set state, enable, and max_qubits together."""
         device = self._make_device()
         mock_get_device.return_value = device
         mock_get_device_manager.return_value = DeviceManager(
@@ -519,12 +527,13 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = "online"
+        body.state = "online"
         body.enable = True
         body.max_qubits = "100"
         body.available_qubits = None
 
         result = set_device(body)
+        assert result.state == "online"
         assert result.status == "online"
         assert result.enable is True
         assert result.max_qubits == 100
@@ -542,7 +551,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "missing"
-        body.status = "online"
+        body.state = "online"
         body.enable = None
         body.max_qubits = None
         body.available_qubits = None
@@ -574,7 +583,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = None
+        body.state = None
         body.enable = None
         body.max_qubits = "not_a_number"
         body.available_qubits = None
@@ -599,7 +608,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = None
+        body.state = None
         body.enable = None
         body.max_qubits = None
         body.available_qubits = None
@@ -623,7 +632,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = None
+        body.state = None
         body.enable = None
         body.max_qubits = None
         body.available_qubits = "30"
@@ -645,7 +654,7 @@ class TestSetDevice:
 
         body = Mock(spec=SetDeviceRequest)
         body.device_name = "dummy"
-        body.status = None
+        body.state = None
         body.enable = None
         body.max_qubits = None
         body.available_qubits = "auto"

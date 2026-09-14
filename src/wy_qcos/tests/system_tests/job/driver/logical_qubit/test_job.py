@@ -93,19 +93,27 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
-        self.admin_client.set_device(job_info["backend"], status="online")
-        StLibrary.submit_job(self.admin_client, job_info)
-        success, err_msg, job_results = StLibrary.wait_and_get_job_result(
-            self.admin_client, job_info, self.timeout, self.interval
-        )
-        if success:
-            StLibrary.delete_job(self.admin_client, job_info["job_id"])
-            assert (
-                job_results["result"]["job_status"]
-                == Constant.JOB_STATUS_COMPLETED
+        self.admin_client.set_device(job_info["backend"], state="online")
+        try:
+            StLibrary.submit_job(self.admin_client, job_info)
+            success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+                self.admin_client,
+                job_info,
+                self.timeout,
+                self.interval,
             )
-        else:
-            logger.warning(
-                f"Job failed. err_msg: {err_msg}, job_results: {job_results}"
-            )
-        assert success is True
+            if success:
+                StLibrary.delete_job(self.admin_client, job_info["job_id"])
+                assert (
+                    job_results["result"]["job_status"]
+                    == Constant.JOB_STATUS_COMPLETED
+                )
+            else:
+                logger.warning(
+                    f"Job failed. err_msg: {err_msg}, "
+                    f"job_results: {job_results}"
+                )
+            assert success is True
+        finally:
+            # restore device state to auto
+            self.admin_client.set_device(job_info["backend"], state="auto")
