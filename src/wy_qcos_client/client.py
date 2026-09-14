@@ -420,45 +420,25 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def set_device_maintain_mode(self, device_name, mode):
-        """Set device maintain mode.
-
-        Args:
-            device_name: device name
-            mode: maintain mode: "on" or "off"
-
-        Returns:
-            status_code, reason, text, result
-        """
-        method_name = "set_device_maintain_mode"
-
-        # construct data and call json rpc
-        data = {"device_name": device_name, "mode": mode}
-
-        # construct data and call json rpc
-        status_code, reason, text, result = self.call_json_rpc(
-            self.device_url, method_name, data
-        )
-        return status_code, reason, text, result
-
     def set_device(
         self,
         device_name,
         *,
-        status=None,
+        state=None,
         enable=None,
         max_qubits=None,
         available_qubits=None,
     ):
-        """Set device attributes (status, enable, max_qubits, etc.).
+        """Set device attributes (state, enable, max_qubits, etc.).
 
         Each parameter is optional; when omitted (None) the
         corresponding attribute is not changed.
 
         Args:
             device_name: device name
-            status: device status ("auto", "online", "offline",
-                "maintain", "calibration"). None means no change.
+            state: device state ("auto", "online", "offline",
+                "busy", "disconnected", "calibrating",
+                "maintain", "unknown"). None means no change.
             enable: enable flag (True/False). None means no change.
             max_qubits: max qubits ("auto" or positive integer
                 string). None means no change.
@@ -472,8 +452,8 @@ class Client:
 
         # construct data and call json rpc
         data = {"device_name": device_name}
-        if status is not None:
-            data["status"] = status
+        if state is not None:
+            data["state"] = state
         if enable is not None:
             data["enable"] = enable
         if max_qubits is not None:
