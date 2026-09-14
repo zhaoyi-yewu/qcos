@@ -48,6 +48,7 @@ RUN set -e && \
     && mkdir -p /var/lib/qcos/ \
     && mkdir -p /var/run/qcos/ \
     && mkdir -p /var/log/qcos/ \
+    && mkdir -p /root/.docker/cli-plugins/ \
     && \
 # copy requirements
     cp -rf ${BUILD_CONTEXT}/pyproject.toml ${BUILD_CONTEXT}/LICENSE /tmp/ \
@@ -70,7 +71,8 @@ RUN set -e && \
     if [ -n "${DOCKER_COMPOSE_BIN_MIRROR}" ]; then \
       echo "Installing docker-compose: ${DOCKER_COMPOSE_BIN_MIRROR}" ; \
       wget -q ${DOCKER_COMPOSE_BIN_MIRROR} -O /usr/bin/docker-compose && \
-      chmod 755 /usr/bin/docker-compose ; \
+      chmod 755 /usr/bin/docker-compose && \
+      ln -s /usr/bin/docker-compose  /root/.docker/cli-plugins/docker-compose ; \
     fi \
     && \
 # Build customized Python if required

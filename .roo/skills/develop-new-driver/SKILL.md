@@ -310,7 +310,7 @@ $ python3 requirements/install-venvs.py --name DriverXXX
 ### 步骤 7: 单元测试
 
 ```
-src/wy_qcos/tests/unit_tests/driver/
+src/wy_qcos/tests/unit_tests/driver/<vendor>
 ├── test_driver_xxx.py
 ```
 
@@ -321,7 +321,7 @@ src/wy_qcos/tests/unit_tests/driver/
 - 测试 `run`：正常流程、提交失败、超时、结果解析
 - 测试 `fetch_configs`：远程 API 返回解析
 - 参考 [`test_driver_quafu.py`](src/wy_qcos/tests/unit_tests/driver/test_driver_quafu.py)
-- 运行：`python -m pytest src/wy_qcos/tests/unit_tests/driver/test_driver_xxx.py -v` 或者 `cicd/run-tests.sh -u src/wy_qcos/tests/unit_tests/driver/test_driver_xxx.py`
+- 运行：`python -m pytest src/wy_qcos/tests/unit_tests/driver/quafu/test_driver_xxx.py -v` 或者 `cicd/run-tests.sh -u src/wy_qcos/tests/unit_tests/driver/<vendor>/test_driver_xxx.py`
 
 ### 步骤 8: 系统测试
 
