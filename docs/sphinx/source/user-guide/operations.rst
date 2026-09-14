@@ -59,7 +59,7 @@ QCOS 使用 PostgreSQL 作为主数据库，定期备份可防止数据丢失。
 
 **方式二：使用 export-database.py 脚本备份 (需自行安装匹配PGSQL server的pg_dump命令版本)**
 
-QCOS 提供了 [`bin/export-database.py`](bin/export-database.py:1) 脚本，
+QCOS 提供了 ``bin/export-database.py`` 脚本，
 支持 sql / csv / json / toml 多种导出格式，
 可通过参数指定数据库名称、连接地址、用户名和密码：
 

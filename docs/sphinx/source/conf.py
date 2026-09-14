@@ -501,7 +501,7 @@ html_theme_options_rtd = {
     "navigation_depth": 4,
     "collapse_navigation": True,
     "sticky_navigation": True,
-    "titles_only": False,
+    "titles_only": True,
 }
 html_theme_options_alabaster = {
     "description": description_zh,

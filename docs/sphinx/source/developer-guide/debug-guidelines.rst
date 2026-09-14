@@ -200,7 +200,7 @@ rpdb（远程 pdb）进行调试：
 **4. 通过 Prefect 查看 flow-run 和 task-run 状态**
 
 Worker 进程中的量子作业执行流程通过 Prefect 的 flow 和 task
-组织。可以通过 WebUI 或 CLI 查看执行状态，定位卡在哪一步。
+组织。可以通过 Prefect WebUI 或 Prefect CLI 查看执行状态，定位卡在哪一步。
 
 **4.1 通过 Prefect WebUI 查看**
 
@@ -221,7 +221,7 @@ WebUI 功能说明：
 
    Prefect WebUI查看flows
 
-* **Flow Run 详情页**：点击某个 flow run 可查看：
+* **Flow Runs 详情页**：点击某个 flow run 可查看：
 
   - **状态**：Running / Completed / Failed / Crashed
   - **Task Runs**：该 flow 下所有 task 的执行状态和耗时

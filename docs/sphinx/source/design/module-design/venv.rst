@@ -55,7 +55,7 @@ venv 安装目录默认为 ``/var/lib/qcos/venv/<name>``，其中 ``<name>``
 
 .. code-block:: shell
 
-    # 进入 quafu 驱动的 venv 环境进行调试
+    # 进入 qutip 驱动的 venv 环境进行调试
     $ source /var/lib/qcos/venv/DriverQutipSim/bin/activate
 
     # 验证驱动模块可导入
