@@ -7,4 +7,3 @@
    :maxdepth: 2
 
    development
-   operations
