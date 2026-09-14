@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 class Device:
     """Device."""
 
+    # Device state: "auto" means use in-memory monitor status
+    DEVICE_STATE_AUTO = "auto"
     # Device status
     DEVICE_STATUS_ONLINE = "online"
     DEVICE_STATUS_OFFLINE = "offline"
@@ -43,6 +45,8 @@ class Device:
         DEVICE_STATUS_MAINTAIN,
         DEVICE_STATUS_UNKNOWN,
     ]
+    # All valid states (includes auto)
+    DEVICE_STATES_WITH_AUTO = [DEVICE_STATE_AUTO] + DEVICE_STATUSES
 
     def __init__(self, name, driver):
         # name
@@ -55,8 +59,10 @@ class Device:
         self.driver = driver
         # enable this driver or not
         self.enable = False
-        # status
+        # status (in-memory, from monitor)
         self.status = self.DEVICE_STATUS_OFFLINE
+        # manual state override: None or "auto" means use in-memory status
+        self.state = self.DEVICE_STATE_AUTO
         # qubits
         self.max_qubits = driver.get_max_qubits()
         # available qubits
@@ -142,6 +148,41 @@ class Device:
     def get_status(self):
         """Get device status."""
         return self.status
+
+    def set_state(self, state):
+        """Set device state (manual override).
+
+        Args:
+            state: device state
+                (auto/online/offline/busy/disconnected/
+                calibrating/maintain/unknown)
+        """
+        if state not in self.DEVICE_STATES_WITH_AUTO:
+            logger.warning(
+                f"Failed to set device state: '{state}'. "
+                f"valid states: "
+                f"{', '.join(self.DEVICE_STATES_WITH_AUTO)}"
+            )
+            return
+        self.state = state
+
+    def get_state(self):
+        """Get device state (manual override).
+
+        Returns:
+            device state string
+        """
+        return self.state
+
+    def get_effective_status(self):
+        """Get effective status considering manual state override.
+
+        Returns:
+            tuple: (status, is_manual)
+        """
+        if self.state and self.state not in (None, self.DEVICE_STATE_AUTO):
+            return self.state, True
+        return self.status, False
 
     def set_manual_maintain_mode(self, enabled):
         """Set manual maintain mode flag.
@@ -239,11 +280,14 @@ class Device:
         last_updated_at = device_running_info.get("last_updated_at")
         available_qubits = device_running_info.get("available_qubits")
 
-        if not self._manual_maintain_mode:
-            if device_status:
-                self.set_status(device_status)
-                self.last_updated_at = last_updated_at
-                self.available_qubits = available_qubits
+        # Only update in-memory status when state is auto or None
+        # (no manual override)
+        if not self.state or self.state == self.DEVICE_STATE_AUTO:
+            if not self._manual_maintain_mode:
+                if device_status:
+                    self.set_status(device_status)
+                    self.last_updated_at = last_updated_at
+                    self.available_qubits = available_qubits
 
         details = device_running_info.get("details")
         if details:

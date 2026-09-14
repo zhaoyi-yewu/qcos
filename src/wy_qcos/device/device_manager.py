@@ -24,8 +24,12 @@ from schema import Optional
 
 from wy_qcos.common import args_schema
 from wy_qcos.common.constant import Constant
-from wy_qcos.device.device import Device
 from wy_qcos.common.library import Library
+from wy_qcos.db.utils.db_utils import create_db_session
+from wy_qcos.db.repositories.device import (
+    DeviceRepository,
+)
+from wy_qcos.device.device import Device
 
 
 logger = logging.getLogger(__name__)
@@ -206,6 +210,61 @@ class DeviceManager:
             thread.start()
             # Show driver info
             logger.info(f"\n{device.show_device_info()}")
+
+    def init_db(self, db_engine):
+        """Init device DB entries and load persisted states.
+
+        For each loaded device, ensure a DB entry exists in the
+        devices table. If an entry already exists, load its
+        persisted state into memory; otherwise create a new
+        entry with state="auto".
+
+        Args:
+            db_engine: SQLAlchemy database engine
+
+        Returns:
+            DeviceRepository instance or None
+        """
+        logger.info("Init device DB entries and load states ...")
+        with create_db_session(db_engine) as db_session:
+            device_repo = DeviceRepository(db_session)
+
+            # load all persisted states from DB
+            success, _, states = (
+                device_repo.load_all_device_states()
+            )
+
+            for device in self.devices.values():
+                if success and states and device.name in states:
+                    # device already in DB, load state
+                    device.set_state(states[device.name])
+                    logger.info(
+                        f"Loaded state "
+                        f"'{states[device.name]}' for "
+                        f"device '{device.name}' from DB"
+                    )
+                else:
+                    # device not in DB, create entry
+                    ok, err, _ = (
+                        device_repo.upsert_device_state(
+                            device.name,
+                            Device.DEVICE_STATE_AUTO,
+                        )
+                    )
+                    if not ok:
+                        logger.error(
+                            f"Failed to init DB entry "
+                            f"for device '{device.name}': "
+                            f"{err}"
+                        )
+                    else:
+                        logger.info(
+                            f"Created DB entry for device "
+                            f"'{device.name}' with "
+                            f"state='auto'"
+                        )
+
+            return device_repo
 
     def has_device(self, device_name):
         """Has device.
