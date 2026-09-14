@@ -17,6 +17,7 @@
 
 from .base import Base
 from .base import ArrayType, GUID
+from .device import Device
 from .project import Project
 from .user import User
 from .user import Role
