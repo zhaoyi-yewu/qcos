@@ -20,6 +20,9 @@ Create Pull-Request
 
 Prerequisite:
 pip3 install --break-system-packages requests
+
+Gitee API:
+https://gitee.com/api/v5/swagger
 """
 
 import os

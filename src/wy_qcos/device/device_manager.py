@@ -230,9 +230,7 @@ class DeviceManager:
             device_repo = DeviceRepository(db_session)
 
             # load all persisted states from DB
-            success, _, states = (
-                device_repo.load_all_device_states()
-            )
+            success, _, states = device_repo.load_all_device_states()
 
             for device in self.devices.values():
                 if success and states and device.name in states:
@@ -245,11 +243,9 @@ class DeviceManager:
                     )
                 else:
                     # device not in DB, create entry
-                    ok, err, _ = (
-                        device_repo.upsert_device_state(
-                            device.name,
-                            Device.DEVICE_STATE_AUTO,
-                        )
+                    ok, err, _ = device_repo.upsert_device_state(
+                        device.name,
+                        Device.DEVICE_STATE_AUTO,
                     )
                     if not ok:
                         logger.error(

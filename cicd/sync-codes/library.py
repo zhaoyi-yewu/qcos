@@ -161,7 +161,7 @@ def gitlab_get_paginated(path, base_url, token, params=None,
 
 def get_merge_requests(
     base_url, token, project_id,
-    state="opened", per_page=100, page=None
+    state="opened", per_page=100, page=None, updated_after=None
 ):
     """Fetch merge requests from GitLab by state.
 
@@ -172,6 +172,9 @@ def get_merge_requests(
         state: MR state filter (opened/merged/closed/all)
         per_page: number of items per page
         page: specific page number; if None, fetch all pages
+        updated_after: optional ISO date string (e.g.
+            "2026-09-10") to filter MRs updated after this
+            date. Uses GitLab's updated_after parameter.
 
     Returns:
         dict: {mr_iid: {title, author, web_url, state, commits}}
@@ -181,12 +184,16 @@ def get_merge_requests(
     project_id_encoded = quote(str(project_id), safe="")
     path = f"projects/{project_id_encoded}/merge_requests"
 
+    params = {"state": state}
+    if updated_after:
+        params["updated_after"] = updated_after
+
     if page is not None:
-        params = {"state": state, "per_page": per_page, "page": page}
+        params["per_page"] = per_page
+        params["page"] = page
         data = gitlab_get(path, base_url, token, params)
         mrs = data
     else:
-        params = {"state": state}
         mrs = gitlab_get_paginated(
             path, base_url, token, params, per_page
         )
@@ -216,7 +223,7 @@ def get_mr_commits(base_url, token, project_id, mr_iid):
         dict: {commit_short_id: {summary, description,
                 author_name, jira_id}}
     """
-    # URL-encode project_id if it contains "/" (e.g. "OCRI/WuYueOs")
+    # URL-encode project_id if it contains "/" (e.g. "QCOS/WuYueOs")
     project_id_encoded = quote(str(project_id), safe="")
     path = (
         f"projects/{project_id_encoded}/merge_requests/"
@@ -572,18 +579,21 @@ def close_gitee_issue(token, owner, repo, issue_number):
     Returns:
         bool: True if successfully closed
     """
-    data = {"state": "closed"}
+    data = {
+        "state": "closed",
+        "repo": repo,
+    }
     try:
         status, _ = gitee_patch(
-            owner, repo, f"issues/{issue_number}", token, data
+            owner, None, f"issues/{issue_number}", token, data
         )
     except SyncException as e:
-        print(f"  Error closing Gitee issue #{issue_number}: {e}")
+        print(f"  Error: closing Gitee issue #{issue_number}: {e}")
         return False
     if status == 200:
         print(f"  Closed Gitee issue #{issue_number}")
         return True
-    print(f"  Failed to close Gitee issue #{issue_number}: "
+    print(f"  Error: Failed to close Gitee issue #{issue_number}: "
           f"{status}")
     return False
 
@@ -722,17 +732,26 @@ def fetch_jira_issue(jira_id, base_url=None, auth=None):
             f"Failed to parse Jira response for {jira_id}: {e}"
         ) from e
     fields = data.get("fields", {})
-    status_obj = fields.get("status", {})
-    reporter = data["fields"]["reporter"]
+    reporter = fields["reporter"]
+    fixed_version = None
+    fix_versions = fields.get("fixVersions", [])
+    if fix_versions:
+        fixed_version = fix_versions[0]["name"]
+    resolution = None
+    _resolution = fields.get("resolution", None)
+    if _resolution:
+        resolution = _resolution["name"]
     return {
         "jira_id": jira_id,
         "jira_num": extract_jira_num(jira_id),
         "jira_type": fields["issuetype"]["name"], # '任务', '需求', 'Bug'
         "summary": fields.get("summary", ""),
         "description": fields.get("description", ""),
-        "status": status_obj.get("name", "Unknown"),
+        "status": fields.get("status", {}).get("name", "Unknown"),
+        "resolution": resolution,
         "reporter_name": reporter["name"],
         "reporter_email": reporter["emailAddress"],
+        "fixed_version": fixed_version,
     }
 
 
@@ -747,9 +766,19 @@ def is_jira_closed(jira_issue_data):
     """
     if not jira_issue_data:
         return False
-    status = jira_issue_data.get("status", "").lower()
-    closed_keywords = ["closed", "done", "resolved", "completed"]
-    return any(kw in status for kw in closed_keywords)
+    closed_keywords = {
+        "status": ["已部署", "Closed"],
+        "resolution": ["已完成"]
+    }
+    status = jira_issue_data.get("status")
+    resolution = jira_issue_data.get("resolution")
+    # Convert to string to handle None
+    safe_status = str(status)
+    safe_resolution = str(resolution)
+    return any(
+        keyword in safe_status for keyword in closed_keywords["status"]) or \
+        any(keyword in safe_resolution for keyword in
+            closed_keywords["resolution"])
 
 
 # ======================================================================

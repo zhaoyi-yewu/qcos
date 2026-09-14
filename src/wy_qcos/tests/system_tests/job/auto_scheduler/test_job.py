@@ -39,7 +39,6 @@ flavor referencing all qutip_sim devices for auto scheduling.
 import json
 import logging
 import pytest
-import time
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library

@@ -59,6 +59,8 @@ git branch --set-upstream-to=gitee/develop gitee-develop
 ./merge-to-gitee.py --delete-local-branches
 ./merge-to-gitee.py --delete-remote-branches
 ./merge-to-gitee.py -S -s "2025-11-01" --delete-local-branches --delete-remote-branches
+# skip some commits
+./merge-to-gitee.py -S -s "2025-11-01" --delete-local-branches --delete-remote-branches --skip-commits 1234 2345
 """
 
 import hashlib
@@ -86,7 +88,8 @@ class MergeException(Exception):
     """Merge Exception."""
 
 
-def run_command(command, check=True, capture_output=True, text=True):
+def run_command(command, check=True, capture_output=True, text=True,
+                ignore_error=False):
     """Run command.
 
     Args:
@@ -94,6 +97,7 @@ def run_command(command, check=True, capture_output=True, text=True):
         check: check exit code
         capture_output: capture output
         text: print text
+        ignore_error: ignore error
 
     Returns:
         command results
@@ -112,7 +116,8 @@ def run_command(command, check=True, capture_output=True, text=True):
     except subprocess.CalledProcessError as e:
         print(f"Command failed: {command}")
         print(f"Error output: {e.stderr}")
-        raise
+        if not ignore_error:
+            raise
 
 
 def pull_branches():
@@ -202,6 +207,7 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
         options["since"] = since_str
 
     # list all commit logs
+    ignore_pattern = rb'@@.*?@@'
     for commit in repo.iter_commits(branch_name, **options):
         # get commit info
         commit_hash = commit.hexsha  # %H (Commit Hash)
@@ -215,7 +221,8 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
         diffs = commit.diff(parent, create_patch=True)
         full_diff_text = b""
         for d in diffs:
-            full_diff_text += d.diff  # data type is bytes
+            diff = re.sub(ignore_pattern, b'', d.diff, flags=re.MULTILINE)
+            full_diff_text += diff
         content_hash = hashlib.md5(full_diff_text).hexdigest()
 
         # store commit info
@@ -561,6 +568,8 @@ def split_and_push_single_commits(start_since=None, commit_id=None,
             print(f"  [{commit_hash}] {commit_summary}")
 
     print("\n==== Step 3: Split and push single commits ====")
+    success = True
+    err_msg = None
     if dry_run:
         print("[Dry-run mode] Branches will be created but NOT pushed.")
     for i, commit in enumerate(target_commits, 1):
@@ -572,10 +581,17 @@ def split_and_push_single_commits(start_since=None, commit_id=None,
             else:
                 push_single_branch(branch_name)
         except Exception as e:
-            print(f"Failed to process commit [{commit}]: {e}")
-            continue
+            err_msg = f"Failed to process commit [{commit}]: {e}"
+            print(err_msg)
+            success = False
+            break
 
-    print("\n==== Split and push all single commits completed! ====")
+    if not success:
+        print("\n==== Failed to Split and push commits! ====")
+        raise Exception(err_msg)
+    else:
+        print("\n==== Split and push all single commits completed! ====")
+
 
 
 def merge_branches(commit_id):
