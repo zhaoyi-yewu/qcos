@@ -67,8 +67,6 @@ from .device import (
     GetCalibrateResultResponse,
     GetDeviceOptionsRequest,
     GetDeviceOptionsResponse,
-    SetDeviceMaintainModeRequest,
-    SetDeviceMaintainModeResponse,
     SetDeviceRequest,
     SetDeviceResponse,
 )

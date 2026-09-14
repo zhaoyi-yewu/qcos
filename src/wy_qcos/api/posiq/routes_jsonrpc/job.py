@@ -378,7 +378,8 @@ def submit_job(
     # get driver from backend
     device = devices.get(backend)
     driver = device.get_driver()
-    device_status = device.get_status()
+    # use effective status (considers manual state override)
+    device_status, _ = device.get_effective_status()
     enable_device = device.enable
 
     # check device status

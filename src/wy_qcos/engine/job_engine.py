@@ -757,8 +757,6 @@ def driver_cancel(job_id, driver):
         logger.info(f"Cancel job: job_id: {job_id}")
         if driver:
             driver.cancel(job_id)
-        else:
-            logger.error(f"Cancel job: job_id: {job_id}. driver is not found")
     except Exception as e:
         logger.error(f"Cancel job: job_id: {job_id} failed. {str(e)}")
 
