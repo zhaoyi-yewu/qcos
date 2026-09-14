@@ -8,10 +8,10 @@
 
 - 新增北京量子院夸父驱动: DriverQuafu, 逻辑比特驱动: DriverLqQZ01SurfaceCode, DriverLqQZ01RepetitionCode,
   DriverLqMQ02, DriverLqQZ02, DriverLqAGate100, QUTIP模拟器(支持ASHN门): DriverQutipAshnSim
+- 支持量子作业自动调度功能：用户提交作业时不指定backend，由系统自动选择后端设备
 - 新增Flavor（预设资源调度策略）管理功能：支持通过API和CLI创建、查询、删除Flavor
 - 新增Device Group（设备分组）功能：支持设备逻辑分组管理，包含增删改查API和CLI命令
 - 新增DeviceGroupFilter调度过滤器，根据device group成员列表过滤候选设备
-- 支持量子作业自动调度功能：用户提交作业时不指定backend，由系统自动选择后端设备
 - 新增自动调度器，支持10个Filter和3个Weigher
 - Job表新增flavor_id和extra_specs字段
 - submit-job命令新增--flavor-id和--extra-specs参数，--backend改为可选
