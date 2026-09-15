@@ -18,6 +18,7 @@
 """Release version script.
 
 Prerequisite:
+# git >= 2.22+
 yum install -y git
 pip3 install bump-my-version semver
 
@@ -42,7 +43,8 @@ pip3 install bump-my-version semver
 ./release-version.py -nt -n 1.0.1
 
 # specify master branch, develop branch, release branch
-./release-version.py -n 1.0.1 --master-branch master --develop-branch develop \
+./release-version.py -n 1.0.1 --project-dir /root/zhaoyi/gitee-qcos \
+  --master-branch master --develop-branch develop \
   --release-branch release/v1.0.1
 
 # delete release branches or tags
@@ -304,6 +306,8 @@ def bump_version(
     bump_cmd_args_list = []
     if no_commit:
         bump_cmd_args_list.append("--no-commit")
+    else:
+        bump_cmd_args_list.append("--commit")
     if no_tag:
         bump_cmd_args_list.append("--no-tag")
     if verbose:
@@ -437,8 +441,7 @@ USAGE
     # get top dir
     current_file = pathlib.Path(__file__).resolve()
     current_dir = current_file.parent
-    parent_dir = current_dir.parent
-    top_dir = str(parent_dir)
+    top_dir = current_dir.parent
 
     try:
         # config parser
@@ -525,6 +528,12 @@ USAGE
             "Specify version. eg. v1.0.1, v1.0.1-alpha.1",
         )
         parser.add_argument(
+            "--project-dir",
+            dest="project_dir",
+            default=None,
+            help="project directory",
+        )
+        parser.add_argument(
             "-V",
             "--verbose",
             dest="verbose",
@@ -549,8 +558,10 @@ USAGE
         run_tests = args.run_tests
         push_version = args.push_version
         delete_version = args.delete_version
+        project_dir = args.project_dir
         verbose = args.verbose
         dry_run = args.dry_run
+        top_dir = project_dir if project_dir else top_dir
 
         # checkout develop branch
         print(f"* Checkout develop branch: {develop_branch}")
