@@ -452,8 +452,12 @@ jobs:
           sleep 10
           echo "Running system tests in container: qcos"
           cd ${TOP_DIR}
-          tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
-          docker cp /tmp/cicd.tar.gz qcos:/tmp/
+          echo 1
+          ls -al .
+          echo 2
+          ls -al /
+          tar czvf /root/cicd.tar.gz ./cicd ./src ./etc ./samples
+          docker cp /root/cicd.tar.gz qcos:/tmp/
           docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
           TEST_EXIT_CODE=0
           docker exec qcos sh -c "source /root/.bashrc; echo 'Transpiler list:'; qcos-cli list-transpilers; echo 'Driver list:'; qcos-cli list-drivers; echo 'Device list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all" || TEST_EXIT_CODE=$?
