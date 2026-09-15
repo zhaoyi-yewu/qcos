@@ -36,7 +36,11 @@
 | 量旋科技 双子座 核磁量子计算机驱动 | 量旋科技 | DriverSpinQGemini | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 双子座 核磁量子计算机驱动 (实验) |
 | 量旋科技 三角座 核磁量子计算机驱动 | 量旋科技 | DriverSpinQTriangulum | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 三角座 核磁量子计算机驱动 (实验) |
 | 幺正量子 UQC-Matrix2 离子阱驱动 | 幺正量子 | DriverUQCMatrix2 | 0.0.1 | 离子阱 | 5 | cmss | 幺正量子 UQC-Matrix2 离子阱驱动 |
-| 北京量子院 夸父-Dongling 超导驱动 | 北京量子院 | DriverQuafu | 0.0.1 | 超导 | 84 | cmss | 北京量子院 夸父-Dongling 超导驱动 |
+| 北京量子院 夸父-Dongling 超导驱动 | 北京量子院 | DriverQuafuDongling | 0.0.1 | 超导 | 84 | cmss | 北京量子院 夸父-Dongling 超导驱动 |
+| 北京量子院-夸父-Shenglian 超导驱动 | 北京量子院 | DriverQuafuShenglian | 0.0.1 | 超导 | 84 | cmss | 北京量子院-夸父-Shenglian 超导驱动 |
+| 北京量子院-夸父-Hongluo 超导驱动 | 北京量子院 | DriverQuafuHongluo | 0.0.1 | 超导 | 84 | cmss | 北京量子院-夸父-Hongluo 超导驱动 |
+| 北京量子院-夸父-Ling 超导驱动 | 北京量子院 | DriverQuafuLing | 0.0.1 | 超导 | 112 | cmss | 北京量子院-夸父-Ling 超导驱动 |
+| 北京量子院-夸父-Baihua 超导驱动 | 北京量子院 | DriverQuafuBaihua | 0.0.1 | 超导 | 156 | cmss | 北京量子院-夸父-Baihua 超导驱动 |
 | 逻辑比特 QZ01-surface_code 超导驱动 | 逻辑比特 | DriverQZ01SurfaceCode | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01-surface_code 超导驱动 |
 | 逻辑比特 QZ01-repetition_code 超导驱动 | 逻辑比特 | DriverLqQZ01RepetitionCode | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01-repetition_code 超导驱动 |
 | 逻辑比特 QZ02 超导驱动 | 逻辑比特 | DriverLqQZ02 | 0.0.1 | 超导 | 20 | cmss | 逻辑比特 QZ02 超导驱动 |

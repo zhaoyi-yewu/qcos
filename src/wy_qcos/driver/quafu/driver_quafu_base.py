@@ -30,7 +30,7 @@ from wy_qcos.driver.driver_base import DriverBase
 from wy_qcos.driver.driver_gate_base import DriverGateBase
 
 
-class DriverQuafu(DriverGateBase):
+class DriverQuafuBase(DriverGateBase):
     """北京量子院 夸父-Dongling 超导驱动.
 
     Dongling driver
@@ -50,10 +50,8 @@ class DriverQuafu(DriverGateBase):
         self.description = "北京量子院-夸父-Dongling 超导驱动"
         self.backend_name = [
             "Baihua",
-            "Yudu",
             "Dongling",
             "Honglu",
-            "Baiwang",
             "Ling",
             "Shenglian",
         ]

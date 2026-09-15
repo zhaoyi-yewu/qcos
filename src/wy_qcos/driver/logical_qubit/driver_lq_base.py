@@ -438,6 +438,13 @@ class DriverLogicalQubitBase(DriverGateBase):
         )
         src_code = data["source_code"]
         final_layout = data["final_layout_dict"]
+        if final_layout is None:
+            err = {
+                "error_message": "please enable mapping.",
+                "vendor_error_code": None,
+                "vendor_error_message": None,
+            }
+            raise ValueError(err)
         phys_to_logical = self._phys_to_logical(final_layout)
 
         self.set_progress_by_task(self.TASK_STAGE_START)

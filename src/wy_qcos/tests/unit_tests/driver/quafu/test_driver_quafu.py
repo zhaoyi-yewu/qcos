@@ -22,15 +22,18 @@ from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
 
-org_path = Library.set_driver_venv_path("DriverQuafu", Config.DEFAULT.VENV_DIR)
+org_path = Library.set_driver_venv_path(
+    "DriverQuafuDongling", Config.DEFAULT.VENV_DIR
+)
 
 import pytest
 from unittest.mock import patch, Mock
 
 from wy_qcos.driver.driver_base import DriverBase
-from wy_qcos.driver.quafu.driver_quafu import DriverQuafu
+from wy_qcos.driver.quafu.driver_quafu_dongling import DriverQuafuDongling
+from wy_qcos.driver.quafu.driver_quafu_base import DriverQuafuBase
 
-driver_quafu = DriverQuafu()
+driver_quafu = DriverQuafuDongling()
 job_id = "00000000-0000-4000-8000-000000000001"
 task_id = 123456
 num_qubits = 5
@@ -64,7 +67,7 @@ class TestDriverQuafu:
     def test_init_driver(self):
         assert driver_quafu.init_driver() is None
 
-    @patch("wy_qcos.driver.quafu.driver_quafu.Task")
+    @patch("wy_qcos.driver.quafu.driver_quafu_base.Task")
     def test_fetch_configs(self, mock_task):
         mock_task.return_value = Mock()
         assert driver_quafu.fetch_configs() is None
@@ -100,7 +103,7 @@ class TestDriverQuafu:
         with pytest.raises(ValueError, match="invalid task ID"):
             driver_quafu.submit_task("1")
 
-    @patch.object(DriverQuafu, "get_task_status")
+    @patch.object(DriverQuafuBase, "get_task_status")
     def test_check_task_status(self, mock_get_task_status):
         mock_get_task_status.return_value = True, result
         success, err_msg, status = driver_quafu.check_task_status(
@@ -110,7 +113,7 @@ class TestDriverQuafu:
         assert err_msg is None
         assert status == "Finished"
 
-    @patch.object(DriverQuafu, "get_task_status")
+    @patch.object(DriverQuafuBase, "get_task_status")
     def test_check_task_status_accepts_string_response(
         self, mock_get_task_status
     ):
@@ -121,7 +124,7 @@ class TestDriverQuafu:
         assert success is True
         assert status == "Finished"
 
-    @patch.object(DriverQuafu, "get_task_status")
+    @patch.object(DriverQuafuBase, "get_task_status")
     def test_check_task_status_rejects_invalid_response(
         self, mock_get_task_status
     ):
@@ -131,9 +134,9 @@ class TestDriverQuafu:
                 task_id, [driver_quafu.task_status_success]
             )
 
-    @patch("wy_qcos.driver.quafu.driver_quafu.logger.error")
-    @patch.object(DriverQuafu, "get_task_results")
-    @patch.object(DriverQuafu, "get_task_status")
+    @patch("wy_qcos.driver.quafu.driver_quafu_base.logger.error")
+    @patch.object(DriverQuafuBase, "get_task_results")
+    @patch.object(DriverQuafuBase, "get_task_status")
     def test_check_task_status_logs_remote_result_on_failure(
         self,
         mock_get_task_status,
@@ -171,9 +174,9 @@ class TestDriverQuafu:
         driver_quafu.tmgr.status.assert_called_once_with(task_id)
 
     @pytest.mark.smoke
-    @patch.object(DriverQuafu, "get_task_results")
-    @patch.object(DriverQuafu, "check_task_status")
-    @patch.object(DriverQuafu, "submit_task")
+    @patch.object(DriverQuafuBase, "get_task_results")
+    @patch.object(DriverQuafuBase, "check_task_status")
+    @patch.object(DriverQuafuBase, "submit_task")
     def test_run(
         self,
         mock_submit_task,

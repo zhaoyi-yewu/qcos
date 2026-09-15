@@ -1,7 +1,7 @@
-[quafu]
-alias_name = "北京量子院-夸父-Dongling 超导驱动"
-driver = "DriverQuafu"
-description = "北京量子院-夸父-Dongling 超导驱动"
+[quafu_dongling]
+alias_name = "北京量子院-夸父-Dongling"
+driver = "DriverQuafuDongling"
+description = "北京量子院-夸父-Dongling"
 
 # [Optional] enable or disable the device
 # enable = true
@@ -11,11 +11,11 @@ description = "北京量子院-夸父-Dongling 超导驱动"
 debug = false
 
 # [Optional] device log file path
-# device_log_file = /var/log/qcos/device_quafu.log
-device_log_file = "/var/log/qcos/device_quafu.log"
+# device_log_file = /var/log/qcos/device_quafu_dongling.log
+device_log_file = "/var/log/qcos/device_quafu_dongling.log"
 
 # [Optional] device manager log file path
-# mgr_log_file = /var/log/qcos/device_quafu.log
+# mgr_log_file = /var/log/qcos/device_quafu_dongling.log
 
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
@@ -32,21 +32,27 @@ device_log_file = "/var/log/qcos/device_quafu.log"
 # [Optional] max queued jobs, -1 means unlimited
 max_queued_jobs = -1
 
+# [Optional] max job wait time, default value is 604800 seconds (7 days)
+max_job_wait_time = 604800
+
+# [Optional] job query interval, default value is 5 seconds
+job_query_interval = 5
+
 chip_name = "Dongling"
 token = "1"
 url = "http://127.0.0.1:18606"
 
-[quafu.device_monitor]
+[quafu_dongling.device_monitor]
 # [Optional] enable device monitor
 enable_device_monitor = false
 
 # [Optional] device monitor log file path
-monitor_log_file = "/var/log/qcos/device_monitor_quafu.log"
+monitor_log_file = "/var/log/qcos/device_monitor_quafu_dongling.log"
 
 # [Optional] monitor polling interval (secs)
 polling_interval = 60
 
-[quafu.transpiler.qpu_configs]
+[quafu_dongling.transpiler.qpu_configs]
 qubits = 84
 
 coupler_map.CZ0_7 = ["Q0", "Q7"]

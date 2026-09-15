@@ -113,13 +113,13 @@
    qcos-cli submit-job --code-type qasm --shots 10 --backend dummy  --job-priority 5 -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 开启电路切割
-   qcos-cli submit-job --code-type qasm --shots 10 --backend quafu --driver-options '{"enable_wirecut":true, "wirecut_qubit_width": 10}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
+   qcos-cli submit-job --code-type qasm --shots 10 --backend quafu_dongling --driver-options '{"enable_wirecut":true, "wirecut_qubit_width": 10}' -f ./samples/qasm/2.0/wirecut/12_30.qasm
 
    # 自动用项目内理想模拟器生成预期概率，并计算概率保真度
-   qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu --driver-options '{"compute_fidelity":true}' -f ./samples/qasm/2.0/simple-qasm.qasm
+   qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu_dongling --driver-options '{"compute_fidelity":true}' -f ./samples/qasm/2.0/simple-qasm.qasm
 
    # 3-bit Grover 示例，无需手工填写 101 的理论概率
-   qcos-cli submit-job --code-type qasm --shots 10240 --backend quafu --driver-options '{"compute_fidelity":true}' -f ./samples/qasm/2.0/wirecut/grover_3_search_3_qubit.qasm
+   qcos-cli submit-job --code-type qasm --shots 10240 --backend quafu_dongling --driver-options '{"compute_fidelity":true}' -f ./samples/qasm/2.0/wirecut/grover_3_search_3_qubit.qasm
 
 将 ``compute_fidelity`` 设为 ``true`` 后，Job Engine 会使用项目内的
 Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码计算
@@ -279,7 +279,7 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 .. code-block:: shell
 
    # 夸父 超导量子计算机 真实运行
-   qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu -f ./samples/qasm/2.0/simple-qasm.qasm
+   qcos-cli submit-job --code-type qasm --shots 1024 --backend quafu_dongling -f ./samples/qasm/2.0/simple-qasm.qasm
 
 - 逻辑比特 超导量子计算机
 

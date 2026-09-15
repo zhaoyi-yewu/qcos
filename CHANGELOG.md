@@ -6,7 +6,8 @@
 
 ### 新增功能
 
-- 无
+- 新增北京量子院夸父驱动: DriverQuafuDongling, DriverQuafuShenglian, DriverQuafuBaihua,
+  DriverQuafuHongluo, DriverQuafuLing
 
 ### 变更功能
 
