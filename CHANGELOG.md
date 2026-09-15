@@ -7,7 +7,8 @@
 ### 新增功能
 
 - 新增北京量子院夸父驱动: DriverQuafuDongling, DriverQuafuShenglian, DriverQuafuBaihua,
-  DriverQuafuHongluo, DriverQuafuLing
+  DriverQuafuHongluo, DriverQuafuLing, 国基量子超导驱动: DriverCetcBaihua，
+  量旋科技超导驱动: DriverSpinqSqc25, 启科量子离子阱驱动: DriverQudoorAbaQu100
 
 ### 变更功能
 

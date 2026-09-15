@@ -1,0 +1,27 @@
+[qudoor_abaqu100]
+driver = "DriverQudoorAbaQu100"
+alias_name = "启科量子 AbaQu100 离子阱驱动"
+description = "启科量子 AbaQu100 离子阱驱动"
+
+debug = false
+
+device_log_file = "/var/log/qcos/device_abaqu100.log"
+
+max_queued_jobs = -1
+
+max_job_wait_time = 604800
+
+job_query_interval = 5
+
+url = "http://127.0.0.1:8081"
+client_id = "test"
+eng_code = "test"
+user_id = "test"
+
+[qudoor_abaqu100.device_monitor]
+enable_device_monitor = false
+monitor_log_file = "/var/log/qcos/device_monitor_abaqu100.log"
+polling_interval = 60
+
+[qudoor_abaqu100.transpiler.qpu_configs]
+qubits = 20

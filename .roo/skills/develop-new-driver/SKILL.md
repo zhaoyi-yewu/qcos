@@ -42,6 +42,7 @@ DriverBase (driver_base.py)                   # 驱动基类
 │   ├── DriverCetcBase (cetc/)                # 国基量子
 │   ├── DriverLogicalQubitBase (logical_qubit/) # 逻辑比特
 │   └── DriverQutipSim (qutip/)               # Qutip模拟器
+│   └── DriverQudoorBase (qudoor/)            # 启科量子
 ├── DriverPulseBase (driver_pulse_base.py)    # 脉冲级驱动基类
 ├── DriverQuboBase (driver_qubo_base.py)      # QUBO驱动基类，支持 QUBO
 └── DriverWuyueBase (driver_wuyue_base.py)    # 五岳平台驱动基类

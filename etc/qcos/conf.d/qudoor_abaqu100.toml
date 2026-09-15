@@ -1,0 +1,31 @@
+[qudoor_abaqu100]
+alias_name = "启科量子 AbaQu100 离子阱驱动"
+driver = "DriverQudoorAbaQu100"
+description = "启科量子 AbaQu100 离子阱驱动"
+
+debug = false
+
+device_log_file = "/var/log/qcos/device_abaqu100.log"
+
+max_queued_jobs = -1
+
+max_job_wait_time = 604800
+
+job_query_interval = 5
+
+url = ""
+
+client_id = ""
+
+device_code = ""
+
+sign_secret = ""
+
+eng_code = ""
+
+user_id = ""
+
+[qudoor_abaqu100.device_monitor]
+enable_device_monitor = false
+monitor_log_file = "/var/log/qcos/device_monitor_abaqu100.log"
+polling_interval = 60

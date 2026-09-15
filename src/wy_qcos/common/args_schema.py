@@ -105,6 +105,29 @@ DEVICE_INFO_SCHEMA = {
                     Optional("cz_fidelity"): Or(int, float),
                 }
             ],
+            Optional("timing"): {
+                Optional("t1_min"): Or(int, float),
+                Optional("t2_min"): Or(int, float),
+                Optional("t1_avg"): Or(int, float),
+                Optional("t2_avg"): Or(int, float),
+                Optional("t1_opt"): Or(int, float),
+                Optional("t2_opt"): Or(int, float),
+            },
+            Optional("single_qubit_fidelity"): {
+                Optional("fidelity_min"): Or(int, float),
+                Optional("fidelity_avg"): Or(int, float),
+                Optional("fidelity_opt"): Or(int, float),
+            },
+            Optional("double_qubit_fidelity"): {
+                Optional("fidelity_min"): Or(int, float),
+                Optional("fidelity_avg"): Or(int, float),
+                Optional("fidelity_opt"): Or(int, float),
+            },
+            Optional("spam_error"): {
+                Optional("min"): Or(int, float),
+                Optional("avg"): Or(int, float),
+                Optional("opt"): Or(int, float),
+            },
         },
     },
     Optional("available_qubits"): int,
