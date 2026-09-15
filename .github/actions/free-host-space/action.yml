@@ -7,7 +7,13 @@ runs:
     - name: Clean up disk space on Ubuntu host
       # Force execution on the Ubuntu host using absolute shell path, overriding container contexts
       shell: bash
+      env:
+        YUM_MIRROR: ${{ env.YUM_MIRROR }}
       run: |
+        if [ -n "${YUM_MIRROR}" ]; then
+          sed -i "s@https://repo.openeuler.org@${YUM_MIRROR}@g" /etc/yum.repos.d/openEuler.repo
+          yum clean all && yum makecache
+        fi
         yum install -y util-linux
         nsenter --target 1 --mount --uts --ipc --net --pid -- sh -c '
         echo "================================================================"

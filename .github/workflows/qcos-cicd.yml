@@ -34,6 +34,8 @@ jobs:
 
       - name: Free Host Space
         uses: ./.github/actions/free-host-space
+        env:
+          YUM_MIRROR: ${{ vars.YUM_MIRROR }}
 
       - name: Install basic packages
         run: |
@@ -171,8 +173,15 @@ jobs:
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
           df -h
-          ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
+
+
+          # run sandbox in container sandbox-temp, since another sandbox will be run from ./build-images.sh
+          sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
+          cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+          sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+          ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+          export BUILD_WHEEL_IN_SANDBOX=false
+          docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
           EOF
 
       - name: Upload qcos Docker Image Artifact
@@ -228,8 +237,15 @@ jobs:
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
           df -h
-          ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
+
+
+          # run sandbox in container sandbox-temp, since another sandbox will be run from ./build-images.sh
+          sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
+          cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+          sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+          ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+          export BUILD_WHEEL_IN_SANDBOX=false
+          docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
           EOF
 
       - name: Upload qcos-cli Docker Image Artifact
