@@ -23,5 +23,7 @@ from . import driver
 from . import device
 from . import transpiler
 from . import job
+from . import flavor
+from . import device_group
 from . import project
 from . import metrics

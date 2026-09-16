@@ -15,17 +15,19 @@
  * ----------------------------------------------------------------------
  */
 
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/pair.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 
 #include "utils/load_files.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 using namespace qcos;
 
-void bind_utils(py::module_& m) {
-  m.def("load_config_file", &load_config_file, py::arg("filename"),
-        R"pbdoc(
+void bind_utils(nb::module_& m) {
+  m.def("load_config_file", &load_config_file, nb::arg("filename"),
+        R"(
 从配置文件中加载量子芯片耦合列表.
 
 Args:
@@ -33,10 +35,10 @@ Args:
 
 Returns:
     list[tuple[int,int]]: 耦合对列表
-)pbdoc");
+)");
 
-  m.def("load_qasm_to_gate_list", &load_qasm_to_gate_list, py::arg("filename"),
-        R"pbdoc(
+  m.def("load_qasm_to_gate_list", &load_qasm_to_gate_list, nb::arg("filename"),
+        R"(
 将QASM文件加载为门操作列表.
 
 Args:
@@ -44,5 +46,5 @@ Args:
 
 Returns:
     list[GateOperation]: 解析得到的门操作列表
-)pbdoc");
+)");
 }

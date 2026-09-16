@@ -17,8 +17,9 @@
 
      # BCLinux/CentOS/OpenEuler环境下示例:
      # 需保证Python3>=3.11版本
-     yum install -y python3 python3-pip python3-sphinx python3-requests python3-alembic
-     pip3 install tomlkit
+     # cmake/gcc-c++/make/boost-devel/gtest-devel 用于编译 C++ 扩展(high_performance.so)
+     yum install -y python3 python3-pip python3-sphinx python3-requests python3-alembic gcc gcc-c++ make cmake boost-devel gtest-devel python3-devel
+     pip3 install tomlkit poetry
 
 - 安装Python依赖包：
 
@@ -28,8 +29,8 @@
      cd ./requirements
      ./install-venvs.py
 
-     或者直接在当前环境下安装。注意：各驱动所依赖的软件包需另外安装，并自行解决潜在的软件包冲突问题
-     pip3 install -r ./requirements/requirements.txt -r ./requirements/requirements-qcos.txt -r ./requirements/requirements-test.txt -r ./requirements/requirements-docs.txt
+     注意: 如果要从pyproject.toml中导出requirements-[模块].txt, 可以执行下列命令，导出的文件位于当前的./requirements目录下
+     ./install-venvs.py --export-requirements
 
 .. include:: edit-env.rst
 
@@ -56,7 +57,7 @@
 
    # 安装wheel包
    cd build-scripts
-   pip3 install --prefix=/usr ./output/dist/wy_qcos-1.0.0-py3-none-any.whl
+   pip3 install --prefix=/usr ./output/dist/wy_qcos-1.5.0-cp311-cp311-linux_x86_64.whl
 
    # 创建服务运行所需目录
    mkdir -p /var/qcos/db/; mkdir -p /var/qcos/storage
@@ -91,7 +92,7 @@
 
    # 安装wheel包
    cd build-scripts/cli
-   pip3 install --prefix=/usr ./output/dist/wy_qcos_client-1.0.0-py3-none-any.whl
+   pip3 install --prefix=/usr ./output/dist/wy_qcos_client-1.5.0-py3-none-any.whl
 
 修改配置文件
 ----------------
@@ -147,9 +148,9 @@ DEVICE_LIST列出的设备名一致。 文件中section必须对应相关设备�
    # 启动postgresql服务
    systemctl start postgresql 或者 pg_ctl -D /var/lib/pgsql/data start
 
-   # 运行init-db.sh脚本初始化、迁移和升级数据库表结构
+   # 运行db-manager.sh脚本初始化、迁移和升级数据库表结构
    cd build-scripts
-   ./init-db.sh
+   ./db-manager.sh -i -u
 
    # 启动QCOS API服务（指定配置文件和配置目录）
    qcos-api --config-file /etc/qcos/qcos.toml --config-dir /etc/qcos/conf.d/

@@ -335,7 +335,6 @@ class ValueResolver(QASMVisitor):
                     const = lhs_type.const and rhs_type.const
                     out_type = types.Angle(const, lhs_type.size)
             if out_type is not None:
-                print(f"lhs_value: {lhs_value}, rhs_value: {rhs_value}")
                 out_value = lhs_value / rhs_value
                 return out_value, out_type
 

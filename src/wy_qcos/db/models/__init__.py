@@ -17,6 +17,7 @@
 
 from .base import Base
 from .base import ArrayType, GUID
+from .device import Device
 from .project import Project
 from .user import User
 from .user import Role
@@ -24,3 +25,7 @@ from .user import UserRole
 from .user import LoginLog
 from .user import TokenBlacklist
 from .job import Job
+from .flavor import Flavor
+from .device_group import DeviceGroup
+from .device_availability import DeviceAvailabilityHourly
+from .flavor_device_group import FlavorDeviceGroup

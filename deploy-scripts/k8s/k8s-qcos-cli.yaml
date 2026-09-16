@@ -40,8 +40,13 @@ spec:
       - name: ${QCOS_CLI_CONTAINER_NAME}
         image: ${REGISTRY}${QCOS_IMAGE_NAME}-cli:${QCOS_CLI_IMAGE_VERSION}
         imagePullPolicy: Always
-        # securityContext:
-        #   privileged: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
         stdin: true
         tty: true
         workingDir: /root

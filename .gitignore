@@ -49,10 +49,18 @@ docs/api-docs/js/
 docs/api-docs/dist/
 docs/sphinx/source/api/
 
+# WEBUI
+webui/package-lock.json
+webui/node_modules
+
 # build temp files
 build-scripts/.build-context/
 build-scripts/.env
 build-scripts/images/
 build-scripts/output/
 build-scripts/cli/output/
+build-scripts/.*
+
+# others
+requirements/requirements/
 

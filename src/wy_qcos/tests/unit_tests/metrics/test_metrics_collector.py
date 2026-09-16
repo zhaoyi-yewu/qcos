@@ -316,6 +316,38 @@ class TestAPIMetrics(unittest.TestCase):
         assert "last_day_requests" in stats
         assert stats["total_requests"] >= 1
 
+    def test_api_request_gauge_updated(self):
+        """Test that api_request gauge is updated with correct values."""
+        from prometheus_client import generate_latest
+
+        data = APIMetrics.APIMetricsData(
+            module="test",
+            method="GET",
+            endpoint="/gauge",
+            status_code=200,
+            duration=0.05,
+        )
+        self.api_metrics.record_api_request(data)
+
+        stats = self.api_metrics.get_api_stats()
+
+        # The gauge should have been updated in both record_api_request
+        # and get_api_stats, so generate_latest should reflect the
+        # current values.
+        output = generate_latest().decode("utf-8")
+        for gauge_type, expected_value in [
+            ("total_requests", stats["total_requests"]),
+            ("last_hour_requests", stats["last_hour_requests"]),
+            ("last_day_requests", stats["last_day_requests"]),
+        ]:
+            expected_line = (
+                f'api_request{{type="{gauge_type}"}} {expected_value}'
+            )
+            assert expected_line in output, (
+                f"Expected '{expected_line}' in metrics output, "
+                f"but not found. Output:\n{output}"
+            )
+
     @pytest.mark.slow
     def test_api_stats_time_windows(self):
         """Test API statistics time window calculations."""

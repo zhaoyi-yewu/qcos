@@ -72,12 +72,16 @@ class StLibrary:
         description = job_info["description"]
         shots = job_info["shots"]
         backend = job_info["backend"]
-        driver_options = job_info["driver_options"]
+        flavor_id = job_info.get("flavor_id", None)
+        extra_specs = job_info.get("extra_specs", None)
+        driver_options = job_info.get("driver_options", None)
         transpiler = job_info["transpiler"]
-        transpiler_options = job_info["transpiler_options"]
-        profiling = job_info["profiling"]
-        callbacks = job_info["callbacks"]
-        dry_run = job_info["dry_run"]
+        transpiler_options = job_info.get("transpiler_options", None)
+        profiling = job_info.get("profiling", None)
+        callbacks = job_info.get("callbacks", None)
+        dry_run = job_info.get("dry_run", False)
+        qec_options = job_info.get("qec_options", None)
+        qem_options = job_info.get("qem_options", None)
         status_code, reason, text, response = client.submit_job(
             source_code_list,
             code_type=code_type,
@@ -89,12 +93,16 @@ class StLibrary:
             description=description,
             shots=shots,
             backend=backend,
+            flavor_id=flavor_id,
+            extra_specs=extra_specs,
             driver_options=driver_options,
             transpiler=transpiler,
             transpiler_options=transpiler_options,
             profiling=profiling,
             callbacks=callbacks,
             dry_run=dry_run,
+            qec_options=qec_options,
+            qem_options=qem_options,
         )
         if status_code != HttpCode.SUCCESS_OK:
             raise AssertionError(
@@ -118,7 +126,12 @@ class StLibrary:
         assert result["job_priority"] == job_priority
         assert result["description"] == description
         assert result["shots"] == shots
-        assert result["backend"] == backend
+        if flavor_id:
+            assert result["backend"] is not None
+        else:
+            assert result["backend"] == backend
+        assert result["flavor_id"] == flavor_id
+        assert result["extra_specs"] == extra_specs
         assert result["driver_options"] == driver_options
         assert result["transpiler"] == transpiler
         assert result["transpiler_options"] == transpiler_options
@@ -156,19 +169,20 @@ class StLibrary:
         return job_result
 
     @staticmethod
-    def get_job_status(client, job_id):
+    def get_job_status(client, job_id, expect_job_status=None):
         _status_code, _reason, _text, _response = client.get_job_status(job_id)
         job_result = json.loads(_text)
         job_status = job_result["result"]["job_status"]
-        expect_task_status = [
-            Constant.JOB_STATUS_COMPLETED,
-            Constant.JOB_STATUS_FAILED,
-            Constant.JOB_STATUS_CANCELLED,
-        ]
-        if job_status in expect_task_status:
+        if not expect_job_status:
+            expect_job_status = [
+                Constant.JOB_STATUS_COMPLETED,
+                Constant.JOB_STATUS_FAILED,
+                Constant.JOB_STATUS_CANCELLED,
+            ]
+        if job_status in expect_job_status:
             return True, None, None
         err_msg = (
-            f"Job status not in {expect_task_status}, "
+            f"Job status not in {expect_job_status}, "
             f"and current status: {job_status}"
         )
         return False, err_msg, None
@@ -229,6 +243,52 @@ class StLibrary:
         job_error = job_result.get("error", {})
         error_code = job_error.get("code", 0)
         assert error_code == jsonrpc_errors.NotFoundError.CODE
+
+    @staticmethod
+    def cleanup_test_flavors(client, test_flavor_names):
+        """Clean up test flavors by name.
+
+        Args:
+            client: API client
+            test_flavor_names: list of flavor names to clean up
+        """
+        try:
+            status_code, _, text, _ = client.get_flavors()
+            if status_code != HttpCode.SUCCESS_OK:
+                return
+            resp = json.loads(text)
+            flavors = resp.get("result", [])
+            flavor_ids = []
+            for f in flavors:
+                if f.get("name") in test_flavor_names:
+                    flavor_ids.append(f["id"])
+            if flavor_ids:
+                client.delete_flavors(flavor_ids)
+        except Exception:  # noqa: S110
+            pass
+
+    @staticmethod
+    def cleanup_test_device_groups(client, test_group_names):
+        """Clean up test device groups by name.
+
+        Args:
+            client: API client
+            test_group_names: list of device group names to clean up
+        """
+        try:
+            status_code, _, text, _ = client.get_device_groups()
+            if status_code != HttpCode.SUCCESS_OK:
+                return
+            resp = json.loads(text)
+            groups = resp.get("result", [])
+            group_ids = []
+            for g in groups:
+                if g.get("name") in test_group_names:
+                    group_ids.append(g["id"])
+            if group_ids:
+                client.delete_device_groups(group_ids)
+        except Exception:  # noqa: S110
+            pass
 
     @staticmethod
     def get_devices(client):

@@ -24,6 +24,7 @@ from wy_qcos.api.schemas import project as schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import project_api_v1
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.library import Library
 from .dependencies.authentication import auth
 
 
@@ -44,6 +45,7 @@ def get_project_manager(request: Request):
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.ConflictError, jsonrpc_errors.BadRequestError],
 )
@@ -67,6 +69,15 @@ def create_project(
 
     project_name = body.project_name
     description = body.description
+
+    # validate project_name
+    success, err_msg = Library.validate_name(project_name)
+    if not success:
+        jsonrpc_errors.handle_error_bad_requests(
+            "PROJECT",
+            "create_project",
+            (False, err_msg),
+        )
 
     # Get project manager from request state
     project_manager = get_project_manager(request)
@@ -106,6 +117,7 @@ def create_project(
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -164,7 +176,9 @@ def get_project(
 
 
 @project_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_projects(
     request: Request,
@@ -216,6 +230,7 @@ def get_projects(
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.NotFoundError,
@@ -244,6 +259,16 @@ def update_project(
     project_id = str(body.project_id)
     project_name = body.project_name
     description = body.description
+
+    # validate project_name if provided
+    if project_name:
+        success, err_msg = Library.validate_name(project_name)
+        if not success:
+            jsonrpc_errors.handle_error_bad_requests(
+                "PROJECT",
+                "update_project",
+                (False, err_msg),
+            )
 
     # Get project manager from request state
     project_manager = get_project_manager(request)
@@ -284,6 +309,7 @@ def update_project(
 
 
 @project_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.NotFoundError,

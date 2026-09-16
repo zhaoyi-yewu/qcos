@@ -41,9 +41,11 @@ class Job(BaseTable):
     __tablename__ = "job"
     __table__: ClassVar[Table]
 
+    # id fields
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
     project_id = Column(GUID, ForeignKey("projects.id"), nullable=False)
     user_id = Column(GUID, ForeignKey("users.id"), nullable=True)
+    # job fields
     flow_run_id = Column(GUID, nullable=True)
     job_name = Column(String(128))
     job_type = Column(String(32))
@@ -58,15 +60,20 @@ class Job(BaseTable):
     transpiler_options = Column(JSON, default=dict)
     circuit_aggregation = Column(String(32))
     qec_options = Column(JSON, default=dict)
+    qem_options = Column(JSON, default=dict)
     shots = Column(Integer)
     progress = Column(Integer, default=-1)
     profiling = Column(JSON, default=list)
     callbacks = Column(JSON, default=list)
     is_callback_success = Column(Boolean, default=False)
     dry_run = Column(Boolean, default=False)
-    results = Column(JSON, default=dict)
+    results = Column(JSON, default=list)
     code_compression_level = Column(Integer, default=0)
     tags = Column(JSON, default=list)
+    # Auto scheduling fields
+    flavor_id = Column(GUID, ForeignKey("flavors.id"), nullable=True)
+    extra_specs = Column(JSON, default=dict)
+    # date fields
     started_at = Column(DateTime)
     updated_at = Column(DateTime)
     ended_at = Column(DateTime)

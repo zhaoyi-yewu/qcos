@@ -20,6 +20,82 @@
 
 - 无
 
+## [1.8.0] - 2026-09-16
+
+### 新增功能
+
+- 新增北京量子院夸父驱动: DriverQuafu, 逻辑比特驱动: DriverLqQZ01SurfaceCode, DriverLqQZ01RepetitionCode,
+  DriverLqMQ02, DriverLqQZ02, DriverLqAGate100, QUTIP模拟器(支持ASHN门): DriverQutipAshnSim
+- 支持量子作业自动调度功能：用户提交作业时不指定backend，由系统自动选择后端设备
+- 新增Flavor（预设资源调度策略）管理功能：支持通过API和CLI创建、查询、删除Flavor
+- 新增Device Group（设备分组）功能：支持设备逻辑分组管理，包含增删改查API和CLI命令
+- 新增DeviceGroupFilter调度过滤器，根据device group成员列表过滤候选设备
+- 新增自动调度器，支持10个Filter和3个Weigher
+- Job表新增flavor_id和extra_specs字段
+- submit-job命令新增--flavor-id和--extra-specs参数，--backend改为可选
+- 新增show-mem命令：查询API服务端进程内存占用（RSS/VMS/线程数/GC对象数/CPU使用率）
+- 新增gc命令：手动触发Python垃圾回收，支持指定回收代数（0/1/2）
+- 新增trace-mem命令：通过tracemalloc追踪内存分配，返回当前/峰值内存及Top内存分配统计
+- 新增设备状态（state）持久化功能：支持配置设备state为
+  auto/online/offline/busy/disconnected/calibrating/maintain/unknown，
+  state持久化到devices数据库表，重启后自动恢复
+- 新增设备可用率（availability）统计功能：通过Redis订阅采集设备运行状态，
+  内存计数器实时累计，整点聚合落库到device_availability_hourly表
+- 新增DeviceAvailabilityCollector单例：后台线程psubscribe设备运行信息频道，
+  按设备累计online_count/total_count，支持snapshot_and_reset与get_rate
+- 新增DeviceAvailabilityScheduler：APScheduler CronTrigger整点触发
+  aggregate_availability_hourly任务
+- 新增DeviceAvailabilityWeigher：基于设备可用率加权，可用率越高权重越大
+- 新增extra_specs服务器端白名单校验：submit-job的extra_specs字典key
+  必须为支持的调度字段，否则返回bad_request
+- 新增Flavor extra_properties统一消费：qcos:devices（白名单）、
+  qcos:exclude_devices（黑名单）、qcos:code_types（覆盖job code_type）、
+  qc:tech_types（技术类型过滤）、qc:device_availability（可用率阈值）
+- 新增DeviceNameFilter：合并白名单和黑名单逻辑，qcos:devices的"all"表示不限制
+- 新增DeviceAvailabilityFilter：基于qc:device_availability阈值过滤设备
+- get_device接口响应新增metrics字段：availability_hourly、availability_total、
+  avg_1q_fidelity、avg_2q_fidelity，均保留5位小数
+- list-devices命令输出新增availability_total列
+- get_avg_1q_fidelity/get_avg_2q_fidelity从calibration.qubit_metrics
+  /coupler_metrics提取xeb_fidelity/cz_fidelity，无数据返回None
+- 新增InputConstraintsFilter调度过滤器：校验作业的shots、
+  circuit_aggregation、driver_options、transpiler_options是否满足
+  驱动声明的约束schema（input_constrains、driver_options_schema、
+  transpiler_options_schema）
+- 驱动基类新增input_constrains和transpiler_options_schema属性，
+  用于声明调度约束和转译器选项schema
+- DriverGateBase声明通用transpiler_options_schema
+  （optimization_level、enable_na_move、na_mapping_type、
+  enable_mapping、sc_mapping_options、enable_wirecut）
+- DriverLogicalQubitBase声明job_shots约束(1~50000)和
+  enable_mapping约束(仅允许True)
+- DriverQuafu声明job_shots约束(1024~102400，须为1024倍数)
+  和enable_mapping约束(True/False均可)
+- get-job-status命令支持"last"特殊值，自动解析最近作业的状态
+- 支持Metrics容器(Prometheus、Alertmanager、Grafana)自动部署
+- 新增worker的看门狗机制, 可以检查各组件健康状态并自动重启
+
+### 变更功能
+
+- submit_job接口的backend参数改为可选，为空时触发自动调度
+- CLI中所有可追加参数（--property、--device、--role-name）从action="append"改为nargs="+"形式
+- 解决prefect-server内存泄露问题: 1. prefect升级到3.7.8;
+  2\. 默认配置PREFECT_SERVER_DOCKET_URL为redis://IP:PORT/1
+- DriverWuyueBase和DriverLogicalQubitBase继承关系从DriverBase
+  改为DriverGateBase，统一使用DriverGateBase的transpiler_options_schema
+- driver_run统一调用post_run(driver)处理sleep/进度逻辑，
+  各驱动不再自行实现set_progress_by_task(TASK_STAGE_COMPLETE)
+- init_transpiler新增从driver.transpiler_options_schema填充
+  转译器选项默认值的逻辑，用户未指定的选项自动使用schema声明的default
+
+### 修复问题
+
+- 无
+
+### 移除内容
+
+- 无
+
 ## [1.5.0] - 2026-06-24
 
 ### 新增功能

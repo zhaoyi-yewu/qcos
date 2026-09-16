@@ -82,6 +82,10 @@ class Constant:
     JOB_TYPE_ESTIMATION = "estimation"
     JOB_TYPES = [JOB_TYPE_SAMPLING, JOB_TYPE_ESTIMATION]
 
+    # Special job_id value that resolves to the most recent job
+    # (sorted by created_at descending) on the server side.
+    JOB_ID_LAST = "last"
+
     # Job priority
     DEFAULT_JOB_PRIORITY = 5
     MIN_JOB_PRIORITY = 1
@@ -91,6 +95,24 @@ class Constant:
     ENV_VAR_ACCESS_TOKEN = _s("QCOS_ACCESS_TOKEN")
     ENV_VAR_REFRESH_TOKEN = _s("QCOS_REFRESH_TOKEN")
     ENV_VAR_VIRTUAL_INSTANCE_ID = "QCOS_VIRTUAL_INSTANCE_ID"
+
+    # Quantum computer tech type
+    TECH_TYPE_NONE = "none"
+    TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
+    TECH_TYPE_ION_TRAP = "ion_trap"
+    TECH_TYPE_SUPERCONDUCTING = "superconducting"
+    TECH_TYPE_PHOTON = "photon"
+    TECH_TYPE_NMR = "nmr"
+    TECH_TYPE_GENERIC_SIMULATOR = "generic_simulator"
+    TECH_TYPE_INFO = {
+        TECH_TYPE_NEUTRAL_ATOM: {"alias_name": "中性原子"},
+        TECH_TYPE_ION_TRAP: {"alias_name": "离子阱"},
+        TECH_TYPE_SUPERCONDUCTING: {"alias_name": "超导"},
+        TECH_TYPE_PHOTON: {"alias_name": "光量子"},
+        TECH_TYPE_NMR: {"alias_name": "核磁共振"},
+        TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"},
+    }
+    TECH_TYPES = list(TECH_TYPE_INFO.keys())
 
     # Job status
     JOB_STATUS_UNKNOWN = "UNKNOWN"
@@ -115,13 +137,15 @@ class Constant:
     # Shots
     DEFAULT_SHOTS = 1
     MIN_SHOTS = 1
-    MAX_SHOTS = 10240
 
     # Drivers
     DRIVER_DUMMY = "dummy"
 
     # Devices
     DEVICE_DUMMY = "dummy"
+
+    # Device Groups
+    DEVICE_GROUP_DN_ALL = "_all"
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"

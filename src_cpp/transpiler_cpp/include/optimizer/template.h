@@ -66,7 +66,7 @@ class OptimizingTemplate {
  * @brief 生成 Rz 门交换优化模板集合
  * @return std::vector<OptimizingTemplate> 模板列表
  */
-std::vector<OptimizingTemplate> generate_single_qubit_gate_templates();
+std::vector<OptimizingTemplate> generate_rz_commute_templates();
 
 /**
  * @brief 生成 Hadamard 门优化模板集合
@@ -75,16 +75,16 @@ std::vector<OptimizingTemplate> generate_single_qubit_gate_templates();
 std::vector<OptimizingTemplate> generate_hadamard_gate_templates();
 
 /**
- * @brief 生成从控制比特开始的 CNOT 优化模板集合
+ * @brief 生成从控制比特开始的 CX 交换优化模板集合
  * @return std::vector<OptimizingTemplate> 模板列表
  */
-std::vector<OptimizingTemplate> generate_cnot_ctrl_templates();
+std::vector<OptimizingTemplate> generate_cx_commute_ctrl_templates();
 
 /**
- * @brief 生成从目标比特开始的 CNOT 优化模板集合
+ * @brief 生成从目标比特开始的 CX 交换优化模板集合
  * @return std::vector<OptimizingTemplate> 模板列表
  */
-std::vector<OptimizingTemplate> generate_cnot_targ_templates();
+std::vector<OptimizingTemplate> generate_cx_commute_targ_templates();
 
 /**
  * @brief 按 basis gate 过滤模板集合

@@ -30,6 +30,62 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 
+GATE_SPEC_MAP = {
+    Constant.SINGLE_QUBIT_GATE_X: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_Y: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_Z: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_H: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_S: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_T: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_P: (1, 1),
+    Constant.SINGLE_QUBIT_GATE_U: (1, 3),
+    Constant.SINGLE_QUBIT_GATE_U_UPPERCASE: (1, 3),
+    Constant.SINGLE_QUBIT_GATE_R: (1, 2),
+    Constant.SINGLE_QUBIT_GATE_RX: (1, 1),
+    Constant.SINGLE_QUBIT_GATE_RY: (1, 1),
+    Constant.SINGLE_QUBIT_GATE_RZ: (1, 1),
+    Constant.SINGLE_QUBIT_GATE_SX: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_SXDG: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_I: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_SDG: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_TDG: (1, 0),
+    Constant.SINGLE_QUBIT_GATE_U1: (1, 1),
+    Constant.SINGLE_QUBIT_GATE_U2: (1, 2),
+    Constant.SINGLE_QUBIT_GATE_U3: (1, 3),
+    Constant.SINGLE_QUBIT_GATE_RESET: (1, 0),
+    Constant.TWO_QUBIT_GATE_CH: (2, 0),
+    Constant.TWO_QUBIT_GATE_CRX: (2, 1),
+    Constant.TWO_QUBIT_GATE_CRY: (2, 1),
+    Constant.TWO_QUBIT_GATE_CRZ: (2, 1),
+    Constant.TWO_QUBIT_GATE_CX: (2, 0),
+    Constant.TWO_QUBIT_GATE_CX_UPPERCASE: (2, 0),
+    Constant.TWO_QUBIT_GATE_CY: (2, 0),
+    Constant.TWO_QUBIT_GATE_CZ: (2, 0),
+    Constant.TWO_QUBIT_GATE_SWAP: (2, 0),
+    Constant.TWO_QUBIT_GATE_ISWAP: (2, 0),
+    Constant.TWO_QUBIT_GATE_CU1: (2, 1),
+    Constant.TWO_QUBIT_GATE_CP: (2, 1),
+    Constant.TWO_QUBIT_GATE_CS: (2, 0),
+    Constant.TWO_QUBIT_GATE_CSDG: (2, 0),
+    Constant.TWO_QUBIT_GATE_CU3: (2, 3),
+    Constant.TWO_QUBIT_GATE_ECR: (2, 0),
+    Constant.TWO_QUBIT_GATE_DCX: (2, 0),
+    Constant.TWO_QUBIT_GATE_CSX: (2, 0),
+    Constant.TWO_QUBIT_GATE_CU: (2, 4),
+    Constant.TWO_QUBIT_GATE_RXX: (2, 1),
+    Constant.TWO_QUBIT_GATE_RYY: (2, 1),
+    Constant.TWO_QUBIT_GATE_RZZ: (2, 1),
+    Constant.TWO_QUBIT_GATE_RZX: (2, 1),
+    Constant.TWO_QUBIT_GATE_ASHN: (2, 0),
+    Constant.THREE_QUBIT_GATE_CCX: (3, 0),
+    Constant.THREE_QUBIT_GATE_CCZ: (3, 0),
+    Constant.THREE_QUBIT_GATE_CSWAP: (3, 0),
+    Constant.THREE_QUBIT_GATE_RCCX: (3, 0),
+    Constant.FOUR_QUBIT_GATE_RC3X: (4, 0),
+    Constant.FOUR_QUBIT_GATE_C3X: (4, 0),
+    Constant.FOUR_QUBIT_GATE_C3SQRTX: (4, 0),
+}
+
 
 class RandomCircuitGen:
     """Random circuit generator.
@@ -55,9 +111,11 @@ class RandomCircuitGen:
         measure: bool = False,
         reset: bool = False,
         seed: None | int = None,
-        gate_type: int = 1,
+        gate_type: int = 0,
         density: float = 0.05,
+        two_qubits_rate: float = 0.10,
         outfile: None | str = None,
+        custom_gates: None | list = None,
     ):
         """Generate random circuit of arbitrary size and form.
 
@@ -65,16 +123,23 @@ class RandomCircuitGen:
             num_qubits (int): number of qubits.
             depth (int): depth of circuit.
             max_operands (int, optional): max qubits of the gates operation.
-            Defaults to 2.
+            Only takes effect when gate_type=2; for gate_type 0 or 1 it is
+            forced to 2. Defaults to 2.
             measure (bool): whether to measure the qubits. Defaults to False.
             reset (bool): whether to reset the qubits. Defaults to False.
             seed (int, optional): random seed. Defaults to None.
-            gate_type (int): type of gates. 0 for random gates,
-            1 for Clifford + T.
+            gate_type (int): type of gates. 0 for basic gates (x, rx, ry, h,
+            cx, cz), 1 for Clifford gates, 2 for all gates (or custom
+            gates if custom_gates is provided).
             density (float): the number of qubits that would be used to filled
             with gates, representing density of gates in the circuit.
             Defaults to 0.3.
-            outfile (str, optional): output file path. Defaults to None.
+            two_qubits_rate (float): max ratio of two-qubit gates (soft limit,
+            can be exceeded to satisfy depth). Defaults to 0.5.
+            outfile (str, optional): output file path. Must end with .qasm.
+            Defaults to None.
+            custom_gates (list, optional): list of gate name strings. Only
+            valid when gate_type=2. Defaults to None.
 
         Returns:
             list: random ir list.
@@ -86,13 +151,31 @@ class RandomCircuitGen:
             raise CircuitException(
                 "Invalid max_operands, max_operands must be between 1 and 4."
             )
-        if gate_type != 0 and gate_type != 1:
+        if gate_type not in (0, 1, 2):
             raise CircuitException(
-                f"Invalid gate_type. gate_type must be 0 or 1: {gate_type}."
+                f"Invalid gate_type. "
+                f"gate_type must be 0, 1, or 2: {gate_type}."
             )
+        if custom_gates is not None:
+            if gate_type != 2:
+                raise CircuitException(
+                    "custom_gates can only be used with gate_type=2."
+                )
+            for g in custom_gates:
+                if g not in GATE_SPEC_MAP:
+                    raise CircuitException(
+                        f"Unknown gate name in custom_gates: {g}."
+                    )
+        if gate_type in (0, 1) and max_operands != 2:
+            max_operands = 2
         if density <= 0 or density > 1:
             raise CircuitException(
                 f"Invalid density, density must be in (0, 1]: {density}."
+            )
+        if outfile is not None and not outfile.endswith(".qasm"):
+            raise CircuitException(
+                f"Invalid outfile suffix. "
+                f"outfile must end with '.qasm': {outfile}"
             )
 
         self.num_qubits = num_qubits
@@ -101,8 +184,34 @@ class RandomCircuitGen:
         )
         if gate_type == 0:
             gates_1q = [
-                # 3 elements in tuple, represants
-                # (gate_name, num_qubits, num_parameters)
+                (Constant.SINGLE_QUBIT_GATE_X, 1, 0),
+                (Constant.SINGLE_QUBIT_GATE_RX, 1, 1),
+                (Constant.SINGLE_QUBIT_GATE_RY, 1, 1),
+                (Constant.SINGLE_QUBIT_GATE_H, 1, 0),
+            ]
+            gates_2q = [
+                (Constant.TWO_QUBIT_GATE_CX, 2, 0),
+                (Constant.TWO_QUBIT_GATE_CZ, 2, 0),
+            ]
+            gates_3q = []
+            gates_4q = []
+        elif gate_type == 1:
+            gates_1q = [
+                (Constant.SINGLE_QUBIT_GATE_X, 1, 0),
+                (Constant.SINGLE_QUBIT_GATE_Y, 1, 0),
+                (Constant.SINGLE_QUBIT_GATE_Z, 1, 0),
+                (Constant.SINGLE_QUBIT_GATE_H, 1, 0),
+                (Constant.SINGLE_QUBIT_GATE_S, 1, 0),
+                (Constant.SINGLE_QUBIT_GATE_SDG, 1, 0),
+            ]
+            gates_2q = [
+                (Constant.TWO_QUBIT_GATE_CX, 2, 0),
+                (Constant.TWO_QUBIT_GATE_CZ, 2, 0),
+            ]
+            gates_3q = []
+            gates_4q = []
+        elif gate_type == 2:
+            gates_1q = [
                 (Constant.SINGLE_QUBIT_GATE_X, 1, 0),
                 (Constant.SINGLE_QUBIT_GATE_Y, 1, 0),
                 (Constant.SINGLE_QUBIT_GATE_Z, 1, 0),
@@ -111,6 +220,8 @@ class RandomCircuitGen:
                 (Constant.SINGLE_QUBIT_GATE_T, 1, 0),
                 (Constant.SINGLE_QUBIT_GATE_P, 1, 1),
                 (Constant.SINGLE_QUBIT_GATE_U, 1, 3),
+                (Constant.SINGLE_QUBIT_GATE_U_UPPERCASE, 1, 3),
+                (Constant.SINGLE_QUBIT_GATE_R, 1, 2),
                 (Constant.SINGLE_QUBIT_GATE_RX, 1, 1),
                 (Constant.SINGLE_QUBIT_GATE_RY, 1, 1),
                 (Constant.SINGLE_QUBIT_GATE_RZ, 1, 1),
@@ -122,7 +233,6 @@ class RandomCircuitGen:
                 (Constant.SINGLE_QUBIT_GATE_U2, 1, 2),
                 (Constant.SINGLE_QUBIT_GATE_U3, 1, 3),
             ]
-
             gates_2q = [
                 (Constant.TWO_QUBIT_GATE_CH, 2, 0),
                 (Constant.TWO_QUBIT_GATE_CRX, 2, 1),
@@ -138,41 +248,40 @@ class RandomCircuitGen:
                 (Constant.TWO_QUBIT_GATE_CSX, 2, 0),
                 (Constant.TWO_QUBIT_GATE_CU, 2, 4),
                 (Constant.TWO_QUBIT_GATE_RXX, 2, 1),
+                (Constant.TWO_QUBIT_GATE_RYY, 2, 1),
                 (Constant.TWO_QUBIT_GATE_RZZ, 2, 1),
             ]
-
             gates_3q = [
                 (Constant.THREE_QUBIT_GATE_CCX, 3, 0),
                 (Constant.THREE_QUBIT_GATE_CSWAP, 3, 0),
                 (Constant.THREE_QUBIT_GATE_RCCX, 3, 0),
             ]
-
             gates_4q = [
                 (Constant.FOUR_QUBIT_GATE_RC3X, 4, 0),
                 (Constant.FOUR_QUBIT_GATE_C3X, 4, 0),
                 (Constant.FOUR_QUBIT_GATE_C3SQRTX, 4, 0),
             ]
-        else:
-            # Clifford + T
-            gates_1q = [
-                (Constant.SINGLE_QUBIT_GATE_X, 1, 0),
-                (Constant.SINGLE_QUBIT_GATE_H, 1, 0),
-                (Constant.SINGLE_QUBIT_GATE_S, 1, 0),
-                (Constant.SINGLE_QUBIT_GATE_T, 1, 0),
-                (Constant.SINGLE_QUBIT_GATE_SDG, 1, 0),
-                (Constant.SINGLE_QUBIT_GATE_TDG, 1, 0),
-            ]
-
-            gates_2q = [
-                (Constant.TWO_QUBIT_GATE_CX, 2, 0),
-                (Constant.TWO_QUBIT_GATE_CZ, 2, 0),
-            ]
-            gates_3q = []
-            gates_4q = []
+            if custom_gates is not None:
+                gates_1q = []
+                gates_2q = []
+                gates_3q = []
+                gates_4q = []
+                for g in custom_gates:
+                    num_qubits_g, num_params = GATE_SPEC_MAP[g]
+                    spec = (g, num_qubits_g, num_params)
+                    if num_qubits_g == 1:
+                        gates_1q.append(spec)
+                    elif num_qubits_g == 2:
+                        gates_2q.append(spec)
+                    elif num_qubits_g == 3:
+                        gates_3q.append(spec)
+                    elif num_qubits_g == 4:
+                        gates_4q.append(spec)
 
         if reset:
             gates_1q.append((Constant.SINGLE_QUBIT_GATE_RESET, 1, 0))
 
+        gates_1q_only = gates_1q.copy()
         gates = gates_1q.copy()
         if max_operands >= 2:
             gates.extend(gates_2q)
@@ -182,6 +291,14 @@ class RandomCircuitGen:
             gates.extend(gates_4q)
         gates_arr = np.array(
             gates,
+            dtype=[
+                ("class", object),
+                ("num_qubits", np.int64),
+                ("num_params", np.int64),
+            ],
+        )
+        gates_1q_arr = np.array(
+            gates_1q_only,
             dtype=[
                 ("class", object),
                 ("num_qubits", np.int64),
@@ -199,32 +316,43 @@ class RandomCircuitGen:
             seed = np.random.randint(0, np.iinfo(np.int32).max)
         rng = np.random.default_rng(seed)
 
-        # list of qubits
         all_qubits = [i for i in range(num_qubits)]
         used_num = max(max_operands, int(num_qubits * density))
         used_qubits = random.sample(all_qubits, k=used_num)
-        # Apply arbitrary random operations in layers across all qubits.
-        for _ in range(depth):
-            # Select num_qubits gates randomly.
-            gate_specs = rng.choice(gates_arr, size=len(used_qubits))
-            # Get the cumulative number of qubits used by each gate.
+
+        total_gates_count = 0
+        two_qubit_gates_count = 0
+        target_depth = depth
+
+        def _generate_layer(use_gates_arr, used_qubits, rng, qc):
+            gate_specs = rng.choice(use_gates_arr, size=len(used_qubits))
             cumulative_qubits = np.cumsum(
                 gate_specs["num_qubits"], dtype=np.int64
             )
-
-            # Sort the cumulative number of qubits. The numbers arrange
-            # in ascending order and split the gate_specs into two parts:
-            # lower than the max number of qubits, and greater than the max.
-            # Then get the lack of qubits for the last gate and
-            # the total qubits.
             max_index = np.searchsorted(
                 cumulative_qubits, used_num, side="right"
             )
             gate_specs = gate_specs[:max_index]
+            return gate_specs
 
-            # qubits list
+        for layer_idx in range(target_depth):
+            use_gates_arr = gates_arr
+            if (
+                layer_idx > 0
+                and total_gates_count > 0
+                and two_qubit_gates_count / total_gates_count
+                >= two_qubits_rate
+            ):
+                use_gates_arr = gates_1q_arr
+
+            gate_specs = _generate_layer(use_gates_arr, used_qubits, rng, qc)
+
+            for g in gate_specs:
+                total_gates_count += 1
+                if g["num_qubits"] >= 2:
+                    two_qubit_gates_count += 1
+
             q_indices = np.empty(len(gate_specs) + 1, dtype=np.int64)
-            # paramenters list
             p_indices = np.empty(len(gate_specs) + 1, dtype=np.int64)
             q_indices[0] = p_indices[0] = 0
             np.cumsum(gate_specs["num_qubits"], out=q_indices[1:])
@@ -232,6 +360,32 @@ class RandomCircuitGen:
             parameters = rng.uniform(0, 2 * np.pi, size=p_indices[-1])
             rng.shuffle(used_qubits)
 
+            for gate, q_start, q_end, p_start, p_end in zip(
+                gate_specs["class"],
+                q_indices[:-1],
+                q_indices[1:],
+                p_indices[:-1],
+                p_indices[1:],
+            ):
+                targets = used_qubits[q_start:q_end]
+                arg_value = parameters[p_start:p_end]
+                qc.append(
+                    create_gate(
+                        name=gate,
+                        targets=targets,
+                        arg_value=arg_value.tolist(),
+                    )
+                )
+
+        while qc.depth() < target_depth:
+            gate_specs = _generate_layer(gates_1q_arr, used_qubits, rng, qc)
+            q_indices = np.empty(len(gate_specs) + 1, dtype=np.int64)
+            p_indices = np.empty(len(gate_specs) + 1, dtype=np.int64)
+            q_indices[0] = p_indices[0] = 0
+            np.cumsum(gate_specs["num_qubits"], out=q_indices[1:])
+            np.cumsum(gate_specs["num_params"], out=p_indices[1:])
+            parameters = rng.uniform(0, 2 * np.pi, size=p_indices[-1])
+            rng.shuffle(used_qubits)
             for gate, q_start, q_end, p_start, p_end in zip(
                 gate_specs["class"],
                 q_indices[:-1],
@@ -273,15 +427,15 @@ class RandomCircuitGen:
         num_qubits: int,
         num_gates: int,
         basis_gates: tuple = (
-            "x",
-            "s",
-            "sdg",
-            "t",
-            "tdg",
-            "z",
-            "h",
-            "rz",
-            "cx",
+            Constant.SINGLE_QUBIT_GATE_X,
+            Constant.SINGLE_QUBIT_GATE_S,
+            Constant.SINGLE_QUBIT_GATE_SDG,
+            Constant.SINGLE_QUBIT_GATE_T,
+            Constant.SINGLE_QUBIT_GATE_TDG,
+            Constant.SINGLE_QUBIT_GATE_Z,
+            Constant.SINGLE_QUBIT_GATE_H,
+            Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.TWO_QUBIT_GATE_CX,
         ),
         seed: None | int = None,
         outfile: None | str = None,
@@ -334,9 +488,11 @@ class RandomCircuitGen:
                     f"{gate_name} gate is not implemented"
                 )
 
-            if gate_name in ("rz", "rx", "ry"):
-                angle = np.random.uniform(0, 2 * np.pi)
-                gate.arg_value = [angle]
+            if gate_name in GATE_SPEC_MAP:
+                _, num_params = GATE_SPEC_MAP[gate_name]
+                if num_params > 0:
+                    params = np.random.uniform(0, 2 * np.pi, size=num_params)
+                    gate.arg_value = params.tolist()
 
             ir.append(gate)
 
@@ -367,3 +523,19 @@ def is_equal(circ1: QuantumCircuit, circ2: QuantumCircuit) -> bool:
     op1 = Operator(circ1)
     op2 = Operator(circ2)
     return op1.equiv(op2)
+
+
+if __name__ == "__main__":
+    rcg = RandomCircuitGen()
+    rcg.random_circuit_with_depth(
+        num_qubits=100,
+        depth=50000,
+        max_operands=2,
+        measure=False,
+        reset=False,
+        seed=42,
+        gate_type=0,
+        density=0.04,
+        two_qubits_rate=0.2,
+        outfile="random_circuit.qasm",
+    )

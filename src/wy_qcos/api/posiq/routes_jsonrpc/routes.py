@@ -39,6 +39,12 @@ driver_api_v1 = jsonrpc.Entrypoint(
 device_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/device", common_dependencies=[Depends(auth)]
 )
+device_group_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/device_group", common_dependencies=[Depends(auth)]
+)
+flavor_api_v1 = jsonrpc.Entrypoint(
+    f"{BASE_ENDPOINT}/flavor", common_dependencies=[Depends(auth)]
+)
 transpiler_api_v1 = jsonrpc.Entrypoint(
     f"{BASE_ENDPOINT}/transpiler", common_dependencies=[Depends(auth)]
 )
@@ -57,6 +63,8 @@ all_api_v1 = [
     auth_api_v1,
     driver_api_v1,
     device_api_v1,
+    device_group_api_v1,
+    flavor_api_v1,
     transpiler_api_v1,
     job_api_v1,
     user_api_v1,

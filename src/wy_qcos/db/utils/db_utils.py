@@ -148,8 +148,18 @@ def get_db_filters(
     if job_ids:
         db_filters["id"] = job_ids
 
+    # filter flavor ids
+    flavor_ids = db_filters.pop("flavor_ids", None)
+    if flavor_ids:
+        db_filters["id"] = flavor_ids
+
+    # filter device group ids
+    group_ids = db_filters.pop("group_ids", None)
+    if group_ids:
+        db_filters["id"] = group_ids
+
     if is_super_admin and allow_super_admin:
-        if "project_id" not in db_filters:
+        if "project_id" in db_filters:
             del db_filters["project_id"]
         if "user_id" in db_filters:
             del db_filters["user_id"]
@@ -340,7 +350,7 @@ async def db_job_callback(
 
         # handle profiling types
         for _result in _results:
-            if _profiling_types:
+            if _profiling_types:  # expected profiling types in job submission
                 if Constant.PROFILING_TYPE_ALL in _profiling_types:
                     continue
                 for _profiling_type in Constant.PROFILING_TYPES:
@@ -349,6 +359,12 @@ async def db_job_callback(
                     if _profiling_type not in _profiling_types:
                         if _profiling_type in _result["profiling"]:
                             del _result["profiling"][_profiling_type]
+                            del _result["profiling"][
+                                f"{_profiling_type}_started_at"
+                            ]
+                            del _result["profiling"][
+                                f"{_profiling_type}_ended_at"
+                            ]
             else:
                 _result["profiling"] = {}
 

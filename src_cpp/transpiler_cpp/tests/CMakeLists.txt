@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+﻿cmake_minimum_required(VERSION 3.11)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -17,13 +17,28 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_clifford_rz_optimization.cpp
                             decomposer/test_decomposer.cpp
                             decomposer/test_decomposer_benchmark.cpp
-                            #test_sabre_routing.cpp
+                            test_sabre_routing.cpp
                             test_sabre_mapping.cpp
-                            test_qasm_to_operations.cpp
+                            test_dense_layout.cpp
+                            test_vf2_layout.cpp
+                            test_chip_data.cpp
+                            test_qasm_to_ir.cpp
+                            test_parallel_optimize.cpp
+                            test_optimize.cpp
+                            test_na_mapping.cpp
+                            test_qasm_converter.cpp
+                            test_qpu_verifier.cpp
+                            test_cmss_verifier.cpp
+                            test_unitary_synthesis.cpp
+                            test_transpile.cpp
+                            optimizer/test_matrix_utils.cpp
+                            optimizer/test_one_qubit_euler_decomposer.cpp
+                            optimizer/test_two_qubit_decomposer.cpp
+                            optimizer/test_basis_selector.cpp
 )
 target_link_libraries(${TEST_NAME} ${LIB_TRANSPILER} ${LIB_GTEST} ${LIB_ANTLR4})
 
-target_compile_definitions(${TEST_NAME} PRIVATE 
+target_compile_definitions(${TEST_NAME} PRIVATE
     TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/../../samples/"
     TEST_TOPOLOGY_DIR="${PROJECT_SOURCE_DIR}/../../etc/"
 )

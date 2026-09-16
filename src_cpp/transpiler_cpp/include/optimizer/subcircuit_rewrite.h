@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "circuit/dag_circuit.h"
+#include "optimizer/optimization_pass.h"
 
 namespace qcos {
 
@@ -30,12 +31,12 @@ namespace qcos {
  * @class EquivalencePass
  * @brief 基于固定等价模板执行子线路重写
  */
-class EquivalencePass {
+class EquivalencePass : public OptimizationPass {
  public:
   /**
    * @brief 构造等价模板重写 pass
    */
-  EquivalencePass() = default;
+  explicit EquivalencePass(bool verbose = false);
 
   /**
    * @brief 在 DAG 上执行等价模板重写
@@ -43,9 +44,11 @@ class EquivalencePass {
    * @param basis_gates 可选 basis gate 过滤集合
    * @return int 被删除的门数量
    */
-  int run(
-      DAGCircuit& dag,
-      const std::optional<std::set<std::string>>& basis_gates = std::nullopt);
+  int run(DAGCircuit& dag,
+          const std::optional<std::set<std::string>>& basis_gates =
+              std::nullopt) override;
+
+  std::string name() const override { return "EquivalencePass"; }
 
  private:
   /**
@@ -66,6 +69,8 @@ class EquivalencePass {
   std::set<std::string> get_equivalence_circuits(
       const DAGCircuit& dag,
       const std::optional<std::set<std::string>>& basis_gates) const;
+
+  bool verbose_;
 };
 
 }  // namespace qcos

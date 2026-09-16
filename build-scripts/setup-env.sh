@@ -15,7 +15,15 @@
 
 set -e
 
-cwd=$(dirname "$0")
+BASE_DIR=$(dirname "$0")
+source ${BASE_DIR}/setup-env-functions.sh
+
+# if CICD WORKSPACE exists
+cicd_build_scripts_dir=""
+if [ -n "${WORKSPACE}" ]; then
+    cicd_build_scripts_dir="${WORKSPACE}/build-scripts"
+fi
+cwd="${cicd_build_scripts_dir:-$(pwd)}"
 abs_cwd=$(realpath ${cwd})
 top_dir=$(realpath ${cwd}/..)
 
@@ -47,16 +55,20 @@ while IFS='=' read -r key value; do
 done < "${env_file}"
 
 # local variables
-export QCOS_LOCAL_SRC_DIR="${top_dir}"
-export SANDBOX_CONTAINER_NAME=qcos-sandbox
-export SANDBOX_IMAGE_NAME=qcos-sandbox
-export SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION:-dev}
+if [ -z "${QCOS_LOCAL_SRC_DIR}" ]; then
+  export QCOS_LOCAL_SRC_DIR="${top_dir}"
+fi
 
 export QCOS_IMAGE_NAME="${QCOS_IMAGE_NAME}"
 export QCOS_IMAGE_VERSION="${QCOS_IMAGE_VERSION}"
 export QCOS_CONTAINER_NAME="${QCOS_CONTAINER_NAME}"
+export SANDBOX_CONTAINER_NAME=qcos-sandbox
+export SANDBOX_IMAGE_NAME=qcos-sandbox
+export SANDBOX_IMAGE_VERSION=${SANDBOX_IMAGE_VERSION:-dev}
 if [ "${DEV,,}" = "true" ]; then
   export QCOS_IMAGE_NAME="${QCOS_IMAGE_NAME}-dev"
-  export QCOS_IMAGE_VERSION="${QCOS_IMAGE_VERSION}"
+  export QCOS_IMAGE_VERSION="dev"
   export QCOS_CONTAINER_NAME="${QCOS_CONTAINER_NAME}-dev"
+  export SANDBOX_IMAGE_VERSION="dev"
+  export QCOS_WEBUI_IMAGE_NAME="${QCOS_WEBUI_IMAGE_NAME}-dev"
 fi

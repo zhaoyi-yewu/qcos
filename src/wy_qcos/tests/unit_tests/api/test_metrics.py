@@ -53,8 +53,11 @@ class MockJobMetricsData:
     queued = 3
     cancelling = 1
     cancelled = 1
+    deleting = 0
     deleted = 0
     unknown = 0
+    submitted_job_rate_min = 2.5
+    completed_job_rate_min = 1.0
 
 
 class MockApiStats:
@@ -262,8 +265,11 @@ class TestGetJobStats:
         assert response.queued == 3
         assert response.cancelling == 1
         assert response.cancelled == 1
+        assert response.deleting == 0
         assert response.deleted == 0
         assert response.unknown == 0
+        assert response.submitted_job_rate_min == 2.5
+        assert response.completed_job_rate_min == 1.0
 
     def test_get_job_stats_empty_jobs(self):
         """Test job stats response when there are no jobs."""
@@ -275,8 +281,11 @@ class TestGetJobStats:
         mock_job_data.queued = 0
         mock_job_data.cancelling = 0
         mock_job_data.cancelled = 0
+        mock_job_data.deleting = 0
         mock_job_data.deleted = 0
         mock_job_data.unknown = 0
+        mock_job_data.submitted_job_rate_min = 0.0
+        mock_job_data.completed_job_rate_min = 0.0
 
         with patch(
             "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
@@ -301,8 +310,11 @@ class TestGetJobStats:
         mock_job_data.queued = 0
         mock_job_data.cancelling = 0
         mock_job_data.cancelled = 0
+        mock_job_data.deleting = 0
         mock_job_data.deleted = 0
         mock_job_data.unknown = 0
+        mock_job_data.submitted_job_rate_min = 5.0
+        mock_job_data.completed_job_rate_min = 3.0
 
         with patch(
             "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"

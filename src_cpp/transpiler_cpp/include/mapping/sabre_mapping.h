@@ -25,13 +25,19 @@
 namespace qcos {
 
 /**
- * @brief Compute an initial logical->physical mapping using SABRE heuristic.
- * @param gates_list logical gate sequence
- * @param coupling_list physical coupling list
- * @return std::vector<int> logic->physical mapping
+ * @brief 使用 SABRE forward-backward routing 计算初始逻辑到物理映射。
+ *
+ * 从 initial_layout 出发，通过正向路由得到末尾排列，
+ * 再反转门序列反向路由，得到更优的初始映射。
+ *
+ * @param gates_list 逻辑门序列
+ * @param coupling_list 物理耦合边列表
+ * @param initial_layout 起始映射（如 DenseLayout 选区域结果），空则从零开始
+ * @return std::vector<int> 逻辑到物理映射
  */
 std::vector<int> sabre_initial_mapping(
     const std::vector<GateOperation>& gates_list,
-    const std::vector<std::pair<int, int>>& coupling_list);
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_layout = {});
 
 }  // namespace qcos

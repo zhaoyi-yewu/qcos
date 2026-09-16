@@ -27,8 +27,11 @@ from .common import errors
 from .common.client_library import ClientLibrary
 from .common.constant import Constant, HttpCode, HttpHeaders, HttpMethod
 
-
 logger = logging.getLogger(__name__)
+
+# Sentinel default for update methods to distinguish "field omitted"
+# (do not send) from "field explicitly None" (clear the field).
+_UNSET = object()
 
 
 class SSL:
@@ -44,7 +47,10 @@ class Client:
     """QCOS client api."""
 
     verbose = False
-    timeout = 30
+    timeout = 60
+    # When True, the timeout was set via command line --timeout and the
+    # QCOS_CLIENT_TIMEOUT env var must be ignored in call_json_rpc.
+    timeout_from_cli = False
 
     def __init__(
         self,
@@ -54,10 +60,12 @@ class Client:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_cafile=None,
-        timeout=30,
+        timeout=60,
+        timeout_from_cli=False,
     ):
         # Config
         Client.timeout = timeout
+        Client.timeout_from_cli = timeout_from_cli
 
         # SSL configs
         SSL.use_ssl = use_ssl
@@ -82,6 +90,8 @@ class Client:
         self.project_url = f"{endpoint_url}/project"
         self.system_url = f"{endpoint_url}/system"
         self.metrics_url = f"{endpoint_url}/metrics"
+        self.flavor_url = f"{endpoint_url}/flavor"
+        self.device_group_url = f"{endpoint_url}/device_group"
 
         # JWT token storage
         self.access_token = None
@@ -150,18 +160,22 @@ class Client:
         headers = HttpHeaders.DEFAULT_JSON_HEADERS
 
         # config client timeout
+        # Precedence: command line --timeout > QCOS_CLIENT_TIMEOUT env var
+        # > Client.timeout default. When the timeout was explicitly set
+        # via the command line, the env var is ignored entirely.
         timeout = Client.timeout
-        try:
-            qcos_client_timeout = os.environ.get("QCOS_CLIENT_TIMEOUT")
-            if qcos_client_timeout:
-                timeout = int(qcos_client_timeout)
-        except Exception:
-            return (
-                -1,
-                f"Invalid QCOS_CLIENT_TIMEOUT: {qcos_client_timeout}",
-                text,
-                result,
-            )
+        if not Client.timeout_from_cli:
+            try:
+                qcos_client_timeout = os.environ.get("QCOS_CLIENT_TIMEOUT")
+                if qcos_client_timeout:
+                    timeout = int(qcos_client_timeout)
+            except Exception:
+                return (
+                    -1,
+                    f"Invalid QCOS_CLIENT_TIMEOUT: {qcos_client_timeout}",
+                    text,
+                    result,
+                )
 
         # Add JWT token to headers if available
         access_token = os.environ.get(Constant.ENV_VAR_ACCESS_TOKEN, None)
@@ -291,7 +305,7 @@ class Client:
         return status_code, reason, text, result
 
     # [Device]
-    def get_devices(self):
+    def get_devices(self, details=False):
         """Get device list.
 
         Returns:
@@ -300,8 +314,9 @@ class Client:
         method_name = "get_devices"
 
         # construct data and call json rpc
+        data = {"details": details}
         status_code, reason, text, result = self.call_json_rpc(
-            self.device_url, method_name, body_data=None
+            self.device_url, method_name, data
         )
         return status_code, reason, text, result
 
@@ -405,6 +420,53 @@ class Client:
         )
         return status_code, reason, text, result
 
+    def set_device(
+        self,
+        device_name,
+        *,
+        state=None,
+        enable=None,
+        max_qubits=None,
+        available_qubits=None,
+    ):
+        """Set device attributes (state, enable, max_qubits, etc.).
+
+        Each parameter is optional; when omitted (None) the
+        corresponding attribute is not changed.
+
+        Args:
+            device_name: device name
+            state: device state ("auto", "online", "offline",
+                "busy", "disconnected", "calibrating",
+                "maintain", "unknown"). None means no change.
+            enable: enable flag (True/False). None means no change.
+            max_qubits: max qubits ("auto" or positive integer
+                string). None means no change.
+            available_qubits: available qubits ("auto" or positive
+                integer string). None means no change.
+
+        Returns:
+            status_code, reason, text, result
+        """
+        method_name = "set_device"
+
+        # construct data and call json rpc
+        data = {"device_name": device_name}
+        if state is not None:
+            data["state"] = state
+        if enable is not None:
+            data["enable"] = enable
+        if max_qubits is not None:
+            data["max_qubits"] = max_qubits
+        if available_qubits is not None:
+            data["available_qubits"] = available_qubits
+
+        # construct data and call json rpc
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_url, method_name, data
+        )
+        return status_code, reason, text, result
+
     # [Transpiler]
     def get_transpilers(self):
         """Get transpiler list.
@@ -473,6 +535,93 @@ class Client:
         )
         return status_code, reason, text, result
 
+    def show_mem(self):
+        """Show memory usage of the API server process.
+
+        Returns:
+            memory usage info
+        """
+        method_name = "show_mem"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result
+
+    def gc_mem(self, *, generations=2):
+        """Manually trigger garbage collection.
+
+        Args:
+            generations: gc generations to collect (0, 1, 2)
+
+        Returns:
+            gc collection result
+        """
+        method_name = "gc_mem"
+
+        # construct data and call json rpc
+        data = {"generations": generations}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def trace_mem(self, *, action="snapshot", nframe=25, sort_count=False):
+        """Trace memory allocations via tracemalloc.
+
+        Args:
+            action: action to perform (snapshot, stop, clear)
+            nframe: number of top memory allocations to show
+            sort_count: sort top allocations by count (descending)
+                instead of by size. Sorting is performed server-side
+                before applying the nframe limit.
+
+        Returns:
+            tracemalloc statistics
+        """
+        method_name = "trace_mem"
+
+        # construct data and call json rpc
+        data = {"action": action, "nframe": nframe, "sort_count": sort_count}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def list_workers(self):
+        """List all prefect workers with name and status.
+
+        Returns:
+            list of workers
+        """
+        method_name = "list_workers"
+
+        # construct data and call json rpc
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result
+
+    def restart_worker(self, *, worker_name):
+        """Restart a single prefect worker by worker name.
+
+        Args:
+            worker_name: worker name to restart
+
+        Returns:
+            restart worker result
+        """
+        method_name = "restart_worker"
+
+        # construct data and call json rpc
+        data = {"worker_name": worker_name}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.system_url, method_name, data
+        )
+        return status_code, reason, text, result
+        return status_code, reason, text, result
+
     # [Job]
     def submit_job(
         self,
@@ -486,7 +635,7 @@ class Client:
         job_priority=Constant.DEFAULT_JOB_PRIORITY,
         description=None,
         shots=Constant.DEFAULT_SHOTS,
-        backend=Constant.DRIVER_DUMMY,
+        backend=None,
         driver_options=None,
         transpiler=Constant.TRANSPILER_CMSS,
         transpiler_options=None,
@@ -494,6 +643,9 @@ class Client:
         callbacks=None,
         dry_run=False,
         qec_options=None,
+        flavor_id=None,
+        qem_options=None,
+        extra_specs=None,
     ):
         """Submit new job.
 
@@ -516,6 +668,9 @@ class Client:
             callbacks: callbacks
             dry_run: dry run
             qec_options: qec options
+            flavor_id: flavor UUID for auto scheduling
+            qem_options: error mitigation options
+            extra_specs: extra scheduling specifications
 
         Returns:
             submit_job result
@@ -532,7 +687,6 @@ class Client:
             "job_priority": job_priority,
             "description": description,
             "shots": shots,
-            "backend": backend,
             "driver_options": driver_options,
             "transpiler": transpiler,
             "transpiler_options": transpiler_options,
@@ -540,7 +694,17 @@ class Client:
             "callbacks": callbacks,
             "dry_run": dry_run,
             "qec_options": qec_options,
+            "qem_options": qem_options,
         }
+
+        # backend: only set if specified (None triggers auto scheduling)
+        if backend:
+            data["backend"] = backend
+        # flavor_id and extra_specs for auto scheduling
+        if flavor_id:
+            data["flavor_id"] = str(flavor_id)
+        if extra_specs:
+            data["extra_specs"] = extra_specs
 
         if job_id:
             data["job_id"] = str(job_id)
@@ -548,6 +712,371 @@ class Client:
             self.job_url, method_name, data
         )
         return status_code, reason, text, result
+
+    # [Flavor]
+    def create_flavor(
+        self,
+        name,
+        *,
+        project_id=None,
+        description=None,
+        is_public=True,
+        min_qubits=None,
+        max_qubits=None,
+        gate_fidelity_1q_min=None,
+        gate_fidelity_2q_min=None,
+        extra_properties=None,
+        device_groups,
+    ):
+        """Create a flavor (preset scheduling policy).
+
+        Args:
+            name: flavor name
+            project_id: project UUID (optional, defaults to
+                current user's project)
+            description: flavor description
+            is_public: whether the flavor is public
+            min_qubits: minimum qubits
+            max_qubits: maximum qubits
+            gate_fidelity_1q_min: min 1q gate fidelity
+            gate_fidelity_2q_min: min 2q gate fidelity
+            extra_properties: extra properties dict
+                (merged from --property)
+            device_groups: list of device group UUIDs
+                (required, at least one)
+
+        Returns:
+            create_flavor result
+        """
+        method_name = "create_flavor"
+        data = {
+            "name": name,
+            "is_public": is_public,
+            "extra_properties": extra_properties,
+            "device_groups": [str(dg) for dg in device_groups],
+        }
+        if project_id is not None:
+            data["project_id"] = str(project_id)
+        if description:
+            data["description"] = description
+        if min_qubits is not None:
+            data["min_qubits"] = min_qubits
+        if max_qubits is not None:
+            data["max_qubits"] = max_qubits
+        if gate_fidelity_1q_min is not None:
+            data["gate_fidelity_1q_min"] = gate_fidelity_1q_min
+        if gate_fidelity_2q_min is not None:
+            data["gate_fidelity_2q_min"] = gate_fidelity_2q_min
+        status_code, reason, text, result = self.call_json_rpc(
+            self.flavor_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def update_flavor(
+        self,
+        flavor_id,
+        name=_UNSET,
+        description=_UNSET,
+        is_public=_UNSET,
+        project_id=_UNSET,
+        min_qubits=_UNSET,
+        max_qubits=_UNSET,
+        gate_fidelity_1q_min=_UNSET,
+        gate_fidelity_2q_min=_UNSET,
+        extra_properties=_UNSET,
+        device_groups=_UNSET,
+    ):
+        """Update a flavor by ID.
+
+        Fields default to _UNSET (omitted from the request). Pass
+        None explicitly to clear a nullable field; pass a value to
+        update it.
+
+        Args:
+            flavor_id: flavor UUID
+            name: flavor name (None clears, _UNSET skips)
+            description: flavor description (None clears, _UNSET skips)
+            is_public: whether the flavor is public (_UNSET skips)
+            project_id: project UUID (_UNSET skips)
+            min_qubits: minimum qubits (None clears, _UNSET skips)
+            max_qubits: maximum qubits (None clears, _UNSET skips)
+            gate_fidelity_1q_min: min 1q gate fidelity
+                (None clears, _UNSET skips)
+            gate_fidelity_2q_min: min 2q gate fidelity
+                (None clears, _UNSET skips)
+            extra_properties: extra properties dict to merge
+                (from --property, _UNSET skips)
+            device_groups: list of device group UUIDs
+                (None clears mappings, _UNSET keeps existing)
+
+        Returns:
+            update_flavor result
+        """
+        method_name = "update_flavor"
+        data = {"flavor_id": str(flavor_id)}
+        if name is not _UNSET:
+            data["name"] = name
+        if description is not _UNSET:
+            data["description"] = description
+        if is_public is not _UNSET:
+            data["is_public"] = is_public
+        if project_id is not _UNSET:
+            data["project_id"] = (
+                str(project_id) if project_id is not None else None
+            )
+        if min_qubits is not _UNSET:
+            data["min_qubits"] = min_qubits
+        if max_qubits is not _UNSET:
+            data["max_qubits"] = max_qubits
+        if gate_fidelity_1q_min is not _UNSET:
+            data["gate_fidelity_1q_min"] = gate_fidelity_1q_min
+        if gate_fidelity_2q_min is not _UNSET:
+            data["gate_fidelity_2q_min"] = gate_fidelity_2q_min
+        if extra_properties is not _UNSET:
+            data["extra_properties"] = extra_properties
+        if device_groups is not _UNSET:
+            data["device_groups"] = (
+                None
+                if device_groups is None
+                else [str(dg) for dg in device_groups]
+            )
+        status_code, reason, text, result = self.call_json_rpc(
+            self.flavor_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def get_flavor(self, flavor_id):
+        """Get a flavor by ID.
+
+        Args:
+            flavor_id: flavor UUID
+
+        Returns:
+            get_flavor result
+        """
+        method_name = "get_flavor"
+        data = {"flavor_id": str(flavor_id)}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.flavor_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def get_flavors(self, filters=None):
+        """Get all flavors with optional filtering.
+
+        Args:
+            filters: Optional filter conditions dictionary,
+                e.g. {"flavor_name": "g1.all"}
+
+        Returns:
+            get_flavors result
+        """
+        method_name = "get_flavors"
+        data = {}
+        if filters:
+            data["filters"] = filters
+        status_code, reason, text, result = self.call_json_rpc(
+            self.flavor_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def delete_flavors(self, flavor_ids):
+        """Delete multiple flavors by IDs (batch).
+
+        Args:
+            flavor_ids: list of flavor UUIDs
+
+        Returns:
+            delete_flavors result
+        """
+        method_name = "delete_flavors"
+        data = {"flavor_ids": [str(fid) for fid in flavor_ids]}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.flavor_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    # [Device Group]
+    def create_device_group(
+        self,
+        name,
+        device_names,
+        project_id=None,
+        description=None,
+        is_public=True,
+    ):
+        """Create a device group.
+
+        Args:
+            name: device group name
+            project_id: project UUID (optional)
+            description: device group description
+            device_names: list of device names in this group (required)
+            is_public: whether the group is public
+
+        Returns:
+            create_device_group result
+        """
+        method_name = "create_device_group"
+        data = {
+            "name": name,
+            "is_public": is_public,
+        }
+        if project_id is not None:
+            data["project_id"] = str(project_id)
+        if description:
+            data["description"] = description
+        if device_names is not None:
+            data["device_names"] = device_names
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_group_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def update_device_group(
+        self,
+        group_id,
+        name=_UNSET,
+        description=_UNSET,
+        device_names=_UNSET,
+        is_public=_UNSET,
+        project_id=_UNSET,
+    ):
+        """Update a device group by ID.
+
+        Fields default to _UNSET (omitted from the request). Pass
+        None explicitly to clear a nullable field; pass a value to
+        update it.
+
+        Args:
+            group_id: device group UUID
+            name: device group name (None clears, _UNSET skips)
+            description: device group description
+                (None clears, _UNSET skips)
+            device_names: list of device names in this group
+                (None clears, _UNSET skips)
+            is_public: whether the group is public (_UNSET skips)
+            project_id: project UUID (_UNSET skips)
+
+        Returns:
+            update_device_group result
+        """
+        method_name = "update_device_group"
+        data = {"group_id": str(group_id)}
+        if name is not _UNSET:
+            data["name"] = name
+        if description is not _UNSET:
+            data["description"] = description
+        if device_names is not _UNSET:
+            data["device_names"] = device_names
+        if is_public is not _UNSET:
+            data["is_public"] = is_public
+        if project_id is not _UNSET:
+            data["project_id"] = (
+                str(project_id) if project_id is not None else None
+            )
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_group_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def get_device_group(self, group_id):
+        """Get a device group by ID.
+
+        Args:
+            group_id: device group UUID
+
+        Returns:
+            get_device_group result
+        """
+        method_name = "get_device_group"
+        data = {"group_id": str(group_id)}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_group_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def get_device_groups(self, filters=None):
+        """Get all device groups with optional filtering.
+
+        Args:
+            filters: Optional filter conditions dictionary,
+                e.g. {"group_name": "my-group"}
+
+        Returns:
+            get_device_groups result
+        """
+        method_name = "get_device_groups"
+        data = {}
+        if filters:
+            data["filters"] = filters
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_group_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    def delete_device_groups(self, group_ids):
+        """Delete multiple device groups by IDs (batch).
+
+        Args:
+            group_ids: list of device group UUIDs
+
+        Returns:
+            delete_device_groups result
+        """
+        method_name = "delete_device_groups"
+        data = {"group_ids": [str(gid) for gid in group_ids]}
+        status_code, reason, text, result = self.call_json_rpc(
+            self.device_group_url, method_name, data
+        )
+        return status_code, reason, text, result
+
+    @staticmethod
+    def resolve_device_group_id(client, group_identifier):
+        """Resolve group_id from either UUID or group_name.
+
+        If group_identifier is a valid UUID, return it directly.
+        Otherwise, treat it as a group_name and fetch the
+        group_id from server via get_device_groups().
+
+        Args:
+            client: The QCOS client instance
+            group_identifier: Either a group UUID or group name
+
+        Returns:
+            The group UUID
+        """
+        try:
+            uuid.UUID(group_identifier)
+            return group_identifier
+        except ValueError:
+            status_code, reason, text, result = client.get_device_groups(
+                filters={"group_name": group_identifier}
+            )
+            if status_code != HttpCode.SUCCESS_OK:
+                raise errors.GenericException(
+                    f"Failed to fetch device groups: {reason}"
+                )
+
+            groups_data = json.loads(text)
+            if "result" in groups_data and groups_data["result"]:
+                groups = groups_data["result"]
+                if groups:
+                    return groups[0].get("id")
+
+            if "error" in groups_data and groups_data["error"]:
+                error_info = groups_data["error"]
+                err_msg = (
+                    f"{error_info['message']}: "
+                    f"{error_info.get('data', {}).get('details', '')}.\n"
+                    "You may query by group uuid instead of "
+                    "group name."
+                )
+                raise errors.GenericException(err_msg)
+
+            raise errors.GenericException(
+                f"Device group '{group_identifier}' not found"
+            )
 
     def get_job_status(self, job_id):
         """Get job status.
@@ -720,6 +1249,55 @@ class Client:
         )
         return status_code, reason, text, result
 
+    @staticmethod
+    def resolve_flavor_id(client, flavor_identifier):
+        """Resolve flavor_id from either UUID or flavor_name.
+
+        If flavor_identifier is a valid UUID, return it directly.
+        Otherwise, treat it as a flavor_name and fetch the
+        flavor_id from server via get_flavors().
+
+        Args:
+            client: The QCOS client instance
+            flavor_identifier: Either a flavor UUID or flavor name
+
+        Returns:
+            The flavor UUID
+        """
+        # Check if it's a valid UUID
+        try:
+            uuid.UUID(flavor_identifier)
+            return flavor_identifier
+        except ValueError:
+            # Not a UUID, treat as flavor_name and fetch with filters
+            status_code, reason, text, result = client.get_flavors(
+                filters={"flavor_name": flavor_identifier}
+            )
+            if status_code != HttpCode.SUCCESS_OK:
+                raise errors.GenericException(
+                    f"Failed to fetch flavors: {reason}"
+                )
+
+            flavors_data = json.loads(text)
+            if "result" in flavors_data and flavors_data["result"]:
+                flavors = flavors_data["result"]
+                # Should only have one or zero flavors due to filter
+                if flavors:
+                    return flavors[0].get("id")
+
+            if "error" in flavors_data and flavors_data["error"]:
+                error_info = flavors_data["error"]
+                err_msg = (
+                    f"{error_info['message']}: "
+                    f"{error_info.get('data', {}).get('details', '')}.\n"
+                    "You may query by flavor uuid instead of flavor name."
+                )
+                raise errors.GenericException(err_msg)
+
+            raise errors.GenericException(
+                f"Flavor '{flavor_identifier}' not found"
+            )
+
     # [User]
 
     @staticmethod
@@ -745,7 +1323,7 @@ class Client:
             status_code, reason, text, result = client.get_users(
                 filters={"user_name": user_identifier}
             )
-            if status_code != 200:
+            if status_code != HttpCode.SUCCESS_OK:
                 raise errors.GenericException(
                     f"Failed to fetch users: {reason}"
                 )
@@ -796,7 +1374,7 @@ class Client:
             status_code, reason, text, result = client.get_roles(
                 filters={"role_name": role_identifier}
             )
-            if status_code != 200:
+            if status_code != HttpCode.SUCCESS_OK:
                 raise errors.GenericException(
                     f"Failed to fetch roles: {reason}"
                 )

@@ -14,9 +14,11 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-import math
+import ast
 import copy
+import math
 import numexpr
+import operator
 
 from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
@@ -24,6 +26,94 @@ from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
     ParamGate,
 )
 from wy_qcos.common.cmss.gate_operation import create_gate
+
+# Allowed binary operators for safe expression evaluation
+_SAFE_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+# Allowed unary operators for safe expression evaluation
+_SAFE_UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+
+# Allowed modules whose attributes may be accessed in safe expressions
+_SAFE_MODULES = {"math": math}
+
+
+def _safe_eval_ast(tree, locals_dict):
+    """Evaluate a parsed AST expression safely.
+
+    Only arithmetic operations, constants, variable names, calls to
+    whitelisted module functions (e.g. math.sin) and attribute access on
+    whitelisted modules are permitted.
+
+    Args:
+        tree: parsed AST expression node
+        locals_dict: mapping of variable names to values
+
+    Returns:
+        evaluated result
+    """
+
+    def _eval(node):
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Num):  # pragma: no cover  # py<3.8 compat
+            return node.n
+        if isinstance(node, ast.Name):
+            if node.id in locals_dict:
+                return locals_dict[node.id]
+            if node.id in _SAFE_MODULES:
+                return _SAFE_MODULES[node.id]
+            raise NameError(f"name '{node.id}' is not allowed")
+        if isinstance(node, ast.BinOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_BINOPS:
+                raise ValueError(f"operator {op_type.__name__} not allowed")
+            return _SAFE_BINOPS[op_type](_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.UnaryOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_UNARYOPS:
+                raise ValueError(f"operator {op_type.__name__} not allowed")
+            return _SAFE_UNARYOPS[op_type](_eval(node.operand))
+        if isinstance(node, ast.Attribute):
+            value = _eval(node.value)
+            if value not in _SAFE_MODULES.values():
+                raise ValueError("attribute access not allowed")
+            return getattr(value, node.attr)
+        if isinstance(node, ast.Call):
+            func = _eval(node.func)
+            if not callable(func):
+                raise ValueError("call target is not callable")
+            args = [_eval(a) for a in node.args]
+            return func(*args)
+        raise ValueError(f"node type {type(node).__name__} not allowed")
+
+    return _eval(tree)
+
+
+def _safe_eval(expr, locals_dict):
+    """Safely evaluate a math expression without using eval().
+
+    Args:
+        expr: expression string
+        locals_dict: mapping of variable names to values
+
+    Returns:
+        evaluated result
+    """
+    tree = ast.parse(expr, mode="eval")
+    return _safe_eval_ast(tree, locals_dict)
 
 
 class RuleApplier:
@@ -214,22 +304,14 @@ class RuleApplier:
         Raises:
             ValueError: If parameter expression evaluation fails.
         """
-        _expr_code_cache: dict[str, object] = {}
-
-        _SAFE_GLOBALS = {
-            "__builtins__": {},
-            "pi": math.pi,
-            "e": math.e,
-        }
+        _expr_tree_cache: dict[str, ast.AST] = {}
 
         def _eval_expr_cached(expr, env):
-            code = _expr_code_cache.get(expr)
-
-            if code is None:
-                code = compile(expr, "<expr>", "eval")
-                _expr_code_cache[expr] = code
-
-            return float(eval(code, _SAFE_GLOBALS, env))  # pylint: disable=eval-used  # noqa: S307
+            tree = _expr_tree_cache.get(expr)
+            if tree is None:
+                tree = ast.parse(expr, mode="eval")
+                _expr_tree_cache[expr] = tree
+            return float(_safe_eval_ast(tree, env))
 
         # Build name -> template lookup index.
         template_index: dict[str, ParamGate] = {

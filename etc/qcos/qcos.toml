@@ -1,15 +1,22 @@
-# for development purpose
 # QCOS configures
 [DEFAULT]
 # Global debug switch; when enabled, lowers global log level to DEBUG
 DEBUG = false
 
-# [GLOBAL CONFIG] max jobs (all status)
-MAX_JOBS = 10000
-# [GLOBAL CONFIG] max queued+running jobs
-MAX_QUEUED_JOBS = 1000
 # [GLOBAL CONFIG] authentication mode: "no" (default), "jwt", "virtual_instance"
 AUTH_MODE = "no"
+# [GLOBAL CONFIG] max jobs (all status), -1: unlimited
+MAX_JOBS = -1
+# [GLOBAL CONFIG] max queued+running jobs, -1: unlimited
+MAX_QUEUED_JOBS = -1
+# [GLOBAL CONFIG] job scan interval in minutes (default: 60)
+JOB_SCAN_INTERVAL = 60
+# [GLOBAL CONFIG] job expiration days, jobs older than this will be auto-deleted, -1: never expire
+JOB_EXPIRE_DAYS = -1
+# [GLOBAL CONFIG] completed flow-run expiration days, flow-runs older than this will be auto-deleted, -1: never expire
+FLOW_EXPIRE_DAYS = 1
+# [GLOBAL CONFIG] periodic garbage collection interval in days: runs gc.collect (all 3 generations) + malloc_trim(0), -1: disabled
+GC_INTERVAL = 1
 # [GLOBAL CONFIG] default venv base dir
 # VENV_DIR = "/var/lib/qcos/venv"
 
@@ -28,9 +35,40 @@ API_SERVER_LISTEN_IP = ""
 # API server listen port
 API_SERVER_LISTEN_PORT = 18400
 
+[SCHEDULER]
+# enable auto scheduling (select device automatically when backend
+# is not specified in submit_job)
+ENABLE_AUTO_SCHEDULE = true
+# enabled filter class names; empty list uses all DEFAULT_FILTERS
+# available filters:
+#   CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
+#   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
+#   QueueLimitFilter, DeviceAvailabilityFilter, DeviceNameFilter,
+#   DeviceGroupFilter
+ENABLED_FILTERS = [
+    "CodeTypeFilter",
+    "InputConstraintsFilter",
+    "DeviceStatusFilter",
+    "TechTypeFilter",
+    "QubitCountFilter",
+    "QueueLimitFilter",
+    "GateFidelityFilter",
+    "DeviceAvailabilityFilter",
+    "DeviceNameFilter",
+    "DeviceGroupFilter",
+]
+# enabled weigher class names; empty list uses all DEFAULT_WEIGHERS
+# available weighers: DeviceAvailabilityWeigher, DeviceLoadWeigher,
+# AvgExecTimeWeigher
+ENABLED_WEIGHERS = [
+    "DeviceAvailabilityWeigher",
+    "DeviceLoadWeigher",
+    "AvgExecTimeWeigher",
+]
+
 [USERS]
-# max jobs (per user, all status)
-MAX_JOBS = 100
+# max jobs (per user, all status), -1: unlimited
+MAX_JOBS = -1
 # password expiry days, 0: never expired
 PASSWORD_EXPIRY_DAYS = 90
 # max login attempts before lockout
@@ -43,8 +81,8 @@ LOCKOUT_DURATION_MINUTES = 30
 ACCESS_CONTROL_MODEL_FILE = "/etc/qcos/roles/casbin_model.conf"
 # access control policy file
 ACCESS_CONTROL_POLICY_FILE = "/etc/qcos/roles/policy.conf"
-# admin user password (hashed with PASSWORD_SALT)
-ADMIN_PASSWORD = "++gAAAAABpt8fIFNquoHfkm0jqDAtQWKit9f1y7Ns479NBgzSGCUvwhlJcrUaL0CU0qkXX9OQpDFXNzCUU1dR37-HqqTFIevAWqQ=="
+# default admin user password (hashed with PASSWORD_SALT)
+DEFAULT_ADMIN_PASSWORD = "P*ssword1"
 # jwt secret key for authentication
 JWT_AUTH_SECRET_KEY = "47pW_6k8A4iU1Z8-r8G2j4_xN9M5V3L7Q9p2X1Y4Z0A"
 # jwt auth algorithm
@@ -61,15 +99,12 @@ PASSWORD_SALT = "123456"
 [DATABASE]
 # QCOS database connection URL (sqlite or postgresql)
 # eg:
-# postgresql: "postgresql+pg8000://qcos:${password}@127.0.0.1:5432/qcos"
+# postgresql: "postgresql+psycopg://qcos:${password}@127.0.0.1:5432/qcos"
 # sqlite: "sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL"
-QCOS_DATABASE_CONNECTION_URL = "postgresql+pg8000://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos"
+QCOS_DATABASE_CONNECTION_URL = "postgresql+psycopg://qcos:${QCOS_DATABASE_PASSWORD}@127.0.0.1:5432/qcos"
 
 [REDIS]
-# redis server ip
-REDIS_SERVER_IP = "127.0.0.1"
-# redis server port
-REDIS_SERVER_PORT = 6379
+REDIS_URL = "redis://:${REDIS_PASSWORD}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/0"
 
 [PREFECT]
 PREFECT_API_URL = "http://127.0.0.1:4200/api"
@@ -117,11 +152,7 @@ USE_SSL = false
 # eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
 # KEY_FILE =
 
-# SSL CACERT_FILE (Optional)
-# eg. CACERT_FILE = "/etc/qcos/ssl/cacert.pem"
-# CACERT_FILE =
-
 [DEVICES]
 # DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "wy-hanyuan1", "wy-hanyuan1-sim", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim", "ciqtek_ion_1", "quafu", "hanyuan1_pulse"]
+# DEVICE_LIST = ["dummy", "hanyuan1", "wy_hanyuan1", "wy_hanyuan1_sim", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "spinq_sqc_25", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim", "qutip_ashn_sim", "ciqtek_ion_1", "quafu", "hanyuan1_pulse", "lq_qz01_surface", "lq_mq02", "lq_agate100", "lq_qz02", "lq_qz01_repetition", "cetc_baihua"]
 DEVICE_LIST = ["dummy", "qutip_sim"]

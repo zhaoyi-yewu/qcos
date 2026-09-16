@@ -65,12 +65,12 @@ qcos_template_st_config_file_path=${qcos_template_base_dir}/qcos-st.toml
 qcos_template_st_config_dir=${qcos_template_base_dir}/st-conf.d
 
 mkdir -p /var/log/qcos
-chmod 777 /var/log/qcos
 mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/roles
 mkdir -p /etc/qcos/ssl
 mkdir -p ${qcos_extra_config_file_dir}
 mkdir -p ${qcos_st_config_dir}
+mkdir -p /var/run/qcos
 
 # load venv
 venv_dir="/var/lib/qcos/venv/default"
@@ -93,6 +93,7 @@ def config(conf):
     conf['DEFAULT']['MAX_QUEUED_JOBS'] = ${MAX_QUEUED_JOBS:-1000}
     conf['DEFAULT']['AUTH_MODE'] = '${_AUTH_MODE}'
     conf['USERS']['MAX_JOBS'] = ${MAX_JOBS_PER_USER:-100}
+    conf['USERS']['DEFAULT_ADMIN_PASSWORD'] = '${DEFAULT_ADMIN_PASSWORD:-P*ssword1}'
     conf['VIRT']['PASSWORD_SALT'] = '${PASSWORD_SALT:-123456}'
 
     conf['API_SERVER']['API_WORKERS'] = ${API_WORKERS:-8}
@@ -107,8 +108,7 @@ def config(conf):
     conf['PREFECT']['PREFECT_LOCAL_STORAGE_PATH'] = '${PREFECT_LOCAL_STORAGE_PATH:-/var/qcos/storage}'
     conf['PREFECT']['PREFECT_LOGGING_LEVEL'] = '${PREFECT_LOGGING_LEVEL:-INFO}'
 
-    conf['REDIS']['REDIS_SERVER_IP'] = '${REDIS_SERVER_IP:-127.0.0.1}'
-    conf['REDIS']['REDIS_SERVER_PORT'] = ${REDIS_SERVER_PORT:-6379}
+    conf['REDIS']['REDIS_URL'] = '${REDIS_URL:-redis://127.0.0.1:6379/0}'
 
     conf['DATABASE']['QCOS_DATABASE_CONNECTION_URL'] = '${QCOS_DATABASE_CONNECTION_URL:-sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL}'
 
@@ -169,15 +169,15 @@ fi
 if [ "${db_migration}" = true ]; then
   echo "Starting database migration..."
 
-  # Get the init-db script
-  INIT_DB_SCRIPT="/root/qcos-project/build-scripts/init-db.sh"
+  # Get the db-manager script
+  INIT_DB_SCRIPT="/root/qcos-project/build-scripts/db-manager.sh"
   DB_MIGRATION_DIR="/root/qcos-project/src/wy_qcos/db/migration"
   if [ "${DEV,,}" = "false" ]; then
-    INIT_DB_SCRIPT="${venv_dir}/share/wy_qcos/scripts/init-db.sh"
+    INIT_DB_SCRIPT="${venv_dir}/share/wy_qcos/scripts/db-manager.sh"
     DB_MIGRATION_DIR="${venv_dir}/share/wy_qcos/src/wy_qcos/db/migration"
   fi
 
-  # Verify init-db.sh exists
+  # Verify db-manager.sh exists
   if [ -f "${INIT_DB_SCRIPT}" ]; then
     # Execute database migration and capture output
     echo "Executing: ${INIT_DB_SCRIPT} --db-user postgres --db-qcos-password ****** -D ${DB_MIGRATION_DIR} -i -u"
@@ -203,10 +203,14 @@ if [ "${local_cicd,,}" = true ]; then
   qcos_config_file_args="--config-file ${qcos_config_file_path} --config-file ${qcos_st_config_file_path} --config-dir ${qcos_st_config_dir}"
 fi
 
-# Apply sysctl kernel tuning for qcos-api
-sysctl -w net.ipv4.tcp_tw_reuse=1
-sysctl -w net.ipv4.tcp_timestamps=1
-sysctl -w net.ipv4.tcp_fin_timeout=30
+# Apply sysctl kernel tuning for qcos-api (requires root)
+if [ "$(id -u)" -eq 0 ]; then
+  sysctl -w net.ipv4.tcp_tw_reuse=1
+  sysctl -w net.ipv4.tcp_timestamps=1
+  sysctl -w net.ipv4.tcp_fin_timeout=30
+else
+  echo "Skip sysctl tuning: not running as root"
+fi
 
 # run qcos-api with max attempts
 MAX_ATTEMPTS=3

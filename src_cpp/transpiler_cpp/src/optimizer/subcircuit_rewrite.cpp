@@ -17,6 +17,7 @@
 
 #include "optimizer/subcircuit_rewrite.h"
 
+#include <iostream>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -38,6 +39,8 @@ bool contains_all(const std::unordered_map<std::string, int>& op_counts,
 }
 
 }  // namespace
+
+EquivalencePass::EquivalencePass(bool verbose) : verbose_(verbose) {}
 
 std::set<std::string> EquivalencePass::get_equivalence_circuits(
     const DAGCircuit& dag,
@@ -140,7 +143,11 @@ int EquivalencePass::run(
     DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates) {
   const std::set<std::string> enabled_templates =
       get_equivalence_circuits(dag, basis_gates);
-  return replace_equivalence_circuits(dag, enabled_templates);
+  int reduced = replace_equivalence_circuits(dag, enabled_templates);
+  if (verbose_) {
+    std::clog << name() << ": " << reduced << " gates reduced\n";
+  }
+  return reduced;
 }
 
 }  // namespace qcos

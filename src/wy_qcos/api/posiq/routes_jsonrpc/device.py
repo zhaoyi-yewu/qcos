@@ -17,41 +17,260 @@
 
 import logging
 
+from wy_qcos.metrics.device_availability_collector import (
+    DeviceAvailabilityCollector,
+)
+
 from fastapi import Depends
 
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
 from wy_qcos.common.constant import Constant
+from wy_qcos.db.repositories.device_availability import (
+    DeviceAvailabilityRepository,
+)
+from wy_qcos.db.repositories.job import JobRepository
+from wy_qcos.db.utils.db_utils import get_repository
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth, validate_virtual_instance
 
 logger = logging.getLogger(__name__)
 module_name = "DEVICE"
+# Singleton availability collector instance (configured & started in the
+# FastAPI lifespan). Accessed via get() so it can be None when the
+# collector has not been initialized yet (e.g. unit tests).
+_availability_collector = None
 
 
-def _get_device_info(device, auth_data=None, details=False):
+def _compute_avg_1q_fidelity(details):
+    """Compute average 1-qubit gate fidelity from device details.
+
+    Extracts ``xeb_fidelity`` from ``details["calibration"]
+    ["qubit_metrics"]`` and returns the arithmetic mean.
+
+    Args:
+        details: device details dict
+
+    Returns:
+        Average fidelity (0.0-1.0) rounded to 5 decimals, or None
+        when no data available.
+    """
+    if not isinstance(details, dict):
+        return None
+    calibration = details.get("calibration")
+    if not isinstance(calibration, dict):
+        return None
+    qubit_metrics = calibration.get("qubit_metrics")
+    if not isinstance(qubit_metrics, list) or not qubit_metrics:
+        return None
+    fidelities = []
+    for qm in qubit_metrics:
+        if isinstance(qm, dict):
+            fidelity = qm.get("xeb_fidelity")
+            if fidelity is not None:
+                fidelities.append(float(fidelity))
+    if not fidelities:
+        return None
+    return round(sum(fidelities) / len(fidelities), 5)
+
+
+def _compute_avg_2q_fidelity(details):
+    """Compute average 2-qubit gate fidelity from device details.
+
+    Extracts ``cz_fidelity`` from ``details["calibration"]
+    ["coupler_metrics"]`` and returns the arithmetic mean.
+
+    Args:
+        details: device details dict
+
+    Returns:
+        Average fidelity (0.0-1.0) rounded to 5 decimals, or None
+        when no data available.
+    """
+    if not isinstance(details, dict):
+        return None
+    calibration = details.get("calibration")
+    if not isinstance(calibration, dict):
+        return None
+    coupler_metrics = calibration.get("coupler_metrics")
+    if not isinstance(coupler_metrics, list) or not coupler_metrics:
+        return None
+    fidelities = []
+    for cm in coupler_metrics:
+        if isinstance(cm, dict):
+            fidelity = cm.get("cz_fidelity")
+            if fidelity is not None:
+                fidelities.append(float(fidelity))
+    if not fidelities:
+        return None
+    return round(sum(fidelities) / len(fidelities), 5)
+
+
+def set_availability_collector(collector):
+    """Set the process-wide availability collector instance.
+
+    Called from the FastAPI lifespan after the collector is created
+    so that get_device / get_devices can query the current-hour
+    real-time availability rate.
+
+    Args:
+        collector: DeviceAvailabilityCollector instance (or None)
+    """
+    global _availability_collector
+    _availability_collector = collector
+
+
+def _get_job_count(device_name, job_repo=None):
+    """Get job count grouped by job status for a device.
+
+    Uses a single GROUP BY query (count_by_status) instead of N
+    separate COUNT queries so the job table is scanned only once.
+
+    Args:
+        device_name: device name (matches job.backend column)
+        job_repo: JobRepository instance. When None or not a real
+            repository, returns empty dict to avoid blocking device
+            queries when the database is unavailable.
+
+    Returns:
+        dict mapping each job status in Constant.JOB_STATUSES to
+        its count for the given device, plus a TOTAL entry that
+        sums all statuses.
+    """
+    job_count = {
+        status.lower(): 0
+        for status in ([Constant.JOB_STATUS_TOTAL] + Constant.JOB_STATUSES)
+    }
+    if not isinstance(job_repo, JobRepository):
+        job_count[Constant.JOB_STATUS_TOTAL.lower()] = 0
+        return job_count
+    try:
+        counts = job_repo.count_by_status(device_name)
+    except Exception as e:
+        logger.warning(f"Failed to get job counts for {device_name}: {e}")
+        job_count[Constant.JOB_STATUS_TOTAL.lower()] = 0
+        return job_count
+    # Fill in statuses present in the database; others stay 0
+    total = 0
+    for status, count in counts.items():
+        job_count[status.lower()] = count
+        total += count
+    job_count[Constant.JOB_STATUS_TOTAL.lower()] = total
+    return job_count
+
+
+def _get_device_info(
+    device,
+    auth_data=None,
+    details=False,
+    job_repo=None,
+    workers=None,
+    availability_collector=None,
+    availability_repo=None,
+):
     """Get device info.
 
     Args:
         device: device
         auth_data: authentication data
         details: need detail information or not
+        job_repo: JobRepository instance for querying job counts.
+            When None, job_count is an empty dict.
+        workers: list of worker dicts from TaskFlowManager.list_workers().
+            When None, device_monitor_status and
+            device_manager_status default to "offline".
+        availability_collector: DeviceAvailabilityCollector
+            instance for querying
+            the current-hour real-time availability rate. When None,
+            availability_hourly is None.
+        availability_repo: DeviceAvailabilityRepository instance for querying
+            the last aggregated hour and historical availability rate.
+            When None, availability_last_hour and availability_history
+            are None.
 
     Returns:
         device_info
     """
+    # current-hour real-time availability rate from in-memory collector
+    # compute current-hour and overall availability rates via the
+    # unified helper in DeviceAvailabilityCollector (merges
+    # in-memory current-hour counts with historical DB records)
+    availability_hourly = None
+    availability_total = None
+    try:
+        db_engine = None
+        if availability_repo is not None:
+            db_engine = getattr(availability_repo._db_session, "bind", None)
+        (
+            availability_hourly,
+            availability_total,
+        ) = DeviceAvailabilityCollector.compute_availability_rates(
+            device.name, db_engine=db_engine
+        )
+    except Exception as e:
+        logger.warning(
+            f"Failed to compute availability rates for {device.name}: {e}"
+        )
+    # extract monitor polling interval from device configs
+    device_configs = device.get_configs(hide_password=True)
+    monitor_configs = (
+        device_configs.get("device_monitor", {})
+        if isinstance(device_configs, dict)
+        else {}
+    )
+    monitor_polling_interval = monitor_configs.get(
+        "polling_interval",
+        Constant.DEFAULT_DEVICE_MONITOR_POLLING_INTERVAL,
+    )
+
+    # get device monitor / manager worker status from workers list
+    device_monitor_status = "offline"
+    device_manager_status = "offline"
+    enable_device_manager = device.get_driver().enable_device_mgr
+    if workers:
+        monitor_pool = f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.name}"
+        mgr_pool = f"{Constant.WORK_POOL_MGR_PREFIX}{device.name}"
+        for worker in workers:
+            pool_name = worker.get("work_pool", "")
+            if pool_name == monitor_pool:
+                device_monitor_status = worker.get("worker_status", "unknown")
+            elif pool_name == mgr_pool:
+                device_manager_status = worker.get("worker_status", "unknown")
+
+    # compute avg gate fidelities from calibration data
+    avg_1q_fidelity = _compute_avg_1q_fidelity(device.details)
+    avg_2q_fidelity = _compute_avg_2q_fidelity(device.details)
+
+    # build metrics dict: availability and fidelity metrics
+    metrics = {
+        "availability_hourly": availability_hourly,
+        "availability_total": availability_total,
+        "avg_1q_fidelity": avg_1q_fidelity,
+        "avg_2q_fidelity": avg_2q_fidelity,
+    }
+    # get effective status with manual override info
+    eff_status, is_manual = device.get_effective_status()
     _device_info = {
         "name": device.name,
         "alias_name": device.alias_name,
         "description": device.description,
         "driver_name": device.driver.get_name(),
         "enable": device.enable,
-        "status": device.status,
+        "status": eff_status,
+        "is_manual": is_manual,
         "tech_type": device.tech_type,
         "max_qubits": device.max_qubits,
+        "available_qubits": device.available_qubits,
+        "enable_device_monitor": device.get_enable_device_monitor(),
+        "device_monitor_status": device_monitor_status,
+        "monitor_polling_interval": monitor_polling_interval,
+        "enable_device_manager": enable_device_manager,
+        "device_manager_status": device_manager_status,
+        "job_count": _get_job_count(device.name, job_repo),
+        "metrics": metrics,
+        "last_updated_at": device.last_updated_at,
         "details": device.details,
-        "timestamp": device.timestamp,
     }
     if not details:
         _device_info.pop("details")
@@ -60,17 +279,26 @@ def _get_device_info(device, auth_data=None, details=False):
 
 
 @device_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def get_devices(
-    body: schemas.GetDevicesRequest | None = None,
+    body: schemas.GetDevicesRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
+    availability_repo: DeviceAvailabilityRepository = Depends(
+        get_repository(DeviceAvailabilityRepository)
+    ),
 ) -> dict[str, schemas.GetDeviceResponse]:
     """Get device dict request.
 
     Args:
         body(schemas.GetDevicesRequest): devices request
         auth_data: auth data
+        job_repo: JobRepository instance for querying job counts
+        availability_repo: DeviceAvailabilityRepository instance for querying
+            historical availability rates
 
     Returns:
         Get devices response
@@ -78,14 +306,31 @@ def get_devices(
     func_name = "get_devices"
     logger.info(f"Call {func_name}: {body}")
 
+    details = body.details
     device_manager = scheduler.get_device_manager()
+    task_manager = scheduler.get_task_manager()
     devices = device_manager.get_devices()
+    # query workers only once to avoid N Prefect API calls
+    workers = None
+    if task_manager is not None:
+        try:
+            workers = task_manager.list_workers()
+        except Exception as e:
+            logger.warning(f"Failed to list workers: {e}")
     response_info = {}
     for device_name, device in sorted(devices.items()):
         success, _ = validate_virtual_instance(auth_data, backend=device_name)
         if not success:
             continue
-        _response_info = _get_device_info(device, auth_data)
+        _response_info = _get_device_info(
+            device,
+            auth_data,
+            job_repo=job_repo,
+            details=details,
+            workers=workers,
+            availability_collector=_availability_collector,
+            availability_repo=availability_repo,
+        )
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
         )
@@ -93,18 +338,26 @@ def get_devices(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )
 def get_device(
     body: schemas.GetDeviceRequest,
     auth_data: dict | None = Depends(auth),
+    job_repo: JobRepository = Depends(get_repository(JobRepository)),
+    availability_repo: DeviceAvailabilityRepository = Depends(
+        get_repository(DeviceAvailabilityRepository)
+    ),
 ) -> schemas.GetDeviceResponse:
     """Get device info request.
 
     Args:
         body(schemas.GetDeviceRequest): device name
         auth_data: auth data
+        job_repo: JobRepository instance for querying job counts
+        availability_repo: DeviceAvailabilityRepository
+            for availability rate queries
 
     Returns:
         Get device info response
@@ -114,7 +367,14 @@ def get_device(
 
     device_name = body.name
     device_manager = scheduler.get_device_manager()
+    task_manager = scheduler.get_task_manager()
     device = device_manager.get_device(device_name)
+    if device is None:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
     success, _ = validate_virtual_instance(auth_data, backend=device_name)
     if not success:
         jsonrpc_errors.handle_error_not_found(
@@ -122,12 +382,28 @@ def get_device(
             func_name,
             (False, f"Device: '{device_name}' is not found"),
         )
-    _response_info = _get_device_info(device, auth_data, body.details)
+    # query workers only once
+    workers = None
+    if task_manager is not None:
+        try:
+            workers = task_manager.list_workers()
+        except Exception as e:
+            logger.warning(f"Failed to list workers: {e}")
+    _response_info = _get_device_info(
+        device,
+        auth_data,
+        body.details,
+        job_repo=job_repo,
+        workers=workers,
+        availability_collector=_availability_collector,
+        availability_repo=availability_repo,
+    )
     response_info = schemas.GetDeviceResponse.model_validate(_response_info)
     return response_info
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -154,6 +430,7 @@ def calibrate_device(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -186,6 +463,7 @@ def get_calibrate_results(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -214,6 +492,7 @@ def set_device_options(
 
 
 @device_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -245,4 +524,127 @@ def get_device_options(
     response_info = schemas.GetDeviceOptionsResponse.model_validate(
         _response_info
     )
+    return response_info
+
+
+@device_api_v1.method(
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[jsonrpc_errors.NotFoundError],
+)
+def set_device(
+    body: schemas.SetDeviceRequest,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.SetDeviceResponse:
+    """Set device attributes (state, enable, max_qubits, etc.).
+
+    Allows updating device state, enable flag, max qubits, and
+    available qubits in a single call. Each field is optional;
+    when omitted (None) the corresponding attribute is not changed.
+
+    Args:
+        body: SetDeviceRequest body
+        auth_data: auth data
+
+    Returns:
+        SetDeviceResponse with updated device attributes
+    """
+    func_name = "set_device"
+    logger.info(f"Call {func_name}: {body}")
+
+    device_name = body.device_name
+    state = body.state
+    enable = body.enable
+    max_qubits = body.max_qubits
+    available_qubits = body.available_qubits
+
+    device_manager = scheduler.get_device_manager()
+    device = device_manager.get_device(device_name)
+    if device is None:
+        jsonrpc_errors.handle_error_not_found(
+            module_name,
+            func_name,
+            (False, f"Device: '{device_name}' is not found"),
+        )
+
+    # update state when provided
+    if state is not None:
+        if state not in device.DEVICE_STATES_WITH_AUTO:
+            jsonrpc_errors.handle_error_not_found(
+                module_name,
+                func_name,
+                (
+                    False,
+                    f"Invalid state: '{state}'. "
+                    f"Must be one of: "
+                    f"{', '.join(device.DEVICE_STATES_WITH_AUTO)}",
+                ),
+            )
+        device.set_state(state)
+        # persist state to database
+        device_repo = scheduler.get_device_repo()
+        if device_repo is not None:
+            success, err, _ = device_repo.upsert_device_state(
+                device_name, state
+            )
+            if not success:
+                logger.error(
+                    f"Failed to persist device state for {device_name}: {err}"
+                )
+
+    # update enable flag when provided
+    if enable is not None:
+        device.set_enable(enable)
+
+    # update max qubits when provided
+    if max_qubits is not None:
+        if max_qubits == "auto":
+            # restore driver-declared default max qubits
+            driver = device.get_driver()
+            device.set_max_qubits(driver.get_max_qubits())
+        else:
+            try:
+                device.set_max_qubits(int(max_qubits))
+            except (TypeError, ValueError):
+                jsonrpc_errors.handle_error_not_found(
+                    module_name,
+                    func_name,
+                    (
+                        False,
+                        f"Invalid max_qubits: '{max_qubits}'. "
+                        f"Must be 'auto' or a positive integer",
+                    ),
+                )
+
+    # update available qubits when provided
+    if available_qubits is not None:
+        if available_qubits == "auto":
+            # restore driver-declared available qubits
+            driver = device.get_driver()
+            device.set_available_qubits(driver.get_available_qubits())
+        else:
+            try:
+                device.set_available_qubits(int(available_qubits))
+            except (TypeError, ValueError):
+                jsonrpc_errors.handle_error_not_found(
+                    module_name,
+                    func_name,
+                    (
+                        False,
+                        f"Invalid available_qubits: "
+                        f"'{available_qubits}'. "
+                        f"Must be 'auto' or a positive integer",
+                    ),
+                )
+
+    eff_status, _ = device.get_effective_status()
+    _response_info = {
+        "name": device.name,
+        "state": device.get_state(),
+        "status": eff_status,
+        "enable": device.enable,
+        "max_qubits": device.max_qubits,
+        "available_qubits": device.available_qubits,
+    }
+    response_info = schemas.SetDeviceResponse.model_validate(_response_info)
     return response_info

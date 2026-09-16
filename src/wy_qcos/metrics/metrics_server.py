@@ -139,6 +139,9 @@ class MetricsServer:
         class SpecificHTTPServer(HTTPServer):
             address_family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
 
+        if self.allow_dual_stack:
+            logger.info("Metrics server: IPv4/IPv6 Dual-Stack enabled")
+
         for attempt in range(self.max_retries):
             try:
                 self._server = SpecificHTTPServer(
@@ -152,15 +155,18 @@ class MetricsServer:
                 self._server.socket.setsockopt(
                     socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
                 )
-                self._server.socket.setsockopt(
-                    socket.SOL_SOCKET, socket.SO_REUSEPORT, 1
-                )
+                # SO_REUSEPORT allows multiple processes to bind the same
+                # port (Linux 3.9+). Not available on all platforms
+                # (e.g. Windows), so guard with hasattr.
+                if hasattr(socket, "SO_REUSEPORT"):
+                    self._server.socket.setsockopt(
+                        socket.SOL_SOCKET, socket.SO_REUSEPORT, 1
+                    )
 
                 if self.allow_dual_stack:
                     self._server.socket.setsockopt(
                         socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, False
                     )
-                    logger.info("IPv6 Dual-Stack enabled")
 
                 self._server.server_bind()
                 self._server.server_activate()
@@ -171,6 +177,20 @@ class MetricsServer:
                 return
 
             except OSError as e:
+                # Close the partially-created server socket so that it
+                # does not leak the port across retry attempts. Without
+                # this, each retry creates a new HTTPServer whose socket
+                # may still hold the port in a non-reusable state.
+                if self._server is not None:
+                    try:
+                        self._server.server_close()
+                    except Exception as close_err:  # pragma: no cover
+                        logger.debug(
+                            f"Error closing server socket on retry: "
+                            f"{close_err}"
+                        )
+                    self._server = None
+
                 if attempt < self.max_retries - 1:
                     logger.warning(
                         f"Failed to bind metrics server "

@@ -120,21 +120,19 @@ autodoc_mock_imports = [
     "yarl",
     "zerorpc",
     "zmp",
-    "wy_qcos.drivers.casoldatom",
-    "wy_qcos.drivers.qboson",
-    "wy_qcos.drivers.qiskit",
-    "wy_qcos.drivers.qutip",
-    "wy_qcos.drivers.spinq",
-    "wy_qcos.drivers.uqc",
-    "wy_qcos.tests",
-    "wy_qcos.transpiler.high_performance",
+    "wy_qcos.api.fastapi_server",
+    "wy_qcos.api_server",
     "wy_qcos_client.shell",
     "wy_qcos_client.tests",
-    # Modules that fail to import due to QASMNode | None syntax
-    # or missing sub-modules (openqasm3 compatible module)
-    "wy_qcos.api_server",
+    "wy_qcos.driver.casoldatom",
+    "wy_qcos.driver.qboson",
+    "wy_qcos.driver.qiskit",
+    "wy_qcos.driver.qutip",
+    "wy_qcos.driver.spinq",
+    "wy_qcos.driver.uqc",
+    "wy_qcos.driver.logical_qubit",
     "wy_qcos.server",
-    "wy_qcos.api.fastapi_server",
+    "wy_qcos.tests",
     "wy_qcos.transpiler.cmss.compiler.openqasm3",
     "wy_qcos.transpiler.cmss.circuit.parameter",
     "wy_qcos.transpiler.cmss.circuit.parameterexpression",
@@ -142,12 +140,9 @@ autodoc_mock_imports = [
     "wy_qcos.transpiler.cmss.transpiler_cmd_line",
     "wy_qcos.transpiler.cmss.transpiler_cmss",
     "wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp",
+    "wy_qcos.transpiler.common.pulse_ir",
     "wy_qcos.transpiler.dummy.transpiler_dummy",
-    "wy_qcos.transpiler.common.pulse_ir.pulse",
-    "wy_qcos.transpiler.common.pulse_ir.pulse_dynamics",
-    "wy_qcos.transpiler.common.pulse_ir.pulse_compiler",
-    "wy_qcos.transpiler.common.pulse_ir.scheduler",
-    "wy_qcos.transpiler.common.pulse_ir.compatible",
+    "wy_qcos.transpiler.high_performance",
 ]
 suppress_warnings = [
     "autodoc",
@@ -155,7 +150,7 @@ suppress_warnings = [
     "config.misconfig",
     "ref.ref",
     "ref.python",
-    "plantuml",
+    "myst.xref_missing",
 ]
 
 
@@ -190,7 +185,15 @@ def _patch_imgconverter():
                 idx = src.rfind('[')
                 page = src[idx + 1:-1]
                 src_clean = src[:idx]
-            args = ['rsvg-convert', '-f', 'png', '-o', dst]
+            # Derive output format from the destination extension so
+            # the LaTeX builder gets vector PDF (lossless scaling);
+            # raise DPI for rasterized PNG to avoid blur at page width.
+            fmt = os.path.splitext(dst)[1].lstrip('.').lower() or 'png'
+            if fmt == 'jpg':
+                fmt = 'jpeg'
+            args = ['rsvg-convert', '-f', fmt, '-o', dst]
+            if fmt == 'png':
+                args.extend(['-d', '600', '-p', '600'])
             if page is not None:
                 args.extend(['--page', page])
             args.append(src_clean)
@@ -274,10 +277,12 @@ os.environ["PUPPETEER_PRODUCT"] = "firefox"
 os.environ["PUPPETEER_EXECUTABLE_PATH"] = "/usr/bin/firefox"
 
 # plantuml configs
-plantuml_jar_path = "/usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
 if on_rtd:
-    plantuml_jar_path = "/home/docs/.asdf/installs/nodejs/20.19.1/lib/node_modules/plantuml/vendor/plantuml.jar"
-plantuml = f"java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar {plantuml_jar_path} -charset UTF-8"
+    # Use system plantuml command installed via apt_packages
+    plantuml = "plantuml"
+else:
+    plantuml_jar_path = "/usr/local/lib/node_modules/plantuml/vendor/plantuml.jar"
+    plantuml = f"java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar {plantuml_jar_path} -charset UTF-8"
 
 plantuml_output_format = "svg"  # default: png
 plantuml_latex_output_format = "pdf"
@@ -496,7 +501,7 @@ html_theme_options_rtd = {
     "navigation_depth": 4,
     "collapse_navigation": True,
     "sticky_navigation": True,
-    "titles_only": False,
+    "titles_only": True,
 }
 html_theme_options_alabaster = {
     "description": description_zh,

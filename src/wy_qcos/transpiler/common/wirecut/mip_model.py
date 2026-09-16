@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -18,6 +18,11 @@
 import pulp
 
 from loguru import logger
+
+try:
+    import highspy  # noqa: F401
+except ImportError:
+    highspy = None
 
 
 class MIPModel:
@@ -339,7 +344,18 @@ class MIPModel:
             Flag: bool denoting whether or not the model found a solution
             cut_edges: list[tuple[int, int]] denoting cut edges
         """
-        self.model.solve(pulp.PULP_CBC_CMD(msg=0))
+        if highspy is not None:
+            solver = pulp.HiGHS(msg=False)
+            solver_name = "HiGHS"
+        else:
+            solver = pulp.PULP_CBC_CMD(msg=False)
+            solver_name = "CBC"
+            logger.warning(
+                "highspy is not installed; falling back to the slower CBC "
+                "solver for circuit cutting"
+            )
+        logger.info(f"Solving circuit-cutting MIP with {solver_name}")
+        self.model.solve(solver)
         if self.model.sol_status in (
             pulp.const.LpSolutionIntegerFeasible,
             pulp.const.LpSolutionOptimal,

@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 
 import logging
+import socket
+import time
 
 import fastapi_jsonrpc as jsonrpc
 from fastapi.exceptions import RequestValidationError
@@ -29,6 +31,11 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 from wy_qcos.metrics.metrics_middleware import MetricsMiddleware
 
 logger = logging.getLogger(__name__)
+
+# Max retries and interval (seconds) when the listen port is still in
+# TIME_WAIT after a rapid restart.
+_BIND_MAX_RETRIES = 5
+_BIND_RETRY_INTERVAL = 1.0
 
 app = jsonrpc.API(lifespan=app_lifespan)
 
@@ -94,6 +101,67 @@ class QcosUvicornServer(UvicornServer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Monkey-patch ``config.bind_socket`` with a retry-capable
+        # closure so that a rapid container restart (where the previous
+        # listener's sockets are still in TIME_WAIT) does not kill the
+        # server on the first bind attempt. This affects both the
+        # single-process path and the multi-worker supervisor path,
+        # because uvicorn ultimately calls ``config.bind_socket()`` in
+        # either case.
+        cfg = self.config
+        original_bind_socket = cfg.bind_socket
+
+        def _bind_socket_with_retry():
+            """Bind the server socket with retry and SO_REUSEPORT.
+
+            Delegates to uvicorn's original ``bind_socket`` (which
+            sets ``SO_REUSEADDR``) but retries on ``OSError`` for a
+            few times to tolerate TIME_WAIT sockets left by a
+            previous rapid restart.
+            """
+            last_exc = None
+            for attempt in range(1, _BIND_MAX_RETRIES + 1):
+                try:
+                    sock = original_bind_socket()
+                    logger.info(
+                        f"Successfully bound to {cfg.host}:"
+                        f"{cfg.port} on attempt "
+                        f"{attempt}/{_BIND_MAX_RETRIES}"
+                    )
+                    # Additionally set SO_REUSEPORT so multiple worker
+                    # processes can share the same port (Linux >= 3.9).
+                    if hasattr(socket, "SO_REUSEPORT"):
+                        try:
+                            sock.setsockopt(
+                                socket.SOL_SOCKET,
+                                socket.SO_REUSEPORT,
+                                1,
+                            )
+                        except OSError:
+                            pass
+                    return sock
+                except SystemExit:
+                    # uvicorn's original bind_socket calls sys.exit(1)
+                    # on OSError; translate that into a retryable
+                    # error instead of terminating the process.
+                    last_exc = OSError(
+                        f"bind_socket raised SystemExit on attempt "
+                        f"{attempt}/{_BIND_MAX_RETRIES}"
+                    )
+                    logger.warning(
+                        f"Bind attempt {attempt}/{_BIND_MAX_RETRIES} "
+                        f"failed. Retrying in "
+                        f"{_BIND_RETRY_INTERVAL}s..."
+                    )
+                    time.sleep(_BIND_RETRY_INTERVAL)
+
+            logger.error(
+                f"Failed to bind after {_BIND_MAX_RETRIES} attempts: "
+                f"{last_exc}"
+            )
+            raise SystemExit(1)
+
+        cfg.bind_socket = _bind_socket_with_retry
         logger.info("QcosUvicornServer initialized")
 
     def handle_exit(self, sig: int, frame) -> None:

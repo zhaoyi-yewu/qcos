@@ -7,13 +7,19 @@
    :maxdepth: 2
 
    jobs
+   auto-scheduler
    job-engine
    device-monitor-engine
    device-mgr-engine
    driver
+   device-group
+   flavor
    transpiler
    instruction-set
    aggregation-cutting
+   qec
+   qem
    user
    metrics
-   api/index.rst
+   background-tasks
+   venv

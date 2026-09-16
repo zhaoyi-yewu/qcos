@@ -71,9 +71,11 @@ class QuantumCircuit:
         """
         if num_qubits > 0:
             circ = QuantumCircuit(num_qubits)
+            # num_qubits already known -- skip per-op max() check
+            circ._operations = list(ir)
         else:
             circ = QuantumCircuit()
-        circ.append_operations(ir)
+            circ.append_operations(ir)
         return circ
 
     def append(self, operation: BaseOperation):
@@ -84,11 +86,10 @@ class QuantumCircuit:
         """
         if isinstance(operation, BaseOperation):
             self._operations.append(operation)
-            self._num_qubits = (
-                max(operation.targets) + 1
-                if max(operation.targets) >= self._num_qubits
-                else self._num_qubits
-            )
+            # Single max() call instead of two
+            max_t = max(operation.targets) if operation.targets else -1
+            if max_t >= self._num_qubits:
+                self._num_qubits = max_t + 1
         else:
             raise TypeError("Invalid operation type!")
 
@@ -100,15 +101,49 @@ class QuantumCircuit:
             operations to append.
         """
         if isinstance(operations, list):
+            ops = self._operations
+            nq = self._num_qubits
             for op in operations:
-                self._operations.append(op)
-                self._num_qubits = (
-                    max(op.targets) + 1
-                    if max(op.targets) >= self._num_qubits
-                    else self._num_qubits
-                )
+                ops.append(op)
+                max_t = max(op.targets) if op.targets else -1
+                if max_t >= nq:
+                    nq = max_t + 1
+            self._num_qubits = nq
         else:
             raise TypeError("Invalid operation type!")
+
+    def extend(self, operations: list[BaseOperation]):
+        """Append multiple gate operations in a single batch.
+
+        Alias for :meth:`append_operations` with a more Pythonic name.
+        Avoids per-element method-call overhead compared to calling
+        :meth:`append` in a loop.
+        """
+        self.append_operations(operations)
+
+    def copy(self):
+        """Create a lightweight copy of this circuit.
+
+        Shares references to operation objects (treated as immutable).
+        Much faster than ``deepcopy`` for circuits with many operations.
+        """
+        new_circ = QuantumCircuit(
+            self._num_qubits, self._num_clbits, self._global_phase
+        )
+        new_circ._operations = list(self._operations)
+        new_circ._parameters = set(self._parameters)
+        return new_circ
+
+    def compose(self, other):
+        """Compose another circuit onto this one, returning a new circuit.
+
+        Equivalent to ``self.copy()`` followed by appending all of
+        ``other``'s operations, but more efficient than
+        ``deepcopy`` + loop-``append``.
+        """
+        new_circ = self.copy()
+        new_circ.append_operations(other.get_operations())
+        return new_circ
 
     def get_operations(self):
         return self._operations

@@ -61,7 +61,7 @@ function usage {
     echo ""
 }
 
-opts=$(getopt -o pbu:t:c:j:e:s:m:h --long pep8,build-cpp,unit-test:,cpp-unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:pytest-mark:,help -- "$@")
+opts=$(getopt -o pbu:t:c:j:e:s:m:h --long pep8,build-cpp,unit-test:,cpp-unit-test:,coverage:,client-unit-test:,client-coverage:,system-test:,pytest-mark:,help -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
 fi
@@ -152,7 +152,7 @@ function get_pytest_mark() {
   elif [ "$lower_args" = "driver" ]; then
     pytest_mark="-m 'driver ${extra_pytest_mark}'"
   elif [ "$lower_args" = "default" ]; then
-    pytest_mark="-m 'not smoke and not slow ${extra_pytest_mark}'"
+    pytest_mark="-m 'not slow ${extra_pytest_mark}'"
   elif [ "$lower_args" = "all" ]; then
     if [ -n "$arg_pytest_mark" ]; then
       pytest_mark="-m '$arg_pytest_mark'"
@@ -262,6 +262,13 @@ function run_coverage {
 
   ${wrapper} "rm -rf ${QCOS_REPORT_DIR}/coverage ${QCOS_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage run --data-file=${QCOS_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_PYTEST_INI} ${pytest_mark} ${test_case}"
+  local pytest_exit_code=$?
+  if [ ${pytest_exit_code} -ne 0 ]; then
+    echo "[ERROR] pytest failed with exit code ${pytest_exit_code}, skipping coverage report generation"
+    coverage_success=${pytest_exit_code}
+    echo
+    return
+  fi
   ${wrapper} "coverage xml --data-file=${QCOS_REPORT_DIR}/.coverage -o ${QCOS_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage report --data-file=${QCOS_REPORT_DIR}/.coverage --include='${QCOS_PKG_DIR}/*' --omit='${QCOS_PKG_DIR}/tests/*' -m --fail-under=$min_fail_rate"
   coverage_success=$?
@@ -289,6 +296,13 @@ function run_client_coverage {
 
   ${wrapper} "rm -rf ${QCOS_CLIENT_REPORT_DIR}/coverage ${QCOS_CLIENT_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage run --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --omit='*/site-packages/*' -m pytest -c ${QCOS_CLIENT_PYTEST_INI} ${pytest_mark} ${test_case}"
+  local pytest_exit_code=$?
+  if [ ${pytest_exit_code} -ne 0 ]; then
+    echo "[ERROR] pytest failed with exit code ${pytest_exit_code}, skipping coverage report generation"
+    client_coverage_success=${pytest_exit_code}
+    echo
+    return
+  fi
   ${wrapper} "coverage xml --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage -o ${QCOS_CLIENT_REPORT_DIR}/coverage.xml"
   ${wrapper} "coverage report --data-file=${QCOS_CLIENT_REPORT_DIR}/.coverage --include='${QCOS_CLIENT_PKG_DIR}/*' --omit='${QCOS_CLIENT_PKG_DIR}/tests/*' -m --fail-under=$min_fail_rate"
   client_coverage_success=$?
@@ -417,9 +431,9 @@ function print_report {
   fi
 }
 
-# active venv if default venv exists
-if [ -f "/var/lib/qcos/venv/default/bin/activate" ]; then
-  source /var/lib/qcos/venv/default/bin/activate
+# active venv if sandbox venv exists
+if [ -f "/var/lib/qcos/venv/sandbox/bin/activate" ]; then
+  source /var/lib/qcos/venv/sandbox/bin/activate
 fi
 mkdir -p ${QCOS_REPORT_DIR} ${QCOS_CLIENT_REPORT_DIR}
 run_tests

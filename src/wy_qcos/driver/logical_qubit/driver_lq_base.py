@@ -1,0 +1,734 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+#     WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+import re
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+from loguru import logger
+from lqcloud import LQCloudProvider, QuantumCircuit
+from schema import And, Optional, Or, Schema
+
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
+from wy_qcos.common.constant import Constant, HttpMethod
+from wy_qcos.common.errors import BaseException
+from wy_qcos.common.library import Library
+from wy_qcos.device.device import Device
+from wy_qcos.driver.driver_gate_base import DriverGateBase
+from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit as QCircuit
+from wy_qcos.transpiler.high_performance import OperationType, BaseOperation
+
+
+class DriverLogicalQubitBase(DriverGateBase):
+    """逻辑比特驱动基类.
+
+    Logical Qubit Base driver
+    https://cloud.logicalqubit.com
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.backend = None
+        self.provider = None
+        self.qpu_name = None
+        self.url = None
+        self.token = None
+        self.version = "0.0.1"
+        self.alias_name = "逻辑比特 QZ01 超导驱动"
+        self.description = "逻辑比特 QZ01 超导驱动"
+        self.transpiler = Constant.TRANSPILER_CMSS
+        self.tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
+        self.supported_basis_gates = [
+            Constant.SINGLE_QUBIT_GATE_I,
+            Constant.SINGLE_QUBIT_GATE_H,
+            Constant.SINGLE_QUBIT_GATE_S,
+            Constant.SINGLE_QUBIT_GATE_SDG,
+            Constant.SINGLE_QUBIT_GATE_T,
+            Constant.SINGLE_QUBIT_GATE_X,
+            Constant.SINGLE_QUBIT_GATE_Y,
+            Constant.SINGLE_QUBIT_GATE_Z,
+            Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.TWO_QUBIT_GATE_CZ,
+        ]
+        self.supported_transpilers = [
+            Constant.TRANSPILER_DUMMY,
+            Constant.TRANSPILER_CMSS,
+            Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
+        ]
+        self.enable_circuit_aggregation = False
+        self.enable_batch_submission = True
+        # LQCloud SDK 0.4.2 MAX_BATCH_CIRCUITS.
+        self.max_batch_circuits = 64
+        self.optimized_circuit = None
+        self.max_qubits = 17
+        # task stages and percentages
+        self.task_stages = {
+            self.TASK_STAGE_START: 0,
+            self.TASK_STAGE_INIT: 10,
+            self.TASK_STAGE_SUBMIT_TASK: 20,
+            self.TASK_STAGE_WAIT_TASK: 30,
+            self.TASK_STAGE_GET_RESULTS: 95,
+            self.TASK_STAGE_COMPLETE: 100,
+        }
+        self.enable_device_monitor = True
+        # input constrains for scheduling
+        self.input_constrains["job_shots"] = Schema(
+            And(
+                int,
+                lambda x: 1 <= x <= 50000,  # min: 1024, max: 50000
+            )
+        )
+        # transpiler_option schema for specific driver
+        # enable_mapping: only true is allowed
+        self.transpiler_options_schema["enable_mapping"] = (
+            Optional("enable_mapping", default=True),
+            True,
+        )
+
+    def init_driver(self):
+        """Init driver."""
+        extra_configs = self.get_configs()
+        self.token = extra_configs.get("token", "")
+        self.url = extra_configs.get("url", "")
+        self.qpu_name = extra_configs.get("chip_name", "")
+        self.provider = LQCloudProvider(
+            api_key=self.token,
+            url=self.url,
+        )
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+
+    def close_driver(self):
+        """Close driver."""
+
+    def cancel(self, job_id):
+        """Cancel running job in driver.
+
+        Driver should clean up any resources of the job
+
+        Args:
+            job_id: job ID
+        """
+        logger.info(f"Cancel job: job_id: {job_id}")
+
+    def update_driver_options(self, driver_options):
+        """Update driver options.
+
+        Args:
+            driver_options: new driver options
+        """
+        self.driver_options.update(driver_options)
+
+    def fetch_configs(self):
+        """Fetch configs."""
+        extra_configs = self.get_configs()
+        self.token = extra_configs.get("token", "")
+        self.url = extra_configs.get("url", "")
+        self.qpu_name = extra_configs.get("chip_name", "")
+        try:
+            self.provider = LQCloudProvider(
+                api_key=self.token,
+                url=self.url,
+            )
+            self.backend = self.provider.get_backend(self.qpu_name)
+        except Exception as e:
+            raise ValueError(f"Logical_qubit exception: {e}") from e
+
+    def validate_driver_configs(self, configs):
+        """Validate driver configs.
+
+        Args:
+            configs: configs dictionary
+
+        Returns:
+            success or fail, err_msg
+        """
+        success = True
+        err_msg = None
+
+        driver_config_schema = {
+            "token": str,
+            "chip_name": str,
+            "url": str,
+            "transpiler": {
+                "qpu_configs": {
+                    "qubits": int,
+                    "coupler_map": {str: [str]},
+                    "readout_error": {str: Or(float, int)},
+                    "coupler_error": {str: Or(float, int)},
+                }
+            },
+        }
+        _success, err_msgs = Library.validate_schema(
+            configs, driver_config_schema, ignore_extra_keys=True
+        )
+        if not _success:
+            _err_msg = "\n".join(err_msgs)
+            err_msg = f"driver config file error: {_err_msg}"
+            success = False
+
+        return success, err_msg
+
+    def convert_code_to_qasm(
+        self, num_qubits: int, src_code: str, transpile_results
+    ):
+        """Convert code.
+
+        Args:
+            num_qubits: num qubits
+            src_code: src code
+            transpile_results: transpile results
+
+        Returns:
+            converted code
+        """
+        if transpile_results is None or len(transpile_results) == 0:
+            return src_code
+
+        if not isinstance(transpile_results, list):
+            return src_code
+
+        for op in transpile_results:
+            if not isinstance(op, BaseOperation):
+                return src_code
+
+        circ = QCircuit(num_qubits)
+        circ.append_operations(transpile_results)
+        converter = QasmConverter(circ)
+        qasm_code = converter.to_qasm2()
+        return qasm_code
+
+    def convert_code(self, transpile_results, phys_to_logical):
+        """Convert code.
+
+        Args:
+            transpile_results: transpile results
+            phys_to_logical: phys to logical
+
+        Returns:
+            converted code
+        """
+        qc = QuantumCircuit(self.max_qubits, self.max_qubits)
+        method_mapping = {
+            "id": qc.id,
+            "h": qc.h,
+            "s": qc.s,
+            "sdg": qc.sdg,
+            "t": qc.t,
+            "x": qc.x,
+            "y": qc.y,
+            "z": qc.z,
+            "rz": qc.rz,
+            "cz": qc.cz,
+        }
+        measure_list = []
+        for operation in transpile_results:
+            gate_name = operation.name
+            if (
+                operation.operation_type
+                == OperationType.DOUBLE_QUBIT_OPERATION
+                or operation.operation_type == 2
+            ):
+                method_mapping[gate_name](
+                    operation.targets[0], operation.targets[1]
+                )
+                continue
+            if gate_name == "measure":
+                measure_list.append(operation.targets[0])
+                continue
+            if gate_name == "sync":
+                qc.barrier(operation.targets[0])
+                continue
+            if operation.arg_value:
+                method_mapping[gate_name](
+                    operation.arg_value[0], operation.targets[0]
+                )
+            else:
+                method_mapping[gate_name](operation.targets[0])
+        qc.barrier()
+        for key, value in phys_to_logical.items():
+            if key in measure_list:
+                cbits = phys_to_logical[key]
+                qc.measure(key, cbits)
+        return qc
+
+    def get_device_info(self):
+        """Get device info.
+
+        Returns:
+            device info
+        """
+        try:
+            self.backend = self.provider.get_backend(self.qpu_name)
+            cfg = self.backend.refresh_config(clear_provider_cache=True)
+            return True, None, cfg
+        except Exception as e:
+            return False, str(e) if str(e) else "request failed", None
+
+    @staticmethod
+    def _phys_to_logical(final_layout):
+        """Convert one transpiled circuit layout for LQCloud measurement."""
+        if not isinstance(final_layout, dict) or not final_layout:
+            raise ValueError("final_layout_dict is required")
+        layout = next(iter(final_layout.values()))
+        return {
+            int(physical): int(logical) for logical, physical in layout.items()
+        }
+
+    @staticmethod
+    def _machine_profiling(results):
+        """Extract QCOS machine profiling fields from an LQCloud result."""
+        metadata = getattr(results, "metadata", {}) or {}
+        machine_profiling = {}
+        machine_started_at = metadata.get("started_at", None)
+        if machine_started_at:
+            machine_started_at = datetime.fromisoformat(machine_started_at)
+            dt_utc = machine_started_at.replace(tzinfo=timezone.utc)
+            dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+            machine_profiling["machine_started_at"] = dt_beijing.timestamp()
+
+        result_metadata = metadata.get("result", {}).get("metadata", None)
+        if result_metadata:
+            machine_ended_at = result_metadata.get("date", None)
+            if machine_ended_at:
+                machine_ended_at = machine_ended_at.rstrip("Z")
+        else:
+            machine_ended_at = metadata.get("completed_at", None)
+        if machine_ended_at:
+            machine_ended_at = datetime.fromisoformat(machine_ended_at)
+            if result_metadata:
+                dt_beijing = machine_ended_at.replace(
+                    tzinfo=ZoneInfo("Asia/Shanghai")
+                )
+            else:
+                dt_utc = machine_ended_at.replace(tzinfo=timezone.utc)
+                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+            machine_profiling["machine_ended_at"] = dt_beijing.timestamp()
+
+        machine_duration = metadata.get("execution_time", None)
+        if machine_duration:
+            machine_profiling["machine_duration"] = float(machine_duration)
+        return machine_profiling
+
+    def fetch_running_info(self):
+        """Fetch running info.
+
+        Returns:
+            remote device running info
+        """
+        success, err_msg, cfg = self.get_device_info()
+        device_running_info = {}
+        if not success:
+            logger.warning(f"Failed to get device info: {err_msg}")
+            device_running_info["status"] = Device.DEVICE_STATUS_DISCONNECTED
+            device_running_info["details"] = {}
+            return device_running_info
+
+        fidelity_2q_values_list = []
+        for qubit in cfg["properties"]["coupler_metrics"]:
+            qubit_couple = qubit.get("qubits")
+            double_qubit_fidelity = qubit.get("cz_fidelity")
+            qubits_data = {
+                "qubits": qubit_couple,
+                "cz_fidelity": double_qubit_fidelity,
+            }
+            fidelity_2q_values_list.append(qubits_data)
+
+        fidelity_1q_values_list = []
+        for qubit in cfg["properties"]["qubit_metrics"]:
+            idx = qubit.get("id")
+            single_fidelity = qubit.get("xeb_fidelity", 0.0)
+            t1_time = qubit.get("t1", 0.0)
+            t2_time = qubit.get("t2", 0.0)
+            readout_fidelity_0 = qubit.get("measure_f0", 0.0)
+            readout_fidelity_1 = qubit.get("measure_f1", 0.0)
+            qubit_data = {
+                "qubit_id": idx,
+                "xeb_fidelity": single_fidelity,
+                "t1": t1_time,
+                "t2": t2_time,
+                "readout_fidelity_0": readout_fidelity_0,
+                "readout_fidelity_1": readout_fidelity_1,
+            }
+            fidelity_1q_values_list.append(qubit_data)
+
+        device_running_info["details"] = {}
+        device_running_info["details"]["calibration"] = {}
+        qpu_update_time = cfg["properties"].get("last_update", None)
+        if qpu_update_time:
+            dt_obj = datetime.strptime(qpu_update_time, "%Y-%m-%d %H:%M:%S")
+            target_str = dt_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
+            target_str = datetime.strptime(target_str, "%Y-%m-%d %H:%M:%S.%f")
+            result = Library.to_iso(target_str.timestamp())
+            result = result + ".000000"
+            device_running_info["details"]["calibration"][
+                "last_updated_at"
+            ] = result
+
+        api_key = self.token
+        headers = {
+            "X-API-Key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        url = f"{self.url}/api/v1/qpus/queue-stats"
+        status_code, reason, text, response_obj = Library.call_http_api(
+            url, method=HttpMethod.GET, headers=headers, verify_ssl=True
+        )
+        data = response_obj.json()
+        queued = (data.get(self.qpu_name)).get("queued")
+        running = (data.get(self.qpu_name)).get("running")
+        total = (data.get(self.qpu_name)).get("total_pending")
+
+        vendor_job_count = {
+            "queued": queued,
+            "running": running,
+            "total": total,
+        }
+        available_qubits = cfg.get("qubits")
+        device_running_info["available_qubits"] = available_qubits
+
+        status = cfg.get("status", "offline")
+        if status == "active":
+            device_running_info["status"] = Device.DEVICE_STATUS_ONLINE
+        elif status == "maintenance":
+            device_running_info["status"] = Device.DEVICE_STATUS_MAINTAIN
+        else:
+            device_running_info["status"] = Device.DEVICE_STATUS_OFFLINE
+        device_running_info["details"]["calibration"]["qubit_metrics"] = (
+            fidelity_1q_values_list
+        )
+        device_running_info["details"]["calibration"]["coupler_metrics"] = (
+            fidelity_2q_values_list
+        )
+        device_running_info["details"]["vendor_job_count"] = vendor_job_count
+        return device_running_info
+
+    def run(
+        self, job_id, num_qubits, data, data_type, shots=1, qec_options=None
+    ):
+        """Run job.
+
+        Args:
+            job_id: job ID
+            num_qubits: number of qubits
+            data: data
+            data_type: data type
+            shots: shots (Default value = 1)
+            qec_options: qec options
+        """
+        # pylint: disable=duplicate-code
+        data_index = data["index"]
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, num_qubits: {num_qubits}, "
+            f"data_type: {data_type}, data: {data}"
+        )
+        src_code = data["source_code"]
+        final_layout = data["final_layout_dict"]
+        phys_to_logical = self._phys_to_logical(final_layout)
+
+        self.set_progress_by_task(self.TASK_STAGE_START)
+        self.set_device_status(Device.DEVICE_STATUS_BUSY)
+
+        # 1. Convert code
+        logger.info("1. convert code")
+        self.set_progress_by_task(self.TASK_STAGE_VALIDATING)
+        transpile_results = data["transpile_results"]
+        final_code = self.convert_code(transpile_results, phys_to_logical)
+
+        # 2. Submit task
+        logger.info("2. submit task")
+        self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
+        success, err_cls, task = self.submit_task(final_code, shots)
+        if not success:
+            vendor_error_code, vendor_error_message = (
+                self.convert_error_message(err_cls)
+            )
+            error_msg = "failed to submit task"
+            vendor_error_code = vendor_error_code
+            vendor_error_message = vendor_error_message
+            raise BaseException(
+                error_msg,
+                vendor_error_code=vendor_error_code,
+                vendor_error_message=vendor_error_message,
+            )
+
+        # 3. Wait task results
+        logger.info("3. wait task results")
+        self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
+        success, err_cls, _results = self.get_task_results(task)
+        if not success:
+            vendor_error_code, vendor_error_message = (
+                self.convert_error_message(err_cls)
+            )
+            error_msg = "failed to get task result"
+            vendor_error_code = vendor_error_code
+            vendor_error_message = vendor_error_message
+            raise BaseException(
+                error_msg,
+                vendor_error_code=vendor_error_code,
+                vendor_error_message=vendor_error_message,
+            )
+
+        # 4. Get task results
+        logger.info("4. get task results")
+        self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
+        results = self.convert_results(_results)
+        optimization = self.convert_code_to_qasm(
+            num_qubits, src_code, transpile_results
+        )
+
+        machine_profiling = self._machine_profiling(_results)
+
+        # set results
+        enable_raw_results = self.driver_options.get(
+            "enable_raw_results", False
+        )
+        raw_results = None
+        if enable_raw_results:
+            raw_results = _results.metadata
+        self.set_results(
+            job_id,
+            data_index,
+            results=results,
+            raw_results=raw_results,
+            result_type=Constant.RESULT_TYPE_SAMPLING,
+            machine_profiling=machine_profiling,
+        )
+        self.set_optimized_circuit(optimization)
+        # 5. Save results and set driver status to ONLINE
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+
+    def run_batch(self, job_id, data, data_type, shots=1, qec_options=None):
+        """Submit independent circuits through LQCloud's native batch API.
+
+        ``backend.run(list[QuantumCircuit])`` creates one cloud batch task and
+        returns per-circuit results in submission order. QCOS stores those
+        results under the individual wirecut subcircuit indexes.
+        """
+        if not isinstance(data, list) or not data:
+            raise ValueError("batch data must be a non-empty list")
+        if len(data) > self.max_batch_circuits:
+            raise ValueError(
+                f"batch contains {len(data)} circuits, exceeding LQCloud's "
+                f"{self.max_batch_circuits}-circuit limit"
+            )
+
+        logger.info(
+            f"job_id: {job_id}, shots: {shots}, batch_size: {len(data)}, "
+            f"data_type: {data_type}"
+        )
+        self.set_progress_by_task(self.TASK_STAGE_START)
+        self.set_device_status(Device.DEVICE_STATUS_BUSY)
+
+        circuits = []
+        optimized_circuits = {}
+        for item in data:
+            phys_to_logical = self._phys_to_logical(item["final_layout_dict"])
+            transpile_results = item["transpile_results"]
+            circuits.append(
+                self.convert_code(transpile_results, phys_to_logical)
+            )
+            optimized_circuits[item["index"]] = self.convert_code_to_qasm(
+                item["num_qubits"],
+                item["source_code"],
+                transpile_results,
+            )
+
+        logger.info("2. submit batch task")
+        self.set_progress_by_task(self.TASK_STAGE_SUBMIT_TASK)
+        success, err_msg, task = self.submit_task(circuits, shots)
+        if not success:
+            raise ValueError(f"failed to submit batch task: {err_msg}")
+
+        logger.info("3. wait batch task results")
+        self.set_progress_by_task(self.TASK_STAGE_WAIT_TASK)
+        success, err_msg, batch_result = self.get_task_results(task)
+        if not success:
+            raise ValueError(f"failed to get batch task result: {err_msg}")
+
+        logger.info("4. get batch task results")
+        self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
+        counts_list = self.convert_results(batch_result)
+        if not isinstance(counts_list, list):
+            raise ValueError("LQCloud batch result must contain a counts list")
+        if len(counts_list) != len(data):
+            raise ValueError(
+                "LQCloud batch result count does not match submitted circuits"
+            )
+
+        child_results = getattr(batch_result, "results", [])
+        batch_metadata = getattr(batch_result, "metadata", None)
+        for position, (item, counts) in enumerate(zip(data, counts_list)):
+            child_result = (
+                child_results[position]
+                if position < len(child_results)
+                else None
+            )
+            raw_results = getattr(child_result, "metadata", batch_metadata)
+            machine_profiling = (
+                self._machine_profiling(child_result)
+                if child_result is not None
+                else {}
+            )
+            self.set_results(
+                job_id,
+                item["index"],
+                results=counts,
+                raw_results=raw_results,
+                result_type=Constant.RESULT_TYPE_SAMPLING,
+                machine_profiling=machine_profiling,
+            )
+
+        self.set_optimized_circuit(optimized_circuits)
+        self.set_device_status(Device.DEVICE_STATUS_ONLINE)
+
+    def submit_task(self, qc, shots):
+        """Submit task.
+
+        Args:
+            qc: task info
+            shots: circuit shots
+
+        Returns:
+            task
+        """
+        try:
+            enable_readout_correction = False
+            enable_dynamic_decoupling = False
+            qes = self.driver_options.get("qes", None)
+            qem = self.driver_options.get("qem", None)
+            if qes is not None:
+                enable_dynamic_decoupling = qes.get(
+                    "dynamical_decoupling"
+                ).get("enable")
+            if qem is not None:
+                enable_readout_correction = qem.get("readout_error").get(
+                    "enable"
+                )
+            if enable_dynamic_decoupling:
+                circuits = qc if isinstance(qc, (list, tuple)) else [qc]
+                for circuit in circuits:
+                    circuit.dynamic_decoupling = True
+            task = self.backend.run(
+                qc,
+                shots=shots,
+                readout_correction=enable_readout_correction,
+            )
+            return True, None, task
+        except Exception as e:
+            return False, e, None
+
+    def get_task_results(self, task):
+        """Get task results.
+
+        Args:
+            task: task
+        Returns:
+            success, response
+        """
+        success = False
+        try:
+            result = task.result(
+                timeout=self.max_job_wait_time, wait=self.job_query_interval
+            )
+            if result:
+                success = True
+            return success, None, result
+        except Exception as e:
+            return success, e, None
+
+    def convert_results(self, results):
+        """Convert results.
+
+        Args:
+            results: task results
+
+        Returns:
+            converted task results
+        """
+        dict_result = results.get_counts()
+        if isinstance(dict_result, list):
+            return [
+                {key: value for key, value in counts.items() if value != 0}
+                for counts in dict_result
+            ]
+        cleaned_dict_result = {k: v for k, v in dict_result.items() if v != 0}
+        return cleaned_dict_result
+
+    def set_optimized_circuit(self, optimized_circuit):
+        """Set optimized circuit.
+
+        Args:
+            optimized_circuit: the optimized circuit
+        """
+        self.optimized_circuit = optimized_circuit
+
+    def get_optimized_circuit(self):
+        """Get optimized circuit.
+
+        Returns:
+            optimized_circuit
+        """
+        return self.optimized_circuit
+
+    def convert_error_message(self, err):
+        """Convert errors.
+
+        Returns:
+            Converted errors
+        """
+        errors_mapping = {
+            "validation_error": "提交内容不合法，请修改线路参数。",
+            "config_error": "QPU配置数据缺失，请联系管理员。",
+            "hardware_error": "QPU运行发生错误，请稍后重试。",
+            "readout_error": "读出信号后处理失败，请稍后重试。",
+            "timeout_error": "单次任务在QPU侧执行超时，请稍后重试。",
+            "internal_error": "未归类的异常。",
+            "actor_unavailable": "测控进程暂时失联，请稍后重试。",
+            "dispatch_busy": "QPU队列已满，下发被拒，请稍后重试。",
+            "dispatch_network": "任务下发时网络错误，请稍后重试。",
+            "dispatch_timeout": "下发任务超时，请稍后重试。",
+            "dispatch_validation": "QPU拒绝了这个任务，请修改线路参数。",
+            "dispatch_unknown": "下发阶段未归类异常。",
+            "poll_network": "轮询任务状态时出错，请稍后重试。",
+            "poll_timeout": "轮询任务状态时出错，请稍后重试。",
+            "poll_http_error": "轮询任务状态时出错，请稍后重试。",
+            "poll_unknown": "轮询任务状态时出错，请稍后重试。",
+            "job_lost": "任务在 QPU上已过期或丢失，请重新提交任务。",
+            "qpu_unreachable": "QPU连续多次不可达，请稍后重试。",
+            "qpu_unavailable": "QPU切到下线/维护，在途任务失败，请等待恢复。",
+        }
+        errors_code_mapping = {
+            400: "shots 参数超出允许范围或QPU不可用。",
+            402: "无法提交任务，请联系管理员。",
+            409: "前一次相同Idempotency-Key的请求仍在处理，请稍后重试。",
+            413: "Command payload 过大，请拆分批次。",
+            429: "提交过于频繁或活跃任务数过多，请稍后重试。",
+            503: "任务队列暂时不可用，请稍后重试。",
+        }
+        message = str(err)
+        http_code = None
+        match = re.search(r"HTTP\s*(\d+)", message)
+        if match:
+            http_code = int(match.group(1))
+            if http_code in errors_code_mapping:
+                message = errors_code_mapping[http_code]
+            return http_code, message
+
+        if err.error_type in errors_mapping:
+            message = errors_mapping[err.error_type]
+        return http_code, message

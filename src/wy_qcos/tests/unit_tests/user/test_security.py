@@ -139,8 +139,9 @@ class TestSecurityManager:
 
         result = security_manager.check_account_lockout(user_name)
         assert result is False
-        # Failed attempts should be cleared
-        assert len(security_manager.failed_attempts[user_name]) == 0
+        # Failed attempts should be cleared (key removed after all
+        # attempts expire past the lockout window)
+        assert user_name not in security_manager.failed_attempts
 
     def test_record_failed_attempt(self, security_manager):
         """Test recording a failed login attempt."""
@@ -171,8 +172,8 @@ class TestSecurityManager:
             user_name, ip_address, user_agent
         )
 
-        # Failed attempts should be cleared
-        assert len(security_manager.failed_attempts[user_name]) == 0
+        # Failed attempts should be cleared (key removed on success)
+        assert user_name not in security_manager.failed_attempts
         # Login should be logged
         mock_user_manager.log_login_attempt.assert_called_once_with(
             user_name, ip_address, True, user_agent=user_agent

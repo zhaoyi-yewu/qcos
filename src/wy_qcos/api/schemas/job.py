@@ -34,7 +34,7 @@ class SubmitJobRequest(UuidMixin):
     Pydantic Model for Submit Job Request.
     """
 
-    _uuid_fields = ["job_id", "project_id", "user_id"]
+    _uuid_fields = ["job_id", "project_id", "user_id", "flavor_id"]
     _uuid_convert_mode = "to_uuid"
 
     # Project ID (optional, from auth_data)
@@ -44,7 +44,7 @@ class SubmitJobRequest(UuidMixin):
     # Code types: qasm, qasm2, qasm3, qubo
     code_type: str = Field(
         default=Constant.CODE_TYPE_QASM,
-        description="Code types: qasm, qasm2, qasm3, qubo",
+        description=f"Code types: {', '.join(Constant.CODE_TYPES)}",
     )
     # Source code list
     source_code: list = Field(default=[], description="Source code list")
@@ -52,9 +52,31 @@ class SubmitJobRequest(UuidMixin):
     description: str | None = Field(
         default=None, description="Job description"
     )
-    # device name
-    backend: str = Field(
-        default=Constant.DRIVER_DUMMY, description="Backend device name"
+    # device name (optional, if empty triggers auto scheduling).
+    # Either backend or flavor_id must be specified; they are
+    # mutually exclusive with extra_specs (extra_specs is only
+    # allowed together with flavor_id).
+    backend: str | None = Field(
+        default=None,
+        description="Backend device name. "
+        "Mutually exclusive with flavor_id. If empty, auto "
+        "scheduling is triggered (requires flavor_id or "
+        "extra_specs)",
+    )
+    # Flavor ID for auto scheduling. Only flavor_id (UUID) is
+    # accepted at submit time; flavor_name is resolved client-side.
+    flavor_id: UUID | None = Field(
+        default=None,
+        description="Flavor ID (UUID) for auto scheduling. "
+        "Specifies preset hardware specs to match against devices. "
+        "Mutually exclusive with backend; may be combined with "
+        "extra_specs",
+    )
+    # Extra scheduling specs
+    extra_specs: dict | None = Field(
+        default=None,
+        description="Extra scheduling specifications. "
+        "Dynamic per-job scheduling parameters, overrides flavor specs",
     )
     # Driver options
     driver_options: dict | None = Field(
@@ -73,6 +95,12 @@ class SubmitJobRequest(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None,
+        description="Error mitigation options. "
+        "Supports REM, ZNE, DD, Clifford fitting strategies",
     )
     # Job ID
     job_id: UUID | None = Field(default=None, description="Job ID")
@@ -127,7 +155,7 @@ class SubmitJobResponse(UuidMixin):
     Pydantic Model for Submit Job Response.
     """
 
-    _uuid_fields = ["job_id", "project_id", "user_id"]
+    _uuid_fields = ["job_id", "project_id", "user_id", "flavor_id"]
     _uuid_convert_mode = "to_uuid"
 
     model_config = ConfigDict(from_attributes=True)
@@ -158,6 +186,14 @@ class SubmitJobResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
+    )
+    # Extra scheduling specs
+    extra_specs: dict | None = Field(
+        default=None, description="Extra scheduling specifications"
+    )
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
@@ -175,6 +211,10 @@ class SubmitJobResponse(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
     )
     # Profiling
     profiling: list | None = Field(default=None, description="Profiling")
@@ -240,6 +280,10 @@ class GetJobStatusResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
+    )
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
@@ -257,6 +301,10 @@ class GetJobStatusResponse(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
     )
     # Shots
     shots: int = Field(description="Shots")
@@ -332,6 +380,10 @@ class GetJobResultsResponse(UuidMixin):
     driver_options: dict | None = Field(
         default=None, description="Driver options"
     )
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
+    )
     # Transpiler
     transpiler: str | None = Field(default=None, description="Transpiler")
     # Transpiler options
@@ -345,6 +397,10 @@ class GetJobResultsResponse(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
     )
     # Shots
     shots: int = Field(description="Shots")
@@ -531,6 +587,10 @@ class UpdateJobResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Flavor ID for auto scheduling
+    flavor_id: UUID | None = Field(
+        default=None, description="Flavor ID for auto scheduling"
+    )
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
@@ -548,6 +608,10 @@ class UpdateJobResponse(UuidMixin):
     # QEC options
     qec_options: dict | None = Field(
         default=None, description="QEC (Quantum Error Correction) options"
+    )
+    # Error mitigation options
+    qem_options: dict | None = Field(
+        default=None, description="Error mitigation options"
     )
     # Shots
     shots: int = Field(description="Shots")

@@ -38,7 +38,11 @@ class TaskScheduler:
         self._transpiler_manager = None
         self._driver_manager = None
         self._device_manager = None
+        self._device_repo = None
         self._db_engine = None
+        self._auto_scheduler = None
+        self._flavor_manager = None
+        self._device_group_manager = None
 
     def start_taskmanager(self):
         """Start TaskManager."""
@@ -102,6 +106,83 @@ class TaskScheduler:
         """
         self._db_engine = db_engine
 
+    def init_flavor_manager(self):
+        """Initialize flavor manager (independent component).
+
+        Must be called after set_db_engine. FlavorManager is a
+        standalone component (parallel to UserManager), not part
+        of the scheduler.
+        """
+        from wy_qcos.flavor.flavor_manager import FlavorManager
+
+        self._flavor_manager = FlavorManager(self._db_engine)
+        logger.info("Flavor manager initialized")
+
+    def init_device_group_manager(self):
+        """Initialize device group manager (independent component).
+
+        Must be called after set_db_engine. DeviceGroupManager is
+        a standalone component, not part of the scheduler.
+        """
+        from wy_qcos.device.device_group_manager import (
+            DeviceGroupManager,
+        )
+
+        self._device_group_manager = DeviceGroupManager(self._db_engine)
+        logger.info("Device group manager initialized")
+
+    def init_auto_scheduler(self):
+        """Initialize auto scheduler.
+
+        Must be called after init_device_group_manager,
+        init_flavor_manager, set_device_manager
+        and set_db_engine. Reuses the standalone flavor_manager
+        and device_group_manager instances. The db_engine is passed
+        so the scheduler can query job load info directly from the
+        qcos database. The enabled filters and weighers are read
+        from the [SCHEDULER] config section.
+        """
+        # delayed import to avoid circular import between
+        # wy_qcos.scheduler and wy_qcos.task_manager
+        from wy_qcos.scheduler.auto_scheduler import AutoScheduler
+
+        scheduler_config = Config.SCHEDULER
+        self._auto_scheduler = AutoScheduler(
+            device_manager=self._device_manager,
+            task_manager=self._task_manager,
+            flavor_manager=self._flavor_manager,
+            device_group_manager=self._device_group_manager,
+            db_engine=self._db_engine,
+            enabled_filters=scheduler_config.ENABLED_FILTERS,
+            enabled_weighers=scheduler_config.ENABLED_WEIGHERS,
+            transpiler_manager=self._transpiler_manager,
+        )
+        logger.info("Auto scheduler initialized")
+
+    def get_auto_scheduler(self):
+        """Get auto scheduler.
+
+        Returns:
+            auto scheduler instance
+        """
+        return self._auto_scheduler
+
+    def get_flavor_manager(self):
+        """Get flavor manager.
+
+        Returns:
+            flavor manager instance
+        """
+        return self._flavor_manager
+
+    def get_device_group_manager(self):
+        """Get device group manager.
+
+        Returns:
+            device group manager instance
+        """
+        return self._device_group_manager
+
     def get_device_manager(self):
         """Get device manager.
 
@@ -109,6 +190,22 @@ class TaskScheduler:
             device manager
         """
         return self._device_manager
+
+    def set_device_repo(self, device_repo):
+        """Set device repository.
+
+        Args:
+            device_repo: DeviceRepository instance
+        """
+        self._device_repo = device_repo
+
+    def get_device_repo(self):
+        """Get device repository.
+
+        Returns:
+            DeviceRepository instance or None
+        """
+        return self._device_repo
 
     def submit(self, job_info, tags=None, extra_job_data_info={}):
         """Submit job to scheduler.
@@ -138,7 +235,11 @@ class TaskScheduler:
             states=wait_states
         )
         wait_states_flow_count = len(wait_states_flows)
-        if wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS:
+        # -1 means unlimited
+        if (
+            Config.DEFAULT.MAX_QUEUED_JOBS != -1
+            and wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS
+        ):
             return None, (
                 f"Current queued job count exceeds "
                 f"max queued job limit: {Config.DEFAULT.MAX_QUEUED_JOBS}"
@@ -158,7 +259,8 @@ class TaskScheduler:
 
         pool_wait_states_flows_count = len(
             self._task_manager.get_flow_runs_with_filters(
-                states=wait_states, pool_name=backend
+                states=wait_states,
+                pool_name=f"{Constant.WORK_POOL_DEVICE_PREFIX}{backend}",
             )
         )
         device_max_queued_jobs = device.get_max_queued_jobs()
@@ -184,7 +286,7 @@ class TaskScheduler:
         # get transpiler options
         transpiler_module_name = None
         transpiler_class_name = None
-        transpiler_name = driver.get_transpiler()
+        transpiler_name = job_info.transpiler
         transpiler = self._transpiler_manager.get_transpiler(transpiler_name)
         if transpiler:
             transpiler_module_name = transpiler.get_module_name()
@@ -244,7 +346,11 @@ class TaskScheduler:
             states=wait_states
         )
         wait_states_flow_count = len(wait_states_flows)
-        if wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS:
+        # -1 means unlimited
+        if (
+            Config.DEFAULT.MAX_QUEUED_JOBS != -1
+            and wait_states_flow_count >= Config.DEFAULT.MAX_QUEUED_JOBS
+        ):
             return None, (
                 f"Current running+queued job count exceeds "
                 f"max queued job limit: {Config.DEFAULT.MAX_QUEUED_JOBS}"
@@ -268,7 +374,7 @@ class TaskScheduler:
 
         # execute task
         try:
-            deployment_name = backend + "_mgr"
+            deployment_name = f"{Constant.WORK_POOL_MGR_PREFIX}{backend}"
             deployment = self._task_manager.get_deployment(deployment_name)
             device_mgr_info = {}
             device_mgr_info["device_name"] = job_info.device_name
@@ -281,8 +387,7 @@ class TaskScheduler:
             }
             device_mgr_info["device"] = {"configs": device.get_configs()}
             device_mgr_info["redis"] = {
-                "ip": self._device_manager.config.REDIS.REDIS_SERVER_IP,
-                "port": self._device_manager.config.REDIS.REDIS_SERVER_PORT,
+                "url": self._device_manager.config.REDIS.REDIS_URL,
             }
             device_mgr_info["global"] = {"configs": Config.get_configs()}
             success, details = self._policy_handler.exec_manage_task(
@@ -393,10 +498,8 @@ class TaskScheduler:
     def process_unfinished_jobs(self):
         """Process unfinished jobs in database.
 
-        Checks all jobs in database. If job_status is not one of the
-        final states (COMPLETED, CANCELLED, DELETED, FAILED), sets it to
-        FAILED. This handles jobs that may have been interrupted or left
-        in intermediate states during system restart.
+        Checks all jobs in database. This handles jobs that may have been
+        interrupted or left in intermediate states during system restart.
         """
         if self._db_engine is None:
             logger.warning(
@@ -414,18 +517,16 @@ class TaskScheduler:
                         logger.warning(f"Failed to fetch jobs: {error}")
                     return
 
-                # Define expected final job states
-                final_states = {
-                    Constant.JOB_STATUS_COMPLETED,
-                    Constant.JOB_STATUS_CANCELLED,
-                    Constant.JOB_STATUS_DELETED,
-                    Constant.JOB_STATUS_FAILED,
+                # Define intermediate job states that will be set to FAILED
+                set_to_failed_states = {
+                    Constant.JOB_STATUS_UNKNOWN,
+                    Constant.JOB_STATUS_CANCELLING,
                 }
 
                 # Process unfinished jobs
                 unfinished_count = 0
                 for job_record in job_records:
-                    if job_record.job_status not in final_states:
+                    if job_record.job_status in set_to_failed_states:
                         logger.info(
                             f"Setting unfinished job {job_record.id} "
                             f"(status: {job_record.job_status}) to FAILED"
@@ -537,10 +638,12 @@ class PrioritySchedulingPolicy:
             flow run id
         """
         priority = job_info["data"]["job_priority"]
-        pool_name = job_info["data"]["backend"]
+        backend = job_info["data"]["backend"]
 
         deployment_id = deployment["deploy_id"]
-        work_queue_name = f"{pool_name}_{priority}"
+        work_queue_name = (
+            f"{Constant.WORK_POOL_DEVICE_PREFIX}{backend}_{priority}"
+        )
         flow_run_id = self._task_manager.run_flow(
             deployment_id,
             {"job_info": job_info},

@@ -20,17 +20,18 @@ import time
 
 class Timer:
     def __enter__(self):
-        self.start = time.time()
+        self.start = time.perf_counter()
         return self
 
     def __exit__(self, *args):
-        self.end = time.time()
+        self.end = time.perf_counter()
         self.elapsed = self.end - self.start
 
 
 class TranspilePerfConstant:
     QASM_FILE = "qasm文件"
     NUM_QUBITS = "比特数"
+    GATE_COUNT = "门数量"
     DEPTH = "电路深度"
     TECH_TYPE = "qpu类型"
     OPT_LEVEL = "优化级别"
@@ -44,22 +45,31 @@ class TranspilePerfConstant:
     OPT_TIME2 = "优化2(s)"
     TRANSPILE_TIME = "转译时间(s)"
     TOTAL_TIME = "总时间(s)"
+    TRANSPILED_GATE_COUNT = "转译后门数量"
+    TRANSPILED_TWO_QUBIT_GATE_COUNT = "转译后两比特门数量"
+    TRANSPILED_DEPTH = "转译后电路深度"
+    BASIS_GATE_SET = "基础门集"
     CONS_DICT = {
         QASM_FILE: 0,
         NUM_QUBITS: 1,
-        DEPTH: 2,
-        TECH_TYPE: 3,
-        OPT_LEVEL: 4,
-        PARSE_TIME: 5,
-        OPT_TIME1: 6,
-        DECOMPOSE_RULE_TIME: 7,
-        DECOMPOSE_1Q2Q_TIME: 8,
-        MAPPING_TIME: 9,
-        DECOMPOSE_APPLY_TIME: 10,
-        DECOMPOSED_TIME: 11,
-        OPT_TIME2: 12,
-        TRANSPILE_TIME: 13,
-        TOTAL_TIME: 14,
+        GATE_COUNT: 2,
+        DEPTH: 3,
+        TECH_TYPE: 4,
+        OPT_LEVEL: 5,
+        PARSE_TIME: 6,
+        OPT_TIME1: 7,
+        DECOMPOSE_RULE_TIME: 8,
+        DECOMPOSE_1Q2Q_TIME: 9,
+        MAPPING_TIME: 10,
+        DECOMPOSE_APPLY_TIME: 11,
+        DECOMPOSED_TIME: 12,
+        OPT_TIME2: 13,
+        TRANSPILE_TIME: 14,
+        TOTAL_TIME: 15,
+        TRANSPILED_GATE_COUNT: 16,
+        TRANSPILED_DEPTH: 17,
+        TRANSPILED_TWO_QUBIT_GATE_COUNT: 18,
+        BASIS_GATE_SET: 19,
     }
 
 
@@ -76,6 +86,10 @@ class TranspileRuntime:
         self.opt_time2 = 0.0
         self.mapping_time = 0.0
         self.routing_time = 0.0
+        self.transpiled_gate_count = 0
+        self.transpiled_two_qubit_gate_count = 0
+        self.transpiled_depth = 0
+        self.basis_gate_set = ""
 
     def add_runtime(self, runtime: "TranspileRuntime"):
         self.total_time += runtime.total_time
@@ -88,6 +102,11 @@ class TranspileRuntime:
         self.opt_time2 += runtime.opt_time2
         self.mapping_time += runtime.mapping_time
         self.routing_time += runtime.routing_time
+        self.transpiled_gate_count += runtime.transpiled_gate_count
+        self.transpiled_two_qubit_gate_count += (
+            runtime.transpiled_two_qubit_gate_count
+        )
+        self.transpiled_depth += runtime.transpiled_depth
 
     def avg_runtime(self, run_count):
         self.total_time /= run_count
@@ -98,3 +117,8 @@ class TranspileRuntime:
         self.decompose_1q2q_time /= run_count
         self.decompose_apply_time /= run_count
         self.opt_time2 /= run_count
+        self.mapping_time /= run_count
+        self.routing_time /= run_count
+        self.transpiled_gate_count //= run_count
+        self.transpiled_two_qubit_gate_count //= run_count
+        self.transpiled_depth //= run_count

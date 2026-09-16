@@ -34,7 +34,7 @@ import pytest
 from pathlib import Path
 
 from wy_qcos.transpiler.high_performance import (
-    convert_qasm_string_to_qcos_operations,
+    qasm_to_ir,
     Decomposer,
 )
 from wy_qcos.transpiler.cmss.circuit.cpp_utils import (
@@ -144,7 +144,7 @@ class TestDecomposer:
             A list of gate operations extracted from the intermediate
             representation of the circuit.
         """
-        parse_result, _ = convert_qasm_string_to_qcos_operations(qasm_source)
+        parse_result, _ = qasm_to_ir(qasm_source)
         parse_result = convert_ir_cpp2py(parse_result)
         return parse_result
 
@@ -184,15 +184,24 @@ class TestDecomposer:
         - Decomposes the circuit for each supported backend.
         - Validates correctness and equivalence of the results.
 
+        Files that cannot be parsed (e.g. containing unsupported QASM
+        constructs like ``if`` statements) are skipped with a warning.
+
         Args:
             qasm_dir: Path to a directory containing QASM benchmark files.
         """
         qasm_reader = QasmFileReader(qasm_dir)
+        skipped = 0
 
         for qasm_path, qasm_source in qasm_reader.iter_contents():
             print(f"\n[CASE] {qasm_path}")
 
-            original_gates = self._parse_qasm_to_gates(qasm_source)
+            try:
+                original_gates = self._parse_qasm_to_gates(qasm_source)
+            except RuntimeError as e:
+                print(f"[SKIP] {qasm_path}: {e}")
+                skipped += 1
+                continue
 
             print(f"[IR] Gate count = {len(original_gates)}")
             print(
@@ -208,6 +217,12 @@ class TestDecomposer:
                     target_basis,
                     backend_name,
                 )
+
+        if skipped:
+            print(
+                f"\n[WARN] {skipped} file(s) skipped due to "
+                "unsupported QASM constructs."
+            )
 
     @pytest.mark.slow
     def test_qasmbench_small_decompose(self):

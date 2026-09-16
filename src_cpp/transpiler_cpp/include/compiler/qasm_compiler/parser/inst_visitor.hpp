@@ -22,6 +22,17 @@
 #include <stdexcept>
 
 namespace qasm {
+// Forward-declared from statement.hpp — needed for enum-based expression
+// dispatch
+enum class ExpressionKind {
+  Binary,
+  Unary,
+  Constant,
+  Identifier,
+  IdentifierList,
+  Measure
+};
+
 class GateDeclaration;
 class GateCallStatement;
 class VersionDeclaration;
@@ -106,39 +117,10 @@ class ExpressionVisitor {
   virtual T visitMeasureExpression(
       std::shared_ptr<MeasureExpression> measureExpression) = 0;
 
-  // A manually implemented visitor function with a templated return type.
-  // This is not possible as a virtual function in expression, which is why
-  // we define it manually.
-  T visit(const std::shared_ptr<Expression>& expression) {
-    if (expression == nullptr) {
-      throw std::runtime_error("Expression is null");
-    }
-    if (const auto binaryExpression =
-            std::dynamic_pointer_cast<BinaryExpression>(expression)) {
-      return visitBinaryExpression(binaryExpression);
-    }
-    if (const auto unaryExpression =
-            std::dynamic_pointer_cast<UnaryExpression>(expression)) {
-      return visitUnaryExpression(unaryExpression);
-    }
-    if (const auto constantInt =
-            std::dynamic_pointer_cast<Constant>(expression)) {
-      return visitConstantExpression(constantInt);
-    }
-    if (const auto identifierExpression =
-            std::dynamic_pointer_cast<IdentifierExpression>(expression)) {
-      return visitIdentifierExpression(identifierExpression);
-    }
-    if (const auto identifierList =
-            std::dynamic_pointer_cast<IdentifierList>(expression)) {
-      return visitIdentifierList(identifierList);
-    }
-    if (const auto measureExpression =
-            std::dynamic_pointer_cast<MeasureExpression>(expression)) {
-      return visitMeasureExpression(measureExpression);
-    }
-    throw std::runtime_error("Unhandled expression type.");
-  }
+  // Enum-based dispatch — replaces dynamic_pointer_cast chain with O(1)
+  // switch. Definition is deferred to statement.hpp where Expression is fully
+  // defined, because calling kindOrdinal() requires a complete type.
+  T visit(const std::shared_ptr<Expression>& expression);
 
   virtual ~ExpressionVisitor() = default;
 };

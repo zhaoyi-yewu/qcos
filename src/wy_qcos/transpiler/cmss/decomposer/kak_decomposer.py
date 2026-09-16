@@ -20,6 +20,7 @@ import numpy as np
 from scipy import linalg
 from scipy.linalg import expm
 
+from wy_qcos.common.cmss.gate_operation import U3, ASHN
 from wy_qcos.transpiler.cmss.decomposer.euler_decomposer import EulerDecomposer
 
 
@@ -35,6 +36,7 @@ class KAKDecomposer:
         self.A1 = None
         self.B0 = None
         self.B1 = None
+        self.parms = None
         self.euler_decomposer = EulerDecomposer()
 
         self.M = np.array(
@@ -187,6 +189,7 @@ class KAKDecomposer:
         res = np.linalg.solve(self.A, B)
         parms = res[1:]
         parms[np.abs(parms) < 1e-12] = 0
+        self.parms = parms
 
         a1, a0 = self.decompose_matrix(self.M @ q_left @ self.M_DAG)
         b1, b0 = self.decompose_matrix(self.M @ q_right.T @ self.M_DAG)
@@ -234,3 +237,22 @@ class KAKDecomposer:
         theta, phi, lam, phase = self.euler_decomposer.run()
         U3_gate_parms = [theta, phi, lam, phase]
         return U3_gate_parms
+
+    def get_decompose_result(self, target):
+        """Obtain the decompose result of a 4x4 unitary matrix."""
+        decompose_result = []
+        decompose_result.append(
+            U3(targets=[target[0]], arg_value=self.B0[0:3])
+        )
+        decompose_result.append(
+            U3(targets=[target[1]], arg_value=self.B1[0:3])
+        )
+        decompose_result.append(ASHN(targets=target, arg_value=self.parms))
+
+        decompose_result.append(
+            U3(targets=[target[0]], arg_value=self.A0[0:3])
+        )
+        decompose_result.append(
+            U3(targets=[target[1]], arg_value=self.A1[0:3])
+        )
+        return decompose_result

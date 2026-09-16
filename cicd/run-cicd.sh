@@ -53,18 +53,11 @@ print_and_run "${top_dir}/cicd/docstring-check.sh"
 echo "* Run docs-linter ..."
 print_and_run "${top_dir}/cicd/docs-linter.sh"
 
-echo "* Run UT (QCOS) ..."
-print_and_run "${top_dir}/cicd/run-tests.sh -b"
-print_and_run "${top_dir}/cicd/run-tests.sh -u default"
-
-echo "* Run coverage (QCOS) ..."
+echo "* Run UT/Coverage (QCOS) ..."
 print_and_run "${top_dir}/cicd/run-tests.sh -b"
 print_and_run "${top_dir}/cicd/run-tests.sh -c default"
 
-echo "* Run UT (QCOS CLIENT) ..."
-print_and_run "${top_dir}/cicd/run-tests.sh -j all"
-
-echo "* Run coverage (QCOS CLIENT) ..."
+echo "* Run UT/Coverage (QCOS CLIENT) ..."
 print_and_run "${top_dir}/cicd/run-tests.sh -e all"
 
 echo "CICD pipeline completed successfully"

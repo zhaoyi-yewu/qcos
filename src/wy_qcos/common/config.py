@@ -16,7 +16,6 @@
 # ----------------------------------------------------------------------
 
 from collections import OrderedDict
-from pathlib import Path
 from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
@@ -35,14 +34,48 @@ class DefaultSection(BaseModel):
 
     DEBUG: bool = Field(default=False, description="Debug mode flag")
     MAX_JOBS: int = Field(
-        default=10000, ge=1, description="Maximum number of jobs (all status)"
+        default=-1,
+        ge=-1,
+        description="Maximum number of jobs (all status). "
+        "Set to -1 for unlimited.",
     )
     MAX_QUEUED_JOBS: int = Field(
-        default=1000, ge=1, description="Maximum number of queued+running jobs"
+        default=-1,
+        ge=-1,
+        description="Maximum number of queued+running jobs. "
+        "Set to -1 for unlimited.",
     )
     AUTH_MODE: Literal["no", "jwt", "virtual_instance"] = Field(
         default=Constant.AUTH_MODE_NO,
         description="Authentication mode: 'no', 'jwt', or 'virtual_instance'",
+    )
+    JOB_SCAN_INTERVAL: int = Field(
+        default=60,
+        ge=1,
+        description="Job scan interval in minutes",
+    )
+    JOB_EXPIRE_DAYS: int | float = Field(
+        default=-1,
+        ge=-1,
+        description="Job expiration days (supports int and float), "
+        "jobs older than this will be auto-deleted. "
+        "Set to -1 to disable expiration (never auto-delete).",
+    )
+    FLOW_EXPIRE_DAYS: int | float = Field(
+        default=-1,
+        ge=-1,
+        description="Completed Prefect flow-run expiration days "
+        "(supports int and float). Completed flow-runs of the "
+        "'job-flow' older than this will be auto-deleted. "
+        "Set to -1 to disable (never auto-delete).",
+    )
+    GC_INTERVAL: int | float = Field(
+        default=1,
+        ge=-1,
+        description="Garbage collection interval in days. Periodically "
+        "runs gc.collect() on all 3 generations and malloc_trim(0) "
+        "to release freed memory back to the OS. "
+        "Set to -1 to disable periodic GC. Default: 1 (daily).",
     )
     VENV_DIR: str = Field(
         default="/var/lib/qcos/venv",
@@ -142,15 +175,9 @@ class RedisSection(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    REDIS_SERVER_IP: str = Field(
-        default=Constant.DEFAULT_REDIS_SERVER_IP,
-        description="Redis server IP address",
-    )
-    REDIS_SERVER_PORT: int = Field(
-        default=Constant.DEFAULT_REDIS_SERVER_PORT,
-        ge=1024,
-        le=65535,
-        description="Redis server port (1024-65535)",
+    REDIS_URL: str = Field(
+        default=f"redis://{Constant.DEFAULT_REDIS_SERVER_IP}:{Constant.DEFAULT_REDIS_SERVER_PORT}/0",
+        description="Redis server url",
     )
 
 
@@ -181,7 +208,10 @@ class UsersSection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     MAX_JOBS: int = Field(
-        default=100, ge=1, description="Maximum jobs per user/virtual instance"
+        default=-1,
+        ge=-1,
+        description="Maximum jobs per user/virtual instance. "
+        "Set to -1 for unlimited.",
     )
     PASSWORD_EXPIRY_DAYS: int = Field(
         default=90, ge=0, description="Password expiry days (0 = never expire)"
@@ -207,9 +237,9 @@ class UsersSection(BaseModel):
         default="/etc/qcos/roles/policy.conf",
         description="Casbin access control policy file path",
     )
-    ADMIN_PASSWORD: str | None = Field(
+    DEFAULT_ADMIN_PASSWORD: str | None = Field(
         default=None,
-        description="Admin password (encrypted)",
+        description="Default admin password (encrypted)",
         json_schema_extra={"sensitive": True},
     )
     JWT_AUTH_SECRET_KEY: str = Field(
@@ -279,9 +309,6 @@ class SSLSection(BaseModel):
     KEY_FILE: str | None = Field(
         default=None, description="SSL private key file path"
     )
-    CACERT_FILE: str | None = Field(
-        default=None, description="SSL CA certificate file path (optional)"
-    )
 
 
 class DevicesSection(BaseModel):
@@ -291,6 +318,38 @@ class DevicesSection(BaseModel):
 
     DEVICE_LIST: list[str] = Field(
         default_factory=list, description="List of enabled quantum devices"
+    )
+
+
+class SchedulerSection(BaseModel):
+    """SCHEDULER section configuration.
+
+    Controls the auto scheduler behavior, including which filters and
+    weighers are enabled. Filter/weigher names must match the class
+    names discovered by AutoScheduler at startup by scanning the
+    scheduler/filters and scheduler/weighers directories.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # enable auto scheduling (select device automatically when
+    # backend is not specified in submit_job)
+    ENABLE_AUTO_SCHEDULE: bool = Field(
+        default=True,
+        description="Enable auto scheduling when backend is not specified",
+    )
+    # comma-separated list of enabled filter class names; if empty,
+    # all filters in DEFAULT_FILTERS are used (plus DeviceGroupFilter
+    # when a device_group_manager is available)
+    ENABLED_FILTERS: list[str] = Field(
+        default_factory=list,
+        description="List of enabled filter class names",
+    )
+    # comma-separated list of enabled weigher class names; if empty,
+    # all weighers in DEFAULT_WEIGHERS are used
+    ENABLED_WEIGHERS: list[str] = Field(
+        default_factory=list,
+        description="List of enabled weigher class names",
     )
 
 
@@ -313,6 +372,7 @@ class ConfigModel(BaseModel):
     LOG: LogSection = Field(default_factory=LogSection)
     SSL: SSLSection = Field(default_factory=SSLSection)
     DEVICES: DevicesSection = Field(default_factory=DevicesSection)
+    SCHEDULER: SchedulerSection = Field(default_factory=SchedulerSection)
 
 
 # ==================== Config Manager ====================
@@ -352,6 +412,7 @@ class Config:
         "LOG",
         "SSL",
         "DEVICES",
+        "SCHEDULER",
     ]
 
     # Expose sections as class attributes for type hints and access
@@ -367,6 +428,7 @@ class Config:
     LOG: LogSection = LogSection()
     SSL: SSLSection = SSLSection()
     DEVICES: DevicesSection = DevicesSection()
+    SCHEDULER: SchedulerSection = SchedulerSection()
 
     @classmethod
     def initialize(cls):
@@ -384,6 +446,7 @@ class Config:
         cls.REDIS = cls._model.REDIS
         cls.DATABASE = cls._model.DATABASE
         cls.USERS = cls._model.USERS
+        cls.SCHEDULER = cls._model.SCHEDULER
         cls.VIRT = cls._model.VIRT
         cls.LOG = cls._model.LOG
         cls.SSL = cls._model.SSL
@@ -427,7 +490,6 @@ class Config:
                 f"Error in config file: {config_file}. Reason: {err_msg}"
             )
         config_values = config_values.unwrap()
-
         if extra_config:
             # Load extra configs
             for section, options in config_values.items():
@@ -501,7 +563,6 @@ class Config:
         Args:
             config_file: Path to driver env config file
         """
-        driver_deps_file_path = Path(config_file).parent
         _configs = {}
         configs = {}
         success, err_msg, _configs = Library.read_toml_file(config_file)
@@ -535,20 +596,8 @@ class Config:
         for driver_class, driver_info in configs.items():
             if "copy_from" in driver_info:
                 continue
-            if "deps_filepaths" not in driver_info:
-                raise Exception(
-                    f"[{driver_class}] 'deps_filepaths' must be specified"
-                )
             if "envs" not in driver_info:
                 raise Exception(f"[{driver_class}] 'envs' must be specified")
-            deps_filepaths = driver_info["deps_filepaths"]
-            deps_filepaths_list = []
-            for deps_filepath in deps_filepaths:
-                deps_abs_filepath = (
-                    driver_deps_file_path / deps_filepath
-                ).resolve()
-                deps_filepaths_list.append(str(deps_abs_filepath))
-            driver_info["deps_filepaths"] = deps_filepaths_list
         cls._DRIVER_ENV_CONFIGS = configs
 
     @classmethod

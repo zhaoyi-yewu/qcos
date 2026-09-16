@@ -137,24 +137,25 @@ class TestSubmitJob:
             "platform_version": "1.0.0",
         }
         mock_client = Mock(spec=Namespace)
-        mock_client.job_name = "name"
-        mock_client.dry_run = None
+        mock_client.job_name = "test-job"
+        mock_client.dry_run = False
         mock_client.code_type = Constant.CODE_TYPE_QASM
         mock_client.job_id = job_id
         mock_client.circuit_aggregation = Constant.AGGREGATION_TYPE_INTERNAL
         mock_client.job_type = Constant.JOB_TYPE_SAMPLING
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
-        mock_client.description = None
+        mock_client.description = "test description"
         mock_client.shots = Constant.DEFAULT_SHOTS
-        mock_client.backend = Constant.DRIVER_DUMMY
+        mock_client.backend = "dummy"
         mock_client.driver_options = '{"options": "options"}'
         mock_client.transpiler = Constant.TRANSPILER_CMSS
         mock_client.transpiler_options = '{"options": "options"}'
-        mock_client.profiling = [1]
-        mock_client.callbacks = '{"options": "options"}'
-        mock_client.source_code_files = ["/qcos"]
-        mock_client.instance_id = "instance_id"
+        mock_client.profiling = [Constant.PROFILING_TYPE_CODE]
+        mock_client.callbacks = '[{"name":"cb","type":"results","method":"post","url":"http://test"}]'
+        mock_client.source_code_files = ["/qcos/test.qasm"]
         mock_client.qec_options = None
+        mock_client.flavor = None
+        mock_client.extra_specs = None
 
         assert submit_job.take_action(mock_client) is None
 
@@ -361,6 +362,106 @@ class TestGetJobResults:
         assert os.path.exists("result.txt") is True
         assert "File exists and do not override it, abort saving" in output
         os.remove("result.txt")
+
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(Client, "get_jobs")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_job_id_last_lowercase(
+        self,
+        mock_check_results,
+        mock_get_jobs,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        """job_id='last' resolves most recent job from get_jobs."""
+        mock_check_results.side_effect = [
+            [{"job_id": job_id, "job_status": "COMPLETED"}],
+            response,
+        ]
+        mock_get_jobs.return_value = (200, "OK", "{}", None)
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = "last"
+        mock_client.output_file = None
+        mock_client.assume_override = False
+
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values != ((), ())
+        mock_get_jobs.assert_called_once()
+
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(Client, "get_jobs")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_job_id_last_uppercase(
+        self,
+        mock_check_results,
+        mock_get_jobs,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        """job_id='LAST' (case-insensitive) resolves most recent job."""
+        mock_check_results.side_effect = [
+            [{"job_id": job_id, "job_status": "COMPLETED"}],
+            response,
+        ]
+        mock_get_jobs.return_value = (200, "OK", "{}", None)
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = "LAST"
+        mock_client.output_file = None
+        mock_client.assume_override = False
+
+        table_values = get_job_results.take_action(mock_client)
+        assert table_values != ((), ())
+        mock_get_jobs.assert_called_once()
+
+    @patch.object(CommandHelper, "get_table_data")
+    @patch.object(CommandHelper, "handle_invalid_arguments")
+    @patch.object(Client, "get_job_results")
+    @patch.object(Client, "get_jobs")
+    @patch.object(CommandHelper, "check_results")
+    def test_take_action_job_id_last_no_jobs(
+        self,
+        mock_check_results,
+        mock_get_jobs,
+        mock_get_job_results,
+        mock_handle_invalid_arguments,
+        mock_get_table_data,
+    ):
+        """job_id='last' with no jobs raises GenericException."""
+        mock_check_results.return_value = []
+        mock_get_job_results.return_value = iter([None, None, None, None])
+        mock_handle_invalid_arguments.return_value = None
+        mock_get_table_data.return_value = (
+            ("ID", "Name", "Status", "CreateTime"),
+            ("job-001", "test-job", "running", "2026-05-29 10:00:00"),
+        )
+
+        mock_client = Mock(spec=Namespace)
+        mock_client.job_id = "last"
+        mock_client.output_file = None
+        mock_client.assume_override = False
+
+        with pytest.raises(Exception):
+            get_job_results.take_action(mock_client)
 
 
 class TestGetJobs:

@@ -43,7 +43,18 @@ class SecurityManager:
             user_manager: user manager instance
         """
         self.user_manager = user_manager
-        self.failed_attempts = {}  # Track failed login attempts
+        # Track failed login attempts per user_name. Each value is a list of
+        # datetime timestamps. Entries are only cleared on successful login
+        # (record_successful_login), so usernames that never log in
+        # successfully (brute-force probes, scanners, disabled accounts) would
+        # accumulate keys and timestamps forever. Eviction is applied on each
+        # record/check to bound memory.
+        self.failed_attempts = {}
+        # Retain failed-attempt timestamps for at least twice the lockout
+        # window so lockout checks remain accurate while bounding memory.
+        self._failed_attempts_ttl = timedelta(
+            minutes=max(Config.USERS.LOCKOUT_DURATION_MINUTES * 2, 60)
+        )
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -86,6 +97,10 @@ class SecurityManager:
         Returns:
             True if account is locked
         """
+        # Opportunistically evict expired entries to bound memory for
+        # usernames that never succeed (brute-force probes, scanners,
+        # disabled accounts).
+        self._evict_expired_failed_attempts()
         if user_name not in self.failed_attempts:
             return False
 
@@ -101,9 +116,32 @@ class SecurityManager:
         if datetime.now() < lockout_until:
             return True
         else:
-            # Reset failed attempts after lockout period
-            self.failed_attempts[user_name] = []
+            # Reset failed attempts after lockout period; delete the key
+            # entirely instead of keeping an empty list so the dict does
+            # not retain growing keys for never-succeeding usernames.
+            del self.failed_attempts[user_name]
             return False
+
+    def _evict_expired_failed_attempts(self) -> None:
+        """Drop failed-attempt timestamps older than the TTL.
+
+        Also removes usernames whose attempt lists become empty so that
+        keys for usernames that never succeed (brute-force probes,
+        scanners, disabled accounts) do not accumulate forever.
+        """
+        cutoff = datetime.now() - self._failed_attempts_ttl
+        expired_users = []
+        for user_name, attempts in self.failed_attempts.items():
+            # attempts are appended chronologically; keep the tail.
+            idx = 0
+            while idx < len(attempts) and attempts[idx] < cutoff:
+                idx += 1
+            if idx:
+                del attempts[:idx]
+            if not attempts:
+                expired_users.append(user_name)
+        for user_name in expired_users:
+            del self.failed_attempts[user_name]
 
     def record_failed_attempt(self, user_name: str) -> None:
         """Record a failed login attempt.
@@ -111,6 +149,9 @@ class SecurityManager:
         Args:
             user_name: user name
         """
+        # Evict expired entries first to bound memory for usernames that
+        # never succeed (brute-force probes, scanners, disabled accounts).
+        self._evict_expired_failed_attempts()
         if user_name not in self.failed_attempts:
             self.failed_attempts[user_name] = []
 
@@ -127,9 +168,10 @@ class SecurityManager:
             ip_address: IP address
             user_agent: user agent string
         """
-        # Clear failed attempts on successful login
-        if user_name in self.failed_attempts:
-            self.failed_attempts[user_name] = []
+        # Clear failed attempts on successful login; delete the key entirely
+        # instead of keeping an empty list so the dict does not retain keys
+        # for usernames that previously failed but later succeeded.
+        self.failed_attempts.pop(user_name, None)
 
         # Log the successful login
         self.user_manager.log_login_attempt(

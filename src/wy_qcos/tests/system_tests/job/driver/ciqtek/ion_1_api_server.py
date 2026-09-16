@@ -109,14 +109,14 @@ async def get_result_handler(request):
     return web.json_response(response_data)
 
 
-def main():
+def main(port=18605):
     init_logging()
 
     app.router.add_post("/control/v1/token", get_token_handler)
     app.router.add_post("/control/v1/token/refresh", refresh_token_handler)
     app.router.add_post("/control/v1/experiment/submit", submit_handler)
     app.router.add_get("/control/v1/experiment/get", get_result_handler)
-    web.run_app(app, host="", port=18605)
+    web.run_app(app, host="", port=port)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,99 @@
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF
+# ANY KIND, EITHER EXPRESS OR IMPLIED.
+# ----------------------------------------------------------------------
+
+# Base image for the qcos-compiler cloud service (bc-oe variant).
+#
+# Uses bc-oe:21.10-py11 (BigCloud Enterprise Linux For Euler 21.10 LTS,
+# glibc 2.28, x86-64-v1 baseline) with the pre-installed CPython 3.11.6
+# at /usr/bin/python3.11 — no pyenv, no source compilation of CPython.
+#
+# This avoids the "CPU does not support x86-64-v2" error on legacy hosts
+# that occurs with newer base images whose glibc/RPMs are built with the
+# x86-64-v2 instruction set.
+#
+# Holds the slow-moving layers that rarely change between releases:
+#   1. OS + build/runtime rpms (gcc/cmake/etc. needed to build the C++
+#      transpiler extension)
+#   2. service virtualenv with all Python dependencies pre-installed,
+#      created from the system Python 3.11.6
+#
+# Only the Python dependency files (requirements/*.txt) are copied here,
+# so a code change does NOT invalidate this layer — it is rebuilt solely
+# when requirements change. The business image (./Dockerfile) FROMs this
+# image and adds source + C++ extension + package install on top.
+#
+# Build:
+#   docker build -f build-scripts/compiler/Dockerfile-bc-oe.base \
+#       -t qcos-compiler-bc-oe-base:1.5.0 .
+
+ARG CONTAINER_BASE_IMAGE=bc-oe:21.10-py11
+FROM ${CONTAINER_BASE_IMAGE}
+
+ARG WORK_DIR=/root
+
+# pip mirror (Tsinghua TUNA) — overridable, set empty to use PyPI.
+ARG PIP_MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple
+
+LABEL stage=qcos-compiler-base-builder
+LABEL build=qcos-compiler-bc-oe-base
+LABEL maintainer="Zhou Yunxiao <zhouyunxiao_yewu@cmss.chinamobile.com>"
+
+ENV TZ=Asia/Shanghai
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+# The pre-installed CPython 3.11.6 lives at /usr/bin/python3.11 (prefix-
+# style layout: bin/python3.11, lib/, include/).  We use it directly
+# instead of building CPython via pyenv.
+ENV SYSTEM_PYTHON=/usr/bin/python3.11/bin/python3.11
+ENV VENV_PATH=/opt/qcos-compiler-venv
+ENV PATH=${VENV_PATH}/bin:${PATH}
+
+WORKDIR ${WORK_DIR}
+
+# ---- layer 1: OS packages -------------------------------------------------
+# build/runtime rpms required to build the C++ transpiler extension later
+# (in the business image) and to compile any source wheels pip may need.
+RUN set -e && \
+    mkdir -p /etc/qcos/ /var/log/qcos/ /var/run/qcos/ && \
+    yum install --nobest -y \
+      git wget curl ca-certificates boost-devel boost-static\
+      iproute net-tools \
+      make cmake gcc gcc-c++ \
+      gtest-devel \
+      openssl-devel libffi-devel bzip2-devel xz-devel \
+      zlib-devel readline-devel sqlite-devel ncurses-devel \
+      gdbm-devel tk-devel libuuid-devel \
+      glibc-langpack-en && \
+    echo "LANG=C.UTF-8" > /etc/locale.conf && \
+    yum clean all && \
+    rm -rf /var/cache/yum
+
+# ---- layer 2: service virtualenv + Python dependencies --------------------
+# Create the venv from the system Python 3.11.6 and pre-install all
+# Python dependencies so the business image only adds source + .so.
+#
+# Copy ONLY the requirements files first so this layer caches across code
+# changes and only rebuilds when dependencies change.
+COPY requirements/requirements-transpiler-cmss.txt /tmp/requirements/requirements-transpiler-cmss.txt
+COPY requirements/requirements-qcos.txt /tmp/requirements/requirements-qcos.txt
+
+RUN set -e && \
+    ${SYSTEM_PYTHON} -m venv --copies ${VENV_PATH} && \
+    ${VENV_PATH}/bin/python --version && \
+    if [ -n "${PIP_MIRROR}" ]; then \
+        ${VENV_PATH}/bin/pip config set global.index-url "${PIP_MIRROR}"; \
+    fi && \
+    ${VENV_PATH}/bin/pip install --no-cache-dir --upgrade pip && \
+    ${VENV_PATH}/bin/pip install --no-cache-dir -r \
+        /tmp/requirements/requirements-transpiler-cmss.txt && \
+    ${VENV_PATH}/bin/pip install --no-cache-dir -r \
+        /tmp/requirements/requirements-qcos.txt || true && \
+    rm -rf /root/.cache/pip

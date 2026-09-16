@@ -23,8 +23,8 @@ import pytest
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 from wy_qcos.task_manager.task_scheduler import PrioritySchedulingPolicy
 from wy_qcos.task_manager.task_scheduler import TaskScheduler
@@ -107,8 +107,7 @@ class TestTaskScheduler:
         assert mock_logger.error.called
 
         mock_device_manager.get_device.return_value = mock_device
-        mock_device_manager.config.REDIS.REDIS_SERVER_IP = "localhost"
-        mock_device_manager.config.REDIS.REDIS_SERVER_PORT = 6379
+        mock_device_manager.config.REDIS.REDIS_URL = "redis://localhost:6379/0"
         mock_get_deployment.return_value = {
             "deploy_id": "test_deployment_id",
         }
@@ -142,17 +141,25 @@ class TestTaskScheduler:
     ):
         scheduler = TaskScheduler()
         scheduler._task_manager = Mock()
-        scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
-            [],
-            [object()] * Config.DEFAULT.MAX_QUEUED_JOBS,
-        ]
-        scheduler._device_manager = Mock()
-        mock_convert_to_prefect_states.return_value = ["RUNNING"]
+        # Use a positive limit to test the exceeded scenario
+        # (default MAX_QUEUED_JOBS=-1 means unlimited)
+        test_limit = 5
+        original = Config.DEFAULT.MAX_QUEUED_JOBS
+        Config.DEFAULT.MAX_QUEUED_JOBS = test_limit
+        try:
+            scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
+                [],
+                [object()] * test_limit,
+            ]
+            scheduler._device_manager = Mock()
+            mock_convert_to_prefect_states.return_value = ["RUNNING"]
 
-        result, error = scheduler.submit(Mock(backend="dummy"), None)
+            result, error = scheduler.submit(Mock(backend="dummy"), None)
 
-        assert result is None
-        assert "max queued job limit" in error
+            assert result is None
+            assert "max queued job limit" in error
+        finally:
+            Config.DEFAULT.MAX_QUEUED_JOBS = original
 
     def test_submit_device_disabled(self):
         scheduler = TaskScheduler()
@@ -323,8 +330,7 @@ class TestTaskScheduler:
 
         mock_device_manager = Mock()
         mock_device_manager.get_device.return_value = None
-        mock_device_manager.config.REDIS.REDIS_SERVER_IP = "127.0.0.1"
-        mock_device_manager.config.REDIS.REDIS_SERVER_PORT = 6379
+        mock_device_manager.config.REDIS.REDIS_URL = "redis://127.0.0.1:6379/0"
         task.set_device_manager(mock_device_manager)
 
         mock_job_info = Mock()
@@ -363,16 +369,26 @@ class TestTaskScheduler:
     def test_submit_manage_job_queued_limit_exceeded(self):
         scheduler = TaskScheduler()
         scheduler._task_manager = Mock()
-        scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
-            [],
-            [object()] * Config.DEFAULT.MAX_QUEUED_JOBS,
-        ]
-        scheduler._task_manager.convert_to_prefect_states.return_value = []
+        # Use a positive limit to test the exceeded scenario
+        # (default MAX_QUEUED_JOBS=-1 means unlimited)
+        test_limit = 5
+        original = Config.DEFAULT.MAX_QUEUED_JOBS
+        Config.DEFAULT.MAX_QUEUED_JOBS = test_limit
+        try:
+            scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
+                [],
+                [object()] * test_limit,
+            ]
+            scheduler._task_manager.convert_to_prefect_states.return_value = []
 
-        result, error = scheduler.submit_manage_job(Mock(device_name="dummy"))
+            result, error = scheduler.submit_manage_job(
+                Mock(device_name="dummy")
+            )
 
-        assert result is None
-        assert "running+queued job count exceeds" in error
+            assert result is None
+            assert "running+queued job count exceeds" in error
+        finally:
+            Config.DEFAULT.MAX_QUEUED_JOBS = original
 
     def test_submit_manage_job_device_disabled(self):
         scheduler = TaskScheduler()
@@ -413,8 +429,9 @@ class TestTaskScheduler:
         mock_device.get_configs.return_value = {}
         scheduler._device_manager = Mock()
         scheduler._device_manager.get_device.return_value = mock_device
-        scheduler._device_manager.config.REDIS.REDIS_SERVER_IP = "127.0.0.1"
-        scheduler._device_manager.config.REDIS.REDIS_SERVER_PORT = 6379
+        scheduler._device_manager.config.REDIS.REDIS_URL = (
+            "redis://127.0.0.1:6379/0"
+        )
         scheduler._policy_handler = Mock()
         scheduler._policy_handler.exec_manage_task.return_value = (
             False,
@@ -488,8 +505,17 @@ class TestTaskScheduler:
     def test_process_unfinished_jobs(self, mock_create_db_session):
         scheduler = TaskScheduler()
         scheduler._db_engine = Mock()
+        # avoid real task_manager side-effects when cancelling flow runs
+        scheduler._task_manager = Mock()
 
-        job_running = Mock(id="job-1", job_status=1)
+        # process_unfinished_jobs only resets jobs in intermediate states
+        # (UNKNOWN/CANCELLING) to FAILED; use CANCELLING so the job is
+        # updated and committed.
+        job_running = Mock(
+            id="job-1",
+            job_status=Constant.JOB_STATUS_CANCELLING,
+            flow_run_id=None,
+        )
         job_done = Mock(id="job-2", job_status=Constant.JOB_STATUS_COMPLETED)
         db_session = Mock()
         mock_create_db_session.return_value = nullcontext(db_session)
@@ -520,7 +546,16 @@ class TestTaskScheduler:
     ):
         scheduler = TaskScheduler()
         scheduler._db_engine = Mock()
-        job_running = Mock(id="job-1", job_status=1)
+        # avoid real task_manager side-effects when cancelling flow runs
+        scheduler._task_manager = Mock()
+        # process_unfinished_jobs only commits jobs in intermediate states
+        # (UNKNOWN/CANCELLING); use CANCELLING so the commit path (and
+        # thus the rollback on failure) is exercised.
+        job_running = Mock(
+            id="job-1",
+            job_status=Constant.JOB_STATUS_CANCELLING,
+            flow_run_id=None,
+        )
         db_session = Mock()
         db_session.commit.side_effect = RuntimeError("commit failed")
         mock_create_db_session.return_value = nullcontext(db_session)
@@ -668,3 +703,8 @@ class TestPrioritySchedulingPolicy:
             None,
         )
         assert result == 514
+        mock_run_flow.assert_called_once()
+        _, call_kwargs = mock_run_flow.call_args
+        assert call_kwargs["work_queue_name"] == (
+            f"{Constant.WORK_POOL_DEVICE_PREFIX}{Constant.DRIVER_DUMMY}_1"
+        )

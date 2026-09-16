@@ -317,20 +317,21 @@ void MultiGraph::remove_node_retain_edges(int node_id) {
 }
 
 std::vector<int> MultiGraph::topo_order() const {
-  std::unordered_map<int, int> in_degree;
-  for (size_t index = 0; index < slots_.size(); ++index) {
-    if (slots_[index].active) {
-      in_degree[static_cast<int>(index)] =
-          static_cast<int>(slots_[index].in_edges.size());
+  // 用 vector 代替 unordered_map，按下标直接访问入度，-1 标记非活跃节点
+  const int max_id = static_cast<int>(slots_.size());
+  std::vector<int> in_degree(max_id, -1);
+  for (int id = 0; id < max_id; ++id) {
+    if (slots_[id].active) {
+      in_degree[id] = static_cast<int>(slots_[id].in_edges.size());
     }
   }
 
   std::vector<int> stack;
   std::vector<int> ready;
-  ready.reserve(in_degree.size());
-  for (const auto& [index, degree] : in_degree) {
-    if (degree == 0) {
-      ready.push_back(index);
+  ready.reserve(num_active_);
+  for (int id = 0; id < max_id; ++id) {
+    if (in_degree[id] == 0) {
+      ready.push_back(id);
     }
   }
   std::sort(ready.begin(), ready.end());
@@ -346,9 +347,11 @@ std::vector<int> MultiGraph::topo_order() const {
     order.push_back(current);
     std::vector<int> unlocked;
     for (const auto& edge : slots_[current].out_edges) {
-      --in_degree[edge.target];
-      if (in_degree[edge.target] == 0) {
-        unlocked.push_back(edge.target);
+      if (in_degree[edge.target] > 0) {
+        --in_degree[edge.target];
+        if (in_degree[edge.target] == 0) {
+          unlocked.push_back(edge.target);
+        }
       }
     }
     std::sort(unlocked.begin(), unlocked.end());
@@ -361,11 +364,12 @@ std::vector<int> MultiGraph::topo_order() const {
 
 std::vector<DAGNode*> MultiGraph::lexicographical_topological_sort(
     const std::function<std::string(const DAGNode*)>& key) const {
-  std::unordered_map<int, int> in_degree;
-  for (size_t index = 0; index < slots_.size(); ++index) {
-    if (slots_[index].active) {
-      in_degree[static_cast<int>(index)] =
-          static_cast<int>(slots_[index].in_edges.size());
+  // 用 vector 代替 unordered_map，按下标直接访问入度，-1 标记非活跃节点
+  const int max_id = static_cast<int>(slots_.size());
+  std::vector<int> in_degree(max_id, -1);
+  for (int id = 0; id < max_id; ++id) {
+    if (slots_[id].active) {
+      in_degree[id] = static_cast<int>(slots_[id].in_edges.size());
     }
   }
 
@@ -378,9 +382,9 @@ std::vector<DAGNode*> MultiGraph::lexicographical_topological_sort(
     return lhs_key > rhs_key;
   };
   std::priority_queue<int, std::vector<int>, decltype(cmp)> pq(cmp);
-  for (const auto& [index, degree] : in_degree) {
-    if (degree == 0) {
-      pq.push(index);
+  for (int id = 0; id < max_id; ++id) {
+    if (in_degree[id] == 0) {
+      pq.push(id);
     }
   }
 
@@ -391,9 +395,11 @@ std::vector<DAGNode*> MultiGraph::lexicographical_topological_sort(
     pq.pop();
     result.push_back(slots_[current].node.get());
     for (const auto& edge : slots_[current].out_edges) {
-      --in_degree[edge.target];
-      if (in_degree[edge.target] == 0) {
-        pq.push(edge.target);
+      if (in_degree[edge.target] > 0) {
+        --in_degree[edge.target];
+        if (in_degree[edge.target] == 0) {
+          pq.push(edge.target);
+        }
       }
     }
   }
@@ -455,11 +461,15 @@ std::vector<int> MultiGraph::dag_longest_path() const {
 }
 
 std::vector<std::vector<DAGNode*>> MultiGraph::collect_runs(
-    const std::function<bool(const DAGNode*)>& filter_fn) const {
+    const std::function<bool(const DAGNode*)>& filter_fn,
+    const std::vector<int>* topo_order) const {
+  std::vector<int> computed_order;
+  const std::vector<int>& order =
+      topo_order ? *topo_order : (computed_order = this->topo_order());
   std::vector<std::vector<DAGNode*>> runs;
   std::unordered_set<int> visited;
 
-  for (int node_id : topo_order()) {
+  for (int node_id : order) {
     if (visited.count(node_id) || !filter_fn(slots_[node_id].node.get())) {
       continue;
     }

@@ -24,6 +24,7 @@ from datetime import datetime
 
 from schema import Schema
 
+from . import args_schema
 from .constant import HttpMethod
 
 logger = logging.getLogger(__name__)
@@ -299,6 +300,20 @@ class ClientLibrary:
         if err_msgs:
             return False, err_msgs
         return True, None
+
+    @staticmethod
+    def validate_name(name):
+        """Validate name.
+
+        Args:
+            name: name
+
+        Returns:
+            success of failed (bool), error message list
+        """
+        return ClientLibrary.validate_schema(
+            name, args_schema.NAME_SCHEMA, allow_none=True
+        )
 
 
 def _s(secret):

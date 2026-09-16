@@ -18,54 +18,59 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "circuit/base_operation.h"
 #include "circuit/gate_operation.h"
+#include "mapping/mapping_utils.h"
 
 namespace qcos {
 
 // forward declaration
 class SABRE;
 
-bool validate_routing(const SABRE& sabre,
-                      const std::vector<GateOperation>& logical_gates,
-                      const std::vector<GateOperation>& physical_gates,
-                      std::vector<int>& initial_l2p);
-
 std::vector<int> sabre_initial_mapping(
     const std::vector<GateOperation>& gates_list,
-    const std::vector<std::pair<int, int>>& coupling_list);
+    const std::vector<std::pair<int, int>>& coupling_list,
+    const std::vector<int>& initial_layout);
 
 /**
  * @brief 使用SABRE算法对逻辑门序列执行routing。
+ *
+ * 内部将 measure 门从门序列中分离: measure 不参与路由, 路由后追加到
+ * 返回结果末尾(已转为物理 ID)。初始映射由 layout_method 决定:
+ * "vf2_layout" 先尝试 VF2 完美嵌入, 失败回退 DenseLayout;
+ * "dense_layout" 直接使用 DenseLayout。
+ *
+ * 保真度阈值 fidelity_threshold:
+ *   < 0 (默认 -1): 自适应计算 (mean - std, clamp [0.3, 0.9])
+ *   >= 0: 使用传入值
+ *
  * @param gates_list 待映射的逻辑门序列。
  * @param coupling_list 物理耦合图边列表。
- * @param initial_l2p 初始逻辑到物理映射，可为空。
- *        当该参数为空时，函数内部会先调用 sabre_initial_mapping
- *        生成初始映射，再继续执行 routing。
+ * @param edge_fidelities 边保真度数组(与 coupling_list 对应),
+ * 空则不使用保真度。
+ * @param single_qubit_fidelities 单比特保真度数组, 空则不使用。
+ * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"。
+ * @param target_bits 目标物理位(空=不限制); 全单比特门时映射到这些位,
+ * 含双比特门时在其诱导子图上路由。
+ * @param fidelity_threshold 保真度阈值, <0 自适应计算, 默认 -1。
+ * @param fidelity_weight DenseLayout 保真度权重，取值 [0, 1]，默认 0.5。
  * @param extension_size 扩展集大小，用于 lookahead 成本计算，默认 20。
  * @param weight 前沿层与扩展层成本权重，默认 0.5。
  * @param decay SWAP 衰减系数，默认 0.001。
- * @return std::vector<GateOperation> routing 后的物理门序列。
- */
-std::vector<GateOperation> sabre_routing(
-    const std::vector<GateOperation>& gates_list,
-    const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p = {}, int extension_size = 20,
-    double weight = 0.5, double decay = 0.001);
-
-/**
- * @brief SABRE routing 的 BaseOperation 版本接口。
- *
- * 内部实现会将 BaseOperation 转换为 GateOperation，执行 routing 后再
- * 转换回 BaseOperation。
+ * @return std::vector<std::shared_ptr<BaseOperation>> routing 后的物理门序列。
  */
 std::vector<std::shared_ptr<BaseOperation>> sabre_routing(
     const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
     const std::vector<std::pair<int, int>>& coupling_list,
-    const std::vector<int>& initial_l2p = {}, int extension_size = 20,
-    double weight = 0.5, double decay = 0.001);
+    const std::vector<double>& edge_fidelities = {},
+    const std::vector<double>& single_qubit_fidelities = {},
+    const std::string& layout_method = "vf2_layout",
+    const std::vector<int>& target_bits = {}, double fidelity_threshold = -1.0,
+    double fidelity_weight = 0.5, int extension_size = 20, double weight = 0.5,
+    double decay = 0.001);
 
 /**
  * @brief SABRE算法中的节点结构
@@ -103,20 +108,36 @@ class SABRE {
   /**
    * @brief SABRE算法构造函数
    * @param coupling_list 量子芯片物理耦合关系，每个元素为一对物理量子比特编号
+   * @param edge_fidelities 边保真度数组(与coupling_list对应)，空则不使用保真度
+   * @param single_qubit_fidelities 单比特保真度数组，空则不使用
+   * @param layout_method 初始映射方法: "vf2_layout"(默认) 或 "dense_layout"
+   * @param target_bits 目标物理位(空=不限制); 全单比特门时映射到这些位,
+   * 含双比特门时在其诱导子图上路由。
+   * @param fidelity_threshold 保真度阈值, <0 自适应计算 (mean - std, clamp
+   * [0.3, 0.9]),
+   *                           >=0 使用传入值, 默认 -1
+   * @param fidelity_weight DenseLayout保真度权重，取值[0, 1]，默认0.5
    * @param extension_size 扩展集大小，用于lookahead成本计算，默认20
    * @param weight 前沿层与扩展层成本权重，默认0.5
    * @param decay 物理比特衰减系数，默认0.001
    */
   SABRE(const std::vector<std::pair<int, int>>& coupling_list,
+        const std::vector<double>& edge_fidelities = {},
+        const std::vector<double>& single_qubit_fidelities = {},
+        const std::string& layout_method = "vf2_layout",
+        const std::vector<int>& target_bits = {},
+        double fidelity_threshold = -1.0, double fidelity_weight = 0.5,
         int extension_size = 20, double weight = 0.5, double decay = 0.001);
 
   /**
-   * @brief 执行SABRE算法，将逻辑量子门映射到物理量子门
-   * @param gates_list 待映射的逻辑门序列
-   * @param initial_l2p 初始逻辑到物理映射(可为空)
+   * @brief 执行SABRE算法
+   *
+   * 内部处理: measure 分离 -> 保真度过滤/ID稠密化 -> 路由 -> measure 追加。
+   * 结果通过 get_physical_gates() 获取。
+   *
+   * @param gates_list 待映射的逻辑门序列(可含 measure)
    */
-  void execute(const std::vector<GateOperation>& gates_list,
-               const std::vector<int>& initial_l2p = {});
+  void execute(const std::vector<std::shared_ptr<BaseOperation>>& gates_list);
 
   /**
    * @brief 将逻辑量子门转换为物理量子门
@@ -126,10 +147,11 @@ class SABRE {
   GateOperation phy_gate(const GateOperation& logic_gate);
 
   /**
-   * @brief 获取已经routing完成的物理门序列
-   * @return std::vector<GateOperation> 物理门操作列表
+   * @brief 获取已经routing完成的物理门序列(含measure)
+   * @return std::vector<std::shared_ptr<BaseOperation>> 物理门操作列表
    */
-  inline std::vector<GateOperation> get_physical_gates() const {
+  inline const std::vector<std::shared_ptr<BaseOperation>>&
+  get_physical_gates() const {
     return phy_exe_gates_;
   }
 
@@ -138,32 +160,49 @@ class SABRE {
    * @return std::vector<int> mapping where index is logical qubit and value is
    * physical qubit
    */
-  inline std::vector<int> get_logic2phy() const { return logic2phy_; }
+  inline std::vector<int> get_final_mapping() const { return logic2phy_; }
 
-  friend bool validate_routing(
-      const SABRE& sabre, const std::vector<GateOperation>& logical_gates,
-      const std::vector<GateOperation>& physical_gates,
-      std::vector<int>& initial_l2p);
+  /**
+   * @brief 获取初始的逻辑->物理映射（执行execute() 之后有效，初始为空）
+   * @return std::vector<int> mapping where index is logical qubit and value is
+   * physical qubit
+   */
+  inline std::vector<int> get_initial_mapping() const { return initial_l2p_; }
 
   friend std::vector<int> sabre_initial_mapping(
       const std::vector<GateOperation>& gates_list,
-      const std::vector<std::pair<int, int>>& coupling_list);
+      const std::vector<std::pair<int, int>>& coupling_list,
+      const std::vector<int>& initial_layout);
 
  private:
-  int phy_qubit_num_;                               ///< 物理量子比特总数
-  int extension_size_;                              ///< 扩展深度
-  double weight_;                                   ///< 扩展层权重
-  double decay_;                                    ///< SWAP衰减因子
+  int max_phy_qubit_id_;      ///< 最大物理比特 ID (数组按 ID 索引, 大小为
+                              ///< max_phy_qubit_id_+1)
+  int active_phy_qubit_num_;  ///< 活跃物理比特数 (耦合图中出现的去重位数)
+  int logic_qubit_num_ = 0;   ///< 电路使用的逻辑位数 (含被 measure 引用的位)
   std::vector<std::pair<int, int>> coupling_list_;  ///< 物理耦合边列表
-  std::vector<std::vector<int>> adj_list_;          ///< 物理耦合图邻接表
-  std::vector<std::vector<bool>> adj_matrix_;       ///< 邻接矩阵(O(1)查询)
-  std::vector<std::vector<int>> dist_;              ///< 最短路径距离矩阵
-  std::vector<int> cur_l2p_;                        ///< 当前逻辑到物理映射
-  std::vector<int> cur_p2l_;                        ///< 当前物理到逻辑映射
-  std::vector<Node*> front_layer_;                  ///< 前沿层节点列表
-  std::vector<GateOperation> phy_exe_gates_;        ///< 映射后的物理门序列
-  std::vector<int> logic2phy_;                      ///< 最终逻辑到物理映射
-  std::vector<int> phy2logic_;                      ///< 最终物理到逻辑映射
+  std::vector<double>
+      edge_fidelities_;  ///< 边保真度数组(与coupling_list_对应)
+  std::vector<double> single_qubit_fidelities_;  ///< 单比特保真度数组
+  double fidelity_threshold_;                    ///< 保真度过滤阈值
+  int extension_size_;                           ///< 扩展深度
+  double weight_;                                ///< 扩展层权重
+  double decay_;                                 ///< SWAP衰减因子
+  double fidelity_weight_;                       ///< DenseLayout保真度权重
+  std::string layout_method_;                    ///< 初始映射方法
+  std::vector<int> target_bits_;                 ///< 用户指定目标物理位
+  std::vector<std::vector<int>> adj_list_;       ///< 物理耦合图邻接表
+  std::vector<std::vector<bool>> adj_matrix_;    ///< 邻接矩阵(O(1)查询)
+  std::vector<std::vector<int>> dist_;           ///< 最短路径距离矩阵
+  std::vector<int> cur_l2p_;                     ///< 当前逻辑到物理映射
+  std::vector<int> cur_p2l_;                     ///< 当前物理到逻辑映射
+  std::vector<Node*> front_layer_;               ///< 前沿层节点列表
+  std::vector<std::shared_ptr<BaseOperation>>
+      phy_exe_gates_;             ///< 映射后的物理门序列(含measure)
+  std::vector<int> logic2phy_;    ///< 最终逻辑到物理映射
+  std::vector<int> initial_l2p_;  ///< 初始逻辑到物理映射
+  bool did_preprocess_ = false;   ///< 是否做了逻辑位稠密化
+  IdRemap remap_;                 ///< 逻辑位 orig和dense 双向映射
+  int max_chip_qubit_ = 0;        ///< 原始耦合图最大比特 ID
 
   // 预分配的热路径缓冲区
   std::vector<std::pair<int, int>> candidate_swaps_;
@@ -186,6 +225,22 @@ class SABRE {
    * 填充成员变量`dist_`，用于后续启发式代价评估的O(1)距离查询。
    */
   void init_distance_matrix();
+
+  /**
+   * @brief 全单比特门直接映射 (无 SWAP, 无路由)
+   *
+   * 电路全为单比特门 (has_2q == false)。按 target_bits(非空)
+   * 或全芯片保真度 top-N (需有 single_qubit_fidelities 数据)
+   * 直接建立逻辑->物理映射并替换门 targets, 跳过 SABRE 路由。
+   * 两种映射来源都不可用时 (无 target_bits 且无保真度数据) 保持逻辑位
+   * 不变 (identity 映射)。
+   *
+   * @param gate_ops 逻辑门序列 (已转为 GateOperation, 不含 measure)
+   * @param measure_ops measure 操作列表
+   */
+  std::vector<GateOperation> all_single_qubit_mapping(
+      const std::vector<GateOperation>& gate_ops,
+      const std::vector<std::shared_ptr<Measure>>& measure_ops);
 
   /**
    * @brief 判断节点是否可以在当前物理映射上执行 (内联,使用邻接矩阵O(1)查询)
@@ -240,8 +295,29 @@ class SABRE {
   int get_qubit_num_from_ir(
       const std::vector<GateOperation>& gates_list) const;
 
-  void execute_routing(const std::vector<GateOperation>& gates_list,
-                       const std::vector<int>& initial_l2p);
+  /**
+   * @brief 为 cur_l2p_ 中未分配的逻辑位分配物理位
+   *
+   * 优先分配已分配位的邻居，其次分配耦合图中任意未使用位。
+   */
+  void extend_l2p_with_unused_qubits(int old_size);
+
+  /**
+   * @brief 回溯 + Dijkstra 最短路径插入 SWAP
+   *
+   * 当启发式连续插入过多 SWAP 仍无法执行门时调用：
+   * 1. 选 front layer 中距离最短的 2q 门
+   * 2. 用 dist_ 矩阵重建最短路径
+   * 3. 沿路径插入 SWAP（距离严格递减，保证门变相邻）
+   *
+   * @param result [in/out] 路由结果，追加 SWAP
+   * @throw std::runtime_error 当 front layer 门不可达（图不连通）
+   */
+  void dijkstra_fallback(std::vector<GateOperation>& result);
+
+  std::vector<GateOperation> execute_routing(
+      const std::vector<GateOperation>& gates_list,
+      const std::vector<int>& initial_l2p);
 };
 
 }  // namespace qcos

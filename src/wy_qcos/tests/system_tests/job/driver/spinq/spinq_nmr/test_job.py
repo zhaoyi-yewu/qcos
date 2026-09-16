@@ -45,8 +45,32 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
-        cls.nmr_process = multiprocessing.Process(target=main, daemon=True)
+        cls.api_host = "127.0.0.1"
+        cls.api_port = 18602
+        cls.nmr_process = multiprocessing.Process(
+            target=main,
+            daemon=True,
+            kwargs={"port": cls.api_port},
+        )
         cls.nmr_process.start()
+
+        # Wait until the mock API server is ready to accept connections
+        connected = Library.wait_network_connection(
+            cls.api_host,
+            port=cls.api_port,
+        )
+        assert connected, (
+            f"Failed to connect to spinq nmr mock server at "
+            f"{cls.api_host}:{cls.api_port}"
+        )
+
+        # Ensure spinq_triangulum is online before submitting jobs.
+        # The device monitor polls the (mock) backend and may briefly
+        # report disconnected during startup; force the status here so
+        # the scheduler treats the device as eligible.
+        cls.admin_client.set_device(
+            "spinq_triangulum", enable=True, state="online"
+        )
 
         # Initialize and clean up test resources
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
@@ -55,6 +79,11 @@ class TestJob:
     def teardown_class(cls):
         """Clean up test environment."""
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
+
+        # restore device state to auto
+        cls.admin_client.set_device(
+            "spinq_triangulum", enable=True, state="auto"
+        )
 
         print("Stop NMR server")
         cls.nmr_process.terminate()

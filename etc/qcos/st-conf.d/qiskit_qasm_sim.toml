@@ -3,6 +3,9 @@ alias_name = "IBM-Qiskit-QASM模拟器"
 driver = "DriverQiskitQasmSim"
 description = "IBM-Qiskit-QASM模拟器(qiskit-qasm-sim)"
 
+# [Optional] enable or disable the device
+# enable = true
+
 # [Optional] max qubits of device
 # device_max_qubits = 100
 
@@ -14,12 +17,30 @@ debug = false
 # device_log_file = /var/log/qcos/device_qiskit_qasm_sim.log
 device_log_file = "/var/log/qcos/device_qiskit_qasm_sim.log"
 
-# [Optional] device monitor log file path
-# monitor_log_file = /var/log/qcos/device_montior_qiskit_qasm_sim.log
-monitor_log_file = "/var/log/qcos/device_monitor_qiskit_qasm_sim.log"
-
 # [Optional] device manager log file path
 # mgr_log_file = /var/log/qcos/device_mgr_qiskit_qasm_sim.log
 
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
 # [Optional] max queued jobs, -1 means unlimited
 max_queued_jobs = -1
+
+[qiskit_qasm_sim.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = false
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_qiskit_qasm_sim.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60

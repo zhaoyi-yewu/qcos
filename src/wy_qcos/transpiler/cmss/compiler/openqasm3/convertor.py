@@ -122,6 +122,7 @@ _STDGATES = {
     "crz": (_create_standard_gate("crz", 1, 2), 1, 2),  # Controlled rotation Z
     # Three-qubit gates
     "ccx": (_create_standard_gate("ccx", 0, 3), 0, 3),  # Toffoli/CCX gate
+    "ccz": (_create_standard_gate("ccz", 0, 3), 0, 3),  # CCZ gate
     "cswap": (_create_standard_gate("cswap", 0, 3), 0, 3),  # controlled-SWAP
     # General two-qubit gates
     "cu": (_create_standard_gate("cu", 4, 2), 4, 2),

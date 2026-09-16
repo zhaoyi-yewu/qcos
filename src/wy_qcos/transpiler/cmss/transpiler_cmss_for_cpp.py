@@ -16,21 +16,14 @@
 # ----------------------------------------------------------------------
 
 import logging
-
-from wy_qcos.log.logger import log_perf
-
 from schema import Optional
 
-from wy_qcos.common.cmss.base_operation import BaseOperation
+from wy_qcos.log.logger import log_perf
 from wy_qcos.transpiler.common.utils import (
     TranspileRuntime,
     Timer,
 )
-
 from wy_qcos.common.constant import Constant
-from wy_qcos.transpiler.cmss.compiler.decomposer import (
-    decompose_gates_to_1q2q,
-)
 from wy_qcos.transpiler.cmss.mapping.aggregate.hierachy_tree import (
     HierarchyTree,
     get_block,
@@ -44,8 +37,6 @@ from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     SCRoute,
     SC_MAPPING_OPTIONS_SCHEMA,
 )
-
-from wy_qcos.transpiler.cmss.mapping.utils import dg_swap_opt
 from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
 from wy_qcos.transpiler.transpiler_base import TranspilerBase
@@ -53,19 +44,20 @@ from wy_qcos.transpiler.cmss.compiler.openqasm3.parser import (
     parse as openqasm3_parse,
 )
 from wy_qcos.transpiler.high_performance import (
-    convert_qasm_string_to_qcos_operations,
-    Decomposer,
-    BaseOperation as CppBaseOperation,
+    qasm_to_ir,
     sabre_routing as cpp_sabre_routing,
-    optimize,
+    transpile_from_qasm as cpp_transpile_from_qasm,
+    transpile_from_ir as cpp_transpile_from_ir,
+    transpile_na_from_qasm as cpp_transpile_na_from_qasm,
+    transpile_na_from_ir as cpp_transpile_na_from_ir,
+    cpp_na_default_routing,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
 )
 from wy_qcos.transpiler.cmss.mapping.utils.sabre_utils import (
-    normalize_topology,
+    extract_topology_data,
 )
-from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +103,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             "enable_mapping": enable_mapping,
             # sc_mapping options
             "sc_mapping_options": {},
+            "target_bits": [],
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {
@@ -119,6 +112,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             Optional("na_mapping_type"): str,
             Optional("enable_mapping"): bool,
             Optional("sc_mapping_options"): SC_MAPPING_OPTIONS_SCHEMA,
+            Optional("target_bits"): [int],
         }
         # qpu_config
         self.qpu_config = None
@@ -191,12 +185,47 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         if len(opt_result_dict) == 1:
             key, value = list(opt_result_dict.items())[0]
             mapping_dict[key] = value[0]
-            routing_algorithm = sc_mapping_options.get(
-                "routing_algorithm",
-                DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
-            )
+            # Determine routing algorithm based on tech_type and options
+            if (
+                trans_cfg_inst.get_tech_type()
+                == Constant.TECH_TYPE_SUPERCONDUCTING
+            ):
+                routing_algorithm = sc_mapping_options.get(
+                    "routing_algorithm",
+                    DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
+                )
+            elif (
+                trans_cfg_inst.get_tech_type()
+                == Constant.TECH_TYPE_NEUTRAL_ATOM
+            ):
+                routing_algorithm = na_mapping_type
+            else:
+                raise TranspilerException(
+                    f"Unsupported tech_type({trans_cfg_inst.get_tech_type()}) "
+                    "for mapping."
+                )
+            # execute mapping based on routing algorithm
             if routing_algorithm == "sabre":
-                mapping_res = sabre_routing(value[1], qpu_cfg)
+                coupling_list, edge_fidelities, single_qubit_fidelities = (
+                    extract_topology_data(qpu_cfg)
+                )
+                mapping_res = cpp_sabre_routing(
+                    value[1],
+                    coupling_list,
+                    edge_fidelities=edge_fidelities,
+                    single_qubit_fidelities=single_qubit_fidelities,
+                )
+            elif routing_algorithm == "default" and enable_na_move:
+                mapping_res, final_layout = cpp_na_default_routing(
+                    value[1], qpu_cfg, value[0]
+                )
+                final_layout_dict[key] = final_layout
+                return (
+                    mapping_res,
+                    mapping_dict,
+                    init_layout_dict,
+                    final_layout_dict,
+                )
             else:
                 with Timer() as mapping_pre_timer:
                     mapper.prepare_data(value[0], value[1], qpu_cfg)
@@ -268,6 +297,81 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                 final_layout_dict,
             )
 
+    def transpile_single(self, qasm_string, supp_basis_gates, qpu_cfg):
+        """All-in-one transpile using C++ implementation (single-circuit path).
+
+        Selects the routing path by tech_type:
+        - neutral_atom with enable_na_move -> NA mapping
+          (NARoute, inserting MOVE between storage/operate areas);
+        - otherwise (including superconducting) -> SABRE routing.
+
+        Combines parse + transpile into a single C++ call, avoiding
+        intermediate Python/C++ data transfer overhead.
+
+        Args:
+            qasm_string (str): QASM circuit string.
+            supp_basis_gates (list[str]): Supported basis gate names.
+            qpu_cfg (dict): QPU configuration dict (must contain coupler_map;
+                the NA path additionally needs storage_area/operate_area/
+                readout_error).
+
+        Returns:
+            TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+        """
+        tech_type = trans_cfg_inst.get_tech_type()
+        enable_na_move = self.transpiler_options.get("enable_na_move", False)
+        opt_level = self.transpiler_options.get(
+            "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
+        )
+
+        # neutral_atom + enable_na_move -> NA mapping path
+        if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM and enable_na_move:
+            # NA topology only supports cz as the two-qubit gate
+            if supp_basis_gates is None or len(supp_basis_gates) == 0:
+                supp_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
+                ]
+            elif Constant.TWO_QUBIT_GATE_CZ not in supp_basis_gates:
+                raise TranspilerException(
+                    f"Basis gate({supp_basis_gates}) is not supported for "
+                    "neutral atom topology. "
+                )
+            try:
+                return cpp_transpile_na_from_qasm(
+                    qasm_string,
+                    supp_basis_gates,
+                    qpu_cfg,
+                    opt_level=opt_level,
+                )
+            except RuntimeError as e:
+                raise TranspilerException(
+                    f"C++ transpile_na_from_qasm failed: {e}"
+                ) from e
+        elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
+            # Other (including superconducting SABRE) paths
+            coupling_list, edge_fidelities, single_qubit_fidelities = (
+                extract_topology_data(qpu_cfg)
+            )
+
+            try:
+                return cpp_transpile_from_qasm(
+                    qasm_string=qasm_string,
+                    supp_basis_gates=supp_basis_gates,
+                    coupling_list=coupling_list,
+                    opt_level=opt_level,
+                    edge_fidelities=edge_fidelities,
+                    single_qubit_fidelities=single_qubit_fidelities,
+                )
+            except RuntimeError as e:
+                raise TranspilerException(f"C++ transpile failed: {e}") from e
+        else:
+            raise TranspilerException(
+                f"Unsupported tech_type({tech_type}) "
+                "for high-performance transpiler."
+            )
+
     def parse(self, src_code_dict, code_type: str = Constant.CODE_TYPE_QASM):
         """Parse src_code_dict.
 
@@ -290,9 +394,12 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     Constant.CODE_TYPE_QASM,
                     Constant.CODE_TYPE_QASM2,
                 ]:
-                    parse_result, num_qubits = (
-                        convert_qasm_string_to_qcos_operations(value)
-                    )
+                    try:
+                        parse_result, num_qubits = qasm_to_ir(value)
+                    except RuntimeError as e:
+                        raise TranspilerException(
+                            f"QASM parse failed: {e}"
+                        ) from e
                 else:
                     circuit = openqasm3_parse(value)
                     num_qubits = circuit.num_qubits
@@ -318,198 +425,100 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
         # support cz gate for NARoute
         if enable_na_move:
-            supp_basis_gates = [
-                Constant.SINGLE_QUBIT_GATE_RX,
-                Constant.SINGLE_QUBIT_GATE_RY,
-                Constant.TWO_QUBIT_GATE_CZ,
-            ]
+            if supp_basis_gates is None or len(supp_basis_gates) == 0:
+                supp_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
+                ]
+            elif Constant.TWO_QUBIT_GATE_CZ not in supp_basis_gates:
+                raise TranspilerException(
+                    f"Basis gate({supp_basis_gates}) is not supported for "
+                    "neutral atom topology. "
+                )
 
         enable_mapping = self.transpiler_options.get("enable_mapping", True)
+        target_bits = self.transpiler_options.get("target_bits", [])
         run_time: TranspileRuntime = self.transpiler_runtime
 
         # get optimization level
         opt_level = self.transpiler_options.get(
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
-        # parse dict, job_id: str, cir_info: tuple(num_qubits, circuit)
-        # optimize gates list firstly for better decomposed efficiency.
-        opt_result_dict = {}
-        with Timer() as optimize1_timer:
-            for job_id, cir_info in parse_result.items():
-                opt_result = optimize(cir_info[1], opt_level=min(1, opt_level))
-                opt_result_dict[job_id] = (cir_info[0], opt_result)
-        run_time.opt_time1 = optimize1_timer.elapsed
-        log_perf(
-            logger,
-            f"tranpiler(optimize firstly): {optimize1_timer.elapsed:.4f}s\n",
-        )
+
+        tech_type = trans_cfg_inst.get_tech_type()
+        is_na = tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM and enable_na_move
+
+        qpu_cfg = trans_cfg_inst.get_qpu_cfg() or {}
+        if enable_mapping and not qpu_cfg:
+            err_msg = "Missing qpu configs"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
 
         if enable_mapping:
-            qpu_cfg = trans_cfg_inst.get_qpu_cfg()
-            if not qpu_cfg:
-                err_msg = "Missing qpu configs"
-                logger.error(err_msg)
-                raise ValueError(err_msg)
-
-            # decompose gate to 1q2q gates for mapping
-            dp_result_dict = {}
-            with Timer() as decompose_1q2q_timer:
-                for job_id, cir_info in opt_result_dict.items():
-                    decomposed_gates = decompose_gates_to_1q2q(cir_info[1])
-                    dp_result_dict[job_id] = (cir_info[0], decomposed_gates)
-            run_time.decompose_1q2q_time = decompose_1q2q_timer.elapsed
-            log_perf(
-                logger,
-                "tranpiler(decomposing firstly): "
-                f"{decompose_1q2q_timer.elapsed:.4f}s\n",
-            )
-
-            decomposer = Decomposer()
-            decompose_rules_dict = {}
-            # Flatten all BaseOperation lists from the qasm_dict values.
-            gate_name_list = list({
-                op.name for _, ops in dp_result_dict.values() for op in ops
-            })
-            with Timer() as decompose_ruler_timer:
-                decompose_rules_dict, gate_depth = (
-                    decomposer.get_decompose_rules(
-                        gate_name_list,
-                        supp_basis_gates,
-                    )
-                )
-                dg_swap_opt.gate_depth = gate_depth.copy()
-            run_time.decompose_rule_time = decompose_ruler_timer.elapsed
-            log_perf(
-                logger,
-                "tranpiler(get decompose rules): "
-                f"{decompose_ruler_timer.elapsed:.4f}s\n",
-            )
-
-            with Timer() as mapping_timer:
-                mapping_res, mapping_dict, _, _ = self.mapping(
-                    qpu_cfg, dp_result_dict
-                )
-            run_time.mapping_time = mapping_timer.elapsed
-            log_perf(
-                logger, f"tranpiler(mapping): {mapping_timer.elapsed:.4f}s\n"
-            )
-
-            with Timer() as applier_timer:
-                decomposer_circuit = decomposer.apply_decompose_rules(
-                    mapping_res, decompose_rules_dict
-                )
-            run_time.decompose_apply_time = applier_timer.elapsed
-            log_perf(
-                logger,
-                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n",
-            )
-
-            # secondly optimize
-            with Timer() as optimize2_timer:
-                basis_gate_list = optimize(
-                    decomposer_circuit,
-                    opt_level,
-                    basis_gates=set(supp_basis_gates),
-                )
-            run_time.opt_time2 = optimize2_timer.elapsed
-            logger.debug(f"final basis_gate_list: {basis_gate_list}")
-            log_perf(
-                logger,
-                "tranpiler(optimize secondly):"
-                f" {optimize2_timer.elapsed:.4f}s\n",
+            coupling_list, edge_fidelities, single_qubit_fidelities = (
+                extract_topology_data(qpu_cfg)
             )
         else:
-            decomposer = Decomposer()
-            decompose_rules_dict = {}
-            # Flatten all BaseOperation lists from the qasm_dict values.
-            gate_name_list = list({
-                op.name for _, ops in opt_result_dict.values() for op in ops
-            })
-
-            with Timer() as decompose_ruler_timer:
-                decompose_rules_dict, _ = decomposer.get_decompose_rules(
-                    gate_name_list,
-                    supp_basis_gates,
-                )
-            run_time.decompose_rule_time = decompose_ruler_timer.elapsed
-            log_perf(
-                logger,
-                "tranpiler(get decompose rules): "
-                f"{decompose_ruler_timer.elapsed:.4f}s\n",
+            coupling_list, edge_fidelities, single_qubit_fidelities = (
+                [],
+                [],
+                [],
             )
 
-            decomposer_dict = {}
-            with Timer() as applier_timer:
-                for job_id, cir_info in opt_result_dict.items():
-                    decomposer_dict[job_id] = decomposer.apply_decompose_rules(
-                        cir_info[1], decompose_rules_dict
+        timing_attrs = (
+            "opt_time1",
+            "decompose_1q2q_time",
+            "decompose_rule_time",
+            "mapping_time",
+            "decompose_apply_time",
+            "opt_time2",
+            "transpile_time",
+            "total_time",
+        )
+
+        basis_gate_list = []
+        mapping_dict = {}
+        final_layout_dict = {}
+        for job_id, (num_qubits, ir_ops) in parse_result.items():
+            try:
+                if is_na:
+                    # neutral atom route: NA mapping with MOVE support
+                    result = cpp_transpile_na_from_ir(
+                        ir_ops=ir_ops,
+                        num_qubits=num_qubits,
+                        supp_basis_gates=supp_basis_gates,
+                        qpu_cfg=qpu_cfg,
+                        opt_level=opt_level,
                     )
-            run_time.decompose_apply_time = applier_timer.elapsed
-            log_perf(
-                logger,
-                f"tranpiler(applier_timer): {applier_timer.elapsed:.4f}s\n",
-            )
-
-            # secondly optimize
-            basis_gates_dict = {}
-            with Timer() as optimize2_timer:
-                for job_id, ir in decomposer_dict.items():
-                    basis_gates_dict[job_id] = optimize(
-                        ir,
-                        opt_level,
-                        basis_gates=set(supp_basis_gates),
+                else:
+                    # superconducting route: SABRE routing
+                    result = cpp_transpile_from_ir(
+                        ir_ops=ir_ops,
+                        num_qubits=num_qubits,
+                        supp_basis_gates=supp_basis_gates,
+                        opt_level=opt_level,
+                        coupling_list=coupling_list,
+                        edge_fidelities=edge_fidelities,
+                        single_qubit_fidelities=single_qubit_fidelities,
+                        target_bits=target_bits if enable_mapping else [],
                     )
-            run_time.opt_time2 = optimize2_timer.elapsed
-            basis_gate_list = [
-                gate for gates in basis_gates_dict.values() for gate in gates
-            ]
-            logger.debug(f"final basis_gate_list: {basis_gate_list}")
-            log_perf(
-                logger,
-                "tranpiler(optimize secondly):"
-                f" {optimize2_timer.elapsed:.4f}s\n",
-            )
-            mapping_dict = None
+            except RuntimeError as exc:
+                raise TranspilerException(
+                    f"C++ transpile failed: {exc}"
+                ) from exc
 
-        return basis_gate_list, mapping_dict
+            basis_gate_list.extend(result.basis_gate_list)
+            mapping_dict[job_id] = num_qubits
+            final_layout_dict[job_id] = {
+                i: phys
+                for i, phys in enumerate(result.final_mapping)
+                if phys >= 0
+            }
 
+            cpp_timings = result.timings
+            for attr in timing_attrs:
+                setattr(run_time, attr, getattr(cpp_timings, attr))
 
-def sabre_routing(
-    ir: list,
-    topology,
-    initial_l2p: list[int] | None = None,
-    extension_size: int = 20,
-    weight: float = 0.5,
-    decay: float = 0.001,
-):
-    """Route a single circuit with SABRE."""
-    if not isinstance(ir, list):
-        raise TypeError(
-            "Ir must be a single-circuit list of BaseOperation instances"
-        )
-
-    coupling_list = normalize_topology(topology)
-
-    if len(ir) == 0:
-        return ir
-
-    first_op = ir[0]
-    if isinstance(first_op, BaseOperation):
-        sabre = SABRE(
-            coupling_list=coupling_list,
-            extension_size=extension_size,
-            weight=weight,
-            decay=decay,
-        )
-        sabre.execute(ir, initial_l2p)
-        return sabre.phy_exe_gates
-
-    if CppBaseOperation is not None and isinstance(first_op, CppBaseOperation):
-        initial_l2p = [] if initial_l2p is None else initial_l2p
-        return cpp_sabre_routing(
-            ir, coupling_list, initial_l2p, extension_size, weight, decay
-        )
-
-    raise TypeError(
-        "Ir must be a single-circuit list of BaseOperation instances"
-    )
+        logger.debug(f"final basis_gate_list: {basis_gate_list}")
+        return basis_gate_list, mapping_dict, final_layout_dict

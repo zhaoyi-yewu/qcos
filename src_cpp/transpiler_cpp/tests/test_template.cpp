@@ -40,7 +40,7 @@ using namespace qcos;
  * 个节点。
  */
 TEST(CompareTest, SingleQubitTemplateFullMatch) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   /*
    * tpls[4]: H(0) X(0) H(0), anchor=0
    * 将模板 DAG 当作匹配目标来测试 compare，不涉及 replacement。
@@ -65,7 +65,7 @@ TEST(CompareTest, SingleQubitTemplateFullMatch) {
  * 后继方向找到 RZ(1) 和 CX(0,1)，前驱方向无更多门。
  */
 TEST(CompareTest, RzCancelTemplateBidirectionalMatch) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   /*
    * tpls[1]: CX(0,1) RZ(1) CX(0,1), anchor=1
    */
@@ -92,7 +92,7 @@ TEST(CompareTest, RzCancelTemplateBidirectionalMatch) {
  * 用于检测 Rz 门可以跨过 H-CX-H 模式交换到另一侧。
  */
 TEST(CompareTest, HcxhTemplateForRzCommutation) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   /*
    * tpls[0]: H(1) CX(0,1) H(1), anchor=1
    */
@@ -135,11 +135,12 @@ TEST(CompareTest, MultiQubitTemplateMatchFromMiddle) {
 }
 
 /*
- * CNOT 控制位对消模板。
- * generate_cnot_ctrl_templates 包含 CX(0,1) (anchor=0) 和 RZ(0) (anchor=0)。
+ * CX 控制位交换优化模板。
+ * generate_cx_commute_ctrl_templates 包含 CX(0,1) (anchor=0) 和 RZ(0)
+ * (anchor=0)。
  */
-TEST(CompareTest, CnotCtrlTemplateMatch) {
-  auto tpls = generate_cnot_ctrl_templates();
+TEST(CompareTest, CxCommuteCtrlTemplateMatch) {
+  auto tpls = generate_cx_commute_ctrl_templates();
   ASSERT_GE(tpls.size(), 1u);
   auto& tpl = tpls[0]; /* CX(0,1), anchor=0 */
 
@@ -153,12 +154,12 @@ TEST(CompareTest, CnotCtrlTemplateMatch) {
 }
 
 /*
- * CNOT 目标位对消模板。
- * generate_cnot_targ_templates 包含 CX(0,1) (anchor=1) 和 H(0) CX(0,1) H(0)
- * (anchor=0)。
+ * CX 目标位交换优化模板。
+ * generate_cx_commute_targ_templates 包含 CX(0,1) (anchor=1) 和 H(0) CX(0,1)
+ * H(0) (anchor=0)。
  */
-TEST(CompareTest, CnotTargTemplateMatch) {
-  auto tpls = generate_cnot_targ_templates();
+TEST(CompareTest, CxCommuteTargTemplateMatch) {
+  auto tpls = generate_cx_commute_targ_templates();
   ASSERT_GE(tpls.size(), 1u);
   auto& tpl = tpls[0]; /* CX(0,1), anchor=1 */
 
@@ -197,7 +198,7 @@ TEST(CompareTest, TwoQubitHadamardTemplateMatch) {
  * 首节点门名称不一致，应返回空映射。
  */
 TEST(CompareTest, NameMismatchReturnsEmpty) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[4]; /* 期望 H(0) */
 
   std::vector<std::shared_ptr<BaseOperation>> ir = {
@@ -215,7 +216,7 @@ TEST(CompareTest, NameMismatchReturnsEmpty) {
  * 左侧的 X(0) 不属于模板子图，不应影响匹配结果。
  */
 TEST(CompareTest, TemplateWithExtraGatesOnLeft) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[4]; /* H(0) X(0) H(0), anchor=0 */
 
   std::vector<std::shared_ptr<BaseOperation>> ir = {
@@ -240,7 +241,7 @@ TEST(CompareTest, TemplateWithExtraGatesOnLeft) {
  * 右侧的 Z(0) 不属于模板子图，不应影响匹配结果。
  */
 TEST(CompareTest, TemplateWithExtraGatesOnRight) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[4]; /* H(0) X(0) H(0), anchor=0 */
 
   std::vector<std::shared_ptr<BaseOperation>> ir = {
@@ -266,7 +267,7 @@ TEST(CompareTest, TemplateWithExtraGatesOnRight) {
  * 从第二个节点 (H) 开始匹配，仅中间三个节点匹配。
  */
 TEST(CompareTest, TemplateWithExtraGatesOnBothSides) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[4]; /* H(0) X(0) H(0), anchor=0 */
 
   std::vector<std::shared_ptr<BaseOperation>> ir = {
@@ -285,7 +286,7 @@ TEST(CompareTest, TemplateWithExtraGatesOnBothSides) {
  * 模板门在同一量子比特，电路门分散在不同量子比特，后继查询不到对应邻居节点。
  */
 TEST(CompareTest, DifferentQubitsNoMatch) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[4]; /* H(0) X(0) H(0) */
 
   std::vector<std::shared_ptr<BaseOperation>> ir = {
@@ -301,7 +302,7 @@ TEST(CompareTest, DifferentQubitsNoMatch) {
  * start_node 为 nullptr 应直接返回空映射。
  */
 TEST(CompareTest, NullStartNode) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[0];
   DAGCircuit dag;
   dag.add_qubits(2);
@@ -314,7 +315,7 @@ TEST(CompareTest, NullStartNode) {
  * anchor_qubit 越界导致 qubit_mapping 冲突。
  */
 TEST(CompareTest, AnchorQubitOutOfRange) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[4]; /* H(0) X(0) H(0), anchor=0 */
 
   std::vector<std::shared_ptr<BaseOperation>> ir = {
@@ -334,7 +335,7 @@ TEST(CompareTest, AnchorQubitOutOfRange) {
  * 验证 mapping 中每个映射的电路节点都是有效指针且在正确的量子比特上。
  */
 TEST(CompareTest, MappingContentsValid) {
-  auto tpls = generate_single_qubit_gate_templates();
+  auto tpls = generate_rz_commute_templates();
   auto& tpl = tpls[4]; /* H(0) X(0) H(0), anchor=0 */
 
   std::vector<std::shared_ptr<BaseOperation>> ir = {

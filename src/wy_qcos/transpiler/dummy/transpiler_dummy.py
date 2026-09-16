@@ -53,6 +53,11 @@ class TranspilerDummy(TranspilerBase):
             parse result
         """
         parse_result_dict = {}
+        # ``total_qubits`` describes the current parse batch.  A transpiler
+        # instance can parse the same source more than once (for example,
+        # once for JobEngine width validation and once before transpilation),
+        # so carrying this value across calls produces an inflated width.
+        self.total_qubits = 0
         if code_type == Constant.CODE_TYPE_QUBO:
             return parse_result_dict
         if isinstance(src_code_dict, dict):
@@ -81,6 +86,6 @@ class TranspilerDummy(TranspilerBase):
             supp_basis_gates: supported basis gates
 
         Returns:
-            transpiled quantum circuit
+            transpiled quantum circuit, mapping dict, final layout dict
         """
-        return parse_result, None
+        return parse_result, None, None

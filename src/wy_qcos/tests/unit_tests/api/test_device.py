@@ -17,7 +17,7 @@
 
 import pytest
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.device import (
@@ -25,23 +25,26 @@ from wy_qcos.api.posiq.routes_jsonrpc.device import (
     get_calibrate_results,
     get_device,
     get_devices,
+    set_device,
     set_device_options,
     get_device_options,
     _get_device_info,
 )
+from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.api.schemas import (
     GetDeviceRequest,
     CalibrateDeviceRequest,
     GetCalibrateResultRequest,
     SetDeviceOptionsRequest,
     GetDeviceOptionsRequest,
+    SetDeviceRequest,
 )
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
-from wy_qcos.drivers.device import Device
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
-from wy_qcos.drivers.dummy.driver_dummy import DriverDummy
+from wy_qcos.device.device import Device
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
+from wy_qcos.driver.dummy.driver_dummy import DriverDummy
 from wy_qcos.task_manager import TaskScheduler
 
 
@@ -75,7 +78,7 @@ class TestDevice:
     ):
         mock_get_driver.return_value = DriverDummy()
         device = Device("dummy", DriverDummy())
-        device.status = "online"
+        device.status = Device.DEVICE_STATUS_ONLINE
         device.details = {
             "single_qubit_prop": {
                 "qubit1": {
@@ -101,7 +104,7 @@ class TestDevice:
         mock_client.details = True
 
         response_info = get_device(mock_client, None)
-        assert response_info.status == "online"
+        assert response_info.status == Device.DEVICE_STATUS_ONLINE
         assert response_info.details["double_qubit_prop"] is None
         assert response_info.details["topo_configs"] is None
         assert response_info.details["single_qubit_prop"] is not None
@@ -150,6 +153,56 @@ class TestDevice:
             ]
             == 0.8440000000000001
         )
+
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(Device, "get_driver")
+    def test_get_device_with_job_count(
+        self,
+        mock_get_driver,
+        mock_get_device,
+        mock_get_device_manager,
+    ):
+        """get_device should return job_count grouped by status."""
+        mock_get_driver.return_value = DriverDummy()
+        device = Device("dummy", DriverDummy())
+        device.status = Device.DEVICE_STATUS_ONLINE
+        device.details = {}
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_client = Mock(spec=GetDeviceRequest)
+        mock_client.name = "dummy"
+        mock_client.details = False
+
+        # Mock count_by_status: single GROUP BY query returning
+        # only statuses present in the database (QUEUED=3, RUNNING=1)
+        # spec=JobRepository makes isinstance(mock_repo, JobRepository)
+        # return True so _get_job_count queries the repository.
+        mock_repo = MagicMock(spec=JobRepository)
+        mock_repo.count_by_status.return_value = {
+            Constant.JOB_STATUS_QUEUED: 3,
+            Constant.JOB_STATUS_RUNNING: 1,
+        }
+
+        response_info = get_device(mock_client, None, job_repo=mock_repo)
+        # _get_job_count normalizes keys to lowercase
+        assert response_info.job_count[Constant.JOB_STATUS_QUEUED.lower()] == 3
+        assert (
+            response_info.job_count[Constant.JOB_STATUS_RUNNING.lower()] == 1
+        )
+        assert (
+            response_info.job_count[Constant.JOB_STATUS_COMPLETED.lower()] == 0
+        )
+        # TOTAL = sum of all statuses (3 + 1 = 4)
+        assert response_info.job_count[Constant.JOB_STATUS_TOTAL.lower()] == 4
+        # All statuses in JOB_STATUSES are present (lowercase keys)
+        for status in Constant.JOB_STATUSES:
+            assert status.lower() in response_info.job_count
+        assert Constant.JOB_STATUS_TOTAL.lower() in response_info.job_count
+        # count_by_status called once (single GROUP BY query)
+        mock_repo.count_by_status.assert_called_once_with("dummy")
 
     @patch.object(TaskScheduler, "submit_manage_job")
     def test_calibrate(self, mock_submit_manage_job):
@@ -228,9 +281,11 @@ class TestDevice:
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
         )
+        mock_client = Mock(spec=GetDeviceRequest)
+        mock_client.details = False
         mock_validate_virtual_instance.return_value = (False, "forbidden")
 
-        response_info = get_devices(None, {"dummy": "auth"})
+        response_info = get_devices(mock_client, {"dummy": "auth"})
         assert response_info == {}
 
     def test_get_device_info_hides_configs_for_virtual_instance_user(self):
@@ -303,3 +358,308 @@ class TestDevice:
 
         with pytest.raises(jsonrpc_errors.NotFoundError):
             get_calibrate_results(mock_client)
+
+
+class TestSetDevice:
+    """Tests for set_device API route."""
+
+    @classmethod
+    def setup_class(cls):
+        cls.dummy = Constant.TRANSPILER_DUMMY
+
+    def _make_device(self):
+        """Create a real Device instance for testing."""
+        return Device("dummy", DriverDummy())
+
+    @patch.object(TaskScheduler, "get_device_repo")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_state_online(
+        self, mock_get_device_manager, mock_get_device, mock_get_device_repo
+    ):
+        """Set device state to online."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_get_device_repo.return_value = None
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = "online"
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.name == "dummy"
+        assert result.state == "online"
+        assert result.status == "online"
+
+    @patch.object(TaskScheduler, "get_device_repo")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_state_maintain(
+        self, mock_get_device_manager, mock_get_device, mock_get_device_repo
+    ):
+        """Set device state to maintain."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_get_device_repo.return_value = None
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = "maintain"
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.state == "maintain"
+        assert result.status == "maintain"
+
+    @patch.object(TaskScheduler, "get_device_repo")
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_state_auto(
+        self, mock_get_device_manager, mock_get_device, mock_get_device_repo
+    ):
+        """state='auto' uses in-memory status."""
+        device = self._make_device()
+        device.set_status("offline")
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_get_device_repo.return_value = None
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = "auto"
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.state == "auto"
+        assert result.status == "offline"
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_enable(self, mock_get_device_manager, mock_get_device):
+        """Set device enable flag."""
+        device = self._make_device()
+        device.set_enable(True)
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = None
+        body.enable = False
+        body.max_qubits = None
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.enable is False
+        assert device.enable is False
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_max_qubits(self, mock_get_device_manager, mock_get_device):
+        """Set device max qubits to a specific value."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = None
+        body.enable = None
+        body.max_qubits = "50"
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.max_qubits == 50
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_max_qubits_auto(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """Set max_qubits='auto' restores driver default."""
+        device = self._make_device()
+        device.set_max_qubits(10)
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = None
+        body.enable = None
+        body.max_qubits = "auto"
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.max_qubits == (device.get_driver().get_max_qubits())
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_all_attributes(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """Set state, enable, and max_qubits together."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = "online"
+        body.enable = True
+        body.max_qubits = "100"
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.state == "online"
+        assert result.status == "online"
+        assert result.enable is True
+        assert result.max_qubits == 100
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_device_not_found(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """Device not found raises NotFoundError."""
+        mock_get_device.return_value = None
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "missing"
+        body.state = "online"
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = None
+
+        with pytest.raises(jsonrpc_errors.NotFoundError):
+            set_device(body)
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.device."
+        "jsonrpc_errors.handle_error_not_found"
+    )
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_invalid_max_qubits(
+        self,
+        mock_get_device_manager,
+        mock_get_device,
+        mock_handle_error,
+    ):
+        """Invalid max_qubits raises error."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_handle_error.side_effect = jsonrpc_errors.NotFoundError(
+            data={"details": "invalid"}
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = None
+        body.enable = None
+        body.max_qubits = "not_a_number"
+        body.available_qubits = None
+
+        with pytest.raises(jsonrpc_errors.NotFoundError):
+            set_device(body)
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_none_leaves_unchanged(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """All-None fields leave device attributes unchanged."""
+        device = self._make_device()
+        device.set_status("online")
+        device.set_enable(True)
+        device.set_max_qubits(42)
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = None
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = None
+
+        result = set_device(body)
+        assert result.status == "online"
+        assert result.enable is True
+        assert result.max_qubits == 42
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_available_qubits(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """Set device available qubits to a specific value."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = None
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = "30"
+
+        result = set_device(body)
+        assert result.available_qubits == 30
+
+    @patch.object(DeviceManager, "get_device")
+    @patch.object(TaskScheduler, "get_device_manager")
+    def test_set_available_qubits_auto(
+        self, mock_get_device_manager, mock_get_device
+    ):
+        """Set available_qubits='auto' restores driver default."""
+        device = self._make_device()
+        mock_get_device.return_value = device
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+
+        body = Mock(spec=SetDeviceRequest)
+        body.device_name = "dummy"
+        body.state = None
+        body.enable = None
+        body.max_qubits = None
+        body.available_qubits = "auto"
+
+        result = set_device(body)
+        assert result.available_qubits == (
+            device.get_driver().get_available_qubits()
+        )

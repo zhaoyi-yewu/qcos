@@ -18,35 +18,74 @@ services:
     container_name: prefect-server
     image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
     restart: always
-    command: /bin/sh -c 'rm -rf /var/qcos/db/prefect.db-shm /var/qcos/db/prefect.db-wal; prefect server start --host ""'
+    command: /bin/sh -c 'prefect server start'
     network_mode: "host"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /var/tmp
     environment:
       TZ: Asia/Shanghai
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
       PREFECT_SERVER_DATABASE_CONNECTION_URL: ${PREFECT_SERVER_DATABASE_CONNECTION_URL}
       PREFECT_SERVER_ANALYTICS_ENABLED: "false"
-      PREFECT_API_DATABASE_TIMEOUT: 30
-      PREFECT_API_URL: ${PREFECT_API_URL}
-      PREFECT_API_DEFAULT_LIMIT: 100000
+      PREFECT_API_DATABASE_TIMEOUT: "30"
+      PREFECT_API_URL: ${PREFECT_API_URL:-http://127.0.0.1:4200/api}
+      PREFECT_API_DEFAULT_LIMIT: "200"
+      PREFECT_TASKS_DISABLE_CACHING: "true"
+      PREFECT_RESULTS_PERSIST_BY_DEFAULT: "false"
+      PREFECT_SERVER_EVENTS_RETENTION_PERIOD: "PT1H"
+      # job cancel signal requires PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED=true
+      PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED: "true"
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_QUEUE_MAX_SIZE: "5000"
+      PREFECT_SERVER_EVENTS_RELATED_RESOURCE_CACHE_TTL: "PT150S"
+      # prefect docket configs
+      PREFECT_SERVER_DOCKET_URL: "redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/1?retry_on_timeout=True&health_check_interval=30"
+      # prefect event messaging configs
+      # PREFECT_SERVER_EVENTS_MESSAGING_BROKER: "prefect_redis.messaging"
+      # PREFECT_SERVER_EVENTS_MESSAGING_CACHE: "prefect_redis.messaging"
+      # PREFECT_SERVER_EVENTS_CAUSAL_ORDERING: "prefect_redis.causal_ordering"
+      # PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE: "prefect_redis.lease_storage"
+      # PREFECT_REDIS_MESSAGING_HOST: "${REDIS_SERVER_IP:-127.0.0.1}"
+      # PREFECT_REDIS_MESSAGING_PORT: "${REDIS_SERVER_PORT:-6379}"
+      # PREFECT_REDIS_MESSAGING_DB: "1"
+      # PREFECT_REDIS_EVENTS_HOST: "${REDIS_SERVER_PORT:-6379}"
+      # PREFECT_REDIS_EVENTS_PORT: "${REDIS_SERVER_PORT:-6379}"
+      # PREFECT_REDIS_EVENTS_DB: "1"
+      PREFECT_UI_STATIC_DIRECTORY: "/tmp/prefect_ui_static"
       PYTHONPATH: /root/qcos-project/src
     volumes:
       - /etc/hosts:/etc/hosts
       - /var/log/qcos:/var/log/qcos
       - /var/qcos:/var/qcos
       - /etc/qcos/prefect:/root/.prefect
+      - /var/prefect:/var/prefect
   redis:
     image: ${REGISTRY}${REDIS_IMAGE_NAME}:${REDIS_IMAGE_VERSION}
     container_name: redis
     restart: always
     network_mode: "host"
+    command: redis-server --requirepass "${REDIS_PASSWORD:-123456}" --bind ${REDIS_SERVER_LISTEN_IP:-127.0.0.1}
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
   qcos-dev:
     container_name: qcos-dev
-    image: ${REGISTRY}${QCOS_REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
-    privileged: true
+    image: ${REGISTRY}${QCOS_REGISTRY}${QCOS_IMAGE_NAME}:dev
     network_mode: "host"
     restart: always
     stdin_open: True
     tty: True
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:exec
+      - /var/tmp:exec
     depends_on:
       - prefect-server
       - redis
@@ -63,6 +102,7 @@ services:
       QCOS_AUTH_MODE: ${QCOS_AUTH_MODE}
       QCOS_DATABASE_CONNECTION_URL: ${QCOS_DATABASE_CONNECTION_URL:-sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL}
       QCOS_VIRTUAL_INSTANCE_ID: ${QCOS_VIRTUAL_INSTANCE_ID}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
       DEVICE_LIST: ${DEVICE_LIST}
       MAX_JOBS: ${MAX_JOBS}
       MAX_QUEUED_JOBS: ${MAX_QUEUED_JOBS}
@@ -77,8 +117,7 @@ services:
       PREFECT_WORKER_PREFETCH_SECONDS: ${PREFECT_WORKER_PREFETCH_SECONDS:-1}
       PREFECT_WORKER_HEARTBEAT_SECONDS: ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
       PREFECT_LOGGING_LEVEL: ${PREFECT_LOGGING_LEVEL:-INFO}
-      REDIS_SERVER_IP: ${REDIS_SERVER_IP}
-      REDIS_SERVER_PORT: ${REDIS_SERVER_PORT}
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/0"
       PYTHONPATH: /root/qcos-project/src
     command: "--db-migration --no-exit -w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/api"
     logging:

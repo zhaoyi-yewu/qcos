@@ -1,0 +1,177 @@
+// ==========================================================================
+// QCOS CI/CD Jenkins (Sync Codes)
+// ==========================================================================
+
+pipeline {
+    agent any
+
+    triggers {
+        cron('''
+        # 每个工作日 9点到21点间，每小时执行一次
+        0 9-21 * * 1-5
+        # 每天晚上12点执行一次
+        0 0 * * *
+        ''')
+    }
+
+    parameters {
+        persistentString(name: 'GIT_REPO_URL',
+               defaultValue: 'git@gitee.com:WUYUEQbit/qcos.git',
+               description: 'Git repository URL. eg. Gitee (git@gitee.com:WUYUEQbit/qcos.git) or GitLab (ssh://git@gitlab.cmss.com:2223/OCRI/WuYueOs.git)')
+        persistentString(name: 'GIT_BRANCH',
+               defaultValue: '*/develop',
+               description: 'Git branch to build. e.g. Gitee (*/develop) or GitLab (*/dev_gitee)')
+        persistentString(name: 'GIT_CREDENTIALS_ID',
+               defaultValue: 'gitee-ssh-key',
+               description: 'Jenkins stored SSH credential ID for the Git repository. e.g. Gitee (gitee-ssh-key) or GitLab (gitlab-ssh-key)')
+        persistentString(name: 'GITLAB_TOKEN',
+               defaultValue: '',
+               description: 'Gitlab token')
+        persistentString(name: 'JIRA_AUTH',
+               defaultValue: 'test:test',
+               description: 'Jira auth')
+        persistentString(name: 'CICD_REPORT_EMAIL',
+               defaultValue: 'zhaoyi@cmss.chinamobile.com',
+               description: 'Email address(es) for CI/CD report notification. Supports single (user@example.com) or multiple comma-separated (a@example.com,b@example.com). Leave empty to skip email notification.')
+        persistentString(name: 'GITEE_SOURCE_OWNER',
+               defaultValue: '',
+               description: 'gitee owner for code review.')
+        persistentString(name: 'GITEE_ACCESS_TOKEN',
+               defaultValue: 'na',
+               description: 'gitee access token')
+        persistentString(name: 'GITEE_USER_ACCOUNTS',
+               defaultValue: '{"test": {"gitee_user_name": "test", "gitee_token": "test-token"}}',
+               description: 'gitee user accounts')
+    }
+
+    environment {
+        GIT_REPO_URL = "${params.GIT_REPO_URL?: ''}"
+        GIT_BRANCH = "${params.GIT_BRANCH?: ''}"
+        GIT_CREDENTIALS_ID = "${params.GIT_CREDENTIALS_ID?: ''}"
+        GITLAB_TOKEN = "${params.GITLAB_TOKEN?: ''}"
+        JIRA_AUTH = "${params.JIRA_AUTH?: ''}"
+        CICD_REPORT_EMAIL = "${params.CICD_REPORT_EMAIL?: ''}"
+        GITEE_SOURCE_OWNER = "${params.GITEE_SOURCE_OWNER?: ''}"
+        GITEE_ACCESS_TOKEN = "${params.GITEE_ACCESS_TOKEN?: ''}"
+        GITEE_USER_ACCOUNTS = "${params.GITEE_USER_ACCOUNTS?: ''}"
+    }
+
+    options {
+        timestamps()
+        timeout(time: 5, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '5'))
+        giteeConnection('my-gitee')
+        // Prevent concurrent builds (shared Docker daemon, container name conflicts)
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        // =============================================================
+        // Initialize: Checkout code and prepare environment
+        // =============================================================
+        stage('Initialize') {
+            steps {
+                script {
+                    checkout([
+                       $class: 'GitSCM',
+                        branches: [[name: "${params.GIT_BRANCH}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'CleanBeforeCheckout']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[credentialsId: "${params.GIT_CREDENTIALS_ID}", url: "${params.GIT_REPO_URL}"]]
+                    ])
+                    echo ">>> Build #${env.BUILD_NUMBER} on branch ${env.GIT_BRANCH}"
+                    echo ">>> Repo: ${params.GIT_REPO_URL} | Branch: ${params.GIT_BRANCH} | Creds: ${params.GIT_CREDENTIALS_ID}"
+                    echo ">>> YUM_MIRROR: ${env.YUM_MIRROR ?: '(default)'}"
+                }
+            }
+        }
+
+        // =============================================================
+        // Stage 1: Sync from gitee
+        // =============================================================
+        stage('Sync from gitee') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                echo "Sync from gitee (skipped)"
+                """
+            }
+        }
+
+        // =============================================================
+        // Stage 2: Sync issues to gitee
+        // =============================================================
+        stage('Sync issues to gitee') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                echo "Sync issues to gitee"
+
+                ./cicd/sync-codes/sync-issues.py --gitlab-url "http://gitlab.cmss.com" --gitlab-token "\${GITLAB_TOKEN}" --gitlab-project-id "OCRI/WuYueOs" --jira-url "http://jira.cmss.com" --jira-auth "\${JIRA_AUTH}" --gitee-access-token "\${GITEE_ACCESS_TOKEN}" --gitee-user-accounts '\${GITEE_USER_ACCOUNTS}'
+                ./cicd/sync-codes/sync-issues.py --gitlab-url "http://gitlab.cmss.com" --gitlab-token "\${GITLAB_TOKEN}" --gitlab-project-id "OCRI/WuYueOs" --jira-url "http://jira.cmss.com" --jira-auth "\${JIRA_AUTH}" --gitee-access-token "\${GITEE_ACCESS_TOKEN}" --gitee-user-accounts "\${GITEE_USER_ACCOUNTS}"
+                """
+            }
+        }
+
+        // =============================================================
+        // Stage 3: Sync commits to gitee
+        // =============================================================
+        stage('Sync commits to gitee') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                echo "Sync commits to gitee"
+
+                # copy merge scripts
+                cp -rf ./cicd/sync-codes/ /tmp/
+
+                # sync forked repo        
+                /tmp/sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
+
+                # add both remotes
+                git rm -rf . > /dev/null 2>&1
+                git remote remove gitee || true
+                git remote add gitee git@gitee.com:\${GITEE_SOURCE_OWNER}/qcos.git
+                git branch -D dev_gitee || true
+                git checkout --orphan dev_gitee || true
+                git pull origin dev_gitee --allow-unrelated-histories
+                git branch --set-upstream-to=origin/dev_gitee dev_gitee
+
+                git branch -D temp || true
+                git checkout --orphan temp || true
+                git rm -rf . > /dev/null 2>&1
+                git branch -D gitee-develop || true
+                git checkout --orphan gitee-develop || true
+                git pull gitee develop --allow-unrelated-histories
+                git branch --set-upstream-to=gitee/develop gitee-develop
+
+                # merge codes
+                git config --global user.email "zhaoyi_yewu@cmss.chinamobile.com"
+                git config --global user.name "Zhao Yi"
+                git checkout dev_gitee
+                # start_date=`date -d "2 week ago" +%Y-%m-%d`
+                start_date="2026-09-13"
+                # test if no conflicts with --dry-run
+                echo "Merge commits (dry-run) ..."
+                /tmp/sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches --dry-run -S -s "\${start_date}"
+                # merge and push
+                echo "Merge commits (with push) ..."
+                /tmp/sync-codes/merge-to-gitee.py --delete-local-branches --delete-remote-branches -S -s "\${start_date}"
+                
+                # create pull-request
+                echo "Create Pull-Request: \${GITEE_SOURCE_OWNER} ..."
+                /tmp/sync-codes/create-pull-request.py --source-owner \${GITEE_SOURCE_OWNER}
+
+                # accept pull-request
+                echo "Accept Pull-Request ..."
+                /tmp/sync-codes/accept-pull-request.py
+
+                # sync forked repo
+                echo "Sync forked repo: \${GITEE_SOURCE_OWNER}:develop"
+                /tmp/sync-codes/sync-forked-repo.py --origin-repo WUYUEQbit --origin-branch develop --forked-repo \${GITEE_SOURCE_OWNER} --forked-branch develop
+                """
+            }
+        }
+    }
+}

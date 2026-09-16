@@ -20,9 +20,10 @@ import json
 import logging
 import multiprocessing
 import os
+import re
 import setproctitle
 import threading
-from time import sleep
+import time
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +39,7 @@ from prefect.client.schemas.filters import (
     FlowFilter,
     FlowFilterName,
 )
-from prefect.exceptions import ObjectNotFound
+from prefect.exceptions import ObjectAlreadyExists, ObjectNotFound
 from prefect.states import State
 from prefect.workers import ProcessWorker
 
@@ -64,11 +65,25 @@ class TaskFlowManager:
         self.driver_manager = None
         self.device_manager = None
         self.deployments = {}
-        self.redis_instance = redis.Redis(
-            host=Config.REDIS.REDIS_SERVER_IP,
-            port=Config.REDIS.REDIS_SERVER_PORT,
-            decode_responses=True,
-        )
+        self.flows = {}
+        self.redis_instance = None
+
+    @staticmethod
+    def _is_device_monitor_enabled(device):
+        config_enable = device.get_enable_device_monitor()
+        driver_enable = device.get_driver().enable_device_monitor
+        if config_enable is False:
+            return False
+        if config_enable is True and driver_enable is False:
+            logger.warning(
+                f"Device '{device.get_name()}': enable_device_monitor is set "
+                f"to true in config file, but driver "
+                f"'{device.get_driver().get_name()}' does not support "
+                f"device monitor (driver enable_device_monitor is false). "
+                f"Device monitor will be disabled."
+            )
+            return False
+        return driver_enable
 
     @staticmethod
     def convert_to_qcos_state(state):
@@ -151,10 +166,13 @@ class TaskFlowManager:
                 driver_name, Config.DEFAULT.VENV_DIR, add_default_env=True
             )
 
+            device_pool_name = (
+                f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
+            )
             deployment_configs[device_name] = {
                 "python_bin": python_bin,
-                "pool_name": device_name,
-                "queue_name": f"{device_name}_{default_priority}",
+                "pool_name": device_pool_name,
+                "queue_name": f"{device_pool_name}_{default_priority}",
                 "path": "../engine/job_engine.py",
                 "flow_name": job_flow.__name__,
                 "command": f"{python_bin} -m prefect.engine",
@@ -162,11 +180,14 @@ class TaskFlowManager:
             }
 
             device = self.device_manager.get_devices().get(device_name)
-            enable_device_monitor = device.get_driver().enable_device_monitor
+            enable_device_monitor = self._is_device_monitor_enabled(device)
             if enable_device_monitor:
-                deployment_configs[f"{device_name}_monitor"] = {
+                monitor_key = (
+                    f"{Constant.WORK_POOL_MONITOR_PREFIX}{device_name}"
+                )
+                deployment_configs[monitor_key] = {
                     "python_bin": python_bin,
-                    "pool_name": f"{device_name}_monitor",
+                    "pool_name": monitor_key,
                     "queue_name": "default",
                     "path": "../engine/device_monitor_engine.py",
                     "flow_name": device_monitor_flow.__name__,
@@ -175,9 +196,10 @@ class TaskFlowManager:
                 }
             enable_device_mgr = device.get_driver().enable_device_mgr
             if enable_device_mgr:
-                deployment_configs[f"{device_name}_mgr"] = {
+                mgr_key = f"{Constant.WORK_POOL_MGR_PREFIX}{device_name}"
+                deployment_configs[mgr_key] = {
                     "python_bin": python_bin,
-                    "pool_name": f"{device_name}_mgr",
+                    "pool_name": mgr_key,
                     "queue_name": "default",
                     "path": "../engine/device_mgr_engine.py",
                     "flow_name": device_manager_flow.__name__,
@@ -189,6 +211,11 @@ class TaskFlowManager:
 
     def start(self):
         """Create work pools, queues and start workers."""
+        self.redis_instance = redis.Redis.from_url(
+            Config.REDIS.REDIS_URL,
+            decode_responses=True,
+            protocol=2,
+        )
         prefect_configs = TaskFlowManager.get_prefect_configs()
         with prefect_settings.temporary_settings(updates=prefect_configs):
             self._client = get_client()
@@ -199,15 +226,19 @@ class TaskFlowManager:
             device_names = self.device_manager.get_devices().keys()
 
             # create resources
-            if device_names:
+            device_pool_names = [
+                f"{Constant.WORK_POOL_DEVICE_PREFIX}{name}"
+                for name in device_names
+            ]
+            if device_pool_names:
                 self.loop.run_until_complete(
-                    self.create_pools(pool_names=device_names)
+                    self.create_pools(pool_names=device_pool_names)
                 )
 
             monitor_devices = [
-                device.get_name() + "_monitor"
+                f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
                 for device in self.device_manager.get_devices().values()
-                if device.get_driver().enable_device_monitor
+                if self._is_device_monitor_enabled(device)
             ]
             if monitor_devices:
                 self.loop.run_until_complete(
@@ -215,18 +246,18 @@ class TaskFlowManager:
                 )
 
             manager_devices = [
-                device.get_name() + "_mgr"
+                f"{Constant.WORK_POOL_MGR_PREFIX}{device.get_name()}"
                 for device in self.device_manager.get_devices().values()
-                if device.get_driver().enable_device_monitor
+                if device.get_driver().enable_device_mgr
             ]
             if manager_devices:
                 self.loop.run_until_complete(
                     self.create_pools(pool_names=manager_devices)
                 )
 
-            if device_names:
+            if device_pool_names:
                 self.loop.run_until_complete(
-                    self.create_queues(queue_names=device_names)
+                    self.create_queues(queue_names=device_pool_names)
                 )
             # delete old monitor flow
             self.delete_task_flow_by_name("device-monitor-flow")
@@ -235,6 +266,15 @@ class TaskFlowManager:
             self.deployments = self.loop.run_until_complete(
                 self.create_deployments(deployment_configs)
             )
+            # get flows
+            for _, deployment_info in self.deployments.items():
+                flow_id = deployment_info["flow_id"]
+                flow_name = deployment_info["flow_name"]
+                self.flows[flow_name] = {
+                    "flow_id": flow_id,
+                }
+
+            # start workers
             self.kill_workers()
             self.start_workers()
             self.loop.run_until_complete(self.wait_workers())
@@ -299,13 +339,18 @@ class TaskFlowManager:
         """
         pools = await self._client.read_work_pools()
         if not any(pool.name == pool_name for pool in pools):
-            await self._client.create_work_pool(
-                work_pool=WorkPoolCreate(
-                    name=pool_name,
-                    type=Constant.DEFAULT_JOB_POOL_TYPE,
-                    concurrency_limit=concurrency_limit,
+            try:
+                await self._client.create_work_pool(
+                    work_pool=WorkPoolCreate(
+                        name=pool_name,
+                        type=Constant.DEFAULT_JOB_POOL_TYPE,
+                        concurrency_limit=concurrency_limit,
+                    )
                 )
-            )
+            except ObjectAlreadyExists:
+                logger.debug(
+                    f"Work pool '{pool_name}' already exists, skipping"
+                )
 
     async def create_queues(self, queue_names):
         """Create all work queues under work pool.
@@ -316,16 +361,29 @@ class TaskFlowManager:
             queue_names: queue names
         """
         logger.info(f"create_queues: {', '.join(queue_names)}")
-        queues = await self._client.read_work_queues()
+        # Prefect read_work_queues limits limit to 100 and is bounded by
+        # PREFECT_API_DEFAULT_LIMIT. Use pagination to fetch all queues so
+        # the existence check does not miss entries beyond the first page,
+        # which would otherwise trigger a 409 Conflict on duplicate
+        # creation.
+        queues = await self._read_all_work_queues()
+        existing_names = {queue.name for queue in queues}
         for pool_name in queue_names:
             for priority in range(1, Constant.MAX_JOB_PRIORITY + 1):
                 queue_name = f"{pool_name}_{priority}"
-                if not any(queue.name == queue_name for queue in queues):
+                if queue_name in existing_names:
+                    continue
+                try:
                     await self._client.create_work_queue(
                         name=queue_name,
                         work_pool_name=pool_name,
                         priority=priority,
                         concurrency_limit=Constant.DEFAULT_POOL_CONCURRENCY,
+                    )
+                except ObjectAlreadyExists:
+                    logger.debug(
+                        f"Work queue '{queue_name}' already exists "
+                        f"in pool '{pool_name}', skipping"
                     )
 
     async def create_deployments(self, deployment_configs):
@@ -357,8 +415,15 @@ class TaskFlowManager:
                 ignore_warnings=True,
                 print_next_steps=False,
             )
+            # get default flow id
+            flow_name = flow.name
+            flow_filter = FlowFilter(name=FlowFilterName(any_=[flow_name]))
+            flows = self._sync_client.read_flows(flow_filter=flow_filter)
+            flow_id = flows[0].id if flows else None
             deployments[deployment_name] = {
                 "deploy_id": str(deploy_id),
+                "flow_id": str(flow_id),
+                "flow_name": flow_name,
                 "env": env,
             }
         return deployments
@@ -371,70 +436,452 @@ class TaskFlowManager:
         """
         return self.deployments.get(deployment_name, None)
 
+    @staticmethod
+    def _kill_workers_by_regex(regex_list):
+        """Kill prefect worker processes matching the given regex list.
+
+        Args:
+            regex_list: list of regex patterns to match process cmdlines
+
+        Returns:
+            tuple(success_pids, failed_pids)
+        """
+        process_list = Library.get_processes(regex_list)
+        if not process_list:
+            return [], []
+        return Library.kill(process_list, force=True)
+
     def kill_workers(self):
         """Kill workers."""
         logger.info("Kill existing prefect workers")
         regex_list = [r"\[prefect\]", r"prefect.engine"]
-        process_list = Library.get_processes(regex_list)
-        Library.kill(process_list, force=True)
+        self._kill_workers_by_regex(regex_list)
+
+    def list_workers(self):
+        """List all prefect workers with name and status.
+
+        The prefect Worker object does not carry a process pid, so the
+        pid is resolved by matching the worker proctitle
+        (``[prefect] {worker_name}``) against running processes.
+
+        Returns:
+            list of dict, each item contains worker_name, work_pool,
+            worker_status and pid.
+        """
+        if not self._sync_client:
+            logger.warning("Prefect sync client is not initialized")
+            return []
+
+        results = []
+        try:
+            pools = self._sync_client.read_work_pools()
+        except Exception as e:
+            logger.error(f"Failed to read work pools: {e}")
+            return results
+
+        for pool in pools:
+            pool_name = pool.name
+            try:
+                workers = self._sync_client.read_workers_for_work_pool(
+                    pool_name
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to read workers for pool {pool_name}: {e}"
+                )
+                continue
+
+            if not workers:
+                device_name = self._parse_device_name_from_pool(pool_name)
+                results.append({
+                    "worker_name": "",
+                    "work_pool": pool_name,
+                    "device_name": device_name,
+                    "worker_status": "no_workers",
+                    "pid": None,
+                })
+                continue
+
+            for worker in workers:
+                status_value = (
+                    worker.status.value
+                    if hasattr(worker.status, "value")
+                    else str(worker.status)
+                )
+                # normalize to lowercase for consistent output
+                status_value = status_value.lower()
+                pid = self._get_worker_pid(worker.name)
+                # Prefect may still report ONLINE for a short period
+                # after the process is killed. If no matching process
+                # is found, correct the status to OFFLINE.
+                if (
+                    status_value == WorkerStatus.ONLINE.value.lower()
+                    and pid is None
+                ):
+                    status_value = WorkerStatus.OFFLINE.value.lower()
+                device_name, _ = self._parse_worker_name(worker.name)
+                results.append({
+                    "worker_name": worker.name,
+                    "work_pool": pool_name,
+                    "device_name": device_name or "",
+                    "worker_status": status_value,
+                    "pid": pid,
+                })
+
+        # sort by work_pool name for stable output
+        results.sort(key=lambda item: item["work_pool"])
+        return results
+
+    @staticmethod
+    def _worker_name_to_proctitle(worker_name):
+        """Convert a prefect worker name to its process proctitle.
+
+        The job worker proctitle is ``[prefect] {worker_name}``, but the
+        monitor/mgr worker proctitles use a different suffix than their
+        worker names:
+
+            - ``_monitor`` -> ``_device_monitor``
+            - ``_mgr``     -> ``_device_mgr``
+
+        Args:
+            worker_name: prefect worker name
+
+        Returns:
+            str: the proctitle used to identify the worker process
+        """
+        if not worker_name:
+            return ""
+        if worker_name.endswith("_monitor"):
+            base = worker_name[: -len("_monitor")]
+            return f"[prefect] {base}_device_monitor"
+        if worker_name.endswith("_mgr"):
+            base = worker_name[: -len("_mgr")]
+            return f"[prefect] {base}_device_mgr"
+        return f"[prefect] {worker_name}"
+
+    @staticmethod
+    def _build_proctitle_regex(worker_name):
+        """Build a regex that matches the exact worker proctitle.
+
+        The proctitle is embedded in the full process cmdline, so the
+        pattern anchors the proctitle end with a word boundary to avoid
+        partial matches (e.g. ``pro`` must not match ``process-...``).
+
+        Args:
+            worker_name: prefect worker name
+
+        Returns:
+            str: regex pattern for exact proctitle matching
+        """
+        proctitle = TaskFlowManager._worker_name_to_proctitle(worker_name)
+        # escape special chars, then anchor the end so that a short worker
+        # name does not match longer ones (e.g. "pro" != "process-device|x")
+        return re.escape(proctitle) + r"(?=\s|$)"
+
+    @staticmethod
+    def _get_worker_pid(worker_name):
+        """Resolve the process pid of a prefect worker by its name.
+
+        The worker process proctitle is derived from the worker name via
+        _worker_name_to_proctitle. We match running processes against the
+        proctitle pattern to find the pid.
+
+        Args:
+            worker_name: worker name
+
+        Returns:
+            int or None: the pid of the worker process, None if not found
+        """
+        if not worker_name:
+            return None
+
+        regex_list = [TaskFlowManager._build_proctitle_regex(worker_name)]
+        try:
+            process_list = Library.get_processes(regex_list)
+        except Exception as e:
+            logger.debug(f"Failed to get process for {worker_name}: {e}")
+            return None
+
+        if not process_list:
+            return None
+
+        return process_list[0].pid
+
+    def restart_worker(self, worker_name):
+        """Restart a single prefect worker by worker name.
+
+        The worker process is identified by its proctitle which is set to
+        ``[prefect] {worker_name}`` when started. The worker name follows
+        the pattern ``process-{pool_prefix}{device_name}`` with optional
+        ``_monitor`` / ``_mgr`` suffix for monitor and manager workers.
+
+        Args:
+            worker_name: worker name to restart
+
+        Returns:
+            tuple(success: bool, message: str)
+        """
+        if not worker_name:
+            return False, "worker_name must not be empty"
+
+        logger.info(f"Restart worker: {worker_name}")
+
+        # kill the target worker process by matching its proctitle exactly.
+        # the proctitle is derived from the worker name because monitor/mgr
+        # workers use a different proctitle suffix than their worker names.
+        # _build_proctitle_regex anchors the proctitle end to avoid partial
+        # matches (e.g. "pro" must not match "process-device|x").
+        # NOTE: if no process is found, the worker may already be dead
+        # (OFFLINE). In that case we skip the kill step and proceed to
+        # start a fresh worker process directly.
+        regex_list = [self._build_proctitle_regex(worker_name)]
+        success_pids, failed_pids = self._kill_workers_by_regex(regex_list)
+        if not success_pids:
+            logger.info(
+                f"No running process found for {worker_name}, "
+                f"proceeding to start a new worker"
+            )
+        if failed_pids:
+            logger.warning(f"Failed to kill some processes: {failed_pids}")
+
+        # resolve device name and worker type from worker name, then
+        # start a new worker process for the corresponding pool.
+        # worker name patterns:
+        #   process-device|{device}          -> job worker
+        #   process-device|{device}_monitor  -> device monitor worker
+        #   process-device|{device}_mgr      -> device manager worker
+        device_name, worker_type = self._parse_worker_name(worker_name)
+        if not device_name:
+            msg = (
+                f"worker {worker_name} killed but could not be restarted "
+                f"(worker name unrecognized)"
+            )
+            logger.warning(msg)
+            return True, msg
+
+        started = self._start_worker_process(device_name, worker_type)
+        if not started:
+            msg = (
+                f"worker {worker_name} killed but could not be restarted "
+                f"(device not found or worker type disabled)"
+            )
+            logger.warning(msg)
+            return True, msg
+
+        return True, f"worker {worker_name} restarted successfully"
+
+    def watchdog_restart_dead_workers(self):
+        """Check for dead workers and restart them automatically.
+
+        Called periodically from the health-check flow. For each
+        worker that is OFFLINE and has no running process, restart it
+        via _start_worker_process. Workers whose device is disabled
+        or whose worker type is disabled are skipped.
+        """
+        if not self._sync_client:
+            logger.warning(
+                "Prefect sync client is not initialized, skip watchdog"
+            )
+            return
+
+        if not self.device_manager:
+            logger.warning("Device manager is not initialized, skip watchdog")
+            return
+
+        # get current worker status from prefect
+        workers = self.list_workers()
+        restarted = 0
+        for worker_info in workers:
+            status = worker_info.get("worker_status", "")
+            worker_name = worker_info.get("worker_name", "")
+            device_name = worker_info.get("device_name", "")
+
+            # only restart workers that are offline (process dead)
+            if status != "offline":
+                continue
+            if not worker_name or not device_name:
+                continue
+
+            # parse worker type from worker name
+            _, worker_type = self._parse_worker_name(worker_name)
+            if worker_type is None:
+                continue
+
+            # restart the dead worker
+            logger.warning(
+                f"Watchdog: worker {worker_name} is offline, restarting..."
+            )
+            started = self._start_worker_process(device_name, worker_type)
+            if started:
+                logger.info(f"Watchdog: worker {worker_name} restarted")
+                restarted += 1
+            else:
+                logger.warning(
+                    f"Watchdog: worker {worker_name} restart failed"
+                )
+
+        if restarted > 0:
+            logger.info(f"Watchdog: restarted {restarted} dead worker(s)")
+
+    @staticmethod
+    def _parse_device_name_from_pool(pool_name):
+        """Resolve the device name from a work pool name.
+
+        Pool name patterns:
+            device|{device}   -> "{device}"
+            monitor|{device}  -> "{device}"
+            mgr|{device}      -> "{device}"
+
+        Args:
+            pool_name: prefect work pool name
+
+        Returns:
+            device name string, or empty string if unrecognized
+        """
+        for pool_prefix in (
+            Constant.WORK_POOL_DEVICE_PREFIX,
+            Constant.WORK_POOL_MONITOR_PREFIX,
+            Constant.WORK_POOL_MGR_PREFIX,
+        ):
+            if pool_name.startswith(pool_prefix):
+                return pool_name[len(pool_prefix) :]
+        return ""
+
+    @staticmethod
+    def _parse_worker_name(worker_name):
+        """Parse worker name into device name and worker type.
+
+        Worker name patterns:
+            process-device|{device}          -> ("{device}", "job")
+            process-device|{device}_monitor  -> ("{device}", "monitor")
+            process-device|{device}_mgr      -> ("{device}", "mgr")
+
+        Args:
+            worker_name: worker name (process-{pool_name}[_suffix])
+
+        Returns:
+            tuple(device_name, worker_type); (None, None) if unrecognized
+        """
+        prefix = "process-"
+        if not worker_name.startswith(prefix):
+            return None, None
+        remainder = worker_name[len(prefix) :]
+
+        # determine worker type by suffix
+        monitor_suffix = "_monitor"
+        mgr_suffix = "_mgr"
+
+        if remainder.endswith(mgr_suffix):
+            pool_name = remainder[: -len(mgr_suffix)]
+            worker_type = "mgr"
+        elif remainder.endswith(monitor_suffix):
+            pool_name = remainder[: -len(monitor_suffix)]
+            worker_type = "monitor"
+        else:
+            pool_name = remainder
+            worker_type = "job"
+
+        # resolve device name from pool name using known prefixes
+        for pool_prefix in (
+            Constant.WORK_POOL_DEVICE_PREFIX,
+            Constant.WORK_POOL_MONITOR_PREFIX,
+            Constant.WORK_POOL_MGR_PREFIX,
+        ):
+            if pool_name.startswith(pool_prefix):
+                return pool_name[len(pool_prefix) :], worker_type
+
+        return None, None
+
+    def _start_worker_process(self, device_name, worker_type):
+        """Start a single worker process for a device.
+
+        Shared by start_workers (batch startup) and restart_worker
+        (single worker restart).
+
+        Args:
+            device_name: device name
+            worker_type: one of "job", "monitor", "mgr"
+
+        Returns:
+            bool: True if a worker process was started
+        """
+        device = self.device_manager.get_devices().get(device_name)
+        if not device:
+            return False
+
+        # skip starting any worker for disabled devices
+        if not device.enable:
+            logger.warning(
+                f"Device '{device_name}' is disabled (enable=False), "
+                f"skip starting {worker_type} worker"
+            )
+            return False
+
+        # validate worker type is enabled for the device
+        if worker_type == "monitor":
+            if not self._is_device_monitor_enabled(device):
+                return False
+            target = self.start_device_monitor_work
+        elif worker_type == "mgr":
+            if not device.get_driver().enable_device_mgr:
+                return False
+            target = self.start_device_mgr_work
+        else:
+            target = self.start_work
+
+        # device pool name (with device| prefix) is the base for job worker
+        device_pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
+        concurrency_limit = Constant.DEFAULT_POOL_CONCURRENCY
+        process_name = f"process-{device_pool_name}"
+
+        # load deployment env (PYTHONPATH) if available
+        deployment = self.get_deployment(device_name)
+        if deployment:
+            env = deployment.get("env", {})
+            pythonpath = env.get("PYTHONPATH", None)
+            if pythonpath:
+                os.environ["PYTHONPATH"] = pythonpath
+
+        # NOTE: start_device_monitor_work / start_device_mgr_work build the
+        # monitor|/mgr| pool name from the given pool_name argument, so we
+        # pass the bare device_name (not the device|-prefixed name) for
+        # monitor/mgr workers; start_work expects the device| pool name.
+        if worker_type == "job":
+            pool_arg = device_pool_name
+        else:
+            pool_arg = device_name
+
+        worker_process = multiprocessing.Process(
+            target=target,
+            args=(process_name, pool_arg, concurrency_limit),
+            name=process_name,
+        )
+        worker_process.daemon = True
+        worker_process.start()
+        logger.info(
+            f"Started worker process: {process_name} "
+            f"(type={worker_type}, device={device_name}, "
+            f"pid: {worker_process.pid})"
+        )
+        return True
 
     def start_workers(self):
-        """Start workers using multiprocessing."""
+        """Start workers using multiprocessing.
+
+        For each device, start the job worker and (if enabled) the device
+        monitor worker and device manager worker. Each worker process is
+        started via _start_worker_process so that batch startup and single
+        worker restart share the same code path.
+        """
         logger.info("Start prefect workers")
         device_names = self.device_manager.get_devices().keys()
         for device_name in device_names:
-            pool_name = device_name
-            deployment_name = device_name
-            process_name = f"process-{pool_name}"
-            concurrency_limit = Constant.DEFAULT_POOL_CONCURRENCY
-            deployment = self.get_deployment(deployment_name)
-            if deployment:
-                env = deployment["env"]
-                pythonpath = env.get("PYTHONPATH", None)
-                if pythonpath:
-                    os.environ["PYTHONPATH"] = pythonpath
-
             # start job worker process
-            job_worker_process = multiprocessing.Process(
-                target=self.start_work,
-                args=(process_name, pool_name, concurrency_limit),
-                name=process_name,
-            )
-            job_worker_process.daemon = True
-            job_worker_process.start()
-            logger.info(
-                f"Started Prefect Worker process: {process_name} "
-                f"for pool: {pool_name}"
-            )
-            # start device monitor process
-            device = self.device_manager.get_devices().get(pool_name)
-            enable_device_monitor = device.get_driver().enable_device_monitor
-            if enable_device_monitor:
-                device_monitor_process = multiprocessing.Process(
-                    target=self.start_device_monitor_work,
-                    args=(process_name, pool_name, concurrency_limit),
-                    name=process_name,
-                )
-                device_monitor_process.daemon = True
-                device_monitor_process.start()
-                logger.info(
-                    f"Started Prefect Worker process: {process_name}_monitor "
-                    f"for pool: {pool_name}_monitor"
-                )
-
-            enable_device_mgr = device.get_driver().enable_device_mgr
-            if enable_device_mgr:
-                device_mgr_process = multiprocessing.Process(
-                    target=self.start_device_mgr_work,
-                    args=(process_name, pool_name, concurrency_limit),
-                    name=process_name,
-                )
-                device_mgr_process.daemon = True
-                device_mgr_process.start()
-                logger.info(
-                    f"Started Prefect Worker process: {process_name}_mgr "
-                    f"for pool: {pool_name}_mgr"
-                )
+            self._start_worker_process(device_name, "job")
+            # start device monitor process if enabled
+            self._start_worker_process(device_name, "monitor")
+            # start device manager process if enabled
+            self._start_worker_process(device_name, "mgr")
 
     def run_device_monitor(self):
         """Run device monitor by prefect."""
@@ -442,7 +889,9 @@ class TaskFlowManager:
 
         for device in devices:
             # registry deploy
-            deployment = self.deployments.get(f"{device.get_name()}_monitor")
+            deployment = self.deployments.get(
+                f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
+            )
             if deployment:
                 deploy_id = deployment.get("deploy_id")
                 # create flow run by deploy
@@ -464,8 +913,7 @@ class TaskFlowManager:
                 }
                 device_monitor_info["name"] = device.get_name()
                 device_monitor_info["redis"] = {
-                    "ip": self.device_manager.config.REDIS.REDIS_SERVER_IP,
-                    "port": self.device_manager.config.REDIS.REDIS_SERVER_PORT,
+                    "url": self.device_manager.config.REDIS.REDIS_URL,
                 }
 
                 args = {"device_monitor_info": device_monitor_info}
@@ -475,6 +923,62 @@ class TaskFlowManager:
                     deployment_id=deploy_id,
                     parameters=args,
                 )
+
+    async def _read_all_work_queues(self):
+        """Fetch all work queues with pagination.
+
+        Prefect read_work_queues limits limit to 200 and is bounded by
+        PREFECT_API_DEFAULT_LIMIT. This helper loops over offset/page_size
+        to fetch all work queues so the existence check in create_queues
+        does not miss entries beyond the first page.
+
+        Returns:
+            list of work queue objects
+        """
+        all_queues = []
+        offset = 0
+        page_size = 200
+        while True:
+            page = await self._client.read_work_queues(
+                limit=page_size, offset=offset
+            )
+            all_queues.extend(page)
+            if len(page) < page_size:
+                break
+            offset += page_size
+        return all_queues
+
+    @staticmethod
+    def read_all_flow_runs(sync_client, flow_run_filter=None, page_size=200):
+        """Fetch all flow runs with pagination.
+
+        Prefect read_flow_runs is bounded by
+        PREFECT_API_DEFAULT_LIMIT (default 200). This helper loops over
+        offset/page_size to fetch all matching flow runs so that cleanup
+        and listing logic does not silently miss entries beyond the
+        first page.
+
+        Args:
+            sync_client: prefect SyncPrefectClient instance
+            flow_run_filter: optional FlowRunFilter to narrow results
+            page_size: number of flow runs per request page (default 200)
+
+        Returns:
+            list of FlowRun objects
+        """
+        all_flow_runs = []
+        offset = 0
+        while True:
+            page = sync_client.read_flow_runs(
+                flow_run_filter=flow_run_filter,
+                limit=page_size,
+                offset=offset,
+            )
+            all_flow_runs.extend(page)
+            if len(page) < page_size:
+                break
+            offset += page_size
+        return all_flow_runs
 
     @staticmethod
     def get_prefect_configs():
@@ -537,10 +1041,11 @@ class TaskFlowManager:
         prefect_configs = TaskFlowManager.get_prefect_configs()
 
         # start process worker
+        monitor_pool_name = f"{Constant.WORK_POOL_MONITOR_PREFIX}{pool_name}"
         with prefect_settings.temporary_settings(updates=prefect_configs):
             worker = ProcessWorker(
                 name=process_name + "_monitor",
-                work_pool_name=pool_name + "_monitor",
+                work_pool_name=monitor_pool_name,
                 limit=concurrency_limit,
             )
             setproctitle.setproctitle(
@@ -560,10 +1065,11 @@ class TaskFlowManager:
         # get prefect configs
         prefect_configs = TaskFlowManager.get_prefect_configs()
         # start process worker
+        mgr_pool_name = f"{Constant.WORK_POOL_MGR_PREFIX}{pool_name}"
         with prefect_settings.temporary_settings(updates=prefect_configs):
             worker = ProcessWorker(
                 name=process_name + "_mgr",
-                work_pool_name=pool_name + "_mgr",
+                work_pool_name=mgr_pool_name,
                 limit=concurrency_limit,
             )
             setproctitle.setproctitle(f"[prefect] {process_name}_device_mgr")
@@ -572,7 +1078,10 @@ class TaskFlowManager:
     async def wait_workers(self):
         """Start all workers for work pool."""
         device_names = self.device_manager.get_devices().keys()
-        pool_names = device_names
+        pool_names = [
+            f"{Constant.WORK_POOL_DEVICE_PREFIX}{name}"
+            for name in device_names
+        ]
 
         # wait for all workers are online
         all_worker_status = {workpool: False for workpool in pool_names}
@@ -590,7 +1099,7 @@ class TaskFlowManager:
             if all_worker_status.values():
                 self.worker_status = True
                 break
-            sleep(Constant.DEFAULT_JOB_INTERVAL)
+            time.sleep(Constant.DEFAULT_JOB_INTERVAL)
             elapsed_time += Constant.DEFAULT_JOB_INTERVAL
             # timeout
             if elapsed_time > Constant.DEFAULT_JOB_TIMEOUT:
@@ -598,9 +1107,9 @@ class TaskFlowManager:
 
         elapsed_time = 0
         monitor_devices = [
-            device.get_name() + "_monitor"
+            f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.get_name()}"
             for device in self.device_manager.get_devices().values()
-            if device.get_driver().enable_device_monitor
+            if self._is_device_monitor_enabled(device)
         ]
         all_worker_status = {workpool: False for workpool in monitor_devices}
 
@@ -617,7 +1126,7 @@ class TaskFlowManager:
 
             if all(all_worker_status.values()):
                 break
-            sleep(Constant.DEFAULT_JOB_INTERVAL)
+            time.sleep(Constant.DEFAULT_JOB_INTERVAL)
             elapsed_time += Constant.DEFAULT_JOB_INTERVAL
             # timeout
             if elapsed_time > Constant.DEFAULT_JOB_TIMEOUT:
@@ -711,8 +1220,8 @@ class TaskFlowManager:
 
         # get flow runs with flow_run_filter
 
-        flow_runs = self._sync_client.read_flow_runs(
-            flow_run_filter=flow_run_filter
+        flow_runs = self.read_all_flow_runs(
+            self._sync_client, flow_run_filter=flow_run_filter
         )
         if len(flow_runs) == 0:
             return None
@@ -751,9 +1260,7 @@ class TaskFlowManager:
                 prefect_tags.extend(tags)
             else:
                 prefect_tags = tags
-        args["job_info"]["data"]["job_enqueue_at"] = (
-            Library.get_current_datetime()
-        )
+        args["job_info"]["data"]["job_enqueue_at"] = time.time()
         flow_run = await self._client.create_flow_run_from_deployment(
             name=job_id,
             deployment_id=deployment_id,
@@ -964,33 +1471,39 @@ class TaskFlowManager:
             flow_run_ids: flow run uuid list
 
         Returns:
-            success_list.
+            delete_results.
         """
-        success_list = []
+        delete_results = {}
         for flow_run_id in flow_run_ids:
             try:
                 flow_run = self._sync_client.read_flow_run(flow_run_id)
             except ObjectNotFound:
-                logger.error(
+                logger.debug(
                     f"Prefect execute flow error: "
                     f"can't find flow_run_id: {flow_run_id}"
                 )
+                delete_results[flow_run_id] = {
+                    "state": Constant.JOB_STATUS_DELETED,
+                }
                 continue
             except Exception as e:
                 logger.error(f"Prefect execute flow error: {str(e)}")
                 continue
             state = flow_run.state
-            if state.name.upper() != Constant.PREFECT_STATE_RUNNING:
+            if state.name.upper() == Constant.PREFECT_STATE_RUNNING:
+                delete_results[flow_run_id] = {
+                    "state": Constant.JOB_STATUS_RUNNING,
+                }
+            else:
                 try:
                     # delete flow
                     self._sync_client.delete_flow_run(flow_run_id)
-                    success_list.append({
-                        "flow_run_id": flow_run_id,
-                        "state": Constant.JOB_STATUS_DELETED,
-                    })
                 except Exception as e:
                     logger.error(f"Prefect delete_flow_run error: {str(e)}")
-        return success_list
+                delete_results[flow_run_id] = {
+                    "state": Constant.JOB_STATUS_DELETED,
+                }
+        return delete_results
 
     def cancel_flow_runs(self, flow_run_ids, tags=None):
         """Cancel flow runs.
@@ -1000,9 +1513,9 @@ class TaskFlowManager:
             tags: prefect flow tags
 
         Returns:
-            success list.
+            canceled_results.
         """
-        success_list = []
+        canceled_results = {}
         for flow_run_id in flow_run_ids:
             try:
                 flow_run = self._sync_client.read_flow_run(flow_run_id)
@@ -1023,14 +1536,13 @@ class TaskFlowManager:
                     self._sync_client.set_flow_run_state(
                         flow_run_id, state=cancelling_state, force=True
                     )
-                    success_list.append({
-                        "flow_run_id": flow_run_id,
+                    canceled_results[flow_run_id] = {
                         "state": Constant.JOB_STATUS_CANCELLED,
-                    })
+                    }
                 except Exception as e:
                     logger.error(f"Prefect delete_flow_run error: {str(e)}")
 
-        return success_list
+        return canceled_results
 
     def delete_task_flow_by_name(self, flow_name):
         """Delete flow .
@@ -1092,8 +1604,8 @@ class TaskFlowManager:
         flow_run_filter = FlowRunFilter(**flow_run_filter_kwargs)
 
         # get flow runs with flow_run_filter
-        flow_runs = self._sync_client.read_flow_runs(
-            flow_run_filter=flow_run_filter
+        flow_runs = self.read_all_flow_runs(
+            self._sync_client, flow_run_filter=flow_run_filter
         )
         return flow_runs
 
@@ -1145,7 +1657,7 @@ class TaskFlowManager:
                     is_flow_run_paused = True
                     break
                 flow_run = self.get_flow_run(flow_run.id)
-                sleep(1)
+                time.sleep(1)
 
             # 3. resume flow run and send sub job info(aggregation_parm)
             if is_flow_run_paused:

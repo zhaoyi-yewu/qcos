@@ -29,8 +29,8 @@ from wy_qcos.common.library import Library
 from wy_qcos.common.qcos_version import QcosVersion
 from wy_qcos.db import database
 from wy_qcos.db.utils import db_utils
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
 from wy_qcos.log.logger import init_logger, PERF_LEVEL
 from wy_qcos.task_manager import scheduler
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
@@ -171,6 +171,7 @@ class Server:
                 host=Config.API_SERVER.API_SERVER_LISTEN_IP,
                 port=Config.API_SERVER.API_SERVER_LISTEN_PORT,
                 workers=Config.API_SERVER.API_WORKERS,
+                loop="uvloop",
                 reload=False,
                 access_log=access_log,
                 lifespan="on",
@@ -178,9 +179,6 @@ class Server:
                 if Config.SSL.USE_SSL
                 else None,
                 ssl_keyfile=Config.SSL.KEY_FILE
-                if Config.SSL.USE_SSL
-                else None,
-                ssl_ca_certs=Config.SSL.CACERT_FILE
                 if Config.SSL.USE_SSL
                 else None,
             )
@@ -216,27 +214,14 @@ class Server:
             transpiler_manager.load_transpilers()
             transpiler_manager.init_transpilers()
 
-            # init and load devices
-            device_manager = DeviceManager(Config, driver_manager)
-            device_manager.load_devices()
-            device_manager.init_devices()
-
             # init database BEFORE starting multiprocessing
             # (multiprocessing can reset Config in child processes)
             logger.info("Initializing database...")
             db_engine = database.init_database()
             app.state._db_engine = db_engine
 
-            # set driver manager, transpiler in scheduler and device manager
-            scheduler.set_driver_manager(driver_manager)
-            scheduler.set_transpiler_manager(transpiler_manager)
-            scheduler.set_device_manager(device_manager)
-            scheduler.set_db_engine(db_engine)
-            scheduler.start_taskmanager()
-
             # init user management module
             logger.info("Init user manager")
-
             with db_utils.create_db_session(db_engine) as db_session:
                 # init project manager
                 project_manager = ProjectManager(db_session)
@@ -253,6 +238,26 @@ class Server:
                 logger.info("Init security manager")
                 security_manager = SecurityManager(user_manager)
                 app.state._security_manager = security_manager
+
+            # init and load devices
+            device_manager = DeviceManager(Config, driver_manager)
+            device_manager.load_devices()
+            device_manager.init_devices()
+            # init device DB entries and load persisted states
+            device_repo = device_manager.init_db(db_engine)
+
+            # set driver manager, transpiler in scheduler and device manager
+            logger.info("Init scheduler")
+            scheduler.set_driver_manager(driver_manager)
+            scheduler.set_transpiler_manager(transpiler_manager)
+            scheduler.set_device_manager(device_manager)
+            scheduler.set_db_engine(db_engine)
+            scheduler.set_device_repo(device_repo)
+            scheduler.init_device_group_manager()
+            scheduler.init_flavor_manager()
+            scheduler.init_auto_scheduler()
+            scheduler.start_taskmanager()
+            app.state._task_manager = scheduler.get_task_manager()
 
             # handle any unfinished jobs from previous runs
             logger.info("Processing unfinished callbacks ...")

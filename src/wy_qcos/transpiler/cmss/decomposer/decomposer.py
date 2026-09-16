@@ -70,6 +70,8 @@ class Decomposer:
         self,
         source: list[str],
         target: list[str],
+        enable_mapping: bool = True,
+        is_neutral_atom: bool = False,
     ) -> tuple[
         dict[ParamGate, list[ParamGate]],
         dict[str, int],
@@ -87,6 +89,12 @@ class Decomposer:
             source: List of source gate names that require decomposition.
             target: List of target (basis) gate names. Gates in this set are
                 considered terminal and will not be expanded further.
+            enable_mapping: Whether mapping (routing) is enabled. Only when
+                mapping is enabled is the SWAP gate added to the source set
+                (its decomposition depth is used by the mapping module).
+            is_neutral_atom: Whether the target device is a neutral-atom
+                system. SWAP decomposition is skipped for neutral-atom
+                systems (see ``build_full_decomposition_table``).
 
         Returns:
             A tuple containing:
@@ -108,7 +116,12 @@ class Decomposer:
         if graph is None:
             raise RuntimeError("EquivalenceGraph was not initialized.")
 
-        return graph.build_full_decomposition_table(source, target)
+        return graph.build_full_decomposition_table(
+            source,
+            target,
+            enable_mapping=enable_mapping,
+            is_neutral_atom=is_neutral_atom,
+        )
 
     def apply_decompose_rules(
         self,

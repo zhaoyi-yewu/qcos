@@ -1,0 +1,28 @@
+# 性能测试基础参数，默认注释的参数可以忽略
+[transpile]
+# 性能测试运行次数
+# run_count = 1
+# 输出日志文件路径和性能测试结果文件，绝对路径或项目的相对路径
+# output_log = ""
+# csv_file = ""
+
+# 测试集必须配置，绝对路径或项目的相对路径
+files = ["./samples/qasm/2.0/simple-qasm.qasm"]
+dirs = []
+
+# 性能日志开关，true 时允许 PERF 级别日志输出
+# perf_enabled = true
+perf_enabled = false
+
+[transpile.transpiler]
+# qpu拓扑配置文件，绝对路径或项目的相对路径
+config_file = "./etc/topology/qiskit_marrakesh.toml"
+
+[transpile.optimize]
+# 默认opt_level为[1]
+opt_level = [0, 1]
+
+[transpile.basis_gates]
+# 基门集合，多个组合用列表元素分隔
+# 默认: rx, ry, rz, x, h, cx, cz
+gates = ["rx, ry, rz, x, h, cx, cz"]

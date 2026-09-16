@@ -146,6 +146,7 @@ class TestUpdateJobMetrics:
                 Constant.JOB_STATUS_QUEUED,
                 Constant.JOB_STATUS_CANCELLING,
                 Constant.JOB_STATUS_CANCELLED,
+                Constant.JOB_STATUS_DELETING,
                 Constant.JOB_STATUS_DELETED,
                 Constant.JOB_STATUS_UNKNOWN,
             ]
@@ -153,7 +154,7 @@ class TestUpdateJobMetrics:
 
         # Mock job repository
         mock_job_repo = MagicMock()
-        mock_job_repo.count.return_value = 9
+        mock_job_repo.count.return_value = 10
         mock_job_repo.count_by_attr.side_effect = [
             2,  # completed
             1,  # failed
@@ -161,9 +162,11 @@ class TestUpdateJobMetrics:
             1,  # queued
             1,  # cancelling
             1,  # cancelled
+            1,  # deleting
             1,  # deleted
             1,  # unknown
         ]
+        mock_job_repo.count_recent.side_effect = [3, 2]
         mock_session = MagicMock()
 
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
@@ -175,8 +178,12 @@ class TestUpdateJobMetrics:
                 ):
                     run_async(update_job_metrics())
                     data = mu.call_args.kwargs["data"]
-                    assert data.total == 9
+                    assert data.total == 10
                     assert data.completed == 2
+                    assert data.deleting == 1
+                    assert data.submitted_job_rate_min == 3.0
+                    assert data.completed_job_rate_min == 2.0
+                    assert mock_job_repo.count_recent.call_count == 2
 
     def test_empty(self):
         with patch("wy_qcos.metrics.metrics_task.scheduler") as ms:
@@ -420,7 +427,7 @@ class TestCheckRedisHealth:
         mock_rc.ping = AsyncMock(return_value=True)
 
         with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
-            mar.Redis.return_value = mock_rc
+            mar.Redis.from_url.return_value = mock_rc
             with patch("wy_qcos.metrics.metrics_task._redis_client", None):
                 healthy, msg = run_async(check_redis_health())
                 run_async(clear_redis_client())
@@ -431,7 +438,7 @@ class TestCheckRedisHealth:
         mock_rc.ping = AsyncMock(side_effect=asyncio.TimeoutError())
 
         with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
-            mar.Redis.return_value = mock_rc
+            mar.Redis.from_url.return_value = mock_rc
             with patch("wy_qcos.metrics.metrics_task._redis_client", None):
                 healthy, msg = run_async(check_redis_health())
                 run_async(clear_redis_client())
@@ -442,7 +449,7 @@ class TestCheckRedisHealth:
         mock_rc.ping = AsyncMock(side_effect=Exception("Refused"))
 
         with patch("wy_qcos.metrics.metrics_task.async_redis") as mar:
-            mar.Redis.return_value = mock_rc
+            mar.Redis.from_url.return_value = mock_rc
             with patch("wy_qcos.metrics.metrics_task._redis_client", None):
                 healthy, msg = run_async(check_redis_health())
                 run_async(clear_redis_client())

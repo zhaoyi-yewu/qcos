@@ -33,10 +33,9 @@ QuantumCircuit::QuantumCircuit(int num_qubits, int num_clbits,
   }
 }
 
-std::unique_ptr<QuantumCircuit> QuantumCircuit::from_ir(
+std::shared_ptr<QuantumCircuit> QuantumCircuit::from_ir(
     const std::vector<std::shared_ptr<BaseOperation>>& ir, int num_qubits) {
-  auto circuit = num_qubits > 0 ? std::make_unique<QuantumCircuit>(num_qubits)
-                                : std::make_unique<QuantumCircuit>();
+  auto circuit = std::make_shared<QuantumCircuit>(num_qubits);
   circuit->append_operations(ir);
   return circuit;
 }
@@ -91,6 +90,18 @@ int QuantumCircuit::depth() const {
   return qubit_ops.empty()
              ? 0
              : *std::max_element(qubit_ops.begin(), qubit_ops.end());
+}
+
+int QuantumCircuit::size() const {
+  static const std::unordered_set<std::string> ignore_gates = {"sync", "reset",
+                                                               "move"};
+  int count = 0;
+  for (const auto& operation : operations_) {
+    if (ignore_gates.count(operation->name) == 0) {
+      ++count;
+    }
+  }
+  return count;
 }
 
 }  // namespace qcos

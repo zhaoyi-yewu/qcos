@@ -18,36 +18,20 @@
 #include "optimizer/adjacent_optimization.h"
 
 #include <algorithm>
+#include <iostream>
 #include <unordered_map>
 
 #include "circuit/dag_node.h"
 
 namespace qcos {
 
-namespace {
-
-bool has_any_gate(const std::unordered_map<std::string, int>& op_counts,
-                  const std::set<std::string>& gate_names) {
-  for (const std::string& gate_name : gate_names) {
-    if (op_counts.find(gate_name) != op_counts.end()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-DAGOpNode* as_op_node(DAGNode* node) { return dynamic_cast<DAGOpNode*>(node); }
-
-}  // namespace
-
-AdjacentPhaseOptPass::AdjacentPhaseOptPass()
-    : phase_gates_({"rx", "ry", "rz", "crx", "cry", "crz", "u1"}) {}
+AdjacentPhaseOptPass::AdjacentPhaseOptPass(bool verbose)
+    : verbose_(verbose),
+      phase_gates_({"rx", "ry", "rz", "crx", "cry", "crz", "u1"}) {}
 
 int AdjacentPhaseOptPass::run(
     DAGCircuit& dag, const std::optional<std::set<std::string>>& basis_gates) {
   int reduced = 0;
-  const std::set<std::string> rz_phase_gates = {"s", "sdg", "t", "tdg", "z"};
-
   const std::unordered_map<std::string, int> op_counts = dag.count_ops();
   // 电路中实际存在的相位门集合，后续仅优化这些门
   std::set<std::string> phase_gates;
@@ -57,26 +41,9 @@ int AdjacentPhaseOptPass::run(
     }
   }
 
-  // 是否存在离散相位门s、sdg、t、tdg、z
-  const bool has_discrete_rz_phase_gates =
-      has_any_gate(op_counts, rz_phase_gates);
-  if (has_discrete_rz_phase_gates) {
-    phase_gates.insert("rz");
-  }
-
-  if (basis_gates) {
-    // 若传参了 basis_gates，则仅优化这些门
-    std::set<std::string> filtered_phase_gates;
-    for (const std::string& gate_name : phase_gates) {
-      if (basis_gates->count(gate_name) > 0) {
-        filtered_phase_gates.insert(gate_name);
-      }
-    }
-    phase_gates = std::move(filtered_phase_gates);
-  }
-
-  if (has_discrete_rz_phase_gates) {
-    dag.parameterize_all_rz();
+  // 没有可优化的相位门时直接返回，避免全量拓扑遍历
+  if (phase_gates.empty()) {
+    return reduced;
   }
 
   for (DAGOpNode* node : dag.topological_op_nodes()) {
@@ -89,7 +56,7 @@ int AdjacentPhaseOptPass::run(
       continue;
     }
 
-    DAGOpNode* next_node = as_op_node(successors.front());
+    DAGOpNode* next_node = dynamic_cast<DAGOpNode*>(successors.front());
     if (!next_node) {
       continue;
     }
@@ -99,19 +66,20 @@ int AdjacentPhaseOptPass::run(
       next_node->op->arg_value[0] += node->op->arg_value[0];
       dag.remove_op_node(node);
       ++reduced;
+      // Remove gate if merged angle is ~0 (mod 2π)
+      constexpr double kTwoPi = 2.0 * M_PI;
+      double mod_angle = std::fmod(next_node->op->arg_value[0], kTwoPi);
+      if (mod_angle < 0) mod_angle += kTwoPi;
+      if (mod_angle < 1e-8 || mod_angle > kTwoPi - 1e-8) {
+        dag.remove_op_node(next_node);
+        ++reduced;
+      }
     }
   }
 
-  const std::unordered_map<std::string, int> final_op_counts = dag.count_ops();
-  // 将离散相位门重写回s, t, z等
-  if (final_op_counts.find("rz") != final_op_counts.end() &&
-      // 判断rz_phase_gates是否是basis_gates的子集
-      (!basis_gates ||
-       std::includes(basis_gates->begin(), basis_gates->end(),
-                     rz_phase_gates.begin(), rz_phase_gates.end()))) {
-    dag.deparameterize_all_rz();
+  if (verbose_) {
+    std::clog << name() << ": " << reduced << " gates reduced\n";
   }
-
   return reduced;
 }
 

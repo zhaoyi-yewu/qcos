@@ -84,6 +84,12 @@ class MultiGraph {
   int num_nodes() const { return num_active_; }
 
   /**
+   * @brief 返回节点 id 的上界（slots_ 大小），用于遍历所有可能的 id
+   * @return int 最大可能节点 id + 1
+   */
+  int max_node_id() const { return static_cast<int>(slots_.size()); }
+
+  /**
    * @brief 通过节点 id 访问当前活跃节点对象
    * @param id 节点 id
    * @return DAGNode* 节点裸指针，节点无效或已删除时返回 nullptr
@@ -212,6 +218,15 @@ class MultiGraph {
       const std::function<std::string(const DAGNode*)>& key) const;
 
   /**
+   * @brief 返回节点 id 的一个拓扑序
+   *
+   * 供外部复用，避免多次 collect_runs 重复计算。
+   *
+   * @return std::vector<int> 拓扑序节点 id 列表
+   */
+  std::vector<int> topo_order() const;
+
+  /**
    * @brief 计算 DAG 中最长路径长度，单位为边数
    * @return int 最长路径长度
    */
@@ -225,11 +240,15 @@ class MultiGraph {
 
   /**
    * @brief 收集所有连续的匹配运行段
+   *
    * @param filter_fn 节点过滤函数，返回 true 表示该节点可加入运行段
+   * @param topo_order 预计算的拓扑序节点 id 列表指针，为 nullptr
+   * 时内部自动计算
    * @return std::vector<std::vector<DAGNode*>> 运行段列表
    */
   std::vector<std::vector<DAGNode*>> collect_runs(
-      const std::function<bool(const DAGNode*)>& filter_fn) const;
+      const std::function<bool(const DAGNode*)>& filter_fn,
+      const std::vector<int>* topo_order = nullptr) const;
 
  private:
   /**
@@ -241,12 +260,6 @@ class MultiGraph {
     std::vector<Edge> in_edges;
     bool active = false;
   };
-
-  /**
-   * @brief 返回节点 id 的一个拓扑序
-   * @return std::vector<int> 拓扑序节点 id 列表
-   */
-  std::vector<int> topo_order() const;
 
   /**
    * @brief 复制一个 DAGNode 对象

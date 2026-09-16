@@ -202,6 +202,15 @@ class DAGCircuit {
   std::vector<DAGNode*> successors(const DAGNode* node) const;
 
   /**
+   * @brief 返回指定节点在给定量子比特上的第一个后继门操作节点
+   * @param cur_node 查询起点
+   * @param qubit 量子比特编号
+   * @return DAGOpNode* 该量子比特上的后继门节点；不存在时返回 nullptr
+   * @throws std::invalid_argument qubit 不在 cur_node 的 qargs 中
+   */
+  DAGOpNode* get_next_op_on_qubit(DAGOpNode* cur_node, int qubit) const;
+
+  /**
    * @brief 返回指定节点的直接前驱节点
    * @param node 查询目标
    * @return std::vector<DAGNode*> 前驱节点列表
@@ -263,11 +272,15 @@ class DAGCircuit {
 
   /**
    * @brief 收集所有由给定门名组成的连续运行段
+   *
    * @param namelist 允许出现在运行段中的门名列表
+   * @param topo_order 预计算的拓扑序节点 id 列表指针，为 nullptr
+   * 时内部自动计算
    * @return std::set<std::vector<DAGNode*>> 运行段集合
    */
   std::set<std::vector<DAGNode*>> collect_runs(
-      const std::vector<std::string>& namelist);
+      const std::vector<std::string>& namelist,
+      const std::vector<int>* topo_order = nullptr);
 
   /**
    * @brief 统计各类门操作数量
@@ -302,6 +315,28 @@ class DAGCircuit {
    * @return DAGCircuit 仅包含双量子位门的新 DAG
    */
   DAGCircuit two_qubit_ops_to_dag();
+
+  /**
+   * @brief 将 DAG 按拓扑层拆分为多个子 DAG
+   *
+   * 使用 BFS + Kahn 算法计算拓扑层（同层内门无依赖、可并行执行），
+   * 然后将连续若干层合并为一个子 DAG。
+   *
+   * @param num_chunks 目标拆分块数，实际块数可能略少
+   * @return std::vector<DAGCircuit> 子 DAG 列表，按拓扑序排列
+   */
+  std::vector<DAGCircuit> split_by_layers(int num_chunks);
+
+  /**
+   * @brief 返回 DAG 的拓扑层划分（每层内的门可并行执行）
+   *
+   * 算法：BFS + Kahn，同层节点间无依赖关系。
+   * 第 0 层为 InNode 哨兵，最后一层为 OutNode 哨兵，
+   * 中间层只包含 DAGOpNode。
+   *
+   * @return std::vector<std::vector<DAGOpNode*>> 按层排列的门操作列表
+   */
+  std::vector<std::vector<DAGOpNode*>> layers() const;
 
   /**
    * @brief 返回指定节点集合的全部出边三元组

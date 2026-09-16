@@ -35,6 +35,13 @@ spec:
       - name: postgres
         image: ${REGISTRY}${POSTGRES_IMAGE_NAME}:${POSTGRES_IMAGE_VERSION}
         imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: TZ
           value: "Asia/Shanghai"

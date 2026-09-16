@@ -1,4 +1,4 @@
-系统监控
+﻿系统监控
 ==========
 
 本章节主要介绍QCOS系统监控指标管理与采集模块（Metrics）设计。模块提供两类指标输出通道：基于POSIQ协议的JSON-RPC 2.0查询接口和Prometheus格式的HTTP指标暴露端点。
@@ -96,6 +96,8 @@ API 访问指标采集流程：
 * ``device``、``driver``、``job``、``system``、``transpiler``
 
 MetricsServer（Prometheus 服务器）
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ``metrics_server.py`` 中定义的 ``MetricsServer`` 是一个独立的 HTTP 服务器
 （基于 Python ``http.server.HTTPServer``），
 监听单独的端口（默认 19400），
@@ -113,8 +115,9 @@ MetricsServer（Prometheus 服务器）
 服务器特性：
 
 * 支持 IPv4/IPv6 及双栈模式（Dual-Stack）
-* 开启 ``SO_REUSEADDR`` 选项允许快速重启时释放端口
-* 监听 IP 与端口通过配置文件 ``Config.METRICS_SERVER_LISTEN_IP`` 和 ``Config.METRICS_SERVER_LISTEN_PORT`` 动态设置
+* 开启 ``SO_REUSEADDR`` 和 ``SO_REUSEPORT`` 选项允许快速重启时释放端口
+* 默认监听 IP 为空字符串时使用 IPv6 ``::`` 并启用双栈模式（``IPV6_V6ONLY=False``）
+* 监听 IP 与端口通过配置文件动态设置
 
 MetricsScheduler（定时调度器）
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,7 +126,7 @@ MetricsScheduler（定时调度器）
 
 调度机制：
 
-* 默认更新间隔为 ``Constant.DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS`` （5 秒）
+* 默认更新间隔为 ``Constant.DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS`` （15 秒）
 * 启动时执行一次初始化更新（非致命错误不影响启动）
 * 之后每间隔固定时长触发周期性更新
 * APSheduler 配置 ``max_instances=1`` 确保同一时刻只有一个更新任务在执行
@@ -134,12 +137,16 @@ metrics_task（更新任务）
 
 ``metrics_task.py`` 包含具体的指标采集与更新逻辑，包含以下函数：
 
-* ``update_job_metrics()`` — 从调度器 ``scheduler.aget_jobs()`` 获取所有 job 列表，按状态统计各状态数量并更新 JobMetrics
+* ``update_job_metrics()`` — 通过 ``JobRepository`` 查询数据库，按状态统计各状态作业数量并更新 JobMetrics；
+  同时统计最近 1 分钟内新增的作业数量（基于 ``created_at``），计算作业提交速率 ``submitted_job_rate_min``
+  （job/分钟）和已完成作业速率 ``completed_job_rate_min``（completed job/分钟，按 ``created_at`` 且状态为 completed 过滤）并写入 ``JobMetricsData``
 * ``check_worker_health()`` — 遍历所有设备，并发检查每个设备的 work pool 中是否有在线 worker（超时 5s，最多重试 1 次，重试延迟 2s）
 * ``check_prefect_health()`` — 通过调用 ``sync_client.hello()`` 检查 Prefect API 可用性（超时 3s）
 * ``check_fastapi_health()`` — 由于 FastAPI 与指标监控在同一进程，默认返回健康
 * ``check_redis_health()`` — 通过 ``redis.ping()`` 检查 Redis 连接（超时 2s，失败时重置客户端）
-* ``update_system_health_metrics()`` — 并发执行所有 4 项组件健康检查，汇总结果并更新SystemHealthMetrics
+* ``update_system_health_metrics()`` — 并发执行所有 4 项组件健康检查，汇总结果并更新
+  SystemHealthMetrics。当 FastAPI、Prefect、Redis 三个组件均健康但 Worker 不健康时，自动调用
+  ``watchdog_restart_dead_workers()`` 重启已死亡的 Worker 进程（超时 30s）
 * ``update_metrics_task_async()`` — 并发执行 ``update_job_metrics()`` 与 ``update_system_health_metrics()``，总超时 15s
 
 配置信息
@@ -149,6 +156,7 @@ metrics_task（更新任务）
 
 * ``PREFECT_CHECK_TIMEOUT = 3.0`` — Prefect 健康检查超时（秒）
 * ``WORKER_CHECK_TIMEOUT = 5.0`` — Worker 健康检查超时（秒）
+* ``WORKER_CHECK_RETRY_DELAY = 2.0`` — Worker 健康检查超时后重试延迟（秒）
 * ``REDIS_CHECK_TIMEOUT = 2.0`` — Redis 健康检查超时（秒）
 * ``METRICS_TOTAL_TIMEOUT = 15.0`` — 指标更新总超时（秒）
 
@@ -332,16 +340,16 @@ Metrics 模块相关的配置项
      - 说明
    * - **METRICS_SERVER_LISTEN_IP**
      - [METRICS_SERVER]
-     - ""（即 0.0.0.0）
-     - Metrics 服务端监听 IP，空字符串表示监听所有接口
+     - ""（实际使用 ``::`` IPv6 双栈）
+     - Metrics 服务端监听 IP，空字符串默认使用 IPv6 ``::`` 并启用双栈模式（同时监听 IPv4 和 IPv6）
    * - **METRICS_SERVER_LISTEN_PORT**
      - [METRICS_SERVER]
      - 19400
      - Metrics 服务端监听端口
    * - **DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS**
      - -
-     - 5
-     - 指标更新间隔（秒），默认 5 秒
+     - 15
+     - 指标更新间隔（秒），默认 15 秒
 
 注意事项
 --------

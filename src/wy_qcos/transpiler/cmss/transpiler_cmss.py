@@ -299,13 +299,26 @@ class TranspilerCmss(TranspilerBase):
         enable_na_move = self.transpiler_options.get("enable_na_move", False)
         # support cz gate for NARoute
         if enable_na_move:
-            supp_basis_gates = [
-                Constant.SINGLE_QUBIT_GATE_RX,
-                Constant.SINGLE_QUBIT_GATE_RY,
-                Constant.TWO_QUBIT_GATE_CZ,
-            ]
+            if supp_basis_gates is None or len(supp_basis_gates) == 0:
+                supp_basis_gates = [
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
+                ]
+            elif Constant.TWO_QUBIT_GATE_CZ not in supp_basis_gates:
+                raise TranspilerException(
+                    f"Basis gate({supp_basis_gates}) is not supported for "
+                    "neutral atom topology. "
+                )
 
         enable_mapping = self.transpiler_options.get("enable_mapping", True)
+        # Neutral-atom routing does not insert SWAPs and its basis gate set
+        # may lack a two-qubit gate to decompose SWAP, so SWAP decomposition
+        # is skipped for neutral-atom systems
+        # (see build_full_decomposition_table).
+        is_neutral_atom = (
+            trans_cfg_inst.get_tech_type() == Constant.TECH_TYPE_NEUTRAL_ATOM
+        )
         run_time: TranspileRuntime = self.transpiler_runtime
 
         # get optimization level
@@ -364,6 +377,8 @@ class TranspilerCmss(TranspilerBase):
                     decomposer.get_decompose_rules(
                         gate_name_list,
                         supp_basis_gates,
+                        enable_mapping=enable_mapping,
+                        is_neutral_atom=is_neutral_atom,
                     )
                 )
                 dg_swap_opt.gate_depth = gate_depth.copy()
@@ -375,7 +390,7 @@ class TranspilerCmss(TranspilerBase):
             )
 
             with Timer() as mapping_timer:
-                mapping_res, mapping_dict, _, _ = self.mapping(
+                mapping_res, mapping_dict, _, final_layout_dict = self.mapping(
                     qpu_cfg, dp_result_dict
                 )
             run_time.mapping_time = mapping_timer.elapsed
@@ -424,6 +439,8 @@ class TranspilerCmss(TranspilerBase):
                 decompose_rules_dict, _ = decomposer.get_decompose_rules(
                     gate_name_list,
                     supp_basis_gates,
+                    enable_mapping=enable_mapping,
+                    is_neutral_atom=is_neutral_atom,
                 )
             run_time.decompose_rule_time = decompose_ruler_timer.elapsed
             log_perf(
@@ -464,5 +481,6 @@ class TranspilerCmss(TranspilerBase):
                 f" {optimize2_timer.elapsed:.4f}s\n",
             )
             mapping_dict = None
+            final_layout_dict = None
 
-        return basis_gate_list, mapping_dict
+        return basis_gate_list, mapping_dict, final_layout_dict

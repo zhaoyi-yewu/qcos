@@ -45,10 +45,25 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.api_host = "127.0.0.1"
+        cls.api_port = 18601
+
         cls.tiangong_process = multiprocessing.Process(
-            target=main, daemon=True
+            target=main,
+            daemon=True,
+            kwargs={"port": cls.api_port},
         )
         cls.tiangong_process.start()
+
+        # Wait until the mock API server is ready to accept connections
+        connected = Library.wait_network_connection(
+            cls.api_host,
+            port=cls.api_port,
+        )
+        assert connected, (
+            f"Failed to connect to tiangong mock server at "
+            f"{cls.api_host}:{cls.api_port}"
+        )
 
         # Initialize and clean up test resources
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)

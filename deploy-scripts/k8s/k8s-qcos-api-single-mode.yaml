@@ -51,14 +51,21 @@ spec:
       - name: prefect-server
         image: ${REGISTRY}${PREFECT_IMAGE_NAME}:${PREFECT_IMAGE_VERSION}
         imagePullPolicy: IfNotPresent
-        command: ["prefect", "server", "start", "--host", ""]
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        command: ["prefect", "server", "start"]
         env:
         - name: TZ
           value: "Asia/Shanghai"
         - name: PREFECT_SERVER_API_HOST
           value: "${PREFECT_SERVER_API_HOST}"
         - name: PREFECT_API_URL
-          value: "${PREFECT_API_URL}"
+          value: "${PREFECT_API_URL:-http://127.0.0.1:4200/api}"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_URL
           value: "${PREFECT_SERVER_DATABASE_CONNECTION_URL:-sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL}"
         - name: PREFECT_SERVER_ANALYTICS_ENABLED
@@ -68,7 +75,44 @@ spec:
         - name: PREFECT_LOCAL_STORAGE_PATH
           value: "/var/qcos/storage"
         - name: PREFECT_API_DEFAULT_LIMIT
-          value: "100000"
+          value: "200"
+        - name: PREFECT_TASKS_DISABLE_CACHING
+          value: "true"
+        - name: PREFECT_RESULTS_PERSIST_BY_DEFAULT
+          value: "false"
+        - name: PREFECT_SERVER_EVENTS_RETENTION_PERIOD
+          value: "PT1H"
+        # job cancel signal requires PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED=true
+        - name: PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED
+          value: "true"
+        - name: PREFECT_SERVER_SERVICES_EVENT_PERSISTER_QUEUE_MAX_SIZE
+          value: "PT150S"
+        - name: PREFECT_SERVER_EVENTS_RELATED_RESOURCE_CACHE_TTL
+          value: "5000"
+        # prefect docket configs
+        - name: PREFECT_SERVER_DOCKET_URL
+          value: "redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/1?retry_on_timeout=True&health_check_interval=30"
+        # prefect event messaging configs
+        #- name: PREFECT_SERVER_EVENTS_MESSAGING_BROKER
+        #  value: "prefect_redis.messaging"
+        #- name: PREFECT_SERVER_EVENTS_MESSAGING_CACHE
+        #  value: "prefect_redis.messaging"
+        #- name: PREFECT_SERVER_EVENTS_CAUSAL_ORDERING
+        #  value: "prefect_redis.causal_ordering"
+        #- name: PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE
+        #  value: "prefect_redis.lease_storage"
+        #- name: PREFECT_REDIS_MESSAGING_HOST
+        #  value: "${REDIS_SERVER_IP:-127.0.0.1}"
+        #- name: PREFECT_REDIS_MESSAGING_PORT
+        #  value: "${REDIS_SERVER_PORT:-6379}"
+        #- name: PREFECT_REDIS_MESSAGING_DB
+        #  value: "1"
+        #- name: PREFECT_REDIS_EVENTS_HOST
+        #  value: "${REDIS_SERVER_IP:-127.0.0.1}"
+        #- name: PREFECT_REDIS_EVENTS_PORT
+        #  value: "${REDIS_SERVER_PORT:-6379}"
+        #- name: PREFECT_REDIS_EVENTS_DB
+        #  value: "1"
         - name: PYTHONPATH
           value: "/root/qcos-project/src"
         resources:
@@ -147,6 +191,14 @@ spec:
       - name: redis
         image: ${REGISTRY}${REDIS_IMAGE_NAME}:${REDIS_IMAGE_VERSION}
         imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-123456}", "--bind", "${REDIS_SERVER_LISTEN_IP:-127.0.0.1}"]
         env:
         - name: TZ
           value: "Asia/Shanghai"
@@ -190,7 +242,7 @@ spec:
     app: redis
   type: ClusterIP
   ports:
-  - port: ${REDIS_SERVER_PORT}
+  - port: ${REDIS_SERVER_PORT:-6379}
     targetPort: 6379
 ---
 # Deploy qcos
@@ -229,6 +281,13 @@ spec:
       - name: ${QCOS_CONTAINER_NAME}
         image: ${REGISTRY}${QCOS_IMAGE_NAME}:${QCOS_IMAGE_VERSION}
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
         stdin: true
         tty: true
         workingDir: /root
@@ -256,6 +315,8 @@ spec:
           value: ${QCOS_DATABASE_CONNECTION_URL:-sqlite:////var/qcos/db/qcos.db?timeout=30&journal_mode=WAL}
         - name: QCOS_VIRTUAL_INSTANCE_ID
           value: ${QCOS_VIRTUAL_INSTANCE_ID}
+        - name: DEFAULT_ADMIN_PASSWORD
+          value: ${DEFAULT_ADMIN_PASSWORD}
         - name: DEVICE_LIST
           value: ${DEVICE_LIST}
         - name: MAX_JOBS
@@ -282,10 +343,8 @@ spec:
           value: ${PREFECT_WORKER_HEARTBEAT_SECONDS:-30}
         - name: PREFECT_LOGGING_LEVEL
           value: ${PREFECT_LOGGING_LEVEL:-INFO}
-        - name: REDIS_SERVER_IP
-          value: ${REDIS_SERVER_IP}
-        - name: REDIS_SERVER_PORT
-          value: ${REDIS_SERVER_PORT}
+        - name: REDIS_URL
+          value: redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/0
         resources:
           requests:
             cpu: "1000m"

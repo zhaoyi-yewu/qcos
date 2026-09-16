@@ -27,17 +27,9 @@ mkdir -p /etc/qcos/
 mkdir -p /etc/qcos/prefect
 mkdir -p /var/qcos/db
 mkdir -p /var/qcos/db/postgresql
+mkdir -p /var/qcos/backup/database
 mkdir -p /etc/qcos/postgres
-mkdir -p /etc/prometheus
-cp -r ${QCOS_LOCAL_SRC_DIR}/etc/prometheus /etc/prometheus
-mkdir -p /etc/grafana/
-cp -r ${QCOS_LOCAL_SRC_DIR}/etc/grafana /etc/grafana
-mkdir -p /etc/alertmanager
-cp -r ${QCOS_LOCAL_SRC_DIR}/etc/alertmanager /etc/alertmanager
-if [ -n "${SMTP_HOST}" ] && [ -n "${ALERT_RECEIVE_EMAIL}" ]; then
-  export SMTP_HOST SMTP_PORT SMTP_FROM SMTP_AUTH_USER SMTP_AUTH_PASSWORD ALERT_RECEIVE_EMAIL
-  envsubst < /etc/alertmanager/alertmanager.yml > /etc/alertmanager/alertmanager.yml.tmp && mv /etc/alertmanager/alertmanager.yml.tmp /etc/alertmanager/alertmanager.yml
-fi
+mkdir -p /var/prefect/
 
 # copy postgresql config files
 rm -rf /etc/qcos/prefect/profiles.toml
@@ -109,22 +101,30 @@ if [ "${DB_BACKEND,,}" = "postgres" ]; then
   echo "PostgreSQL setup completed successfully"
 fi
 
+if [ "${DB_BACKEND,,}" = "sqlite" ]; then
+  rm -rf /var/qcos/db/prefect.db-shm /var/qcos/db/prefect.db-wal
+fi
+
 # start qcos
 echo "Creating QCOS dockers ..."
+
+# start docker
 if [ "${DEV,,}" = "false" ]; then
   # start qcos
-  docker-compose -f docker-compose.yaml down
-  docker-compose -f docker-compose.yaml up -d
+  docker_compose_file="./docker-compose.yaml"
+  new_docker_compose_file="./.docker-compose.yaml"
+  create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
+
+  docker-compose -f ${new_docker_compose_file} down
+  docker-compose -f ${new_docker_compose_file} up -d
   echo "Run QCOS bash: docker exec -it qcos bash"
 else
   # start qcos-dev
-  docker-compose -f docker-compose-dev.yaml down
-  docker-compose -f docker-compose-dev.yaml up -d
-  echo "Run QCOS bash: docker exec -it qcos-dev bash"
-fi
+  docker_compose_file="./docker-compose-dev.yaml"
+  new_docker_compose_file="./.docker-compose-dev.yaml"
+  create_temp_docker_compose_file "${docker_compose_file}" "${new_docker_compose_file}"
 
-# start metrics
-docker-compose -f docker-compose-metrics.yaml down
-if [ "${ENABLE_METRICS,,}" = "true" ]; then
-  docker-compose -f docker-compose-metrics.yaml up -d
+  docker-compose -f ${new_docker_compose_file} down
+  docker-compose -f ${new_docker_compose_file} up -d
+  echo "Run QCOS bash: docker exec -it qcos-dev bash"
 fi

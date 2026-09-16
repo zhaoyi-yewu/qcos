@@ -87,9 +87,6 @@
       # SSL密钥文件路径
       KEY_FILE = "/etc/qcos/ssl/ssl.key"
 
-      # SSL CA文件路径（可选）
-      CA_FILE = "/etc/qcos/ssl/cacert.pem"
-
 重启QCOS服务使配置生效
 ***************************
    .. code-block:: shell
@@ -104,10 +101,8 @@
 
       # 方式1：通过环境变量配置
       export USE_SSL=true
-      export SSL_CERTFILE=/etc/qcos/ssl/ssl.crt
-      export SSL_KEYFILE=/etc/qcos/ssl/ssl.key
       export SSL_CAFILE=/etc/qcos/ssl/cacert.pem
       qcos-cli version
 
       # 方式2：通过命令行参数配置
-      qcos-cli --use-ssl --ssl-certfile /etc/qcos/ssl/ssl.crt --ssl-keyfile /etc/qcos/ssl/ssl.key --ssl-cafile /etc/qcos/ssl/cacert.pem version
+      qcos-cli --use-ssl --ssl-cafile /etc/qcos/ssl/cacert.pem version

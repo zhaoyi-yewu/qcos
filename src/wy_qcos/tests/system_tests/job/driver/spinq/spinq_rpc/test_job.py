@@ -45,6 +45,8 @@ class TestJob:
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
         cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
+        cls.api_host = "127.0.0.1"
+        cls.api_port = 4242
         print("Start SpinQ server")
         cmd_args = ["-c", f"{cls.etc_dir}/qcos/st-conf.d/spinq_rpc.toml"]
         cls.rpc_process = multiprocessing.Process(
@@ -53,6 +55,16 @@ class TestJob:
             args=(cmd_args,),
         )
         cls.rpc_process.start()
+
+        # Wait until the mock zerorpc server is ready to accept connections
+        connected = Library.wait_network_connection(
+            cls.api_host,
+            port=cls.api_port,
+        )
+        assert connected, (
+            f"Failed to connect to spinq rpc mock server at "
+            f"{cls.api_host}:{cls.api_port}"
+        )
 
         # Initialize and clean up test resources
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)

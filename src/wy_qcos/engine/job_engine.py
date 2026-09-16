@@ -23,7 +23,6 @@ import numpy as np
 import os
 import signal
 import time
-from datetime import datetime
 from typing import Any
 
 import redis
@@ -34,8 +33,21 @@ from prefect.runtime import flow_run
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common import errors
-from wy_qcos.common.library import Library
+from wy_qcos.common.errors import BaseException
+from wy_qcos.common.library import (
+    Library,
+    _is_allowed_module,
+    _is_allowed_class_name,
+)
 from wy_qcos.engine.common import init_logger
+from wy_qcos.engine.result_metrics import (
+    PROBABILITY_FIDELITY_METHOD,
+    squared_bhattacharyya_coefficient,
+)
+from wy_qcos.engine.ideal_simulator import (
+    IDEAL_SIMULATOR_NAME,
+    simulate_qasm_probabilities,
+)
 from wy_qcos.engine.qubo import (
     subqubo,
     check_matrix,
@@ -52,8 +64,15 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
     generate_all_variant_subcircuits_for_execute,
     reconstruct_probability_distribution_wire_cut,
 )
+from wy_qcos.transpiler.common.wirecut.result_cache import (
+    SubcircuitResultCache,
+)
+from wy_qcos.error_mitigation.mitigation_manager import MitigationManager
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.db.utils import db_utils
 from wy_qcos.db.database import init_database
+
+_import_module = importlib.import_module  # security issue
 
 
 class AggregationInput(RunInput):
@@ -85,11 +104,27 @@ def init_driver(
     """
     driver_module_name = driver_class_info["module_name"]
     try:
+        # security: validate module name against whitelist before import
+        if not _is_allowed_module(driver_module_name):
+            raise ValueError(
+                f"Driver module '{driver_module_name}' is not in the "
+                f"allowed import whitelist"
+            )
         # load driver module
-        driver_module = importlib.import_module(driver_module_name)
+        logger.info(f"init_driver: loading module {driver_module_name}")
+        driver_module = _import_module(driver_module_name)
+
+        # security: validate class name before dynamic attribute access
+        driver_class_name = driver_class_info["class_name"]
+        if not _is_allowed_class_name(driver_class_name):
+            raise ValueError(
+                f"Driver class name '{driver_class_name}' is not a "
+                f"valid identifier or is a dunder attribute"
+            )
 
         # initialize driver class
-        driver_class = getattr(driver_module, driver_class_info["class_name"])
+        logger.info(f"init_driver: instantiating {driver_class_name}")
+        driver_class = getattr(driver_module, driver_class_name)
         driver = driver_class()
         device_configs = device.get("configs", None)
 
@@ -98,6 +133,7 @@ def init_driver(
             driver.update_driver_options(driver_options)
 
         # validate device configs
+        logger.info("init_driver: validating driver configs")
         success, err_msg = driver.validate_driver_configs(device_configs)
         # error handling
         if not success:
@@ -108,14 +144,20 @@ def init_driver(
         driver.set_configs(device_configs)
 
         # init driver
+        logger.info("init_driver: calling driver.init_driver()")
         driver.init_driver()
+
+        if driver_options:
+            driver.update_driver_params_from_options()
 
         if job_info:
             # init job
             job_data = job_info["data"]
             remote_transpiler_configs = None
             if not job_data.get("dry_run", False):
+                logger.info("init_driver: calling driver.fetch_configs()")
                 remote_transpiler_configs = driver.fetch_configs()
+                logger.info("init_driver: fetch_configs completed")
 
             # copy cfgs to transpiler cfg inst
             static_transpiler_configs = device_configs.get("transpiler", None)
@@ -152,24 +194,56 @@ def init_driver(
 
 
 @task(persist_result=False)
-def init_transpiler(transpiler_class_info, transpiler_options):
+def init_transpiler(transpiler_class_info, transpiler_options, driver):
     """Init transpiler instance.
 
     Args:
         transpiler_class_info: transpiler class info
         transpiler_options: transpiler options
+        driver: driver
 
     Returns:
         transpiler
     """
+    transpiler_module_name = transpiler_class_info["module_name"]
     try:
-        transpiler_module = importlib.import_module(
-            transpiler_class_info["module_name"]
-        )
-        transpiler_class = getattr(
-            transpiler_module, transpiler_class_info["class_name"]
-        )
+        # security: validate module name against whitelist before import
+        if not _is_allowed_module(transpiler_module_name):
+            raise ValueError(
+                f"Transpiler module '{transpiler_module_name}' is not in "
+                f"the allowed import whitelist"
+            )
+        transpiler_module = _import_module(transpiler_module_name)
+
+        # security: validate class name before dynamic attribute access
+        transpiler_class_name = transpiler_class_info["class_name"]
+        if not _is_allowed_class_name(transpiler_class_name):
+            raise ValueError(
+                f"Transpiler class name '{transpiler_class_name}' is not "
+                f"a valid identifier or is a dunder attribute"
+            )
+
+        transpiler_class = getattr(transpiler_module, transpiler_class_name)
         transpiler = transpiler_class()
+
+        # Fill in default values from driver.transpiler_options_schema
+        # for keys missing in transpiler_options. Only Optional markers
+        # with a default value are applied; keys without a default are
+        # left untouched.
+        if transpiler_options is None:
+            transpiler_options = {}
+        schema_dict = driver.transpiler_options_schema
+        schema = Library.convert_schema(schema_dict)
+        if schema:
+            for key, _validator in schema.items():
+                key_name = getattr(key, "schema", key)
+                if not isinstance(key_name, str):
+                    continue
+                if key_name in transpiler_options:
+                    continue
+                default = getattr(key, "default", None)
+                if hasattr(key, "default"):
+                    transpiler_options[key_name] = default
         if transpiler_options:
             transpiler.update_transpiler_options(transpiler_options)
         return {"transpiler": transpiler, "error": None}
@@ -248,11 +322,12 @@ def transpile(parsed_gates, driver, transpiler):
     Returns:
         basis gate list
     """
+    final_layout_dict = {}
     num_qubits = -1
     try:
         supp_basis_gates = driver.get_supported_basis_gates()
-        transpile_results, mapping_dict = transpiler.transpile(
-            parsed_gates, supp_basis_gates
+        transpile_results, mapping_dict, final_layout_dict = (
+            transpiler.transpile(parsed_gates, supp_basis_gates)
         )
         num_qubits = transpiler.total_qubits
         logger.info(f"final transpiled_result: {transpile_results}")
@@ -260,6 +335,7 @@ def transpile(parsed_gates, driver, transpiler):
             "transpile_results": transpile_results,
             "mapping_dict": mapping_dict,
             "num_qubits": num_qubits,
+            "final_layout_dict": final_layout_dict,
             "error": None,
         }
     except Exception as e:
@@ -267,23 +343,146 @@ def transpile(parsed_gates, driver, transpiler):
             "transpile_results": None,
             "mapping_dict": None,
             "num_qubits": num_qubits,
+            "final_layout_dict": final_layout_dict,
             "error": ValueError(str(e)),
         }
 
 
+def _run_calibration_circuits(driver, transpiler, job_info, cal_circuits):
+    """Execute calibration circuits through the driver pipeline.
+
+    Generates QASM from each calibration QuantumCircuit, parses and
+    transpiles it, then runs it through the driver to collect counts.
+
+    Args:
+        driver: Initialized driver instance.
+        transpiler: Initialized transpiler instance.
+        job_info: Job info dict.
+        cal_circuits: List of calibration circuit descriptors from
+            MitigationManager.get_calibration_circuits().
+
+    Returns:
+        Dict mapping (qubit, prepared_state) to counts dict.
+    """
+    job_data = job_info["data"]
+    job_id = job_data["job_id"]
+    shots = job_data.get("shots", Constant.DEFAULT_SHOTS)
+    code_type = job_data.get("code_type", Constant.CODE_TYPE_QASM)
+
+    calibration_results = {}
+
+    for cal_desc in cal_circuits:
+        qc = cal_desc["circuit"]
+        qubit = cal_desc.get("qubit")
+        prepared_state = cal_desc.get("prepared_state")
+        cal_shots = cal_desc.get("shots", shots)
+
+        try:
+            converter = QasmConverter(qc)
+            qasm_str = converter.to_qasm2()
+        except Exception as exc:
+            logger.warning(
+                "Failed to convert calibration circuit (qubit={}, state={}) "
+                "to QASM: {}",
+                qubit,
+                prepared_state,
+                exc,
+            )
+            continue
+
+        cal_src_dict = {f"{job_id}-cal-{qubit}-{prepared_state}": qasm_str}
+        try:
+            parse_result, _ = flow_parse(cal_src_dict, transpiler, code_type)
+            if "error" in parse_result and parse_result["error"]:
+                logger.warning(
+                    "Calibration parse failed (qubit={}, state={}): {}",
+                    qubit,
+                    prepared_state,
+                    parse_result["error"],
+                )
+                continue
+
+            transpile_result, _ = flow_transpile(
+                parse_result["parsed_src_code"], transpiler, driver
+            )
+            if "error" in transpile_result and transpile_result["error"]:
+                logger.warning(
+                    "Calibration transpile failed (qubit={}, state={}): {}",
+                    qubit,
+                    prepared_state,
+                    transpile_result["error"],
+                )
+                continue
+
+            cal_data = {
+                "index": f"cal_{qubit}_{prepared_state}",
+                "source_code": qasm_str,
+                "transpile_results": transpile_result.get("transpile_results"),
+            }
+
+            driver.run(
+                job_id,
+                qc.num_qubits,
+                cal_data,
+                data_type=driver.get_default_data_type(),
+                shots=cal_shots,
+            )
+
+            cal_counts = driver.get_results(job_id, cal_data["index"])
+            if cal_counts:
+                if qubit not in calibration_results:
+                    calibration_results[qubit] = {}
+                calibration_results[qubit][prepared_state] = cal_counts
+
+        except Exception as exc:
+            logger.warning(
+                "Calibration circuit execution failed "
+                "(qubit={}, state={}): {}",
+                qubit,
+                prepared_state,
+                exc,
+            )
+
+    return calibration_results
+
+
+def _apply_zne_circuit_transform(transpile_results):
+    """Apply ZNE CZ-tripling to transpiled gate sequence.
+
+    Args:
+        transpile_results: List of transpiled gate operations.
+
+    Returns:
+        New gate list with each CZ gate tripled.
+    """
+    from wy_qcos.error_mitigation.zne_mitigation import apply_zne_cz_tripling
+    from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+
+    if transpile_results is None:
+        return None
+
+    qc = QuantumCircuit.from_ir(transpile_results)
+    scaled_qc = apply_zne_cz_tripling(qc)
+    return scaled_qc.get_operations()
+
+
 @task(persist_result=False)
-def driver_run(job_info, driver, num_qubits, data):
-    """Driver: run job.
+def driver_run(job_info, driver, num_qubits, data, transpiler=None):
+    """Driver: run job with optional error mitigation.
 
     Args:
         job_info: job info
         driver: driver
         num_qubits: number of qubits
         data: data
+        transpiler: transpiler instance (needed for calibration circuits)
 
     Returns:
         results
     """
+    error_message = None
+    vendor_error_code = None
+    vendor_error_message = None
     try:
         job_data = job_info["data"]
         job_id = job_data["job_id"]
@@ -291,6 +490,79 @@ def driver_run(job_info, driver, num_qubits, data):
         dry_run = job_data.get("dry_run", False)
         data_type = driver.get_default_data_type()
         qec_options = job_data.get("qec_options", None)
+        qem_options = job_data.get("qem_options", None)
+
+        mitigation_mgr = None
+        mitigation_metadata = None
+
+        if qem_options and not dry_run:
+            mitigation_mgr = MitigationManager()
+            mitigation_mgr.configure(qem_options)
+
+            if mitigation_mgr.has_enabled():
+                device_configs = job_info.get("device", {}).get("configs", {})
+                valid, err_msg = mitigation_mgr.validate_device(device_configs)
+                if not valid:
+                    logger.warning(
+                        "Error mitigation device validation failed: {}",
+                        err_msg,
+                    )
+                    mitigation_mgr = None
+                else:
+                    needs_calib = mitigation_mgr.needs_calibration()
+                    if needs_calib and transpiler is not None:
+                        from wy_qcos.common.cmss.quantum_circuit import (
+                            QuantumCircuit,
+                        )
+
+                        dummy_qc = QuantumCircuit(num_qubits)
+                        target_qubits = list(range(num_qubits))
+                        cal_circuits_dict = (
+                            mitigation_mgr.get_calibration_circuits(
+                                dummy_qc, target_qubits
+                            )
+                        )
+
+                        all_cal_circuits = []
+                        for tech_name, circuits in cal_circuits_dict.items():
+                            all_cal_circuits.extend(circuits)
+
+                        if all_cal_circuits:
+                            logger.info(
+                                "Running {} calibration circuits for {}",
+                                len(all_cal_circuits),
+                                needs_calib,
+                            )
+                            cal_results = _run_calibration_circuits(
+                                driver,
+                                transpiler,
+                                job_info,
+                                all_cal_circuits,
+                            )
+
+                            rem_tech = mitigation_mgr.get_technique(
+                                "rem"
+                            ) or mitigation_mgr.get_technique("readout")
+                            if rem_tech and hasattr(
+                                rem_tech, "process_calibration_results"
+                            ):
+                                calib_data = (
+                                    rem_tech.process_calibration_results(
+                                        cal_results, target_qubits
+                                    )
+                                )
+                                mitigation_mgr.store_calibration_data(
+                                    "readout", calib_data
+                                )
+                                logger.info(
+                                    "REM calibration complete for {} qubits",
+                                    len(
+                                        calib_data.get(
+                                            "per_qubit_confusion", {}
+                                        )
+                                    ),
+                                )
+
         if dry_run:
             driver.dry_run(
                 job_id,
@@ -310,9 +582,168 @@ def driver_run(job_info, driver, num_qubits, data):
                 qec_options=qec_options,
             )
 
-        return format_run_results(driver, job_id, data["index"])
+        # post run
+        post_run(driver)
+
+        # done
+        driver.set_progress_by_task(driver.TASK_STAGE_COMPLETE)
+
+        run_results = format_run_results(driver, job_id, data["index"])
+
+        if mitigation_mgr and mitigation_mgr.has_enabled():
+            original_counts = run_results.get("results")
+            if original_counts and isinstance(original_counts, dict):
+                variant_results = {"original": original_counts}
+
+                zne_tech = mitigation_mgr.get_technique("zne")
+                if zne_tech and zne_tech.enabled and not dry_run:
+                    try:
+                        scaled_ops = _apply_zne_circuit_transform(
+                            data.get("transpile_results")
+                        )
+                        if scaled_ops is not None:
+                            scaled_data = {
+                                "index": f"{data['index']}_zne_scaled",
+                                "source_code": data.get("source_code", ""),
+                                "transpile_results": scaled_ops,
+                            }
+                            driver.run(
+                                job_id,
+                                num_qubits,
+                                scaled_data,
+                                data_type=data_type,
+                                shots=shots,
+                                qec_options=qec_options,
+                            )
+                            scaled_counts = driver.get_results(
+                                job_id, scaled_data["index"]
+                            )
+                            if scaled_counts:
+                                variant_results["scaled"] = scaled_counts
+                                logger.info(
+                                    "ZNE scaled circuit executed successfully"
+                                )
+                    except Exception as exc:
+                        logger.warning(
+                            "ZNE scaled circuit execution failed: {}", exc
+                        )
+
+                mitigated_output = mitigation_mgr.postprocess_results(
+                    variant_results,
+                    num_qubits=num_qubits,
+                    target_qubits=list(range(num_qubits)),
+                )
+
+                mitigated_counts = mitigated_output.get("results", {})
+                if isinstance(mitigated_counts, dict):
+                    first_key = next(iter(mitigated_counts), None)
+                    if first_key and isinstance(
+                        mitigated_counts[first_key], dict
+                    ):
+                        best_result = next(iter(mitigated_counts.values()))
+                        run_results["results"] = best_result
+                    elif first_key and isinstance(
+                        mitigated_counts[first_key], int
+                    ):
+                        run_results["results"] = mitigated_counts
+
+                mitigation_metadata = mitigated_output.get(
+                    "mitigation_metadata"
+                )
+                if mitigation_metadata:
+                    if "metadata" not in run_results:
+                        run_results["metadata"] = {}
+                    run_results["metadata"]["mitigation"] = mitigation_metadata
+                    logger.info(
+                        "Error mitigation applied: techniques={}",
+                        mitigation_metadata.get("techniques_applied", []),
+                    )
+
+        return run_results
+    except BaseException as e:
+        error_message = e.get_message()
+        vendor_error_code = e.get_vendor_error_code()
+        vendor_error_message = e.get_vendor_err_msgs()
     except Exception as e:
-        return {"results": None, "metadata": {}, "error": ValueError(str(e))}
+        error_message = str(e)
+
+    return {
+        "results": None,
+        "metadata": {},
+        "error": {
+            "error": error_message,
+            "vendor_error_code": vendor_error_code,
+            "vendor_error_message": vendor_error_message,
+        },
+    }
+
+
+@task(persist_result=False)
+def driver_run_batch(job_info, driver, data_list):
+    """Run multiple independent circuits through a native driver batch API."""
+    try:
+        job_data = job_info["data"]
+        job_id = job_data["job_id"]
+        shots = job_data.get("shots", Constant.DEFAULT_SHOTS)
+        dry_run = job_data.get("dry_run", False)
+        data_type = driver.get_default_data_type()
+        qec_options = job_data.get("qec_options", None)
+
+        if dry_run:
+            for data in data_list:
+                driver.dry_run(
+                    job_id,
+                    data["num_qubits"],
+                    data,
+                    data_type=data_type,
+                    shots=shots,
+                    qec_options=qec_options,
+                )
+        else:
+            driver.run_batch(
+                job_id,
+                data_list,
+                data_type=data_type,
+                shots=shots,
+                qec_options=qec_options,
+            )
+
+        post_run(driver)
+        driver.set_progress_by_task(driver.TASK_STAGE_COMPLETE)
+        return {
+            "results": [
+                format_run_results(driver, job_id, data["index"])
+                for data in data_list
+            ],
+            "error": None,
+        }
+    except Exception as e:
+        return {"results": None, "error": ValueError(str(e))}
+
+
+def post_run(driver):
+    """Post run task.
+
+    Args:
+        driver: device driver
+    """
+    sleep = driver.driver_options.get("sleep", None)
+    if sleep:
+        current_progress = driver.get_progress()
+        progress_range = 100 - current_progress
+
+        sleep_count = 1
+        while sleep_count <= sleep:
+            logger.info(f"sleep: {sleep_count} / {sleep}")
+
+            # Calculate progress within wait_task to complete range
+            progress_ratio = sleep_count / sleep
+            new_progress = int(
+                current_progress + progress_ratio * progress_range
+            )
+            driver.set_progress(new_progress)
+            sleep_count += 1
+            time.sleep(1)
 
 
 def driver_cancel(job_id, driver):
@@ -326,8 +757,6 @@ def driver_cancel(job_id, driver):
         logger.info(f"Cancel job: job_id: {job_id}")
         if driver:
             driver.cancel(job_id)
-        else:
-            logger.error(f"Cancel job: job_id: {job_id}. driver is not found")
     except Exception as e:
         logger.error(f"Cancel job: job_id: {job_id} failed. {str(e)}")
 
@@ -605,7 +1034,7 @@ def job_flow(job_info):
     Returns:
         results
     """
-    worker_started_at = Library.get_current_datetime()
+    worker_started_at = time.time()
     job_data = job_info["data"]
     job_id = job_data["job_id"]
     global_configs = job_info["global"]["configs"]
@@ -613,8 +1042,10 @@ def job_flow(job_info):
     backend = job_data["backend"]
     flow_run_id = flow_run.id
     callbacks = job_data.get("callbacks", None)
-    job_enqueue_at = datetime.fromisoformat(job_data["job_enqueue_at"])
-    profiling_scheduling_duration = job_data["job_schedule_duration"]
+    job_enqueue_at = job_data["job_enqueue_at"]
+    scheduling_started_at = job_data["job_schedule_started_at"]
+    scheduling_ended_at = job_data["job_schedule_ended_at"]
+    scheduling_duration = job_data["job_schedule_duration"]
     monitor_info = {
         "job_id": job_id,
         "flow_run_id": flow_run_id,
@@ -626,8 +1057,7 @@ def job_flow(job_info):
             "user_id": job_data.get("user_id", None),
         },
         "redis": {
-            "ip": global_configs["REDIS"].get("REDIS_SERVER_IP", None),
-            "port": global_configs["REDIS"].get("REDIS_SERVER_PORT", None),
+            "url": global_configs["REDIS"].get("REDIS_URL", None),
         },
         "running": True,
         "driver": None,
@@ -664,31 +1094,37 @@ def job_flow(job_info):
 
     # init db engine
     try:
+        logger.info(f"Initializing database for job_id: {job_id}")
         db_url = global_configs["DATABASE"]["QCOS_DATABASE_CONNECTION_URL"]
         db_engine = init_database(db_url)
         monitor_info["db_engine"] = db_engine
         db_utils.set_db_engine(db_engine)
+        logger.info(f"Database initialized for job_id: {job_id}")
     except Exception as e:
         logger.error(f"Failed to initialize database: {str(e)}")
         db_engine = None
 
     # update job status to RUNNING and set started_at
+    logger.info(f"Updating job status to RUNNING for job_id: {job_id}")
     db_utils.db_update_job(
         job_id,
         db_engine,
         job_status=Constant.JOB_STATUS_RUNNING,
-        started_at=worker_started_at,
+        started_at=Library.to_iso(worker_started_at),
         progress=-1,
     )
 
     # register signals for job cancelling
+    logger.info(f"Registering signals for job_id: {job_id}")
     register_signals(job_id, monitor_info)
 
     # record parse start_time
     profiling_code_start = time.time()
 
     # start task-monitor
+    logger.info(f"Starting task_monitor for job_id: {job_id}")
     flow_task_monitor(monitor_info)
+    logger.info(f"task_monitor started for job_id: {job_id}")
 
     # handle aggregation jobs
     aggregation_info = None
@@ -696,19 +1132,32 @@ def job_flow(job_info):
     if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
         # circuit_aggregation(multi) tag flow run will automatically paused
         # here waiting for aggregation_info generated by task manager
-        redis_instance = redis.Redis(
-            host=monitor_info["redis"]["ip"],
-            port=monitor_info["redis"]["port"],
-            decode_responses=True,
-        )
-        # publish agg flow by redis
+        # [LEAK-FIX] Use a short-lived redis instance only for the publish
+        # call, then explicitly close its connection pool. Previously the
+        # instance was created and never closed, so under high aggregation
+        # throughput the GC timing was non-deterministic and idle sockets
+        # accumulated in redis-server. Closing immediately after publish
+        # (before the blocking pause_flow_run) minimizes socket hold time.
         channel_name = f"{Constant.REDIS_CHANNEL_JOB_AGG_PREFIX}/{flow_run_id}"
         flow_agg_info = {
             "flow_run_id": flow_run_id,
             "aggregation_type": src_code_info.aggregation_type,
             "cancel": False,
         }
-        redis_instance.publish(channel_name, json.dumps(flow_agg_info))
+        redis_instance = redis.Redis.from_url(
+            monitor_info["redis"]["url"],
+            decode_responses=True,
+            protocol=2,
+        )
+        try:
+            redis_instance.publish(channel_name, json.dumps(flow_agg_info))
+        finally:
+            try:
+                redis_instance.close()
+            except Exception as close_err:
+                logger.debug(
+                    f"Error closing aggregation redis instance: {close_err}"
+                )
         aggregation_info = pause_flow_run(
             wait_for_input=AggregationInput, poll_interval=1
         )
@@ -729,7 +1178,7 @@ def job_flow(job_info):
                 sub_job_id,
                 db_engine,
                 job_status=Constant.JOB_STATUS_RUNNING,
-                started_at=worker_started_at,
+                started_at=Library.to_iso(worker_started_at),
                 progress=-1,
             )
             monitor_info["agg_sub_job_list"].append(sub_job_id)
@@ -762,17 +1211,33 @@ def job_flow(job_info):
         )
         source_code_index += len(src_code_dict)
         # profiling: job
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_SCHEDULING_STARTED_AT
+        ] = Library.to_iso(scheduling_started_at)
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_SCHEDULING_ENDED_AT
+        ] = Library.to_iso(scheduling_ended_at)
         job_results["profiling"][Constant.PROFILING_TYPE_SCHEDULING] = round(
-            profiling_scheduling_duration, 5
+            scheduling_duration, 5
         )
-        profiling_queuing_duration = (
-            worker_started_at - job_enqueue_at
-        ).total_seconds()
+        profiling_queuing_duration = worker_started_at - job_enqueue_at
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_QUEUING_STARTED_AT
+        ] = Library.to_iso(worker_started_at)
+        job_results["profiling"][Constant.PROFILING_TYPE_QUEUING_ENDED_AT] = (
+            Library.to_iso(job_enqueue_at)
+        )
         job_results["profiling"][Constant.PROFILING_TYPE_QUEUING] = round(
             profiling_queuing_duration, 5
         )
         profiling_code_end = time.time()
         profiling_code_duration = profiling_code_end - profiling_code_start
+        job_results["profiling"][Constant.PROFILING_TYPE_CODE_STARTED_AT] = (
+            Library.to_iso(profiling_code_start)
+        )
+        job_results["profiling"][Constant.PROFILING_TYPE_CODE_ENDED_AT] = (
+            Library.to_iso(profiling_code_end)
+        )
         job_results["profiling"][Constant.PROFILING_TYPE_CODE] = round(
             profiling_code_duration, 5
         )
@@ -850,11 +1315,18 @@ def _run_code(
     }
 
     # [flow_parse]
-    parse_results, profiling_time = flow_parse(
+    parse_results, parse_profiling = flow_parse(
         src_code_dict, transpiler, code_type
     )
+
+    job_results["profiling"][
+        Constant.PROFILING_TYPE_DRIVER_PARSE_STARTED_AT
+    ] = Library.to_iso(parse_profiling["parse_started_at"])
+    job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE_ENDED_AT] = (
+        Library.to_iso(parse_profiling["parse_ended_at"])
+    )
     job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_PARSE] = round(
-        profiling_time, 5
+        parse_profiling["parse_duration"], 5
     )
 
     # parser: error handling
@@ -866,13 +1338,19 @@ def _run_code(
         return job_results, driver, transpiler, mapping_dict
 
     # [flow_transpile]
-    transpile_task_results, profiling_time = flow_transpile(
+    transpile_task_results, transpile_profiling = flow_transpile(
         parse_results["parsed_src_code"],
         transpiler,
         driver,
     )
+    job_results["profiling"][
+        Constant.PROFILING_TYPE_DRIVER_TRANSPILE_STARTED_AT
+    ] = Library.to_iso(transpile_profiling["transpile_started_at"])
+    job_results["profiling"][
+        Constant.PROFILING_TYPE_DRIVER_TRANSPILE_ENDED_AT
+    ] = Library.to_iso(transpile_profiling["transpile_ended_at"])
     job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_TRANSPILE] = round(
-        profiling_time, 5
+        transpile_profiling["transpile_duration"], 5
     )
 
     # transpile: error handling
@@ -886,10 +1364,17 @@ def _run_code(
 
     transpile_results = transpile_task_results.get("transpile_results", None)
     num_qubits = transpile_task_results.get("num_qubits", None)
+    final_layout_dict = transpile_task_results.get("final_layout_dict", None)
     if transpile_results is None or num_qubits is None:
         raise ValueError("unexpected transpile_results or num_qubits")
     job_results["num_qubits"] = num_qubits
-    source_code = next(iter(src_code_dict.values()))
+    source_codes = list(src_code_dict.values())
+    source_code = source_codes[0] if len(source_codes) == 1 else source_codes
+    if mapping_dict is None and len(source_codes) > 1:
+        mapping_dict = {
+            key: parsed_code[0]
+            for key, parsed_code in parse_results["parsed_src_code"].items()
+        }
 
     if driver:
         # [flow_run_driver]
@@ -897,34 +1382,69 @@ def _run_code(
             "index": source_code_index,
             "source_code": source_code,
             "transpile_results": transpile_results,
+            "final_layout_dict": final_layout_dict,
         }
 
-        run_results, profiling_time = flow_run_driver(
-            job_info, num_qubits, driver, data
+        run_results, driver_run_profiling = flow_run_driver(
+            job_info, num_qubits, driver, data, transpiler=transpiler
         )
 
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_DRIVER_RUN_STARTED_AT
+        ] = Library.to_iso(driver_run_profiling["driver_run_started_at"])
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_DRIVER_RUN_ENDED_AT
+        ] = Library.to_iso(driver_run_profiling["driver_run_ended_at"])
         job_results["profiling"][Constant.PROFILING_TYPE_DRIVER_RUN] = round(
-            profiling_time, 5
+            driver_run_profiling["driver_run_duration"], 5
         )
-        profiling_queuing_duration = None
-        machine_time_info = run_results.get("machine_time_info", None)
-        if machine_time_info:
-            profiling_queuing_duration = round(machine_time_info, 5)
-        job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
-            profiling_queuing_duration
+
+        # profiling
+        machine_started_at = None
+        machine_ended_at = None
+        machine_duration = None
+        machine_profiling = run_results.get("machine_profiling", None)
+        if machine_profiling:
+            machine_started_at = machine_profiling.get(
+                "machine_started_at", None
+            )
+            machine_ended_at = machine_profiling.get("machine_ended_at", None)
+            machine_duration = machine_profiling.get("machine_duration", None)
+        job_results["profiling"][
+            Constant.PROFILING_TYPE_MACHINE_STARTED_AT
+        ] = Library.to_iso(machine_started_at)
+        job_results["profiling"][Constant.PROFILING_TYPE_MACHINE_ENDED_AT] = (
+            Library.to_iso(machine_ended_at)
         )
+        if machine_duration:
+            job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = round(
+                machine_duration, 5
+            )
+        else:
+            job_results["profiling"][Constant.PROFILING_TYPE_MACHINE] = (
+                machine_duration
+            )
 
         # run: error handling
-        err_msg = run_results.get("error", None)
-        if err_msg:
+        err_dict = run_results.get("error", None)
+        if err_dict:
+            vendor_error_code = err_dict.get("vendor_error_code", None)
+            vendor_error_message = err_dict.get("vendor_error_message", None)
+            err_msg = err_dict.get("error", None)
             job_results = format_error_results(
-                driver, errors.JobEngineDriverRunError, err_msg
+                driver,
+                errors.JobEngineDriverRunError,
+                err_msg,
+                vendor_error_code=vendor_error_code,
+                vendor_error_message=vendor_error_message,
             )
             return job_results, driver, transpiler, mapping_dict
 
         # prepare job_results
         job_results["results"] = run_results["results"]
         job_results["metadata"] = run_results["metadata"]
+        if "raw_results" in run_results:
+            job_results["metadata"]["raw_results"] = run_results["raw_results"]
 
     return job_results, driver, transpiler, mapping_dict
 
@@ -984,6 +1504,7 @@ def run_code(
         future_transpiler = init_transpiler.submit(
             job_info["transpiler"],
             job_data.get("transpiler_options", None),
+            driver,
         )
         transpiler_task_result = future_transpiler.result()
         # init transpiler: error handling
@@ -1398,7 +1919,114 @@ def run_circuit_code(
                     transpiler,
                 )
             )
+    compute_fidelity = (job_info["data"].get("driver_options") or {}).get(
+        "compute_fidelity", False
+    )
+    if compute_fidelity:
+        metadata = job_results.get("metadata")
+        if (
+            isinstance(metadata, dict)
+            and metadata.get("status") == Constant.JOB_STATUS_COMPLETED
+        ):
+            benchmark = metadata.setdefault("benchmark", {})
+            benchmark["ideal_source"] = IDEAL_SIMULATOR_NAME
+            try:
+                ideal_probabilities = simulate_qasm_probabilities(src_code)
+                benchmark["ideal_probabilities"] = ideal_probabilities
+                attach_fidelity_benchmark(
+                    job_results,
+                    ideal_probabilities,
+                )
+            except Exception as error:
+                benchmark.setdefault("errors", {})["ideal_simulation"] = str(
+                    error
+                )
+                logger.warning(
+                    f"Automatic ideal probability calculation skipped: {error}"
+                )
     return job_results, driver, transpiler, mapping_dict
+
+
+def _prepare_wirecut_batch_data(
+    batch_indices,
+    source_code_index,
+    src_sub_code_dict,
+    job_info,
+    driver,
+    transpiler,
+):
+    """Compile wirecut subcircuits independently for native batch execution.
+
+    Native batch submission is not circuit aggregation. Each subcircuit must
+    therefore be parsed, mapped, and transpiled independently before the
+    driver receives a list of circuits.
+    """
+    job_id = job_info["data"]["job_id"]
+    code_type = job_info["data"]["code_type"]
+    batch_data = []
+    batch_mapping = {}
+
+    for subcircuit_index in batch_indices:
+        sub_source_code_index = f"{source_code_index}-{subcircuit_index}"
+        sub_code_key = job_id + sub_source_code_index
+        source_code = src_sub_code_dict[sub_code_key]
+        single_src_code_dict = {sub_code_key: source_code}
+
+        parse_results, _ = flow_parse(
+            single_src_code_dict, transpiler, code_type
+        )
+        err_msg = parse_results.get("error", None)
+        if err_msg:
+            return (
+                None,
+                format_error_results(
+                    driver, errors.JobEngineParseError, err_msg
+                ),
+                batch_mapping,
+            )
+
+        transpile_results, _ = flow_transpile(
+            parse_results["parsed_src_code"], transpiler, driver
+        )
+        err_msg = transpile_results.get("error", None)
+        if err_msg:
+            return (
+                None,
+                format_error_results(
+                    driver, errors.JobEngineTranspileError, err_msg
+                ),
+                batch_mapping,
+            )
+
+        final_code = transpile_results.get("transpile_results", None)
+        num_qubits = transpile_results.get("num_qubits", None)
+        if final_code is None or num_qubits is None:
+            return (
+                None,
+                format_error_results(
+                    driver,
+                    errors.JobEngineTranspileError,
+                    "unexpected transpile_results or num_qubits",
+                ),
+                batch_mapping,
+            )
+
+        circuit_mapping = transpile_results.get("mapping_dict", None)
+        if isinstance(circuit_mapping, dict):
+            batch_mapping.update(circuit_mapping)
+        else:
+            batch_mapping[sub_code_key] = num_qubits
+        batch_data.append({
+            "index": sub_source_code_index,
+            "source_code": source_code,
+            "transpile_results": final_code,
+            "final_layout_dict": transpile_results.get(
+                "final_layout_dict", None
+            ),
+            "num_qubits": num_qubits,
+        })
+
+    return batch_data, None, batch_mapping
 
 
 def run_circuit_cutting_code(
@@ -1452,8 +2080,9 @@ def run_circuit_cutting_code(
         is_complete_reconstruction = False
         max_memory = Constant.DD_MAX_MEMORY
     # Step 1: Generate all subcircuits
+    generation_started_at = time.perf_counter()
     try:
-        _, subcircuits, cut_wire = (
+        original_subcircuits, subcircuits, cut_wire = (
             generate_all_variant_subcircuits_for_execute(
                 max_subcircuit_width=wirecut_qubit_width,
                 qasm=src_code,
@@ -1471,27 +2100,289 @@ def run_circuit_cutting_code(
             transpiler,
             None,
         )
+    generation_duration = time.perf_counter() - generation_started_at
+    subcircuits_dict = getattr(cut_wire, "subcircuits_dict", None)
+    variant_count = (
+        sum(len(variants) for variants in subcircuits_dict.values())
+        if isinstance(subcircuits_dict, dict)
+        else len(subcircuits)
+    )
+    logger.info(
+        f"Wirecut subcircuits generated: job_id={job_id}, "
+        f"source_code_index={source_code_index}, "
+        f"original_count={len(original_subcircuits)}, "
+        f"variant_count={variant_count}, "
+        f"executable_count={len(subcircuits)}, "
+        f"num_cuts={getattr(cut_wire, 'num_cuts', 'unknown')}, "
+        f"max_width={wirecut_qubit_width}, "
+        f"duration_seconds={generation_duration:.6f}"
+    )
     # Step 2: Execute all subcircuits
-    sub_results = []
-    for i in range(len(subcircuits)):
-        src_sub_code_dict = {}
-        sub_source_code_index = f"{str(source_code_index)}-{str(i)}"
-        src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
+    result_cache = SubcircuitResultCache.from_job_info(job_info)
+    sub_results = [None] * len(subcircuits)
+    mapping_dict = None
+    job_results = {
+        "results": None,
+        "num_qubits": num_qubits,
+        "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+        "profiling": {},
+        "sub_results": None,
+    }
+    total_subcircuits = len(subcircuits)
+    executed_count = 0
+    cache_hit_count = 0
+    execution_batch_started_at = time.perf_counter()
+    uncached_indices = []
+    src_sub_code_dict = {}
+    for i in range(total_subcircuits):
+        cached_result = result_cache.get(subcircuits[i], job_info)
+        if cached_result is not None:
+            cache_hit_count += 1
+            logger.info(
+                f"Wirecut subcircuit execution skipped: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"reason=result_cache_hit"
+            )
+            sub_results[i] = counts_to_probs(cached_result)
+        else:
+            uncached_indices.append(i)
+            sub_source_code_index = f"{source_code_index}-{i}"
+            src_sub_code_dict[job_id + sub_source_code_index] = subcircuits[i]
+
+    supports_circuit_aggregation = (
+        getattr(driver, "enable_circuit_aggregation", False) is True
+    )
+    supports_batch_submission = (
+        getattr(driver, "enable_batch_submission", False) is True
+    )
+    if src_sub_code_dict and supports_batch_submission:
+        max_batch_circuits = getattr(driver, "max_batch_circuits", 1)
+        if (
+            isinstance(max_batch_circuits, bool)
+            or not isinstance(max_batch_circuits, int)
+            or max_batch_circuits < 1
+        ):
+            max_batch_circuits = 1
+
+        for batch_start in range(0, len(uncached_indices), max_batch_circuits):
+            batch_indices = uncached_indices[
+                batch_start : batch_start + max_batch_circuits
+            ]
+            logger.info(
+                f"Wirecut subcircuit native batch execution started: "
+                f"job_id={job_id}, source_code_index={source_code_index}, "
+                f"batch_size={len(batch_indices)}"
+            )
+            batch_started_at = time.perf_counter()
+            batch_data, preparation_error, batch_mapping = (
+                _prepare_wirecut_batch_data(
+                    batch_indices,
+                    source_code_index,
+                    src_sub_code_dict,
+                    job_info,
+                    driver,
+                    transpiler,
+                )
+            )
+            if preparation_error is not None:
+                return (
+                    preparation_error,
+                    driver,
+                    transpiler,
+                    batch_mapping or mapping_dict,
+                )
+            if mapping_dict is None:
+                mapping_dict = {}
+            mapping_dict.update(batch_mapping)
+
+            batch_run_results, _ = flow_run_driver_batch(
+                job_info, driver, batch_data
+            )
+            err_msg = batch_run_results.get("error", None)
+            if err_msg:
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineDriverRunError, err_msg
+                    ),
+                    driver,
+                    transpiler,
+                    mapping_dict,
+                )
+
+            batch_results = batch_run_results.get("results", None)
+            if not isinstance(batch_results, list) or len(
+                batch_results
+            ) != len(batch_indices):
+                err_msg = (
+                    "Wirecut native batch result count does not match "
+                    "submitted subcircuits"
+                )
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineCircuitCuttingError, err_msg
+                    ),
+                    driver,
+                    transpiler,
+                    mapping_dict,
+                )
+
+            for i, batch_result in zip(batch_indices, batch_results):
+                execution_status = batch_result["metadata"]["status"]
+                if execution_status != Constant.JOB_STATUS_COMPLETED:
+                    return batch_result, driver, transpiler, mapping_dict
+                result = batch_result.get("results")
+                if result is None:
+                    err_msg = (
+                        f"Wirecut subcircuit {i} completed without results"
+                    )
+                    return (
+                        format_error_results(
+                            driver,
+                            errors.JobEngineCircuitCuttingError,
+                            err_msg,
+                        ),
+                        driver,
+                        transpiler,
+                        mapping_dict,
+                    )
+                executed_count += 1
+                result_cache.set(subcircuits[i], job_info, result)
+                sub_results[i] = counts_to_probs(result)
+
+            batch_duration = time.perf_counter() - batch_started_at
+            logger.info(
+                f"Wirecut subcircuit native batch result received: "
+                f"job_id={job_id}, source_code_index={source_code_index}, "
+                f"batch_size={len(batch_indices)}, "
+                f"duration_seconds={batch_duration:.6f}"
+            )
+    elif src_sub_code_dict and supports_circuit_aggregation:
+        logger.info(
+            f"Wirecut subcircuit batch execution started: job_id={job_id}, "
+            f"source_code_index={source_code_index}, "
+            f"batch_size={len(src_sub_code_dict)}"
+        )
+        execution_started_at = time.perf_counter()
         job_results, driver, transpiler, mapping_dict = _run_code(
-            sub_source_code_index,
+            source_code_index,
             src_sub_code_dict,
             job_info,
             driver,
             transpiler,
         )
-        if job_results["metadata"]["status"] != "COMPLETED":
+        execution_duration = time.perf_counter() - execution_started_at
+        execution_status = job_results["metadata"]["status"]
+        if execution_status != Constant.JOB_STATUS_COMPLETED:
+            logger.warning(
+                f"Wirecut subcircuit batch execution failed: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"batch_size={len(src_sub_code_dict)}, "
+                f"status={execution_status}, "
+                f"duration_seconds={execution_duration:.6f}"
+            )
             return job_results, driver, transpiler, mapping_dict
-        if (
-            job_results["metadata"]["status"] == "COMPLETED"
-            and job_results["results"] is not None
-        ):
-            sub_result = counts_to_probs(job_results["results"])
-            sub_results.append(sub_result)
+
+        if len(uncached_indices) == 1:
+            batch_results = [job_results]
+        else:
+            batch_results = get_internal_aggregated_results(
+                job_results, mapping_dict
+            )
+        if len(batch_results) != len(uncached_indices):
+            err_msg = "Wirecut batch result count does not match subcircuits"
+            return (
+                format_error_results(
+                    driver, errors.JobEngineCircuitCuttingError, err_msg
+                ),
+                driver,
+                transpiler,
+                mapping_dict,
+            )
+
+        for i, batch_result in zip(uncached_indices, batch_results):
+            result = batch_result.get("results")
+            if result is None:
+                continue
+            executed_count += 1
+            result_cache.set(subcircuits[i], job_info, result)
+            sub_results[i] = counts_to_probs(result)
+        logger.info(
+            f"Wirecut subcircuit batch result received: job_id={job_id}, "
+            f"source_code_index={source_code_index}, "
+            f"batch_size={len(src_sub_code_dict)}, "
+            f"status={execution_status}, "
+            f"duration_seconds={execution_duration:.6f}"
+        )
+    elif src_sub_code_dict:
+        logger.info(
+            f"Wirecut subcircuit individual execution started: "
+            f"job_id={job_id}, source_code_index={source_code_index}, "
+            f"count={len(src_sub_code_dict)}, "
+            f"reason=driver_does_not_support_circuit_aggregation"
+        )
+        for i in uncached_indices:
+            sub_source_code_index = f"{source_code_index}-{i}"
+            sub_code_key = job_id + sub_source_code_index
+            single_src_code_dict = {
+                sub_code_key: src_sub_code_dict[sub_code_key]
+            }
+            logger.info(
+                f"Wirecut subcircuit execution started: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}"
+            )
+            execution_started_at = time.perf_counter()
+            job_results, driver, transpiler, mapping_dict = _run_code(
+                sub_source_code_index,
+                single_src_code_dict,
+                job_info,
+                driver,
+                transpiler,
+            )
+            execution_duration = time.perf_counter() - execution_started_at
+            execution_status = job_results["metadata"]["status"]
+            if execution_status != Constant.JOB_STATUS_COMPLETED:
+                logger.warning(
+                    f"Wirecut subcircuit execution failed: job_id={job_id}, "
+                    f"source_code_index={source_code_index}, "
+                    f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                    f"status={execution_status}, "
+                    f"duration_seconds={execution_duration:.6f}"
+                )
+                return job_results, driver, transpiler, mapping_dict
+
+            result = job_results.get("results")
+            if result is None:
+                err_msg = f"Wirecut subcircuit {i} completed without results"
+                return (
+                    format_error_results(
+                        driver, errors.JobEngineCircuitCuttingError, err_msg
+                    ),
+                    driver,
+                    transpiler,
+                    mapping_dict,
+                )
+
+            executed_count += 1
+            result_cache.set(subcircuits[i], job_info, result)
+            sub_results[i] = counts_to_probs(result)
+            logger.info(
+                f"Wirecut subcircuit result received: job_id={job_id}, "
+                f"source_code_index={source_code_index}, "
+                f"subcircuit={i + 1}/{total_subcircuits}, index={i}, "
+                f"status={execution_status}, "
+                f"duration_seconds={execution_duration:.6f}"
+            )
+    execution_batch_duration = time.perf_counter() - execution_batch_started_at
+    logger.info(
+        f"Wirecut subcircuit execution completed: job_id={job_id}, "
+        f"source_code_index={source_code_index}, "
+        f"total_count={total_subcircuits}, "
+        f"executed_count={executed_count}, "
+        f"cache_hit_count={cache_hit_count}, "
+        f"duration_seconds={execution_batch_duration:.6f}"
+    )
     # Step 3: Reconstruct probability distribution
     try:
         prob, _ = reconstruct_probability_distribution_wire_cut(
@@ -1515,6 +2406,45 @@ def run_circuit_cutting_code(
     job_results["num_qubits"] = num_qubits
     job_results["results"] = probs_to_dict(prob)
     return job_results, driver, transpiler, mapping_dict
+
+
+def attach_fidelity_benchmark(job_results, ideal_probabilities):
+    """Attach probability fidelity benchmark to completed sampling results.
+
+    Fidelity is optional and is calculated only when an ideal
+    distribution is supplied. Invalid distributions do not discard an
+    otherwise successful hardware result; the validation error is exposed in
+    benchmark metadata instead.
+    """
+    if ideal_probabilities is None or not isinstance(job_results, dict):
+        return job_results
+
+    metadata = job_results.get("metadata")
+    observed_results = job_results.get("results")
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("status") != Constant.JOB_STATUS_COMPLETED
+        or not isinstance(observed_results, dict)
+    ):
+        return job_results
+
+    benchmark = metadata.setdefault("benchmark", {})
+    try:
+        fidelity = squared_bhattacharyya_coefficient(
+            observed_results, ideal_probabilities
+        )
+    except ValueError as error:
+        benchmark.setdefault("errors", {})["fidelity"] = str(error)
+        logger.warning(f"Probability fidelity calculation skipped: {error}")
+        return job_results
+
+    benchmark.setdefault("metrics", {})[PROBABILITY_FIDELITY_METHOD] = fidelity
+    errors = benchmark.get("errors")
+    if isinstance(errors, dict):
+        errors.pop("fidelity", None)
+        if not errors:
+            benchmark.pop("errors")
+    return job_results
 
 
 def counts_to_probs(count_dict):
@@ -1578,7 +2508,7 @@ def flow_parse(src_code_dict, transpiler, code_type):
         results, profiling_time
     """
     # record parse start_time
-    profiling_start = time.time()
+    parse_started_at = time.time()
 
     # parser
     parse_task = parse.submit(
@@ -1588,9 +2518,14 @@ def flow_parse(src_code_dict, transpiler, code_type):
         wait_for=[init_driver, init_transpiler],
     )
     parse_task_result = parse_task.result()
-    profiling_end = time.time()
-    profiling_time = profiling_end - profiling_start
-    return parse_task_result, profiling_time
+    parse_ended_at = time.time()
+    parse_duration = parse_ended_at - parse_started_at
+    parse_profiling = {
+        "parse_started_at": parse_started_at,
+        "parse_ended_at": parse_ended_at,
+        "parse_duration": parse_duration,
+    }
+    return parse_task_result, parse_profiling
 
 
 def flow_transpile(parsed_src_code, transpiler, driver):
@@ -1605,7 +2540,7 @@ def flow_transpile(parsed_src_code, transpiler, driver):
         results, profiling_time
     """
     # record transpile start_time
-    profiling_start = time.time()
+    transpile_started_at = time.time()
 
     # transpile codes
     transpile_task = transpile.submit(
@@ -1617,9 +2552,14 @@ def flow_transpile(parsed_src_code, transpiler, driver):
     transpile_task_results = transpile_task.result()
 
     # record transpile end_time
-    profiling_end = time.time()
-    profiling_time = profiling_end - profiling_start
-    return transpile_task_results, profiling_time
+    transpile_ended_at = time.time()
+    transpile_duration = transpile_ended_at - transpile_started_at
+    transpile_profiling = {
+        "transpile_started_at": transpile_started_at,
+        "transpile_ended_at": transpile_ended_at,
+        "transpile_duration": transpile_duration,
+    }
+    return transpile_task_results, transpile_profiling
 
 
 def flow_task_monitor(monitor_info):
@@ -1631,7 +2571,7 @@ def flow_task_monitor(monitor_info):
     task_monitor.submit(monitor_info)
 
 
-def flow_run_driver(job_info, num_qubits, driver, data):
+def flow_run_driver(job_info, num_qubits, driver, data, transpiler=None):
     """Flow: run driver.
 
     Args:
@@ -1639,26 +2579,54 @@ def flow_run_driver(job_info, num_qubits, driver, data):
         num_qubits: number of qubits
         driver: driver
         data: data
+        transpiler: transpiler instance (for error mitigation calibration)
 
     Returns:
         results, profiling_time
     """
     # call run() in driver
     # record driver_run start_time
-    profiling_start = time.time()
+    driver_run_started_at = time.time()
 
     wait_for = [init_driver, transpile]
 
     run_task = driver_run.submit(
-        job_info, driver, num_qubits, data, wait_for=wait_for
+        job_info,
+        driver,
+        num_qubits,
+        data,
+        transpiler=transpiler,
+        wait_for=wait_for,
     )
 
     run_task_results = run_task.result()
 
     # record driver_run end_time
-    profiling_end = time.time()
-    profiling_time = profiling_end - profiling_start
-    return run_task_results, profiling_time
+    driver_run_ended_at = time.time()
+    driver_run_duration = driver_run_ended_at - driver_run_started_at
+    driver_run_profiling = {
+        "driver_run_started_at": driver_run_started_at,
+        "driver_run_ended_at": driver_run_ended_at,
+        "driver_run_duration": driver_run_duration,
+    }
+    return run_task_results, driver_run_profiling
+
+
+def flow_run_driver_batch(job_info, driver, data_list):
+    """Submit a prepared circuit list through a driver's native batch API."""
+    driver_run_started_at = time.time()
+    wait_for = [init_driver, transpile]
+    run_task = driver_run_batch.submit(
+        job_info, driver, data_list, wait_for=wait_for
+    )
+    run_task_results = run_task.result()
+    driver_run_ended_at = time.time()
+    driver_run_profiling = {
+        "driver_run_started_at": driver_run_started_at,
+        "driver_run_ended_at": driver_run_ended_at,
+        "driver_run_duration": driver_run_ended_at - driver_run_started_at,
+    }
+    return run_task_results, driver_run_profiling
 
 
 def format_run_results(driver, job_id, data_index):
@@ -1693,27 +2661,37 @@ def format_run_results(driver, job_id, data_index):
     if driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_SYNC:
         # sync mode: get results immediately
         results = driver.get_results(job_id, data_index)
+        raw_results = driver.get_raw_results(job_id, data_index)
         job_status = Constant.JOB_STATUS_COMPLETED
         ended_at = Library.get_current_datetime().isoformat()
-        machine_time_info = driver.get_machine_time_info(job_id, data_index)
+        machine_profiling = driver.get_machine_profiling(job_id, data_index)
+        optimized_circuit = driver.get_optimized_circuit()
     elif driver_results_fetch_mode == Constant.RESULTS_FETCH_MODE_ASYNC:
         # async mode: get results in the async set-job-results call
         job_status = Constant.JOB_STATUS_RUNNING
 
     job_results["results"] = results
+    if raw_results:
+        job_results["raw_results"] = raw_results
+    if optimized_circuit:
+        job_results["metadata"]["optimized_source_code"] = optimized_circuit
     job_results["metadata"]["status"] = job_status
     job_results["metadata"]["ended_at"] = ended_at
-    job_results["machine_time_info"] = machine_time_info
+    job_results["machine_profiling"] = machine_profiling
     return job_results
 
 
-def format_error_results(driver, err_cls, err_msg):
+def format_error_results(
+    driver, err_cls, err_msg, vendor_error_code=None, vendor_error_message=None
+):
     """Format error results.
 
     Args:
         driver: driver
         err_cls: error class
         err_msg: error message
+        vendor_error_code: vendor error code
+        vendor_error_message: vendor error message
 
     Returns:
         formatted error results
@@ -1734,7 +2712,11 @@ def format_error_results(driver, err_cls, err_msg):
         "error": None,
     }
 
-    err = err_cls(err_msg)
+    err = err_cls(
+        err_msg,
+        vendor_error_code=vendor_error_code,
+        vendor_error_message=vendor_error_message,
+    )
     job_results["metadata"]["status"] = Constant.JOB_STATUS_FAILED
     job_results["metadata"]["ended_at"] = (
         Library.get_current_datetime().isoformat()
@@ -1743,8 +2725,16 @@ def format_error_results(driver, err_cls, err_msg):
         "code": err.get_error_code(),
         "message": err.get_err_msgs(),
     }
+    vendor_error_code = err.get_vendor_error_code()
+    if vendor_error_code:
+        job_results["error"]["vendor_error_code"] = vendor_error_code
+
+    vendor_error_message = err.get_vendor_err_msgs()
+    if vendor_error_message:
+        job_results["error"]["vendor_error_message"] = vendor_error_message
+
+    driver_name = "Unknown driver"
     if driver:
-        logger.error(f"{driver.name}: {err}")
-    else:
-        logger.error(f"Unknown driver: {err}")
+        driver_name = driver.name
+    logger.error(f"{err.get_err_msgs()} [{driver_name}]")
     return job_results

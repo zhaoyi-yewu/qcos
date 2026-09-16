@@ -903,6 +903,48 @@ class TestLibrary:
         success, error = Library.validate_schema(data, schema, allow_none=True)
         assert success is True
 
+    def test_validate_name_valid(self):
+        """Test validate_name with valid names."""
+        success, _ = Library.validate_name("my-device")
+        assert success is True
+        success, _ = Library.validate_name("device_001")
+        assert success is True
+        success, _ = Library.validate_name("a")
+        assert success is True
+        success, _ = Library.validate_name("a" * 64)
+        assert success is True
+        success, _ = Library.validate_name("ALL_CAPS-123")
+        assert success is True
+
+    def test_validate_name_none(self):
+        """Test validate_name with None (allow_none=True)."""
+        success, _ = Library.validate_name(None)
+        assert success is True
+
+    def test_validate_name_empty(self):
+        """Test validate_name with empty string."""
+        success, _ = Library.validate_name("")
+        assert success is False
+
+    def test_validate_name_too_long(self):
+        """Test validate_name with name longer than 64 chars."""
+        success, _ = Library.validate_name("a" * 65)
+        assert success is False
+
+    def test_validate_name_invalid_chars(self):
+        """Test validate_name with invalid characters."""
+        success, _ = Library.validate_name("device name")
+        assert success is False
+        success, _ = Library.validate_name("device@name")
+        assert success is False
+        # dots are allowed by NAME_SCHEMA
+        success, _ = Library.validate_name("device.name")
+        assert success is True
+        success, _ = Library.validate_name("device/name")
+        assert success is False
+        success, _ = Library.validate_name("中文设备名")
+        assert success is False
+
     def test_validate_qubo_matrices_basic(self):
         """Test validate_qubo_matrices basic functionality."""
         normal_qubo1 = [[[1, 2, 3], [4, 5, 6], [7, 8, 9]]]
@@ -1880,3 +1922,106 @@ class TestLibrary:
             "device|uuid|wrong", salt="salt"
         )
         assert success is False
+
+    def test_count_qubits_in_qasm_qreg_v2(self):
+        """Test count_qubits_in_qasm with OpenQASM 2.0 qreg."""
+        qasm = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[5];\ncreg c[5];'
+        assert Library.count_qubits_in_qasm(qasm) == 5
+
+    def test_count_qubits_in_qasm_qubit_array_v3(self):
+        """Test count_qubits_in_qasm with OpenQASM 3.0 array form."""
+        qasm = 'OPENQASM 3.0;\ninclude "stdgates.inc";\nqubit[8] q;\nbit[8] c;'
+        assert Library.count_qubits_in_qasm(qasm) == 8
+
+    def test_count_qubits_in_qasm_single_v3(self):
+        """Test count_qubits_in_qasm with OpenQASM 3.0 single qubit."""
+        qasm = "OPENQASM 3.0;\nqubit q;"
+        assert Library.count_qubits_in_qasm(qasm) == 1
+
+    def test_count_qubits_in_qasm_multiple_registers(self):
+        """Test count_qubits_in_qasm with multiple registers."""
+        qasm = "qreg q0[3];\nqubit[10] q1;\nqubit q2;"
+        assert Library.count_qubits_in_qasm(qasm) == 14
+
+    def test_count_qubits_in_qasm_empty(self):
+        """Test count_qubits_in_qasm with empty string."""
+        assert Library.count_qubits_in_qasm("") == 0
+
+    def test_count_qubits_in_qasm_no_declaration(self):
+        """Test count_qubits_in_qasm with no qubit declaration."""
+        assert Library.count_qubits_in_qasm("h q[0];\ncx q[0],q[1];") == 0
+
+    def test_get_max_qubits_from_source_code_basic(self):
+        """Test get_max_qubits_from_source_code returns max count."""
+        source_code = ["qreg q[2];", "qubit[5] q;"]
+        assert (
+            Library.get_max_qubits_from_source_code(source_code, "qasm") == 5
+        )
+
+    def test_get_max_qubits_from_source_code_empty(self):
+        """Test get_max_qubits_from_source_code with empty list."""
+        assert Library.get_max_qubits_from_source_code([], "qasm") == 0
+
+    def test_get_max_qubits_from_source_code_non_qasm_type(self):
+        """Test get_max_qubits_from_source_code with non-QASM code type."""
+        source_code = ["[[1, 0], [0, 1]]"]
+        assert (
+            Library.get_max_qubits_from_source_code(source_code, "qubo") == 0
+        )
+
+    def test_get_max_qubits_from_source_code_no_code_type(self):
+        """Test get_max_qubits_from_source_code without code_type."""
+        source_code = ["qreg q[3];", "qubit[7] q;"]
+        assert Library.get_max_qubits_from_source_code(source_code) == 7
+
+    # ========== Schema Conversion ==========
+
+    @pytest.mark.smoke
+    def test_convert_schema_basic(self):
+        """Test convert_schema with driver-format dict (Optional, type)."""
+        from schema import Optional
+
+        schema_dict = {
+            "optimization_level": (
+                Optional("optimization_level", default=1),
+                int,
+            ),
+            "enable_mapping": (
+                Optional("enable_mapping", default=False),
+                bool,
+            ),
+        }
+        result = Library.convert_schema(schema_dict)
+        assert len(result) == 2
+        # keys should be Optional markers
+        for key in result:
+            assert hasattr(key, "schema")
+            assert hasattr(key, "default")
+
+    def test_convert_schema_empty(self):
+        """Test convert_schema with empty dict."""
+        assert Library.convert_schema({}) == {}
+
+    def test_convert_schema_preserves_keys(self):
+        """Test convert_schema preserves the Optional marker as key."""
+        from schema import Optional
+
+        opt = Optional("foo", default=42)
+        schema_dict = {"foo": (opt, int)}
+        result = Library.convert_schema(schema_dict)
+        key = list(result.keys())[0]
+        assert key is opt
+        assert result[opt] is int
+
+    def test_convert_schema_values(self):
+        """Test convert_schema maps values correctly."""
+        from schema import Optional
+
+        schema_dict = {
+            "a": (Optional("a"), int),
+            "b": (Optional("b"), str),
+        }
+        result = Library.convert_schema(schema_dict)
+        values = list(result.values())
+        assert int in values
+        assert str in values

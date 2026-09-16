@@ -7,8 +7,11 @@
    :maxdepth: 2
 
    developer-environment
-   developer-guide
    code-commit
+   develop-new-module
+   develop-new-driver
+   developer-guidelines
+   debug-guidelines
    run-tests
    release
    publish

@@ -20,6 +20,7 @@ import asyncio
 import base64
 import copy
 import csv
+import ctypes
 import fnmatch
 import hashlib
 import importlib
@@ -35,6 +36,7 @@ import random
 import re
 import requests
 import signal
+import socket
 import sys
 import tempfile
 import time
@@ -51,9 +53,82 @@ from pathlib import Path
 from schema import Schema
 from urllib.parse import urlparse
 
+from . import args_schema
 from .constant import HttpCode, HttpHeaders, HttpMethod, Constant
 
 logger = logging.getLogger(__name__)
+
+# Allowed module name prefixes for dynamic imports (security whitelist).
+# Matching uses dot-boundary semantics: "wy_qcos." matches "wy_qcos.foo"
+# but NOT "wy_qcos_evil".
+_ALLOWED_MODULE_PREFIXES = ("wy_qcos",)
+
+# Regex restricting module name format to letters, digits, underscores and
+# dots, starting with a letter or underscore (security validation).
+_ALLOWED_MODULE_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_.]*")
+
+# Regex restricting class name format to valid Python identifiers,
+# rejecting dunder/magic attributes (security validation).
+_ALLOWED_CLASS_NAME_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*")
+
+# Cached libc handle for malloc_trim (Linux/glibc only). Loaded lazily
+# on first load_libc() call; None on non-Linux platforms or when
+# malloc_trim is not exported by libc.
+_libc_handle = None
+_libc_loaded = False
+
+
+def _is_allowed_module(module_name):
+    """Check whether a module name is in the allowed import whitelist.
+
+    Performs two layers of validation:
+      1. format check via regex (only letters, digits, underscores, dots)
+      2. prefix check against the allowed import whitelist using
+         dot-boundary matching to prevent prefix-confusion attacks
+         (e.g. "wy_qcos_evil" must not match prefix "wy_qcos")
+
+    Args:
+        module_name: fully qualified module name
+
+    Returns:
+        True if the module name passes both format and whitelist checks
+    """
+    if not module_name:
+        return False
+    if not _ALLOWED_MODULE_NAME_RE.fullmatch(module_name):
+        return False
+    # dot-boundary prefix match: the module name must either equal an
+    # allowed prefix exactly or start with "<prefix>."
+    for prefix in _ALLOWED_MODULE_PREFIXES:
+        if module_name == prefix or module_name.startswith(prefix + "."):
+            return True
+    return False
+
+
+def _is_allowed_class_name(class_name):
+    """Check whether a class name is safe for dynamic getattr.
+
+    Performs validation:
+      1. non-empty string
+      2. format check via regex (valid Python identifier)
+      3. reject dunder/magic attributes (names starting with "__")
+         to prevent access to dangerous attributes like __builtins__,
+         __import__, __subclasses__, etc.
+
+    Args:
+        class_name: attribute name to validate
+
+    Returns:
+        True if the class name is safe for dynamic attribute access
+    """
+    if not class_name:
+        return False
+    if not _ALLOWED_CLASS_NAME_RE.fullmatch(class_name):
+        return False
+    # reject dunder attributes to prevent magic attribute abuse
+    if class_name.startswith("__"):
+        return False
+    return True
 
 
 class Library:
@@ -133,11 +208,35 @@ class Library:
             if not allow_kill_self:
                 if os.getpid() == pid:
                     need_to_kill = False
-            # Attempt to terminate the process by sending SIGTERM signal
+            # Attempt to terminate the process by sending SIGTERM signal.
+            # Poll for up to 10 seconds for the process to exit; if it is
+            # still alive, escalate to SIGKILL to ensure the port is
+            # released before the new process starts.
             if pid and need_to_kill:
                 os.kill(pid, signal.SIGTERM)
-                # Wait for process to exit
-                time.sleep(1)
+                # Wait for process to exit with escalating timeout
+                max_wait = 10
+                waited = 0
+                while waited < max_wait:
+                    try:
+                        # os.kill with signal 0 checks process existence
+                        os.kill(pid, 0)
+                        time.sleep(0.5)
+                        waited += 0.5
+                    except ProcessLookupError:
+                        # Process has exited
+                        break
+                if waited >= max_wait:
+                    # Process did not exit gracefully; force kill
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                        time.sleep(0.5)
+                    except ProcessLookupError:
+                        pass
+                    print(
+                        f"Process {pid} did not exit after SIGTERM "
+                        f"within {max_wait}s, sent SIGKILL"
+                    )
         except ValueError as e:
             print(f"Failed to process PID file: {e}")
         except ProcessLookupError:
@@ -312,6 +411,58 @@ class Library:
     @staticmethod
     def get_top_dir():
         return str(Path(__file__).resolve().parent.parent.parent.parent)
+
+    @staticmethod
+    def load_libc():
+        """Load libc (Linux/glibc only) and cache the handle.
+
+        Returns the libc CDLL handle when libc.so.6 is available and
+        exports malloc_trim; returns None on non-Linux platforms or
+        when malloc_trim is not present. The result is cached so
+        repeated calls do not reload the library.
+
+        Returns:
+            ctypes.CDLL handle or None
+        """
+        global _libc_handle, _libc_loaded
+        if _libc_loaded:
+            return _libc_handle
+        _libc_loaded = True
+        try:
+            _libc_handle = ctypes.CDLL("libc.so.6", use_errno=True)
+            if not hasattr(_libc_handle, "malloc_trim"):
+                logger.debug(
+                    "libc does not export malloc_trim; "
+                    "skipping malloc_trim calls"
+                )
+                _libc_handle = None
+        except OSError:
+            logger.debug(
+                "libc.so.6 not available (non-Linux platform); "
+                "skipping malloc_trim calls"
+            )
+            _libc_handle = None
+        return _libc_handle
+
+    @staticmethod
+    def malloc_trim(pad=0):
+        """Call glibc malloc_trim to release free heap memory to the OS.
+
+        malloc_trim(pad) asks glibc to return free memory at the top of
+        the heap back to the OS, keeping at least ``pad`` bytes. This
+        is a no-op on non-glibc platforms.
+
+        Args:
+            pad: number of bytes to retain at the top of the heap
+
+        Returns:
+            1 on success, 0 on failure, or None when malloc_trim is
+            not available
+        """
+        libc = Library.load_libc()
+        if libc is None:
+            return None
+        return libc.malloc_trim(pad)
 
     @staticmethod
     def mkdir(dir_name, mode=None):
@@ -586,9 +737,12 @@ class Library:
 
         for module_loader, name, is_pkg in pkgutil.iter_modules([pkg_dir]):
             module_path = module_loader.path.replace(base_dir, "")
-            module_name = (
-                f"{base_module_name}{module_path.replace('/', '.')}.{name}"
+            # normalize path separators so module names use dots on
+            # both POSIX (/) and Windows (\) platforms
+            module_rel_path = module_path.replace(os.sep, ".").replace(
+                "/", "."
             )
+            module_name = f"{base_module_name}{module_rel_path}.{name}"
 
             if venv_loader:
                 sys.path = copy.deepcopy(orig_sys_path)
@@ -602,7 +756,15 @@ class Library:
                         sys.path.insert(0, site_packages_dir)
 
             try:
-                module = importlib.import_module(module_name)
+                # security: only allow importing modules under
+                # whitelisted prefixes to prevent arbitrary code import
+                if not _is_allowed_module(module_name):
+                    raise ValueError(
+                        f"Module '{module_name}' is not in the "
+                        f"allowed import whitelist"
+                    )
+                _import_module = importlib.import_module  # security issue
+                module = _import_module(module_name)
                 for _, obj in inspect.getmembers(module):
                     if inspect.isclass(obj):
                         if issubclass(obj, base_class):
@@ -712,13 +874,34 @@ class Library:
             return False, f"failed to write toml file: {file_path}. {e}"
 
     @staticmethod
-    def get_current_datetime():
+    def get_current_datetime(timestamp=False):
         """Get current datetime.
+
+        Args:
+            timestamp: return timestamp
 
         Returns:
             datetime
         """
-        return datetime.now()
+        datetime_now = datetime.now()
+        if timestamp:
+            return datetime_now.timestamp()
+        return datetime_now
+
+    @staticmethod
+    def to_iso(timestamp):
+        """Convert timestamp to ISO format.
+
+        Args:
+            timestamp: timestamp
+
+        Returns:
+            datetime object in ISO format
+        """
+        if timestamp is None:
+            return None
+        dt_obj = datetime.fromtimestamp(timestamp)
+        return dt_obj.isoformat()
 
     @staticmethod
     def create_uuid(prefix=[]):
@@ -915,6 +1098,106 @@ class Library:
         return success, [err_msg]
 
     @staticmethod
+    def validate_name(name):
+        """Validate name.
+
+        Args:
+            name: name
+
+        Returns:
+            success of failed (bool), error message list
+        """
+        return Library.validate_schema(
+            name, args_schema.NAME_SCHEMA, allow_none=True
+        )
+
+    @staticmethod
+    def convert_schema(schema_dict):
+        """Convert schema dict into standard schema.
+
+        Args:
+            schema_dict: schema dict
+
+        Returns:
+            standard schema dict
+        """
+        std_schema_dict = {}
+        for _, value in schema_dict.items():
+            k, v = value
+            std_schema_dict[k] = v
+        return std_schema_dict
+
+    @staticmethod
+    def count_qubits_in_qasm(qasm_content: str) -> int:
+        """Count the number of qubits declared in QASM content.
+
+        Supports both OpenQASM 2.0 and 3.0 declarations:
+        - qreg <name>[<size>];        (OpenQASM 2.0)
+        - qubit[<size>] <name>;       (OpenQASM 3.0 array form)
+        - qubit <name>;               (OpenQASM 3.0 single qubit)
+
+        Args:
+            qasm_content: QASM source code string
+
+        Returns:
+            total number of declared qubits; 0 when no declaration
+            is found or the input is empty.
+        """
+        if not qasm_content:
+            return 0
+        total_qubits = 0
+        # qreg <name>[<size>];  (OpenQASM 2.0)
+        qreg_matches = re.findall(r"qreg\s+\w+\[(\d+)\]", qasm_content)
+        total_qubits += sum(int(n) for n in qreg_matches)
+        # qubit[<size>] <name>;  (OpenQASM 3.0 array form)
+        qubit_arr_matches = re.findall(r"qubit\[(\d+)\]\s+\w+", qasm_content)
+        total_qubits += sum(int(n) for n in qubit_arr_matches)
+        # qubit <name>;  (OpenQASM 3.0 single qubit, avoid matching
+        # the array form qubit[<size>] already counted above)
+        single_matches = re.findall(
+            r"(?<![\w\[])\bqubit\s+\w+\s*;", qasm_content
+        )
+        # subtract single-qubit declarations that are actually part
+        # of qubit[<size>] form (contains '[' between qubit and name)
+        single_count = 0
+        for match in single_matches:
+            if "[" not in match:
+                single_count += 1
+        total_qubits += single_count
+        return total_qubits
+
+    @staticmethod
+    def get_max_qubits_from_source_code(
+        source_code: list, code_type: str = ""
+    ) -> int:
+        """Get the maximum qubit count across all source code items.
+
+        Only QASM code types (qasm/qasm2/qasm3) are parsed; for other
+        code types (e.g. qubo) or empty input, 0 is returned.
+
+        Args:
+            source_code: list of source code strings
+            code_type: code type string (qasm, qasm2, qasm3, qubo)
+
+        Returns:
+            maximum qubit count among all source code items
+        """
+        if not source_code:
+            return 0
+        # only QASM code types declare qubits via qreg/qubit statements
+        qasm_types = set(Constant.CODE_TYPES_ALL_QASM)
+        if code_type and code_type not in qasm_types:
+            return 0
+        max_qubits = 0
+        for item in source_code:
+            if not isinstance(item, str):
+                continue
+            count = Library.count_qubits_in_qasm(item)
+            if count > max_qubits:
+                max_qubits = count
+        return max_qubits
+
+    @staticmethod
     def validate_qubo_matrices(qubo_matrices):
         """Validate qubo matrices.
 
@@ -951,6 +1234,163 @@ class Library:
                     f"{Constant.MAX_QUBO_QUBITS}"
                 )
         return True, None
+
+    @staticmethod
+    def is_valid_bitstring_dict(input_dict):
+        """Check is valid bitstring dict.
+
+        Args:
+            input_dict: input dict
+
+        Returns:
+            True or False
+        """
+        # check input is dict
+        if input_dict is None:
+            return False
+        if not isinstance(input_dict, dict):
+            return False
+        binary_re = re.compile(r"^[01]+$")
+        for key in input_dict:
+            # check key is binary string
+            if not isinstance(key, str) or not binary_re.match(key):
+                return False
+            # check value is int
+            if not isinstance(input_dict[key], int):
+                return False
+        return True
+
+    @staticmethod
+    def validate_results(result_type, results):
+        """Validate results.
+
+        Args:
+            result_type: result type
+            results: results
+
+        Returns:
+            success, err_msg
+        """
+        if not result_type or result_type not in Constant.RESULT_TYPES:
+            return False, f"Invalid result_type: {result_type}"
+
+        if result_type == Constant.RESULT_TYPE_SAMPLING:
+            if not Library.is_valid_bitstring_dict(results):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'bitstring dict' is expected"
+                )
+        elif result_type == Constant.RESULT_TYPE_ESTIMATION:
+            if not isinstance(results, float):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'float' is expected"
+                )
+        elif result_type == Constant.RESULT_TYPE_TEXT:
+            if not isinstance(results, str):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'string' is expected"
+                )
+        elif result_type == Constant.RESULT_TYPE_DICT:
+            if not isinstance(results, dict):
+                return False, (
+                    f"Invalid result: {results}, "
+                    "value type: 'dict' is expected"
+                )
+        return True, None
+
+    @staticmethod
+    def wait_network_connection(
+        host,
+        port=80,
+        protocol="tcp",
+        interval=5,
+        retries=10,
+        socket_timeout=10,
+        timeout=60,
+    ):
+        """Wait until network connection to host:port is available.
+
+        Repeatedly attempts to establish a connection to the given
+        host and port until it succeeds, the global timeout is
+        reached, or retries are exhausted.
+
+        For TCP, a full connection handshake is attempted. For UDP, a
+        probe datagram is sent and the method waits for any response
+        within the socket timeout window to confirm reachability.
+
+        Args:
+            host: target host
+            port: target port, default 80
+            protocol: connection protocol, "tcp" or "udp"
+            interval: seconds between retries, default 5
+            retries: max retry count, default 10
+            socket_timeout: socket connect/recv timeout in seconds,
+                default 10
+            timeout: global wall-clock timeout in seconds for the
+                whole wait loop, default 60
+
+        Returns:
+            True if connection established, False otherwise
+        """
+        proto = protocol.lower()
+        if proto not in ("tcp", "udp"):
+            logger.warning(
+                f"Unsupported protocol: {protocol}, fallback to tcp"
+            )
+            proto = "tcp"
+
+        sock_type = socket.SOCK_STREAM if proto == "tcp" else socket.SOCK_DGRAM
+
+        start_time = time.time()
+        for attempt in range(1, retries + 1):
+            # check global wall-clock timeout
+            elapsed = time.time() - start_time
+            if elapsed >= timeout:
+                logger.error(
+                    f"Timed out ({timeout}s) while waiting for network "
+                    f"connection to {host}:{port} ({proto})"
+                )
+                return False
+
+            sock = None
+            try:
+                sock = socket.socket(socket.AF_INET, sock_type)
+                sock.settimeout(socket_timeout)
+                sock.connect((host, port))
+
+                if proto == "tcp":
+                    sock.close()
+                else:
+                    # UDP: send a probe and wait for any response
+                    sock.sendto(b"\x00", (host, port))
+                    sock.recvfrom(1024)
+                    sock.close()
+
+                logger.info(
+                    f"Network connection to {host}:{port} "
+                    f"({proto}) established after {attempt} attempt(s)"
+                )
+                return True
+            except (socket.error, OSError) as e:
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except OSError:  # noqa: S110
+                        pass
+                logger.debug(
+                    f"Attempt {attempt}/{retries} failed to "
+                    f"connect to {host}:{port} ({proto}): {e}"
+                )
+                if attempt < retries:
+                    time.sleep(interval)
+
+        logger.error(
+            f"Failed to establish network connection to "
+            f"{host}:{port} ({proto}) after {retries} retries"
+        )
+        return False
 
     @staticmethod
     def call_http_api(
@@ -1189,13 +1629,16 @@ class Library:
 
             # check max attempts
             if max_attempts > 0 and attempt_count >= max_attempts:
-                err_msg = f"Max attempts ({max_attempts}) reached: {err_msg}"
+                err_msg = (
+                    f"Max attempts ({max_attempts}) reached. "
+                    f"Last error: {err_msg}"
+                )
                 return False, err_msg, None
 
             # check timeout
             elapsed = time.time() - start_time
             if elapsed >= timeout:
-                err_msg = f"Timed out: {err_msg}"
+                err_msg = f"Timed out. Last error: {err_msg}"
                 return False, err_msg, None
 
             # sleep
@@ -1539,7 +1982,7 @@ class Library:
     def mask_password(
         configs,
         password_replace="*" * 8,
-        keys_to_match=r"^(?:_.*|.*(password|secret|hidden|salt|.*connection_url).*)$",
+        keys_to_match=r"^(?:_.*|.*(password|secret|hidden|token|salt|.*connection_url).*)$",
     ):
         """Mask password and sensitive values.
 
@@ -1600,7 +2043,7 @@ class Library:
         """
         # Pattern: scheme://user:password@host:port/db
         # Replace password between : and @
-        pattern = r"(://[^:]+:)[^@]+(@)"
+        pattern = r"(://[^:]*:)[^@]+(@)"
         return re.sub(pattern, f"\\1{mask_value}\\2", url)
 
     @staticmethod

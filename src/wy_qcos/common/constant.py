@@ -15,7 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-# Don't import any other libraries
+# Don't import any other libraries (os is required for security: reading
+# the fernet secret key from the environment instead of hardcoding it)
+import os
+
 from wy_qcos.common.qcos_version import QcosVersion
 
 _s = lambda x: x
@@ -26,7 +29,7 @@ class Constant:
 
     PROGRAM_NAME = "WuYue-QCOS"
     PROGRAM_AUTHOR = "CMSS"
-    PLATFORM_NAME = "五岳量子计算操作系统(QCOS)"
+    PLATFORM_NAME = "WUYUEQbit量子计算操作系统(QCOS)"
     PLATFORM_VERSION = f"{PLATFORM_NAME} v{QcosVersion.VERSION}"
     COPYRIGHT = "2024-2026 中移（苏州）软件技术有限公司"
 
@@ -42,15 +45,18 @@ class Constant:
     # Metrics server defaults
     DEFAULT_METRICS_SERVER_LISTEN_IP = ""
     DEFAULT_METRICS_SERVER_LISTEN_PORT = 19400
-    DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS = 15
+    DEFAULT_UPDATE_METRICS_INTERVAL_SECONDS = 30
 
     # QCOS client-side server default IP and port
     DEFAULT_QCOS_SERVER_IP = "127.0.0.1"
     DEFAULT_QCOS_SERVER_PORT = 18400
 
-    # REDIS server default IP and port
+    # REDIS server default URL
     DEFAULT_REDIS_SERVER_IP = "127.0.0.1"
     DEFAULT_REDIS_SERVER_PORT = 6379
+    DEFAULT_REDIS_URL = (
+        f"redis://{DEFAULT_REDIS_SERVER_IP}:{DEFAULT_REDIS_SERVER_PORT}/0"
+    )
     REDIS_CHANNEL_QCOS_PREFIX = "/qcos"
     REDIS_CHANNEL_DEVICE_RUNNING_INFO_PREFIX = (
         f"{REDIS_CHANNEL_QCOS_PREFIX}/device_running_info"
@@ -61,7 +67,9 @@ class Constant:
     DB_DIALECT_POSTGRESQL = "postgresql"
 
     # Security
-    DEFAULT_FERNET_KEY = "qevBn4Ol_3bJ7t0IW7TmPCCZurqfw_QRa810U43o_m0="
+    DEFAULT_FERNET_KEY = os.environ.get(
+        "FERNET_SECRET_KEY", "APzd4m3XeveFilLjkT5vMzCjKzEhphvOkVzGFF_ERFM="
+    )
     ENCRYPTION_PREFIX = "++"
 
     # Flow limit
@@ -137,6 +145,7 @@ class Constant:
     SINGLE_QUBIT_GATE_RZ = "rz"
     SINGLE_QUBIT_GATE_SX = "sx"
     SINGLE_QUBIT_GATE_SXDG = "sxdg"
+    SINGLE_QUBIT_GATE_I = "id"
     SINGLE_QUBIT_GATE_SDG = "sdg"
     SINGLE_QUBIT_GATE_TDG = "tdg"
     SINGLE_QUBIT_GATE_U1 = "u1"
@@ -159,6 +168,7 @@ class Constant:
         SINGLE_QUBIT_GATE_RZ,
         SINGLE_QUBIT_GATE_SX,
         SINGLE_QUBIT_GATE_SXDG,
+        SINGLE_QUBIT_GATE_I,
         SINGLE_QUBIT_GATE_SDG,
         SINGLE_QUBIT_GATE_TDG,
         SINGLE_QUBIT_GATE_U1,
@@ -189,6 +199,7 @@ class Constant:
     TWO_QUBIT_GATE_RYY = "ryy"
     TWO_QUBIT_GATE_RZZ = "rzz"
     TWO_QUBIT_GATE_RZX = "rzx"
+    TWO_QUBIT_GATE_ASHN = "ashn"
     TWO_QUBIT_GATE_LIST = [
         TWO_QUBIT_GATE_CH,
         TWO_QUBIT_GATE_CRX,
@@ -216,10 +227,12 @@ class Constant:
     ]
     # three-qubit gates
     THREE_QUBIT_GATE_CCX = "ccx"
+    THREE_QUBIT_GATE_CCZ = "ccz"
     THREE_QUBIT_GATE_CSWAP = "cswap"
     THREE_QUBIT_GATE_RCCX = "rccx"
     THREE_QUBIT_GATE_LIST = [
         THREE_QUBIT_GATE_CCX,
+        THREE_QUBIT_GATE_CCZ,
         THREE_QUBIT_GATE_CSWAP,
         THREE_QUBIT_GATE_RCCX,
     ]
@@ -256,6 +269,14 @@ class Constant:
     DEVICE_MONITOR_PREFIX = "device_monitor_"
     DEVICE_MANAGER_PREFIX = "device_mgr_"
 
+    # Device Groups
+    DEVICE_GROUP_DN_ALL = "_all"
+
+    # Work pool name prefixes
+    WORK_POOL_DEVICE_PREFIX = "device|"
+    WORK_POOL_MONITOR_PREFIX = "monitor|"
+    WORK_POOL_MGR_PREFIX = "mgr|"
+
     # Transpiler
     TRANSPILER_CMSS = "cmss"
     TRANSPILER_HIGH_PERFORMANCE_CMSS = "high_performance_cmss"
@@ -264,7 +285,7 @@ class Constant:
     TRANSPILER_CMSS_QUBO = "cmss_qubo"
     TRANSPILERS = set()  # autofilled during plugin registration
 
-    # Quantum computer tech type
+    # Quantum computer tech types
     TECH_TYPE_NONE = "none"
     TECH_TYPE_NEUTRAL_ATOM = "neutral_atom"
     TECH_TYPE_ION_TRAP = "ion_trap"
@@ -273,7 +294,6 @@ class Constant:
     TECH_TYPE_NMR = "nmr"
     TECH_TYPE_GENERIC_SIMULATOR = "generic_simulator"
     TECH_TYPE_INFO = {
-        TECH_TYPE_NONE: {"alias_name": "无"},
         TECH_TYPE_NEUTRAL_ATOM: {"alias_name": "中性原子"},
         TECH_TYPE_ION_TRAP: {"alias_name": "离子阱"},
         TECH_TYPE_SUPERCONDUCTING: {"alias_name": "超导"},
@@ -281,11 +301,26 @@ class Constant:
         TECH_TYPE_NMR: {"alias_name": "核磁共振"},
         TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"},
     }
+    TECH_TYPES = list(TECH_TYPE_INFO.keys())
 
     # Job types
     JOB_TYPE_SAMPLING = "sampling"
     JOB_TYPE_ESTIMATION = "estimation"
     JOB_TYPES = [JOB_TYPE_SAMPLING, JOB_TYPE_ESTIMATION]
+
+    # Result types
+    RESULT_TYPE_SAMPLING = "sampling"
+    RESULT_TYPE_ESTIMATION = "estimation"
+    RESULT_TYPE_QUBO = "qubo"
+    RESULT_TYPE_TEXT = "text"
+    RESULT_TYPE_DICT = "dict"
+    RESULT_TYPES = [
+        RESULT_TYPE_SAMPLING,
+        RESULT_TYPE_ESTIMATION,
+        RESULT_TYPE_QUBO,
+        RESULT_TYPE_TEXT,
+        RESULT_TYPE_DICT,
+    ]
 
     # Results fetch mode
     RESULTS_FETCH_MODE_SYNC = "sync"
@@ -297,12 +332,27 @@ class Constant:
     # Profiling types
     PROFILING_TYPE_ALL = "all"
     PROFILING_TYPE_CODE = "code"
+    PROFILING_TYPE_CODE_STARTED_AT = "code_started_at"
+    PROFILING_TYPE_CODE_ENDED_AT = "code_ended_at"
     PROFILING_TYPE_QUEUING = "queuing"
+    PROFILING_TYPE_QUEUING_STARTED_AT = "queuing_started_at"
+    PROFILING_TYPE_QUEUING_ENDED_AT = "queuing_ended_at"
     PROFILING_TYPE_SCHEDULING = "scheduling"
+    PROFILING_TYPE_SCHEDULING_STARTED_AT = "scheduling_started_at"
+    PROFILING_TYPE_SCHEDULING_ENDED_AT = "scheduling_ended_at"
     PROFILING_TYPE_DRIVER_PARSE = "driver:parse"
+    PROFILING_TYPE_DRIVER_PARSE_STARTED_AT = "driver:parse_started_at"
+    PROFILING_TYPE_DRIVER_PARSE_ENDED_AT = "driver:parse_ended_at"
     PROFILING_TYPE_DRIVER_TRANSPILE = "driver:transpile"
+    PROFILING_TYPE_DRIVER_TRANSPILE_STARTED_AT = "driver:transpile_started_at"
+    PROFILING_TYPE_DRIVER_TRANSPILE_ENDED_AT = "driver:transpile_ended_at"
     PROFILING_TYPE_DRIVER_RUN = "driver:run"
+    PROFILING_TYPE_DRIVER_RUN_STARTED_AT = "driver:run_started_at"
+    PROFILING_TYPE_DRIVER_RUN_ENDED_AT = "driver:run_ended_at"
     PROFILING_TYPE_MACHINE = "machine"
+    PROFILING_TYPE_MACHINE_STARTED_AT = "machine_started_at"
+    PROFILING_TYPE_MACHINE_ENDED_AT = "machine_ended_at"
+
     PROFILING_TYPES = [
         PROFILING_TYPE_ALL,
         PROFILING_TYPE_CODE,
@@ -343,16 +393,25 @@ class Constant:
     MIN_CODE_COMPRESSION_LEVEL = 0
     MAX_CODE_COMPRESSION_LEVEL = 9
 
-    # job engine property
+    # job engine configs
     DEFAULT_JOB_POOL_TYPE = "process"
     DEFAULT_POOL_CONCURRENCY = 1
     DEFAULT_JOB_TIMEOUT = 300
     DEFAULT_JOB_INTERVAL = 5
 
-    # device monitor engine property
+    # device monitor engine configs
     DEFAULT_DEVICE_MONITOR_RETRIES = 100
-    DEFAULT_DEVICE_MONITOR_RETRY_INTERVAL = 60
-    DEFAULT_DEVICE_MONITOR_INTERVAL = 60
+    DEFAULT_DEVICE_MONITOR_RETRY_DELAY_INTERVAL = 600
+    DEFAULT_DEVICE_MONITOR_POLLING_INTERVAL = 60
+    # max wait time (seconds) for fetch_running_info before
+    # treating the device as disconnected
+    DEFAULT_DEVICE_MONITOR_FETCH_TIMEOUT = 30
+
+    # device availability rate aggregation
+    # cron minute (0 = top of every hour) for hourly availability aggregation
+    DEFAULT_AVAILABILITY_AGGREGATE_CRON_MINUTE = 0
+    # device statuses counted as "online" for availability rate calculation
+    DEVICE_AVAILABILITY_STATUS_ONLINE_BUSY = ("online", "busy")
 
     # user management
     AUTH_MODE_KEY = "auth_mode"
@@ -366,7 +425,7 @@ class Constant:
     DEFAULT_PROJECT_ID = "00000000-0000-4000-8000-000000000000"
     DEFAULT_PROJECT_NAME = "default project"
     ADMIN_USERNAME = "admin"
-    DEFAULT_ADMIN_PASSWORD = _s("123456")
+    DEFAULT_ADMIN_PASSWORD = _s("P*ssword1")
     DEFAULT_VIRTUAL_INSTANCE_PASSWORD = _s("111111")
     ANONYMOUS_USER_ID = "00000000-0000-4000-8000-000000000000"
     ANONYMOUS_USERNAME = "anonymous"
@@ -389,8 +448,9 @@ class Constant:
     JOB_STATUS_CANCELLED = "CANCELLED"
     JOB_STATUS_DELETING = "DELETING"
     JOB_STATUS_DELETED = "DELETED"
+    # Sum of all job statuses (used in job_count totals)
+    JOB_STATUS_TOTAL = "TOTAL"
     JOB_STATUSES = [
-        JOB_STATUS_UNKNOWN,
         JOB_STATUS_QUEUED,
         JOB_STATUS_RUNNING,
         JOB_STATUS_FAILED,
@@ -399,6 +459,7 @@ class Constant:
         JOB_STATUS_CANCELLED,
         JOB_STATUS_DELETING,
         JOB_STATUS_DELETED,
+        JOB_STATUS_UNKNOWN,
     ]
 
     # Prefect flow state
@@ -412,7 +473,10 @@ class Constant:
     PREFECT_STATE_CANCELLING = "CANCELLING"
     PREFECT_STATE_CANCELLED = "CANCELLED"
     PREFECT_STATE_PAUSED = "PAUSED"
-    PREFECT_CANCEL_REQUIRED_STATES = [PREFECT_STATE_RUNNING]
+    PREFECT_CANCEL_REQUIRED_STATES = [
+        PREFECT_STATE_RUNNING,
+        PREFECT_STATE_CANCELLING,
+    ]
     PREFECT_WAIT_STATES = [PREFECT_STATE_SCHEDULED, PREFECT_STATE_PENDING]
 
     VID_TAGS_PREFIX = "VIRTUAL_INSTANCE_ID"
@@ -425,7 +489,6 @@ class Constant:
     # Shots
     DEFAULT_SHOTS = 10
     MIN_SHOTS = 1
-    MAX_SHOTS = 10240
 
     # Qubits
     DEFAULT_QUBITS = 1
@@ -475,19 +538,24 @@ class Constant:
 
     # Job metrics
     JOB_METRICS_FIELD_TOTAL = "total"
+    JOB_METRICS_PROMETHEUS_NAME = "job_count"
     JOB_METRICS_FIELD_COMPLETED = JOB_STATUS_COMPLETED.lower()
     JOB_METRICS_FIELD_FAILED = JOB_STATUS_FAILED.lower()
     JOB_METRICS_FIELD_RUNNING = JOB_STATUS_RUNNING.lower()
     JOB_METRICS_FIELD_QUEUED = JOB_STATUS_QUEUED.lower()
     JOB_METRICS_FIELD_CANCELLING = JOB_STATUS_CANCELLING.lower()
     JOB_METRICS_FIELD_CANCELLED = JOB_STATUS_CANCELLED.lower()
+    JOB_METRICS_FIELD_DELETING = JOB_STATUS_DELETING.lower()
     JOB_METRICS_FIELD_DELETED = JOB_STATUS_DELETED.lower()
     JOB_METRICS_FIELD_UNKNOWN = JOB_STATUS_UNKNOWN.lower()
+    JOB_METRICS_FIELD_SUBMITTED_JOB_RATE_MIN = "submitted_job_rate_min"
+    JOB_METRICS_FIELD_COMPLETED_JOB_RATE_MIN = "completed_job_rate_min"
 
     # API metrics
     API_METRICS_REQUESTS_TOTAL = "api_requests_total"
     API_METRICS_REQUESTS_IN_PROGRESS = "api_requests_in_progress"
     API_METRICS_REQUESTS_DURATION = "api_request_duration"
+    API_METRICS_REQUEST_STATS = "api_request"
 
     # API stats field names
     API_TOTAL_REQUESTS = "total_requests"

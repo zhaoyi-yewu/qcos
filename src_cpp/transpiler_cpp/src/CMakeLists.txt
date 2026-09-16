@@ -11,21 +11,34 @@ add_library(${LIB_TRANSPILER} STATIC
                             circuit/multi_graph.cpp
                             circuit/gate_operation.cpp
                             circuit/quantum_circuit.cpp
+                            circuit/qasm_converter.cpp
                             optimizer/adjacent_optimization.cpp
                             optimizer/inverse_cancellation.cpp
                             optimizer/subcircuit_rewrite.cpp
                             optimizer/template.cpp
-                            optimizer/clifford_rz_optimization.cpp
+                            optimizer/hadamard_gate_reduction.cpp
+                            optimizer/rz_commute_optimization.cpp
+                            optimizer/cx_commute_optimization.cpp
+                            optimizer/phase_polynomial_merging.cpp
                             optimizer/collect_block.cpp
                             optimizer/gate_optimizer.cpp
+                            optimizer/matrix_utils.cpp
+                            optimizer/one_qubit_euler_decomposer.cpp
+                            optimizer/two_qubit_decomposer.cpp
+                            optimizer/basis_selector.cpp
+                            optimizer/unitary_synthesis.cpp
                             decomposer/equivalence_graph.cpp
                             decomposer/rule_applier.cpp
                             decomposer/decomposer.cpp
                             mapping/greedy_routing.cpp
                             mapping/sabre_routing.cpp
-                            mapping/sabre_utils.cpp
+                            mapping/mapping_utils.cpp
+                            mapping/chip_data.cpp
                             mapping/mcts_routing.cpp
                             mapping/sabre_mapping.cpp
+                            mapping/dense_layout.cpp
+                            mapping/vf2_layout.cpp
+                            mapping/na_mapping.cpp
                             utils/load_files.cpp
                             compiler/operations/classic_controlled_operation.cpp
                             compiler/operations/compound_operation.cpp
@@ -42,8 +55,12 @@ add_library(${LIB_TRANSPILER} STATIC
                             compiler/qasm_compiler/parser/types.cpp
                             compiler/qasm_compiler/qasm_lexer.cpp
                             compiler/qasm_compiler/qasm_parser.cpp
-                            compiler/qasm_to_origin_ir.cpp
+                            compiler/qasm_to_ir.cpp
                             compiler/quantum_computation.cpp
+                            transpile/transpile.cpp
+                            verify/quafu_verifier.cpp
+                            verify/qpu_verifier.cpp
+                            verify/cmss_verifier.cpp
                             )
 
 
@@ -53,3 +70,5 @@ target_include_directories(${LIB_TRANSPILER} PUBLIC
 
 target_compile_definitions(${LIB_TRANSPILER} PUBLIC $<$<CONFIG:Debug>:LOG_DEBUG>)
 target_compile_definitions(${LIB_TRANSPILER} PUBLIC $<$<CONFIG:Release>:TEST_BENCH>)
+
+target_link_libraries(${LIB_TRANSPILER} PUBLIC Threads::Threads)

@@ -27,20 +27,15 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: openeuler/openeuler:24.03-lts
+      options: --privileged --user root --pid=host
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          codeql: true
-          docker-images: true
-          tool-cache: false
-          swap-storage: false
-
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Free Host Space
+        uses: ./.github/actions/free-host-space
+        env:
+          YUM_MIRROR: ${{ vars.YUM_MIRROR }}
 
       - name: Install basic packages
         run: |
@@ -59,6 +54,9 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
+          if [ -n "${{ vars.DOCKER_COMPOSE_BIN_MIRROR }}" ]; then
+            sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=${{ vars.DOCKER_COMPOSE_BIN_MIRROR }}@" ./.env
+          fi
           df -h
           ./build-images.sh -b -t dev
 
@@ -71,24 +69,18 @@ jobs:
 
   build-sandbox-image:
     name: Build Docker Image (qcos-sandbox)
-    needs: build-qcos-base-image
+    needs:
+      - build-qcos-base-image
     runs-on: ubuntu-latest
     container:
       image: openeuler/openeuler:24.03-lts
+      options: --privileged --user root --pid=host
     steps:
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          codeql: true
-          docker-images: true
-          tool-cache: false
-          swap-storage: false
-
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Free Host Space
+        uses: ./.github/actions/free-host-space
 
       - name: Install basic packages
         run: |
@@ -128,22 +120,22 @@ jobs:
 
   build-qcos-image:
     name: Build Docker Image (qcos)
-    needs: build-sandbox-image
+    needs:
+      - build-sandbox-image
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -170,7 +162,9 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           source /root/.bashrc
           source ./version
@@ -179,8 +173,14 @@ jobs:
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
           df -h
-          ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
+
+          # run sandbox in container sandbox-temp, since another sandbox will be run from ./build-images.sh
+          sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
+          cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+          sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+          ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+          export BUILD_WHEEL_IN_SANDBOX=false
+          docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -q -t dev"
           EOF
 
       - name: Upload qcos Docker Image Artifact
@@ -192,22 +192,22 @@ jobs:
 
   build-qcos-cli-image:
     name: Build Docker Image (qcos-cli)
-    needs: build-sandbox-image
+    needs:
+      - build-sandbox-image
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -225,7 +225,9 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           source /root/.bashrc
           source ./version
@@ -234,8 +236,14 @@ jobs:
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
           df -h
-          ./run-sandbox.sh
-          docker exec qcos-sandbox sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
+
+          # run sandbox in container sandbox-temp, since another sandbox will be run from ./build-images.sh
+          sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
+          cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+          sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+          ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+          export BUILD_WHEEL_IN_SANDBOX=false
+          docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
           EOF
 
       - name: Upload qcos-cli Docker Image Artifact
@@ -246,19 +254,20 @@ jobs:
           retention-days: 1
 
   run-ut-qcos:
-    name: Run Unit Tests (qcos)
+    name: Run Unit/Coverage Tests (qcos)
     needs:
       - build-qcos-image
     runs-on: ubuntu-latest
-
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
         with:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
@@ -282,7 +291,9 @@ jobs:
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
@@ -297,11 +308,10 @@ jobs:
           files: cicd/reports/wy_qcos/coverage.xml
 
   run-ut-qcos-cli:
-    name: Run Unit Tests (qcos-cli)
+    name: Run Unit/Coverage Tests (qcos-cli)
     needs:
       - build-qcos-cli-image
     runs-on: ubuntu-latest
-
     steps:
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@main
@@ -309,7 +319,6 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
@@ -329,11 +338,13 @@ jobs:
       - name: Load qcos-sandbox Docker Image
         run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
 
-      - name: Run Unit Tests (qcos-cli)
+      - name: Run Unit/Coverage Tests (qcos-cli)
         shell: bash
         run: |
           sudo -s <<'EOF'
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
           cd ./build-scripts
           cp ./env.template ./.env
           export SANDBOX_IMAGE_VERSION=dev
@@ -360,7 +371,6 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          codeql: true
           docker-images: true
           tool-cache: false
           swap-storage: false
@@ -390,7 +400,9 @@ jobs:
         run: |
           sudo -s <<'EOF'
           set -eo pipefail
-          ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
 
           TOP_DIR=$(pwd)
           # config
@@ -439,8 +451,8 @@ jobs:
           echo "Running system tests in container: qcos"
           cd ${TOP_DIR}
           tar czf /tmp/cicd.tar.gz ./cicd ./src ./etc ./samples
-          docker cp /tmp/cicd.tar.gz qcos:/tmp/
-          docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /tmp/cicd.tar.gz"
+          docker cp /tmp/cicd.tar.gz qcos:/root/
+          docker exec qcos sh -c "mkdir -p /root/qcos-project/; cd /root/qcos-project/; tar xzf /root/cicd.tar.gz"
           TEST_EXIT_CODE=0
           docker exec qcos sh -c "source /root/.bashrc; echo 'Transpiler list:'; qcos-cli list-transpilers; echo 'Driver list:'; qcos-cli list-drivers; echo 'Device list:'; qcos-cli list-devices; echo 'Job list:'; qcos-cli list-jobs; cd /root/qcos-project; ./cicd/run-tests.sh -s all" || TEST_EXIT_CODE=$?
 
@@ -464,16 +476,28 @@ jobs:
       - run-ut-qcos-cli
       - run-st-qcos
     runs-on: ubuntu-latest
+    outputs:
+      tags_empty: ${{ steps.check-tags.outputs.tags_empty }}
     steps:
+      - name: Free up disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          docker-images: true
+          tool-cache: false
+          swap-storage: false
+
       - name: Generate Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-base
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos
-            ${{ secrets.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-base
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
@@ -482,27 +506,19 @@ jobs:
             type=semver,pattern=latest
 
       - name: Check Docker Metadata Tags
+        id: check-tags
         shell: bash
         run: |
           TAGS="${{ steps.meta.outputs.tags }}"
           if [ -z "$TAGS" ]; then
             echo "::warning::No Docker tags generated from metadata. Skipping push-docker-images steps."
             echo "TAGS_EMPTY=true" >> $GITHUB_ENV
+            echo "tags_empty=true" >> $GITHUB_OUTPUT
           else
             echo "Docker tags available: $TAGS"
             echo "TAGS_EMPTY=false" >> $GITHUB_ENV
+            echo "tags_empty=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Free up disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          android: true
-          dotnet: true
-          haskell: true
-          codeql: true
-          docker-images: true
-          tool-cache: false
-          swap-storage: false
 
       - name: Checkout Code
         if: env.TAGS_EMPTY == 'false'
@@ -516,7 +532,7 @@ jobs:
         if: env.TAGS_EMPTY == 'false'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.QCOS_DOCKERHUB_USERNAME }}
+          username: ${{ vars.QCOS_DOCKERHUB_USERNAME }}
           password: ${{ secrets.QCOS_DOCKERHUB_TOKEN }}
 
       - name: Download and Load Docker Images
@@ -617,9 +633,9 @@ jobs:
         uses: dawidd6/action-send-mail@v3
         with:
           # SMTP server configuration
-          server_address: ${{ secrets.QCOS_SMTP_SERVER_ADDRESS }}
-          server_port: ${{ secrets.QCOS_SMTP_SERVER_PORT }}
-          username: ${{ secrets.QCOS_SMTP_USERNAME }}
+          server_address: ${{ vars.QCOS_SMTP_SERVER_ADDRESS }}
+          server_port: ${{ vars.QCOS_SMTP_SERVER_PORT }}
+          username: ${{ vars.QCOS_SMTP_USERNAME }}
           password: ${{ secrets.QCOS_SMTP_PASSWORD }}
 
           # Email configuration
@@ -706,7 +722,7 @@ jobs:
                       <tr><td>Unit Tests - QCOS</td>         <td>${{ needs.run-ut-qcos.result == 'success' && '✅ success' || needs.run-ut-qcos.result == 'failure' && '❌ failure' || needs.run-ut-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Unit Tests - QCOS-CLI</td>     <td>${{ needs.run-ut-qcos-cli.result == 'success' && '✅ success' || needs.run-ut-qcos-cli.result == 'failure' && '❌ failure' || needs.run-ut-qcos-cli.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos-cli.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>System Tests - QCOS</td>       <td>${{ needs.run-st-qcos.result == 'success' && '✅ success' || needs.run-st-qcos.result == 'failure' && '❌ failure' || needs.run-st-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-st-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
-                      <tr><td>Tag & Push Docker Images</td>       <td>${{ needs.push-docker-images.result == 'success' && '✅ success' || needs.push-docker-images.result == 'failure' && '❌ failure' || needs.push-docker-images.result == 'skipped' && '⏭️ skipped' || needs.push-docker-images.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Tag & Push Docker Images</td>       <td>${{ needs.push-docker-images.outputs.tags_empty == 'true' && '⏭️ skipped' || (needs.push-docker-images.result == 'success' && '✅ success' || needs.push-docker-images.result == 'failure' && '❌ failure' || needs.push-docker-images.result == 'skipped' && '⏭️ skipped' || needs.push-docker-images.result == 'cancelled' && '🚫 cancelled' || '❓ unknown') }}</td></tr>
                     </tbody>
                   </table>
                   <a class="btn" href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Full Run Logs →</a>

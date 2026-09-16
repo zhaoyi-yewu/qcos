@@ -179,12 +179,15 @@ class TranspilerBase:
     def transpile(self, parse_result, supp_basis_gates: list):
         """Transpile codes.
 
+        All subclasses must return a 3-tuple:
+        (transpile_results, mapping_dict, final_layout_dict).
+
         Args:
             parse_result: parse result
             supp_basis_gates: supported basis gates
 
         Returns:
-            basis gate list
+            (transpile_results, mapping_dict, final_layout_dict)
         """
         raise NotImplementedError(
             f"Transpiler: {self.__class__.__name__} "

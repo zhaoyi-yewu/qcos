@@ -27,6 +27,7 @@ from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import user_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
+from wy_qcos.common.library import Library
 from .dependencies.authentication import auth, auth_match_user_id
 
 
@@ -84,7 +85,9 @@ def _mask_hidden_fields(obj: Any) -> Any:
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_user_mgmt(
     body: schemas.GetUserMgmtRequest | None = None,
@@ -115,6 +118,7 @@ def get_user_mgmt(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.BadRequestError],
 )
@@ -163,6 +167,7 @@ def set_user_mgmt(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.ConflictError, jsonrpc_errors.BadRequestError],
 )
@@ -186,6 +191,15 @@ def create_user(
 
     user_name = body.user_name
     password = body.password
+
+    # validate user_name
+    success, err_msg = Library.validate_name(user_name)
+    if not success:
+        jsonrpc_errors.handle_error_bad_requests(
+            "USER",
+            "create_user",
+            (False, err_msg),
+        )
     roles = body.roles
     description = body.description
 
@@ -232,6 +246,7 @@ def create_user(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -290,7 +305,9 @@ def get_user(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_users(
     request: Request,
@@ -337,6 +354,7 @@ def get_users(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )
@@ -400,6 +418,7 @@ def update_user(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -467,6 +486,7 @@ def delete_user(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -494,6 +514,15 @@ def create_role(
 
     role_name = body.role_name
     permissions = body.permissions
+
+    # validate role_name
+    success, err_msg = Library.validate_name(role_name)
+    if not success:
+        jsonrpc_errors.handle_error_bad_requests(
+            "USER",
+            "create_role",
+            (False, err_msg),
+        )
     description = body.description
 
     # Get user manager from request state
@@ -528,6 +557,7 @@ def create_role(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError],
 )
@@ -583,7 +613,9 @@ def get_role(
 
 
 @user_api_v1.method(
-    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+    errors=[],
 )
 def get_roles(
     request: Request,
@@ -630,6 +662,7 @@ def get_roles(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -693,6 +726,7 @@ def update_role(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -750,9 +784,8 @@ def delete_role(
 
 
 @user_api_v1.method(
-    openapi_extra={
-        "allowed_roles": Constant.ALL_ROLES,
-    },
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[
         jsonrpc_errors.BadRequestError,
         jsonrpc_errors.NotFoundError,
@@ -825,6 +858,7 @@ def change_password(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )
@@ -917,6 +951,7 @@ def get_login_logs(
 
 
 @user_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.BadRequestError],
 )

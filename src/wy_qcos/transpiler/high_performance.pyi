@@ -17,1037 +17,1251 @@
 
 """Binding qcos transpiler cpp functions."""
 
-from __future__ import annotations
-import pybind11_stubgen.typing_ext
-import typing
-
-__all__: list[str] = [
-    "BaseOperation",
-    "C3SQRTX",
-    "C3X",
-    "C4X",
-    "CCX",
-    "CH",
-    "CP",
-    "CRX",
-    "CRY",
-    "CRZ",
-    "CS",
-    "CSDG",
-    "CSWAP",
-    "CSX",
-    "CU",
-    "CU1",
-    "CU3",
-    "CX",
-    "CY",
-    "CZ",
-    "Control",
-    "ControlType",
-    "CppMCTSRouting",
-    "DCX",
-    "DOUBLE_QUBIT_OPERATION",
-    "Decomposer",
-    "ECR",
-    "FIVE_QUBIT_OPERATION",
-    "FOUR_QUBIT_OPERATION",
-    "GateOperation",
-    "GreedyRouting",
-    "H",
-    "ISWAP",
-    "MEASURE",
-    "MOVE",
-    "Measure",
-    "Move",
-    "Neg",
-    "OpType",
-    "Operation",
-    "OperationType",
-    "P",
-    "ParamGate",
-    "Pos",
-    "R",
-    "RC3X",
-    "RCCX",
-    "RX",
-    "RXX",
-    "RY",
-    "RYY",
-    "RZ",
-    "RZX",
-    "RZZ",
-    "Reset",
-    "S",
-    "SABRE",
-    "SDG",
-    "SINGLE_QUBIT_OPERATION",
-    "SWAP",
-    "SX",
-    "SXDG",
-    "SYNC",
-    "Sync",
-    "T",
-    "TDG",
-    "TRIPLE_QUBIT_OPERATION",
-    "U",
-    "U1",
-    "U2",
-    "U3",
-    "X",
-    "Y",
-    "Z",
-    "complex",
-    "convert_qasm_string_to_operations",
-    "convert_qasm_string_to_qcos_operations",
-    "load_config_file",
-    "load_qasm_to_gate_list",
-    "otAFalse",
-    "otATrue",
-    "otBarrier",
-    "otC3SQRTX",
-    "otC3X",
-    "otC4X",
-    "otCCZ",
-    "otCH",
-    "otCNOT",
-    "otCP",
-    "otCRX",
-    "otCRY",
-    "otCRZ",
-    "otCS",
-    "otCSWAP",
-    "otCSX",
-    "otCSdg",
-    "otCU",
-    "otCU3",
-    "otCY",
-    "otCZ",
-    "otClassicControlled",
-    "otCompound",
-    "otDCX",
-    "otECR",
-    "otGPhase",
-    "otH",
-    "otI",
-    "otMeasure",
-    "otMultiAFalse",
-    "otMultiATrue",
-    "otNone",
-    "otOpCount",
-    "otP",
-    "otPeres",
-    "otPeresdg",
-    "otR",
-    "otRC3X",
-    "otRCCX",
-    "otRX",
-    "otRXX",
-    "otRY",
-    "otRYY",
-    "otRZ",
-    "otRZX",
-    "otRZZ",
-    "otReset",
-    "otS",
-    "otSWAP",
-    "otSX",
-    "otSXdg",
-    "otSdg",
-    "otT",
-    "otTOFFOLI",
-    "otTdg",
-    "otTeleportation",
-    "otU",
-    "otU1",
-    "otU2",
-    "otU3",
-    "otV",
-    "otVdg",
-    "otW",
-    "otX",
-    "otXXminusYY",
-    "otXXplusYY",
-    "otY",
-    "otZ",
-    "ot_iSWAP",
-    "ot_iSWAPdg",
-    "optimize",
-    "sabre_initial_mapping",
-    "sabre_routing",
-]
+from typing import (
+    overload,
+)
+import collections.abc
+import high_performance
 
 class BaseOperation:
-    arg_value: list[float]
-    targets: list[int]
-    def __deepcopy__(self, arg0: dict) -> BaseOperation: ...
+    """None."""
+
     def __init__(
         self,
         name: str,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
     ) -> None: ...
-    def __repr__(self) -> str: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
     def arg_value_to_string(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
     def targets_to_string(self) -> str: ...
     def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class C3SQRTX:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
     @property
     def name(self) -> str: ...
     @property
-    def operation_type(self) -> OperationType: ...
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
-class C3SQRTX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(256)
-    ]: ...
+class C3X:
+    """None."""
 
-class C3X(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
+    @overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(256)
-    ]: ...
-
-class C4X(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
+    @overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(1024)
-    ]: ...
-
-class CCX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(64)
-    ]: ...
-
-class CH(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CP(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CRX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CRY(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CRZ(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CS(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CSDG(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CSWAP(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(64)
-    ]: ...
-
-class CSX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CU(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CU1(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CU3(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CY(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class CZ(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class ControlType:
-    """Members.
-
-    Pos
-
-    Neg
-    """
-
-    Neg: typing.ClassVar[ControlType]  # value = <ControlType.Neg: 0>
-    Pos: typing.ClassVar[ControlType]  # value = <ControlType.Pos: 1>
-    __members__: typing.ClassVar[
-        dict[str, ControlType]
-    ]  # value = {'Pos': <ControlType.Pos: 1>, 'Neg': <ControlType.Neg: 0>}
-    def __eq__(self, other: typing.Any) -> bool: ...
-    def __getstate__(self) -> int: ...
-    def __hash__(self) -> int: ...
-    def __index__(self) -> int: ...
-    def __init__(self, value: int) -> None: ...
-    def __int__(self) -> int: ...
-    def __ne__(self, other: typing.Any) -> bool: ...
-    def __repr__(self) -> str: ...
-    def __setstate__(self, state: int) -> None: ...
-    def __str__(self) -> str: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
     @property
     def name(self) -> str: ...
     @property
-    def value(self) -> int: ...
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class C4X:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CCX:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CH:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CP:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CRX:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CRY:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CRZ:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CS:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CSDG:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CSWAP:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CSX:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CU:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CU1:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CU3:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CX:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CY:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class CZ:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
 class Control:
-    qubit: int
-    type: ControlType
+    """None."""
+
     def __init__(
-        self, qubit: int = 0, type: ControlType = ControlType.Pos
+        self, qubit: int = 0, type: high_performance.ControlType = True
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def __str__(self) -> str: ...
+    @property
+    def qubit(self) -> int: ...
+    @qubit.setter
+    def qubit(self, arg: int, /) -> None: ...
+    @property
+    def type(self) -> high_performance.ControlType: ...
+    @type.setter
+    def type(self, arg: high_performance.ControlType, /) -> None: ...
+
+class ControlType:
+    """None."""
+
+    Neg: ControlType
+
+    Pos: ControlType
+
+    name: property
+
+    value: property
 
 class CppMCTSRouting:
     """C++ implementation of MCTS routing."""
 
-    selec_times: int
     def __init__(self, selec_times: int = 5) -> None: ...
     def execute_routing(
         self,
-        search_tree: typing.Any,
-        ag: typing.Any,
+        search_tree: object,
+        ag: object,
         initial_layout: dict,
         num_q_vir: int,
         measure_ops: list,
     ) -> tuple: ...
+    @property
+    def selec_times(self) -> int: ...
+    @selec_times.setter
+    def selec_times(self, arg: int, /) -> None: ...
 
-class DCX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
+class DCX:
+    """None."""
+
+    @overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
+    @overload
+    def __init__(
         self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+DOUBLE_QUBIT_OPERATION: OperationType
 
 class Decomposer:
+    """None."""
+
     def __init__(self) -> None: ...
     def apply_decompose_rules(
-        self, arg0: list[BaseOperation], arg1: dict[ParamGate, list[ParamGate]]
-    ) -> list: ...
+        self,
+        circuit: collections.abc.Sequence[high_performance.BaseOperation],
+        table: collections.abc.Mapping[
+            high_performance.ParamGate,
+            collections.abc.Sequence[high_performance.ParamGate],
+        ],
+    ) -> list[high_performance.BaseOperation]: ...
     def get_decompose_rules(
-        self, arg0: list[str], arg1: list[str]
+        self,
+        arg0: collections.abc.Sequence[str],
+        arg1: collections.abc.Sequence[str],
+        /,
     ) -> tuple: ...
 
-class ECR(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
+class ECR:
+    """None."""
 
-class GateOperation(BaseOperation):
-    def __deepcopy__(self, arg0: dict) -> GateOperation: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+FIVE_QUBIT_OPERATION: OperationType
+
+FOUR_QUBIT_OPERATION: OperationType
+
+class GateOperation:
+    """None."""
+
     def __init__(
         self,
         name: str,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
         hermitian: bool = False,
     ) -> None: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
     @property
     def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
 class GreedyRouting:
-    """Greedy blocked-gate routing: insert SWAP only when a gate is blocked."""
+    """Greedy blocked-gate routing."""
 
-    def __init__(self, coupling_list: list[tuple[int, int]]) -> None: ...
-    def execute(
-        self, gates_list: list[GateOperation], initial_l2p: list[int] = []
+    def __init__(
+        self, coupling_list: collections.abc.Sequence[tuple[int, int]]
     ) -> None: ...
-    def get_physical_gates(self) -> list[GateOperation]: ...
+    def execute(
+        self,
+        gates_list: collections.abc.Sequence[high_performance.GateOperation],
+        initial_l2p: collections.abc.Sequence[int] = [],
+    ) -> None: ...
+    def get_physical_gates(self) -> list[high_performance.GateOperation]: ...
     @property
     def logic2phy(self) -> list[int]: ...
     @property
     def phy2logic(self) -> list[int]: ...
 
-class H(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+class H:
+    """None."""
 
-class ISWAP(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class Measure(BaseOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-
-class Move(BaseOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-
-class OpType:
-    """Members.
-
-    otNone
-
-    otGPhase
-
-    otI
-
-    otBarrier
-
-    otH
-
-    otX
-
-    otY
-
-    otZ
-
-    otS
-
-    otSdg
-
-    otT
-
-    otTdg
-
-    otV
-
-    otVdg
-
-    otU
-
-    otU2
-
-    otP
-
-    otSX
-
-    otSXdg
-
-    otRX
-
-    otRY
-
-    otRZ
-
-    otSWAP
-
-    ot_iSWAP
-
-    ot_iSWAPdg
-
-    otPeres
-
-    otPeresdg
-
-    otDCX
-
-    otECR
-
-    otRXX
-
-    otRYY
-
-    otRZZ
-
-    otRZX
-
-    otXXminusYY
-
-    otXXplusYY
-
-    otCompound
-
-    otMeasure
-
-    otReset
-
-    otTeleportation
-
-    otClassicControlled
-
-    otATrue
-
-    otAFalse
-
-    otMultiATrue
-
-    otMultiAFalse
-
-    otOpCount
-
-    otCNOT
-
-    otTOFFOLI
-
-    otCZ
-
-    otU3
-
-    otCU
-
-    otU1
-
-    otCH
-
-    otCRX
-
-    otCRY
-
-    otCRZ
-
-    otRCCX
-
-    otRC3X
-
-    otCP
-
-    otCSWAP
-
-    otC3X
-
-    otCY
-
-    otCSX
-
-    otC3SQRTX
-
-    otCU3
-
-    otC4X
-
-    otCS
-
-    otCSdg
-
-    otCCZ
-
-    otR
-
-    otW
-    """
-
-    __members__: typing.ClassVar[
-        dict[str, OpType]
-    ]  # value = {'otNone': <OpType.otNone: 0>,
-    # 'otGPhase': <OpType.otGPhase: 1>, 'otI': <OpType.otI: 2>,
-    # 'otBarrier': <OpType.otBarrier: 3>, 'otH': <OpType.otH: 4>,
-    # 'otX': <OpType.otX: 5>, 'otY': <OpType.otY: 6>, 'otZ': <OpType.otZ: 7>,
-    # 'otS': <OpType.otS: 8>, 'otSdg': <OpType.otSdg: 9>,
-    # 'otT': <OpType.otT: 10>, 'otTdg': <OpType.otTdg: 11>,
-    # 'otV': <OpType.otV: 12>, 'otVdg': <OpType.otVdg: 13>,
-    # 'otU': <OpType.otU: 14>, 'otU2': <OpType.otU2: 15>,
-    # 'otP': <OpType.otP: 16>, 'otSX': <OpType.otSX: 17>,
-    # 'otSXdg': <OpType.otSXdg: 18>, 'otRX': <OpType.otRX: 19>,
-    # 'otRY': <OpType.otRY: 20>, 'otRZ': <OpType.otRZ: 21>,
-    # 'otSWAP': <OpType.otSWAP: 22>, 'ot_iSWAP': <OpType.ot_iSWAP: 23>,
-    # 'ot_iSWAPdg': <OpType.ot_iSWAPdg: 24>, 'otPeres': <OpType.otPeres: 25>,
-    # 'otPeresdg': <OpType.otPeresdg: 26>, 'otDCX': <OpType.otDCX: 27>,
-    # 'otECR': <OpType.otECR: 28>, 'otRXX': <OpType.otRXX: 29>,
-    # 'otRYY': <OpType.otRYY: 30>, 'otRZZ': <OpType.otRZZ: 31>,
-    # 'otRZX': <OpType.otRZX: 32>, 'otXXminusYY': <OpType.otXXminusYY: 33>,
-    # 'otXXplusYY': <OpType.otXXplusYY: 34>,
-    # 'otCompound': <OpType.otCompound: 35>,
-    # 'otMeasure': <OpType.otMeasure: 36>,
-    # 'otReset': <OpType.otReset: 37>,
-    # 'otTeleportation': <OpType.otTeleportation: 38>,
-    # 'otClassicControlled': <OpType.otClassicControlled: 39>,
-    # 'otATrue': <OpType.otATrue: 40>, 'otAFalse': <OpType.otAFalse: 41>,
-    # 'otMultiATrue': <OpType.otMultiATrue: 42>,
-    # 'otMultiAFalse': <OpType.otMultiAFalse: 43>,
-    # 'otOpCount': <OpType.otOpCount: 44>,
-    # 'otCNOT': <OpType.otCNOT: 45>, 'otTOFFOLI': <OpType.otTOFFOLI: 46>,
-    # 'otCZ': <OpType.otCZ: 47>, 'otU3': <OpType.otU3: 48>,
-    # 'otCU': <OpType.otCU: 49>, 'otU1': <OpType.otU1: 50>,
-    # 'otCH': <OpType.otCH: 51>, 'otCRX': <OpType.otCRX: 52>,
-    # 'otCRY': <OpType.otCRY: 53>, 'otCRZ': <OpType.otCRZ: 54>,
-    # 'otRCCX': <OpType.otRCCX: 55>, 'otRC3X': <OpType.otRC3X: 56>,
-    # 'otCP': <OpType.otCP: 57>, 'otCSWAP': <OpType.otCSWAP: 58>,
-    # 'otC3X': <OpType.otC3X: 59>, 'otCY': <OpType.otCY: 60>,
-    # 'otCSX': <OpType.otCSX: 61>, 'otC3SQRTX': <OpType.otC3SQRTX: 62>,
-    # 'otCU3': <OpType.otCU3: 63>, 'otC4X': <OpType.otC4X: 64>,
-    # 'otCS': <OpType.otCS: 65>, 'otCSdg': <OpType.otCSdg: 66>,
-    # 'otCCZ': <OpType.otCCZ: 67>, 'otR': <OpType.otR: 68>,
-    # 'otW': <OpType.otW: 69>}
-    otAFalse: typing.ClassVar[OpType]  # value = <OpType.otAFalse: 41>
-    otATrue: typing.ClassVar[OpType]  # value = <OpType.otATrue: 40>
-    otBarrier: typing.ClassVar[OpType]  # value = <OpType.otBarrier: 3>
-    otC3SQRTX: typing.ClassVar[OpType]  # value = <OpType.otC3SQRTX: 62>
-    otC3X: typing.ClassVar[OpType]  # value = <OpType.otC3X: 59>
-    otC4X: typing.ClassVar[OpType]  # value = <OpType.otC4X: 64>
-    otCCZ: typing.ClassVar[OpType]  # value = <OpType.otCCZ: 67>
-    otCH: typing.ClassVar[OpType]  # value = <OpType.otCH: 51>
-    otCNOT: typing.ClassVar[OpType]  # value = <OpType.otCNOT: 45>
-    otCP: typing.ClassVar[OpType]  # value = <OpType.otCP: 57>
-    otCRX: typing.ClassVar[OpType]  # value = <OpType.otCRX: 52>
-    otCRY: typing.ClassVar[OpType]  # value = <OpType.otCRY: 53>
-    otCRZ: typing.ClassVar[OpType]  # value = <OpType.otCRZ: 54>
-    otCS: typing.ClassVar[OpType]  # value = <OpType.otCS: 65>
-    otCSWAP: typing.ClassVar[OpType]  # value = <OpType.otCSWAP: 58>
-    otCSX: typing.ClassVar[OpType]  # value = <OpType.otCSX: 61>
-    otCSdg: typing.ClassVar[OpType]  # value = <OpType.otCSdg: 66>
-    otCU: typing.ClassVar[OpType]  # value = <OpType.otCU: 49>
-    otCU3: typing.ClassVar[OpType]  # value = <OpType.otCU3: 63>
-    otCY: typing.ClassVar[OpType]  # value = <OpType.otCY: 60>
-    otCZ: typing.ClassVar[OpType]  # value = <OpType.otCZ: 47>
-    otClassicControlled: typing.ClassVar[
-        OpType
-    ]  # value = <OpType.otClassicControlled: 39>
-    otCompound: typing.ClassVar[OpType]  # value = <OpType.otCompound: 35>
-    otDCX: typing.ClassVar[OpType]  # value = <OpType.otDCX: 27>
-    otECR: typing.ClassVar[OpType]  # value = <OpType.otECR: 28>
-    otGPhase: typing.ClassVar[OpType]  # value = <OpType.otGPhase: 1>
-    otH: typing.ClassVar[OpType]  # value = <OpType.otH: 4>
-    otI: typing.ClassVar[OpType]  # value = <OpType.otI: 2>
-    otMeasure: typing.ClassVar[OpType]  # value = <OpType.otMeasure: 36>
-    otMultiAFalse: typing.ClassVar[
-        OpType
-    ]  # value = <OpType.otMultiAFalse: 43>
-    otMultiATrue: typing.ClassVar[OpType]  # value = <OpType.otMultiATrue: 42>
-    otNone: typing.ClassVar[OpType]  # value = <OpType.otNone: 0>
-    otOpCount: typing.ClassVar[OpType]  # value = <OpType.otOpCount: 44>
-    otP: typing.ClassVar[OpType]  # value = <OpType.otP: 16>
-    otPeres: typing.ClassVar[OpType]  # value = <OpType.otPeres: 25>
-    otPeresdg: typing.ClassVar[OpType]  # value = <OpType.otPeresdg: 26>
-    otR: typing.ClassVar[OpType]  # value = <OpType.otR: 68>
-    otRC3X: typing.ClassVar[OpType]  # value = <OpType.otRC3X: 56>
-    otRCCX: typing.ClassVar[OpType]  # value = <OpType.otRCCX: 55>
-    otRX: typing.ClassVar[OpType]  # value = <OpType.otRX: 19>
-    otRXX: typing.ClassVar[OpType]  # value = <OpType.otRXX: 29>
-    otRY: typing.ClassVar[OpType]  # value = <OpType.otRY: 20>
-    otRYY: typing.ClassVar[OpType]  # value = <OpType.otRYY: 30>
-    otRZ: typing.ClassVar[OpType]  # value = <OpType.otRZ: 21>
-    otRZX: typing.ClassVar[OpType]  # value = <OpType.otRZX: 32>
-    otRZZ: typing.ClassVar[OpType]  # value = <OpType.otRZZ: 31>
-    otReset: typing.ClassVar[OpType]  # value = <OpType.otReset: 37>
-    otS: typing.ClassVar[OpType]  # value = <OpType.otS: 8>
-    otSWAP: typing.ClassVar[OpType]  # value = <OpType.otSWAP: 22>
-    otSX: typing.ClassVar[OpType]  # value = <OpType.otSX: 17>
-    otSXdg: typing.ClassVar[OpType]  # value = <OpType.otSXdg: 18>
-    otSdg: typing.ClassVar[OpType]  # value = <OpType.otSdg: 9>
-    otT: typing.ClassVar[OpType]  # value = <OpType.otT: 10>
-    otTOFFOLI: typing.ClassVar[OpType]  # value = <OpType.otTOFFOLI: 46>
-    otTdg: typing.ClassVar[OpType]  # value = <OpType.otTdg: 11>
-    otTeleportation: typing.ClassVar[
-        OpType
-    ]  # value = <OpType.otTeleportation: 38>
-    otU: typing.ClassVar[OpType]  # value = <OpType.otU: 14>
-    otU1: typing.ClassVar[OpType]  # value = <OpType.otU1: 50>
-    otU2: typing.ClassVar[OpType]  # value = <OpType.otU2: 15>
-    otU3: typing.ClassVar[OpType]  # value = <OpType.otU3: 48>
-    otV: typing.ClassVar[OpType]  # value = <OpType.otV: 12>
-    otVdg: typing.ClassVar[OpType]  # value = <OpType.otVdg: 13>
-    otW: typing.ClassVar[OpType]  # value = <OpType.otW: 69>
-    otX: typing.ClassVar[OpType]  # value = <OpType.otX: 5>
-    otXXminusYY: typing.ClassVar[OpType]  # value = <OpType.otXXminusYY: 33>
-    otXXplusYY: typing.ClassVar[OpType]  # value = <OpType.otXXplusYY: 34>
-    otY: typing.ClassVar[OpType]  # value = <OpType.otY: 6>
-    otZ: typing.ClassVar[OpType]  # value = <OpType.otZ: 7>
-    ot_iSWAP: typing.ClassVar[OpType]  # value = <OpType.ot_iSWAP: 23>
-    ot_iSWAPdg: typing.ClassVar[OpType]  # value = <OpType.ot_iSWAPdg: 24>
-    def __eq__(self, other: typing.Any) -> bool: ...
-    def __getstate__(self) -> int: ...
-    def __hash__(self) -> int: ...
-    def __index__(self) -> int: ...
-    def __init__(self, value: int) -> None: ...
-    def __int__(self) -> int: ...
-    def __ne__(self, other: typing.Any) -> bool: ...
-    def __repr__(self) -> str: ...
-    def __setstate__(self, state: int) -> None: ...
-    def __str__(self) -> str: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
     @property
     def name(self) -> str: ...
     @property
-    def value(self) -> int: ...
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class I:  # noqa: E742
+    """Identity gate."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class ISWAP:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+MEASURE: OperationType
+
+MOVE: OperationType
+
+class Measure:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class Move:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+Neg: ControlType
+
+class OpType:
+    """None."""
+
+    name: property
+
+    otAFalse: OpType
+
+    otATrue: OpType
+
+    otBarrier: OpType
+
+    otC3SQRTX: OpType
+
+    otC3X: OpType
+
+    otC4X: OpType
+
+    otCCZ: OpType
+
+    otCH: OpType
+
+    otCNOT: OpType
+
+    otCP: OpType
+
+    otCRX: OpType
+
+    otCRY: OpType
+
+    otCRZ: OpType
+
+    otCS: OpType
+
+    otCSWAP: OpType
+
+    otCSX: OpType
+
+    otCSdg: OpType
+
+    otCU: OpType
+
+    otCU3: OpType
+
+    otCY: OpType
+
+    otCZ: OpType
+
+    otClassicControlled: OpType
+
+    otCompound: OpType
+
+    otDCX: OpType
+
+    otECR: OpType
+
+    otGPhase: OpType
+
+    otH: OpType
+
+    otI: OpType
+
+    otMeasure: OpType
+
+    otMultiAFalse: OpType
+
+    otMultiATrue: OpType
+
+    otNone: OpType
+
+    otOpCount: OpType
+
+    otP: OpType
+
+    otPeres: OpType
+
+    otPeresdg: OpType
+
+    otR: OpType
+
+    otRC3X: OpType
+
+    otRCCX: OpType
+
+    otRX: OpType
+
+    otRXX: OpType
+
+    otRY: OpType
+
+    otRYY: OpType
+
+    otRZ: OpType
+
+    otRZX: OpType
+
+    otRZZ: OpType
+
+    otReset: OpType
+
+    otS: OpType
+
+    otSWAP: OpType
+
+    otSX: OpType
+
+    otSXdg: OpType
+
+    otSdg: OpType
+
+    otT: OpType
+
+    otTOFFOLI: OpType
+
+    otTdg: OpType
+
+    otTeleportation: OpType
+
+    otU: OpType
+
+    otU1: OpType
+
+    otU2: OpType
+
+    otU3: OpType
+
+    otV: OpType
+
+    otVdg: OpType
+
+    otW: OpType
+
+    otX: OpType
+
+    otXXminusYY: OpType
+
+    otXXplusYY: OpType
+
+    otY: OpType
+
+    otZ: OpType
+
+    ot_iSWAP: OpType
+
+    ot_iSWAPdg: OpType
+
+    value: property
 
 class Operation:
+    """None."""
+
+    def __init__(*args, **kwargs):
+        """Initialize self.  See help(type(self)) for accurate signature."""
+        ...
+
     @property
-    def controls(self) -> set[Control]: ...
+    def controls(self) -> set[high_performance.Control]: ...
     @property
     def name(self) -> str: ...
     @property
@@ -1055,284 +1269,528 @@ class Operation:
     @property
     def targets(self) -> list[int]: ...
     @property
-    def type(self) -> OpType: ...
+    def type(self) -> high_performance.OpType: ...
 
 class OperationType:
-    """Members.
+    """None."""
 
-    MEASURE
+    DOUBLE_QUBIT_OPERATION: OperationType
 
-    SINGLE_QUBIT_OPERATION
+    FIVE_QUBIT_OPERATION: OperationType
 
-    DOUBLE_QUBIT_OPERATION
+    FOUR_QUBIT_OPERATION: OperationType
 
-    TRIPLE_QUBIT_OPERATION
+    MEASURE: OperationType
 
-    FOUR_QUBIT_OPERATION
+    MOVE: OperationType
 
-    FIVE_QUBIT_OPERATION
+    SINGLE_QUBIT_OPERATION: OperationType
 
-    SYNC
+    SYNC: OperationType
 
-    MOVE
-    """
+    TRIPLE_QUBIT_OPERATION: OperationType
 
-    DOUBLE_QUBIT_OPERATION: typing.ClassVar[
-        OperationType
-    ]  # value = <OperationType.DOUBLE_QUBIT_OPERATION: 2>
-    FIVE_QUBIT_OPERATION: typing.ClassVar[
-        OperationType
-    ]  # value = <OperationType.FIVE_QUBIT_OPERATION: 5>
-    FOUR_QUBIT_OPERATION: typing.ClassVar[
-        OperationType
-    ]  # value = <OperationType.FOUR_QUBIT_OPERATION: 4>
-    MEASURE: typing.ClassVar[
-        OperationType
-    ]  # value = <OperationType.MEASURE: 0>
-    MOVE: typing.ClassVar[OperationType]  # value = <OperationType.MOVE: -2>
-    SINGLE_QUBIT_OPERATION: typing.ClassVar[
-        OperationType
-    ]  # value = <OperationType.SINGLE_QUBIT_OPERATION: 1>
-    SYNC: typing.ClassVar[OperationType]  # value = <OperationType.SYNC: -1>
-    TRIPLE_QUBIT_OPERATION: typing.ClassVar[
-        OperationType
-    ]  # value = <OperationType.TRIPLE_QUBIT_OPERATION: 3>
-    __members__: typing.ClassVar[dict[str, OperationType]]
-    def __eq__(self, other: typing.Any) -> bool: ...
-    def __getstate__(self) -> int: ...
-    def __hash__(self) -> int: ...
-    def __index__(self) -> int: ...
-    def __init__(self, value: int) -> None: ...
-    def __int__(self) -> int: ...
-    def __ne__(self, other: typing.Any) -> bool: ...
-    def __repr__(self) -> str: ...
-    def __setstate__(self, state: int) -> None: ...
-    def __str__(self) -> str: ...
+    name: property
+
+    value: property
+
+class P:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
     @property
     def name(self) -> str: ...
     @property
-    def value(self) -> int: ...
-
-class P(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
 class ParamGate:
-    name: str
-    params: list[str]
-    qubits: list[str]
+    """None."""
+
     def __init__(self) -> None: ...
+    @property
+    def name(self) -> str: ...
+    @name.setter
+    def name(self, arg: str, /) -> None: ...
+    @property
+    def params(self) -> list[str]: ...
+    @params.setter
+    def params(self, arg: collections.abc.Sequence[str], /) -> None: ...
+    @property
+    def qubits(self) -> list[str]: ...
+    @qubits.setter
+    def qubits(self, arg: collections.abc.Sequence[str], /) -> None: ...
 
-class R(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+Pos: ControlType
 
-class RC3X(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(256)
-    ]: ...
+class QasmConverter:
+    """Convert a QuantumCircuit to QASM2/QASM3 string or file."""
 
-class RCCX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def decompose_to_1q2q(self) -> list[BaseOperation]: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(64)
-    ]: ...
+    def __init__(self, circuit: high_performance.QuantumCircuit) -> None: ...
+    def to_qasm2(self) -> str: ...
+    def to_qasm3(self) -> str: ...
+    def save(self, path: str, version: str = "2.0") -> None: ...
 
-class RX(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+class QuantumCircuit:
+    """Quantum circuit."""
 
-class RXX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        num_qubits: int = 0,
+        num_clbits: int = 0,
+        global_phase: float = 0.0,
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
+    @staticmethod
+    def from_ir(
+        ir: collections.abc.Sequence[high_performance.BaseOperation],
+        num_qubits: int = 0,
+    ) -> high_performance.QuantumCircuit: ...
+    def append(self, operation: high_performance.BaseOperation) -> None: ...
+    def append_operations(
         self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
+        operations: collections.abc.Sequence[high_performance.BaseOperation],
+    ) -> None: ...
+    def get_operations(self) -> list[high_performance.BaseOperation]: ...
+    def num_qubits(self) -> int: ...
+    def num_clbits(self) -> int: ...
+    def global_phase(self) -> float: ...
+    def set_global_phase(self, phase: float) -> None: ...
+    def set_num_qubits(self, num_qubits: int) -> None: ...
+    def set_num_clbits(self, num_clbits: int) -> None: ...
+    def depth(self) -> int: ...
+    def width(self) -> int: ...
+    def size(self) -> int: ...
 
-class RY(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+class R:
+    """None."""
 
-class RYY(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
-class RZ(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+class RC3X:
+    """None."""
 
-class RZX(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
+    @overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
+    @overload
+    def __init__(
         self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
-class RZZ(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
+class RCCX:
+    """None."""
 
-class Reset(BaseOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
+    @overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
     ) -> None: ...
-    def __repr__(self) -> str: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
-class S(GateOperation):
+class RX:
+    """None."""
+
     def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
         self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class RXX:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class RY:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class RYY:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class RZ:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class RZX:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class RZZ:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class Reset:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class S:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
 class SABRE:
     """SABRE quantum routing algorithm."""
 
     def __init__(
         self,
-        coupling_list: list[tuple[int, int]],
+        coupling_list: collections.abc.Sequence[tuple[int, int]],
+        edge_fidelities: collections.abc.Sequence[float] = [],
+        single_qubit_fidelities: collections.abc.Sequence[float] = [],
+        layout_method: str = "vf2_layout",
+        target_bits: collections.abc.Sequence[int] = [],
+        fidelity_threshold: float = -1.0,
+        fidelity_weight: float = 0.5,
         extension_size: int = 20,
         weight: float = 0.5,
         decay: float = 0.001,
@@ -1340,425 +1798,1089 @@ class SABRE:
         """Construct a SABRE router.
 
         Args:
-            coupling_list (list[tuple[int, int]]): Physical qubit connectivity
-                graph.
-            extension_size (int, optional): Size of the lookahead set.
-                Defaults to 20.
-            weight (float, optional): Weight between front layer and lookahead
-                cost. Defaults to 0.5.
-            decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+        coupling_list (list[tuple[int, int]]): Physical qubit connectivity
+            graph.
+        edge_fidelities (list[float], optional): Edge fidelity values
+            corresponding to coupling_list. Empty means not used.
+        single_qubit_fidelities (list[float], optional): Single-qubit
+            fidelity array indexed by physical qubit ID. Empty means not used.
+        layout_method (str, optional): Initial layout method: "vf2_layout"
+            (default) or "dense_layout".
+        target_bits (list[int], optional): Target physical qubit IDs. When
+            non-empty, all-1q circuits map to these qubits and 2q circuits
+            route on the induced subgraph of edges between them.
+        fidelity_threshold (float, optional): Fidelity threshold for filtering
+            low-fidelity edges. Negative value means adaptive calculation
+            (mean - std, clamped to [0.3, 0.9]). Defaults to -1.0 (adaptive).
+        extension_size (int, optional): Size of the lookahead set.
+            Defaults to 20.
+        weight (float, optional): Weight between front layer and lookahead
+            cost. Defaults to 0.5.
+        decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+        fidelity_weight (float, optional): DenseLayout fidelity weight in
+            [0, 1]. 0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
         """
+        ...
 
     def execute(
-        self, gates_list: list[GateOperation], initial_l2p: list[int] = []
+        self,
+        gates_list: collections.abc.Sequence[high_performance.BaseOperation],
     ) -> None:
         """Execute SABRE routing.
 
         Args:
-            gates_list (list[GateOperation]): Logical gate sequence.
-            initial_l2p (list[int], optional): Initial logical-to-physical
-                mapping. Defaults to empty.
+        gates_list (list[BaseOperation]): Logical gate sequence.
 
         Returns:
-            None
+        None
         """
+        ...
 
-    def get_logic2phy(self) -> list[int]:
+    def get_final_mapping(self) -> list[int]:
         """Get the final logical-to-physical mapping after routing.
 
         Returns:
-            list[int]: The index is logical qubit and value is physical qubit.
+        list[int]: The index is logical qubit and value is physical qubit.
         """
-    def get_physical_gates(self) -> list[GateOperation]:
+        ...
+
+    def get_initial_mapping(self) -> list[int]:
+        """Get the initial logical-to-physical mapping.
+
+        Must be called after execute().
+
+        Returns:
+        list[int]: The index is logical qubit and value is physical qubit.
+        """
+        ...
+
+    def get_physical_gates(self) -> list[high_performance.BaseOperation]:
         """Get the sequence of mapped physical gates after routing.
 
         Returns:
-            list[GateOperation]: The physical gate sequence.
+        list[BaseOperation]: The physical gate sequence.
         """
+        ...
 
-class SDG(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
+class SDG:
+    """None."""
 
-class SWAP(GateOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
     def __init__(
         self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
     ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(16)
-    ]: ...
-
-class SX(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class SXDG(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class Sync(BaseOperation):
-    @typing.overload
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    @typing.overload
-    def __init__(
-        self,
-        targets: list[int],
-        arg_value: list[float],
-        operation_type: OperationType,
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-
-class T(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class TDG(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class U(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class U1(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class U2(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class U3(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class X(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class Y(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class Z(GateOperation):
-    def __init__(
-        self, targets: list[int], arg_value: list[float] = []
-    ) -> None: ...
-    def __repr__(self) -> str: ...
-    def default_decompose(self) -> list[BaseOperation]: ...
-    def to_matrix(
-        self,
-    ) -> typing.Annotated[
-        list[complex], pybind11_stubgen.typing_ext.FixedSize(4)
-    ]: ...
-
-class complex:
-    def __init__(self, arg0: float, arg1: float) -> None: ...
     @property
-    def imag(self) -> float: ...
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
     @property
-    def real(self) -> float: ...
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
-def convert_qasm_string_to_operations(qasm_str: str) -> list[Operation]:
-    """将QASM字符串转换为操作列表.
+SINGLE_QUBIT_OPERATION: OperationType
 
-    Args:
-        qasm_str: QASM格式的量子电路字符串
+class SWAP:
+    """None."""
 
-    Returns:
-        返回解析得到的量子操作列表
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
 
-    Example:
-        >>> import high_performance
-        >>> qasm = "OPENQASM 2.0; qreg q[2]; h q[0]; cx q[0], q[1];"
-        >>> ops = high_performance.convert_qasm_string_to_operations(qasm)
-        >>> print(f"解析到 {len(ops)} 个操作")
-    """
+class SX:
+    """None."""
 
-def convert_qasm_string_to_qcos_operations(
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class SXDG:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+SYNC: OperationType
+
+class Sync:
+    """None."""
+
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float],
+        operation_type: high_performance.OperationType,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class T:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class TDG:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+TRIPLE_QUBIT_OPERATION: OperationType
+
+class U:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class U1:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class U2:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class U3:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class X:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class Y:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+class Z:
+    """None."""
+
+    def __init__(
+        self,
+        targets: collections.abc.Sequence[int],
+        arg_value: collections.abc.Sequence[float] = [],
+    ) -> None: ...
+    @property
+    def arg_value(self) -> list[float]: ...
+    @arg_value.setter
+    def arg_value(self, arg: collections.abc.Sequence[float], /) -> None: ...
+    def arg_value_to_string(self) -> str: ...
+    def decompose_to_1q2q(self) -> list[high_performance.BaseOperation]: ...
+    def default_decompose(self) -> list[high_performance.BaseOperation]: ...
+    @property
+    def hermitian(self) -> bool: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def operation_type(self) -> high_performance.OperationType: ...
+    @property
+    def targets(self) -> list[int]: ...
+    @targets.setter
+    def targets(self, arg: collections.abc.Sequence[int], /) -> None: ...
+    def targets_to_string(self) -> str: ...
+    def to_matrix(self) -> list[complex]: ...
+    def to_openqasm(self, qubit_prefix: str = "q") -> str: ...
+
+def qasm_to_ir(
     qasm_str: str,
-) -> tuple[list[BaseOperation], int]:
+) -> tuple[list[high_performance.BaseOperation], int]:
     """将QASM字符串转换为操作列表.
 
     Args:
-        qasm_str: QASM格式的量子电路字符串
+    qasm_str: QASM格式的量子电路字符串
 
     Returns:
-        返回解析得到的量子操作列表
+    返回解析得到的量子操作列表
 
     Example:
-        >>> import high_performance
-        >>> qasm = "OPENQASM 2.0; qreg q[2]; h q[0]; cx q[0], q[1];"
-        >>> ops, num_qubits = (
-        ...     high_performance.convert_qasm_string_to_qcos_operations(qasm)
-        ... )
-        >>> print(f"解析到 {len(ops)} 个操作")
+    >>> import high_performance
+    >>> qasm = "OPENQASM 2.0; qreg q[2]; h q[0]; cx q[0], q[1];"
+    >>> ops, num_qubits = high_performance.qasm_to_ir(qasm)
+    >>> print(f"解析到 {len(ops)} 个操作")
     """
+    ...
+
+def create_gate(
+    name: str,
+    targets: collections.abc.Sequence[int] = [],
+    arg_value: collections.abc.Sequence[float] = [],
+    allow_undefined: bool = False,
+) -> high_performance.BaseOperation:
+    """Create a gate or operation instance by name."""
+    ...
 
 def load_config_file(filename: str) -> list[tuple[int, int]]:
     """从配置文件中加载量子芯片耦合列表.
 
     Args:
-        filename (str): 配置文件路径
+    filename (str): 配置文件路径
 
     Returns:
-        list[tuple[int,int]]: 耦合对列表
+    list[tuple[int,int]]: 耦合对列表
     """
+    ...
 
-def load_qasm_to_gate_list(filename: str) -> list[GateOperation]:
+def load_qasm_to_gate_list(
+    filename: str,
+) -> list[high_performance.GateOperation]:
     """将QASM文件加载为门操作列表.
 
     Args:
-        filename (str): QASM文件路径
+    filename (str): QASM文件路径
 
     Returns:
-        list[GateOperation]: 解析得到的门操作列表
+    list[GateOperation]: 解析得到的门操作列表
     """
-
-def create_gate(
-    name: str,
-    targets: list[int] = ...,
-    arg_value: list[float] = ...,
-    allow_undefined: bool = ...,
-) -> BaseOperation:
-    """根据名称创建门或操作对象."""
+    ...
 
 def optimize(
-    ir: list[BaseOperation],
+    ir: collections.abc.Sequence[high_performance.BaseOperation],
     opt_level: int = 1,
     verbose: bool = False,
-    basis_gates: set[str] | None = None,
-) -> list[BaseOperation]:
+    basis_gates: collections.abc.Set[str] | None = None,
+    num_threads: int = 1,
+    fast_mode: bool = False,
+) -> list[high_performance.BaseOperation]:
     """对 IR 执行优化.
 
     opt_level:
-      0 - 不做优化
-      1 - InverseCancellation + AdjacentPhaseOptPass
-      2 - Level 1 + EquivalencePass
-      3 - Level 2 + CliffordRzOptimization
+    0 - 不做优化
+    1 - InverseCancellation + AdjacentPhaseOptPass
+    2 - Level 1 + EquivalencePass
+    3 - Level 2 + CliffordRzOptimization
+
+    num_threads:
+    1 - 串行（默认）
+    0 - 自动并行（线程数取硬件并发数）
+    >1 - 指定线程数并行
 
     Args:
-        ir (list[BaseOperation]): 待优化的操作序列
-        opt_level (int, optional): 优化级别. Defaults to 1.
-        verbose (bool, optional): 是否打印优化详情. Defaults to False.
-        basis_gates (set[str] | None, optional): basis gate 过滤集合.
+    ir (list[BaseOperation]): 待优化的操作序列
+    opt_level (int, optional): 优化级别. Defaults to 1.
+    verbose (bool, optional): 是否打印优化详情. Defaults to False.
+    basis_gates (set[str] | None, optional): basis gate 过滤集合.
+    num_threads (int, optional): 并行线程数：1=串行，0=自动，>1=指定.
+                                 Defaults to 1.
+    fast_mode (bool, optional): true=只跑一轮, false=跑到收敛.
+                                 Defaults to False.
 
     Returns:
-        list[BaseOperation]: 优化后的操作序列
+    list[BaseOperation]: 优化后的操作序列
     """
+    ...
+
+class OptimizeMetrics:
+    """优化统计信息（逐 pass 耗时和减少门数）."""
+
+    pass_time_ms: dict[str, float]
+    pass_reduced: dict[str, int]
+
+    def __init__(self) -> None: ...
+
+def optimize_with_analysis(
+    ir: collections.abc.Sequence[high_performance.BaseOperation],
+    opt_level: int = 1,
+    verbose: bool = False,
+    basis_gates: collections.abc.Set[str] | None = None,
+    num_threads: int = 1,
+    fast_mode: bool = False,
+) -> tuple[list[high_performance.BaseOperation], OptimizeMetrics]:
+    """执行优化并返回逐 pass 统计信息.
+
+    参数同 optimize, 额外启用 analysis 模式：
+    逐 pass 记录耗时和减少门数（仅串行模式有效）。
+
+    Args:
+    ir (list[BaseOperation]): 待优化的操作序列
+    opt_level (int, optional): 优化级别. Defaults to 1.
+    verbose (bool, optional): 是否打印优化详情. Defaults to False.
+    basis_gates (set[str] | None, optional): basis gate 过滤集合.
+    num_threads (int, optional): 并行线程数. Defaults to 1.
+    fast_mode (bool, optional): true=只跑一轮, false=跑到收敛.
+                                 Defaults to False.
+
+    Returns:
+    tuple[list[BaseOperation], OptimizeMetrics]:
+        (optimized_ops, metrics)
+    """
+    ...
+
+otAFalse: OpType
+
+otATrue: OpType
+
+otBarrier: OpType
+
+otC3SQRTX: OpType
+
+otC3X: OpType
+
+otC4X: OpType
+
+otCCZ: OpType
+
+otCH: OpType
+
+otCNOT: OpType
+
+otCP: OpType
+
+otCRX: OpType
+
+otCRY: OpType
+
+otCRZ: OpType
+
+otCS: OpType
+
+otCSWAP: OpType
+
+otCSX: OpType
+
+otCSdg: OpType
+
+otCU: OpType
+
+otCU3: OpType
+
+otCY: OpType
+
+otCZ: OpType
+
+otClassicControlled: OpType
+
+otCompound: OpType
+
+otDCX: OpType
+
+otECR: OpType
+
+otGPhase: OpType
+
+otH: OpType
+
+otI: OpType
+
+otMeasure: OpType
+
+otMultiAFalse: OpType
+
+otMultiATrue: OpType
+
+otNone: OpType
+
+otOpCount: OpType
+
+otP: OpType
+
+otPeres: OpType
+
+otPeresdg: OpType
+
+otR: OpType
+
+otRC3X: OpType
+
+otRCCX: OpType
+
+otRX: OpType
+
+otRXX: OpType
+
+otRY: OpType
+
+otRYY: OpType
+
+otRZ: OpType
+
+otRZX: OpType
+
+otRZZ: OpType
+
+otReset: OpType
+
+otS: OpType
+
+otSWAP: OpType
+
+otSX: OpType
+
+otSXdg: OpType
+
+otSdg: OpType
+
+otT: OpType
+
+otTOFFOLI: OpType
+
+otTdg: OpType
+
+otTeleportation: OpType
+
+otU: OpType
+
+otU1: OpType
+
+otU2: OpType
+
+otU3: OpType
+
+otV: OpType
+
+otVdg: OpType
+
+otW: OpType
+
+otX: OpType
+
+otXXminusYY: OpType
+
+otXXplusYY: OpType
+
+otY: OpType
+
+otZ: OpType
+
+ot_iSWAP: OpType
+
+ot_iSWAPdg: OpType
 
 def sabre_initial_mapping(
-    gates_list: list[GateOperation], coupling_list: list[tuple[int, int]]
+    gates_list: collections.abc.Sequence[high_performance.GateOperation],
+    coupling_list: collections.abc.Sequence[tuple[int, int]],
 ) -> list[int]:
     """Get the initial mapping using the SABRE algorithm.
 
     Args:
-        gates_list (list[GateOperation]): Logical gate sequence.
-        coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
+    gates_list (list[GateOperation]): Logical gate sequence.
+    coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
 
     Returns:
-        list[int]: The initial logical-to-physical mapping.
+    list[int]: The initial logical-to-physical mapping.
     """
+    ...
 
 def sabre_routing(
-    gates_list: list[BaseOperation],
-    coupling_list: list[tuple[int, int]],
-    initial_l2p: list[int] = ...,
-    extension_size: typing.SupportsInt = ...,
-    weight: typing.SupportsFloat = ...,
-    decay: typing.SupportsFloat = ...,
-) -> list[BaseOperation]:
-    """Execute SABRE routing for BaseOperation lists."""
+    gates_list: collections.abc.Sequence[high_performance.BaseOperation],
+    coupling_list: collections.abc.Sequence[tuple[int, int]],
+    edge_fidelities: collections.abc.Sequence[float] = [],
+    single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    layout_method: str = "vf2_layout",
+    target_bits: collections.abc.Sequence[int] = [],
+    fidelity_threshold: float = -1.0,
+    fidelity_weight: float = 0.5,
+    extension_size: int = 20,
+    weight: float = 0.5,
+    decay: float = 0.001,
+) -> list[high_performance.BaseOperation]:
+    """Execute SABRE routing.
 
-DOUBLE_QUBIT_OPERATION: (
-    OperationType  # value = <OperationType.DOUBLE_QUBIT_OPERATION: 2>
-)
-FIVE_QUBIT_OPERATION: (
-    OperationType  # value = <OperationType.FIVE_QUBIT_OPERATION: 5>
-)
-FOUR_QUBIT_OPERATION: (
-    OperationType  # value = <OperationType.FOUR_QUBIT_OPERATION: 4>
-)
-MEASURE: OperationType  # value = <OperationType.MEASURE: 0>
-MOVE: OperationType  # value = <OperationType.MOVE: -2>
-Neg: ControlType  # value = <ControlType.Neg: 0>
-Pos: ControlType  # value = <ControlType.Pos: 1>
-SINGLE_QUBIT_OPERATION: (
-    OperationType  # value = <OperationType.SINGLE_QUBIT_OPERATION: 1>
-)
-SYNC: OperationType  # value = <OperationType.SYNC: -1>
-TRIPLE_QUBIT_OPERATION: (
-    OperationType  # value = <OperationType.TRIPLE_QUBIT_OPERATION: 3>
-)
-otAFalse: OpType  # value = <OpType.otAFalse: 41>
-otATrue: OpType  # value = <OpType.otATrue: 40>
-otBarrier: OpType  # value = <OpType.otBarrier: 3>
-otC3SQRTX: OpType  # value = <OpType.otC3SQRTX: 62>
-otC3X: OpType  # value = <OpType.otC3X: 59>
-otC4X: OpType  # value = <OpType.otC4X: 64>
-otCCZ: OpType  # value = <OpType.otCCZ: 67>
-otCH: OpType  # value = <OpType.otCH: 51>
-otCNOT: OpType  # value = <OpType.otCNOT: 45>
-otCP: OpType  # value = <OpType.otCP: 57>
-otCRX: OpType  # value = <OpType.otCRX: 52>
-otCRY: OpType  # value = <OpType.otCRY: 53>
-otCRZ: OpType  # value = <OpType.otCRZ: 54>
-otCS: OpType  # value = <OpType.otCS: 65>
-otCSWAP: OpType  # value = <OpType.otCSWAP: 58>
-otCSX: OpType  # value = <OpType.otCSX: 61>
-otCSdg: OpType  # value = <OpType.otCSdg: 66>
-otCU: OpType  # value = <OpType.otCU: 49>
-otCU3: OpType  # value = <OpType.otCU3: 63>
-otCY: OpType  # value = <OpType.otCY: 60>
-otCZ: OpType  # value = <OpType.otCZ: 47>
-otClassicControlled: OpType  # value = <OpType.otClassicControlled: 39>
-otCompound: OpType  # value = <OpType.otCompound: 35>
-otDCX: OpType  # value = <OpType.otDCX: 27>
-otECR: OpType  # value = <OpType.otECR: 28>
-otGPhase: OpType  # value = <OpType.otGPhase: 1>
-otH: OpType  # value = <OpType.otH: 4>
-otI: OpType  # value = <OpType.otI: 2>
-otMeasure: OpType  # value = <OpType.otMeasure: 36>
-otMultiAFalse: OpType  # value = <OpType.otMultiAFalse: 43>
-otMultiATrue: OpType  # value = <OpType.otMultiATrue: 42>
-otNone: OpType  # value = <OpType.otNone: 0>
-otOpCount: OpType  # value = <OpType.otOpCount: 44>
-otP: OpType  # value = <OpType.otP: 16>
-otPeres: OpType  # value = <OpType.otPeres: 25>
-otPeresdg: OpType  # value = <OpType.otPeresdg: 26>
-otR: OpType  # value = <OpType.otR: 68>
-otRC3X: OpType  # value = <OpType.otRC3X: 56>
-otRCCX: OpType  # value = <OpType.otRCCX: 55>
-otRX: OpType  # value = <OpType.otRX: 19>
-otRXX: OpType  # value = <OpType.otRXX: 29>
-otRY: OpType  # value = <OpType.otRY: 20>
-otRYY: OpType  # value = <OpType.otRYY: 30>
-otRZ: OpType  # value = <OpType.otRZ: 21>
-otRZX: OpType  # value = <OpType.otRZX: 32>
-otRZZ: OpType  # value = <OpType.otRZZ: 31>
-otReset: OpType  # value = <OpType.otReset: 37>
-otS: OpType  # value = <OpType.otS: 8>
-otSWAP: OpType  # value = <OpType.otSWAP: 22>
-otSX: OpType  # value = <OpType.otSX: 17>
-otSXdg: OpType  # value = <OpType.otSXdg: 18>
-otSdg: OpType  # value = <OpType.otSdg: 9>
-otT: OpType  # value = <OpType.otT: 10>
-otTOFFOLI: OpType  # value = <OpType.otTOFFOLI: 46>
-otTdg: OpType  # value = <OpType.otTdg: 11>
-otTeleportation: OpType  # value = <OpType.otTeleportation: 38>
-otU: OpType  # value = <OpType.otU: 14>
-otU1: OpType  # value = <OpType.otU1: 50>
-otU2: OpType  # value = <OpType.otU2: 15>
-otU3: OpType  # value = <OpType.otU3: 48>
-otV: OpType  # value = <OpType.otV: 12>
-otVdg: OpType  # value = <OpType.otVdg: 13>
-otW: OpType  # value = <OpType.otW: 69>
-otX: OpType  # value = <OpType.otX: 5>
-otXXminusYY: OpType  # value = <OpType.otXXminusYY: 33>
-otXXplusYY: OpType  # value = <OpType.otXXplusYY: 34>
-otY: OpType  # value = <OpType.otY: 6>
-otZ: OpType  # value = <OpType.otZ: 7>
-ot_iSWAP: OpType  # value = <OpType.ot_iSWAP: 23>
-ot_iSWAPdg: OpType  # value = <OpType.ot_iSWAPdg: 24>
+    Args:
+    gates_list (list[BaseOperation]): Logical operation sequence.
+    coupling_list (list[tuple[int, int]]): Physical qubit coupling list.
+    edge_fidelities (list[float], optional): Edge fidelity values
+        corresponding to coupling_list. Empty means not used.
+    single_qubit_fidelities (list[float], optional): Single-qubit fidelity
+        array indexed by physical qubit ID. Empty means not used.
+    layout_method (str, optional): Initial layout method: "vf2_layout"
+        (default) or "dense_layout".
+    target_bits (list[int], optional): Target physical qubit IDs. When
+        non-empty, all-1q circuits map to these qubits and 2q circuits
+        route on the induced subgraph of edges between them.
+    fidelity_threshold (float, optional): Fidelity threshold for filtering
+        low-fidelity edges. Negative value means adaptive calculation
+        (mean - std, clamped to [0.3, 0.9]). Defaults to -1.0 (adaptive).
+    fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+        0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
+    extension_size (int, optional): Size of the lookahead set.
+        Defaults to 20.
+    weight (float, optional): Weight between front layer and lookahead cost.
+        Defaults to 0.5.
+    decay (float, optional): SWAP decay coefficient. Defaults to 0.001.
+
+    Returns:
+        list[BaseOperation]: The routed physical operation sequence.
+    """
+    ...
+
+def cpp_na_default_routing(
+    gates_list: collections.abc.Sequence[high_performance.BaseOperation],
+    qpu_cfg: dict,
+    qbit_num: int,
+    optimize: bool = False,
+) -> tuple[list[high_performance.BaseOperation], dict]:
+    """Execute neutral-atom default routing (NADefaultRoute).
+
+    Thin wrapper around ``na_routing`` fixed to the "default" NA mapping
+    strategy with MOVE support enabled, exposing only the inputs a
+    single-circuit neutral-atom mapping needs. Inserts MOVE operations to
+    shuttle atoms between the storage and operate areas so that two-qubit
+    gates act on adjacent sites.
+
+    Args:
+    gates_list (list[BaseOperation]): Logical operation sequence.
+        Each operation's targets are logical qubit indices.
+    qpu_cfg (dict): QPU configuration with keys ``storage_area``,
+        ``operate_area``, ``coupler_map`` and ``readout_error``.
+    qbit_num (int): Number of logical qubits.
+    optimize (bool, optional): Whether to enable the overlap
+        optimization (``execute_with_opt``). Defaults to False.
+
+    Returns:
+        tuple[list[BaseOperation], dict]: The mapped operation sequence
+        (with MOVE operations and physical qubit targets) and an empty
+        final layout dict.
+    """
+    ...
+
+class TranspileTimings:
+    """Timing breakdown for each transpile stage."""
+
+    decompose_1q2q_time: float
+    decompose_apply_time: float
+    decompose_rule_time: float
+    mapping_time: float
+    opt_time1: float
+    opt_time2: float
+    parse_time: float
+    total_time: float
+    transpile_time: float
+
+    def __init__(self) -> None: ...
+
+class TranspileResult:
+    """Result of the all-in-one transpile function."""
+
+    basis_gate_list: list[high_performance.BaseOperation]
+    num_qubits: int
+    timings: high_performance.TranspileTimings
+    initial_mapping: list[int]
+    final_mapping: list[int]
+
+    def __init__(self) -> None: ...
+
+def transpile_from_qasm(
+    qasm_string: str,
+    supp_basis_gates: collections.abc.Sequence[str],
+    opt_level: int = 1,
+    coupling_list: collections.abc.Sequence[tuple[int, int]] = [],
+    edge_fidelities: collections.abc.Sequence[float] = [],
+    single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    layout_method: str = "vf2_layout",
+    target_bits: collections.abc.Sequence[int] = [],
+    num_threads: int = 0,
+    fast_mode: bool = True,
+    fidelity_threshold: float = -1.0,
+    fidelity_weight: float = 0.5,
+) -> high_performance.TranspileResult:
+    """All-in-one transpile function (sabre routing, single-circuit path).
+
+    Combines parse + transpile into a single C++ call, avoiding intermediate
+    Python/C++ data transfer overhead.
+
+    Args:
+    qasm_string (str): QASM circuit string.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    coupling_list (list[tuple[int, int]], optional): Physical qubit coupling
+        edges. Empty means skip routing.
+    edge_fidelities (list[float], optional): Edge fidelity values
+        corresponding to coupling_list. Empty means not used.
+    single_qubit_fidelities (list[float], optional): Single-qubit fidelity
+        array indexed by physical qubit ID. Empty means not used.
+    layout_method (str, optional): Initial layout method: "vf2_layout"
+        (default) or "dense_layout".
+    target_bits (list[int], optional): Target physical qubit IDs. When
+        non-empty, all-1q circuits map to these qubits and 2q circuits
+        route on the induced subgraph of edges between them.
+    num_threads (int, optional): Optimization thread count. 0 = auto
+        (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
+    fast_mode (bool, optional): Optimization fast mode. True = run pass
+        list only once. Defaults to True.
+    fidelity_threshold (float, optional): Fidelity threshold; edges
+        below this value are filtered out. Negative value means adaptive
+        calculation (mean - std, clamped to [0.3, 0.9]).
+        Defaults to -1.0 (adaptive).
+    fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+        0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+    """
+    ...
+
+def transpile_na_from_qasm(
+    qasm_string: str,
+    supp_basis_gates: collections.abc.Sequence[str],
+    qpu_cfg: dict,
+    opt_level: int = 1,
+    na_mapping_type: str = "default",
+) -> high_performance.TranspileResult:
+    """All-in-one transpile function (neutral-atom NA mapping).
+
+    Same pipeline as ``transpile`` (sabre) but the routing stage uses NARoute,
+    inserting MOVE operations between the storage and operate areas so that
+    two-qubit gates act on adjacent sites.
+
+    Args:
+    qasm_string (str): QASM circuit string.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    qpu_cfg (dict): Neutral-atom QPU configuration with keys
+        ``storage_area``, ``operate_area``, ``coupler_map`` and
+        ``readout_error``.
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    na_mapping_type (str, optional): NA mapping algorithm type; only
+        "default" is supported by the C++ backend. Defaults to "default".
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+    """
+
+def transpile_na_from_ir(
+    ir_ops: collections.abc.Sequence[high_performance.BaseOperation],
+    num_qubits: int,
+    supp_basis_gates: collections.abc.Sequence[str],
+    qpu_cfg: dict,
+    opt_level: int = 1,
+    na_mapping_type: str = "default",
+) -> high_performance.TranspileResult:
+    """Transpile a pre-parsed IR with neutral-atom NA mapping.
+
+    Same pipeline as ``transpile_na_from_qasm`` but skips the QASM parse step.
+    The caller supplies the already-parsed operation list and the logical
+    qubit count directly.
+
+    Args:
+    ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
+    num_qubits (int): Number of logical qubits in the circuit.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    qpu_cfg (dict): Neutral-atom QPU configuration with keys
+        ``storage_area``, ``operate_area``, ``coupler_map`` and
+        ``readout_error``.
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    na_mapping_type (str, optional): NA mapping algorithm type; only
+        "default" is supported by the C++ backend. Defaults to "default".
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+        parse_time is always 0.
+    """
+    ...
+
+def transpile_from_ir(
+    ir_ops: collections.abc.Sequence[high_performance.BaseOperation],
+    num_qubits: int,
+    supp_basis_gates: collections.abc.Sequence[str],
+    opt_level: int = 1,
+    coupling_list: collections.abc.Sequence[tuple[int, int]] = [],
+    edge_fidelities: collections.abc.Sequence[float] = [],
+    single_qubit_fidelities: collections.abc.Sequence[float] = [],
+    layout_method: str = "vf2_layout",
+    target_bits: collections.abc.Sequence[int] = [],
+    num_threads: int = 0,
+    fast_mode: bool = False,
+    fidelity_threshold: float = -1.0,
+    fidelity_weight: float = 0.5,
+) -> high_performance.TranspileResult:
+    """Transpile a pre-parsed IR (no QASM parsing step).
+
+    Same pipeline as ``transpile`` but skips the QASM parse step.
+    The caller supplies the already-parsed operation list and the
+    logical qubit count directly.
+
+    Args:
+    ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
+    num_qubits (int): Number of logical qubits in the circuit.
+    supp_basis_gates (list[str]): Supported basis gate names.
+    opt_level (int, optional): Optimization level (0-3). Defaults to 1.
+    coupling_list (list[tuple[int, int]], optional): Physical qubit coupling
+        edges. Empty means skip routing.
+    edge_fidelities (list[float], optional): Edge fidelity values
+        corresponding to coupling_list. Empty means not used.
+    single_qubit_fidelities (list[float], optional): Single-qubit fidelity
+        array indexed by physical qubit ID. Empty means not used.
+    layout_method (str, optional): Initial layout method: "vf2_layout"
+        (default) or "dense_layout".
+    target_bits (list[int], optional): Target physical qubit IDs. When
+        non-empty, all-1q circuits map to these qubits and 2q circuits
+        route on the induced subgraph of edges between them.
+    num_threads (int, optional): Optimization thread count. 0 = auto
+        (hardware_concurrency), 1 = serial, >1 = explicit. Defaults to 0.
+    fast_mode (bool, optional): Optimization fast mode. True = run pass
+        list only once. Defaults to True.
+    fidelity_threshold (float, optional): Fidelity threshold; edges
+        below this value are filtered out. Negative value means adaptive
+        calculation (mean - std, clamped to [0.3, 0.9]).
+        Defaults to -1.0 (adaptive).
+    fidelity_weight (float, optional): DenseLayout fidelity weight in [0, 1].
+        0.0 = pure density, 1.0 = pure fidelity. Defaults to 0.5.
+
+    Returns:
+    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+    """
+    ...
+
+class ChipCalibration:
+    """Chip calibration data."""
+
+    coupling_list: list[tuple[int, int]]
+    edge_fidelities: list[float]
+    single_qubit_fidelities: list[float]
+
+    def __init__(
+        self,
+        coupling_list: collections.abc.Sequence[tuple[int, int]],
+        edge_fidelities: collections.abc.Sequence[float],
+        single_qubit_fidelities: collections.abc.Sequence[float],
+    ) -> None: ...
+
+def load_chip_calibration(csv_path: str) -> high_performance.ChipCalibration:
+    """Load chip calibration data from a CSV file (北量院).
+
+    Args:
+    csv_path (str): Path to the calibration CSV file.
+
+    Returns:
+    ChipCalibration: Parsed calibration data.
+    """
+    ...
+
+class VerifyParams:
+    """Verification parameters."""
+
+    bits: int
+    basis_gates: list[str]
+    coupling_list: list[tuple[int, int]]
+    edge_fidelities: list[float]
+    single_qubit_fidelities: list[float]
+    target_bits: list[int]
+
+    def __init__(self) -> None: ...
+
+class VerifyResult:
+    """Verification result with pass/fail status and failure message."""
+
+    passed: bool
+    message: str
+
+    def __init__(self) -> None: ...
+
+class QuafuVerifier:
+    """Quafu (夸父) superconducting chip verifier."""
+
+    def __init__(self, params: high_performance.VerifyParams) -> None: ...
+    def verify(
+        self, qasm_string: str, verbose: bool = False
+    ) -> high_performance.VerifyResult: ...
+
+class CMSSVerifier:
+    """CMSS (compilation service) verifier."""
+
+    def __init__(self, params: high_performance.VerifyParams) -> None: ...
+    def verify(
+        self, qasm_string: str, verbose: bool = False
+    ) -> high_performance.VerifyResult: ...

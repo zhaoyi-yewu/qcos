@@ -26,8 +26,8 @@ from unittest.mock import patch, Mock, AsyncMock
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant, HttpCode
-from wy_qcos.drivers.device_manager import DeviceManager
-from wy_qcos.drivers.driver_manager import DriverManager
+from wy_qcos.device.device_manager import DeviceManager
+from wy_qcos.driver.driver_manager import DriverManager
 from wy_qcos.task_manager.task_manager import TaskFlowManager
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
@@ -130,11 +130,19 @@ class TestTaskFlowManager(unittest.TestCase):
 
         # Mock flow object from job_flow.from_source
         mock_flow = Mock()
+        # create_deployments reads flow.name to build a FlowFilterName;
+        # it must be a string to pass pydantic validation.
+        mock_flow.name = "job-flow"
         mock_deployment = Mock()
         mock_flow.deploy = AsyncMock(return_value=mock_deployment)
 
         # Mock job_flow.from_source
         mock_job_flow.from_source = AsyncMock(return_value=mock_flow)
+        # create_deployments reads flow id via _sync_client.read_flows
+        mock_sync_client = Mock()
+        mock_read_flow = Mock(id="flow-id-1")
+        mock_sync_client.read_flows.return_value = [mock_read_flow]
+        self.task_manager._sync_client = mock_sync_client
         # run async method
         self.task_manager.deployments = asyncio.run(
             self.task_manager.create_deployments(deployment_configs)
@@ -193,8 +201,8 @@ class TestTaskFlowManager(unittest.TestCase):
         ):
             mock_loop = Mock()
             mock_loop.is_running.return_value = False
-            mock_loop.run_until_complete.side_effect = (
-                lambda coro: asyncio.run(coro)
+            mock_loop.run_until_complete.side_effect = lambda coro: (
+                asyncio.run(coro)
             )
             self.task_manager.loop = mock_loop
 
@@ -385,8 +393,8 @@ class TestTaskFlowManager(unittest.TestCase):
         ):
             mock_loop = Mock()
             mock_loop.is_running.return_value = False
-            mock_loop.run_until_complete.side_effect = (
-                lambda coro: asyncio.run(coro)
+            mock_loop.run_until_complete.side_effect = lambda coro: (
+                asyncio.run(coro)
             )
             self.task_manager.loop = mock_loop
 
@@ -610,11 +618,14 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_client.read_flow_run.side_effect = [running_flow, done_flow]
         self.task_manager._sync_client = mock_client
 
-        result = self.task_manager.delete_flow_runs(["run", "done"])
+        result = self.task_manager.delete_flow_runs(["flow1", "flow2"])
 
-        assert result == [
-            {"flow_run_id": "done", "state": Constant.JOB_STATUS_DELETED}
-        ]
+        # delete_flow_runs returns a dict keyed by flow_run_id; running
+        # flow-runs are skipped (no entry), completed ones are deleted.
+        assert result == {
+            "flow1": {"state": Constant.JOB_STATUS_RUNNING},
+            "flow2": {"state": Constant.JOB_STATUS_DELETED},
+        }
 
     def test_delete_task_flow_by_name_not_found(self):
         mock_client = Mock()
@@ -636,6 +647,49 @@ class TestTaskFlowManager(unittest.TestCase):
 
         assert result == ["flow"]
         mock_client.read_flow_runs.assert_called_once()
+
+    def test_read_all_flow_runs_single_page(self):
+        """Fewer than page_size returns after a single request."""
+        sync_client = Mock()
+        sync_client.read_flow_runs.return_value = ["a", "b", "c"]
+        result = TaskFlowManager.read_all_flow_runs(sync_client, page_size=200)
+        assert result == ["a", "b", "c"]
+        sync_client.read_flow_runs.assert_called_once()
+
+    def test_read_all_flow_runs_multi_page(self):
+        """Full pages continue; last partial page terminates the loop."""
+        sync_client = Mock()
+        page1 = [f"item-{i}" for i in range(200)]
+        page2 = [f"item-{i}" for i in range(50)]
+        sync_client.read_flow_runs.side_effect = [page1, page2]
+        result = TaskFlowManager.read_all_flow_runs(sync_client, page_size=200)
+        assert len(result) == 250
+        assert sync_client.read_flow_runs.call_count == 2
+        calls = sync_client.read_flow_runs.call_args_list
+        assert calls[0].kwargs["offset"] == 0
+        assert calls[1].kwargs["offset"] == 200
+
+    def test_read_all_flow_runs_exact_multiple(self):
+        """Exact multiple of page_size triggers one extra empty request."""
+        sync_client = Mock()
+        page1 = [f"a-{i}" for i in range(200)]
+        page2 = [f"b-{i}" for i in range(200)]
+        sync_client.read_flow_runs.side_effect = [page1, page2, []]
+        result = TaskFlowManager.read_all_flow_runs(sync_client, page_size=200)
+        assert len(result) == 400
+        assert sync_client.read_flow_runs.call_count == 3
+
+    def test_read_all_flow_runs_with_filter(self):
+        """flow_run_filter is forwarded to every page request."""
+        sync_client = Mock()
+        sync_client.read_flow_runs.return_value = []
+        flow_run_filter = Mock()
+        TaskFlowManager.read_all_flow_runs(
+            sync_client, flow_run_filter=flow_run_filter, page_size=200
+        )
+        sync_client.read_flow_runs.assert_called_once_with(
+            flow_run_filter=flow_run_filter, limit=200, offset=0
+        )
 
     # --- Aggregation-related test cases ---
 
@@ -822,7 +876,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_flow_run = Mock()
         mock_flow_run.id = "flow-run-id-1"
         mock_flow_run.state_name = "Paused"
-        mock_flow_run.work_pool_name = "dummy"
+        mock_flow_run.work_pool_name = "device|dummy"
         mock_flow_run.parameters = {
             "job_info": {
                 "data": {
@@ -933,7 +987,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_parent_flow = Mock()
         mock_parent_flow.id = "flow-run-id-1"
         mock_parent_flow.state_name = "Paused"
-        mock_parent_flow.work_pool_name = "dummy"
+        mock_parent_flow.work_pool_name = "device|dummy"
         mock_parent_flow.parameters = {
             "job_info": {
                 "data": {
@@ -950,7 +1004,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_sub_flow_1 = Mock()
         mock_sub_flow_1.name = "sub-job-1"
         mock_sub_flow_1.id = "sub-flow-id-1"
-        mock_sub_flow_1.work_pool_name = "dummy"
+        mock_sub_flow_1.work_pool_name = "device|dummy"
         mock_sub_flow_1.parameters = {
             "job_info": {
                 "data": {
@@ -966,7 +1020,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_sub_flow_2 = Mock()
         mock_sub_flow_2.name = "sub-job-2"
         mock_sub_flow_2.id = "sub-flow-id-2"
-        mock_sub_flow_2.work_pool_name = "other_pool"
+        mock_sub_flow_2.work_pool_name = "device|other_pool"
         mock_sub_flow_2.parameters = {
             "job_info": {
                 "data": {
@@ -1033,7 +1087,7 @@ class TestTaskFlowManager(unittest.TestCase):
         mock_parent_flow = Mock()
         mock_parent_flow.id = "flow-run-id-1"
         mock_parent_flow.state_name = "Paused"
-        mock_parent_flow.work_pool_name = "dummy"
+        mock_parent_flow.work_pool_name = "device|dummy"
         mock_parent_flow.parameters = {
             "job_info": {
                 "data": {
@@ -1052,7 +1106,7 @@ class TestTaskFlowManager(unittest.TestCase):
             mock_sub = Mock()
             mock_sub.name = f"sub-job-{i}"
             mock_sub.id = f"sub-flow-id-{i}"
-            mock_sub.work_pool_name = "dummy"
+            mock_sub.work_pool_name = "device|dummy"
             mock_sub.parameters = {
                 "job_info": {
                     "data": {
@@ -1109,6 +1163,11 @@ class TestTaskFlowManager(unittest.TestCase):
         # Configure mock event loop
         mock_loop = Mock()
         mock_loop.is_running.return_value = False
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         # Configure mock clients
@@ -1158,7 +1217,11 @@ class TestTaskFlowManager(unittest.TestCase):
                             "create_deployments",
                             new=AsyncMock(
                                 return_value={
-                                    "test_device": {"deploy_id": "123"}
+                                    "test_device": {
+                                        "deploy_id": "123",
+                                        "flow_id": "flow-1",
+                                        "flow_name": "job-flow",
+                                    }
                                 }
                             ),
                         ) as mock_create_deploy:
@@ -1197,17 +1260,15 @@ class TestTaskFlowManager(unittest.TestCase):
         assert self.task_manager._sync_client == mock_sync_client
         assert self.task_manager.loop == mock_loop
 
-        # Verify create_pools called with device names
-        mock_create_pools.assert_any_call(
-            pool_names=mock_device_manager.get_devices().keys()
-        )
+        # Verify create_pools called with device pool names
+        mock_create_pools.assert_any_call(pool_names=["device|test_device"])
         # Verify create_pools called with monitor device names
-        mock_create_pools.assert_any_call(pool_names=["test_device_monitor"])
+        mock_create_pools.assert_any_call(pool_names=["monitor|test_device"])
         # Verify create_pools called with manager device names
-        mock_create_pools.assert_any_call(pool_names=["test_device_mgr"])
+        mock_create_pools.assert_any_call(pool_names=["mgr|test_device"])
         # Verify create_queues called
         mock_create_queues.assert_called_once_with(
-            queue_names=mock_device_manager.get_devices().keys()
+            queue_names=["device|test_device"]
         )
         # Verify delete_task_flow_by_name called
         mock_delete_flow.assert_called_once_with("device-monitor-flow")
@@ -1250,6 +1311,11 @@ class TestTaskFlowManager(unittest.TestCase):
         # Configure mock event loop
         mock_loop = Mock()
         mock_loop.is_running.return_value = False
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         # Configure mock clients
@@ -1334,6 +1400,11 @@ class TestTaskFlowManager(unittest.TestCase):
         """Test start() with devices that have monitor and mgr disabled."""
         # Configure mock event loop
         mock_loop = Mock()
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         # Configure mock clients
@@ -1377,7 +1448,13 @@ class TestTaskFlowManager(unittest.TestCase):
                         self.task_manager,
                         "create_deployments",
                         new=AsyncMock(
-                            return_value={"test_device": {"deploy_id": "123"}}
+                            return_value={
+                                "test_device": {
+                                    "deploy_id": "123",
+                                    "flow_id": "flow-1",
+                                    "flow_name": "job-flow",
+                                }
+                            }
                         ),
                     ) as mock_create_deploy:
                         with patch.object(
@@ -1402,12 +1479,12 @@ class TestTaskFlowManager(unittest.TestCase):
                                         ) as mock_run_monitor:
                                             self.task_manager.start()
 
-        # Verify create_pools for device names only (no monitor/mgr pools)
+        # Verify create_pools for device pool names only (no monitor/mgr pools)
         mock_create_pools.assert_called_once_with(
-            pool_names=mock_device_manager.get_devices().keys()
+            pool_names=["device|test_device"]
         )
         mock_create_queues.assert_called_once_with(
-            queue_names=mock_device_manager.get_devices().keys()
+            queue_names=["device|test_device"]
         )
         mock_gen_deploy.assert_called_once()
         mock_create_deploy.assert_called_once()
@@ -1434,6 +1511,11 @@ class TestTaskFlowManager(unittest.TestCase):
     ):
         """Test start() with multiple devices."""
         mock_loop = Mock()
+        # start() runs coroutines via loop.run_until_complete; execute
+        # them so mocked AsyncMock return values are propagated.
+        mock_loop.run_until_complete.side_effect = lambda coro: asyncio.run(
+            coro
+        )
         mock_new_event_loop.return_value = mock_loop
 
         mock_sync_client = Mock()
@@ -1497,9 +1579,21 @@ class TestTaskFlowManager(unittest.TestCase):
                         "create_deployments",
                         new=AsyncMock(
                             return_value={
-                                "device_a": {"deploy_id": "1"},
-                                "device_b": {"deploy_id": "2"},
-                                "device_c": {"deploy_id": "3"},
+                                "device_a": {
+                                    "deploy_id": "1",
+                                    "flow_id": "flow-a",
+                                    "flow_name": "job-flow",
+                                },
+                                "device_b": {
+                                    "deploy_id": "2",
+                                    "flow_id": "flow-b",
+                                    "flow_name": "job-flow",
+                                },
+                                "device_c": {
+                                    "deploy_id": "3",
+                                    "flow_id": "flow-c",
+                                    "flow_name": "job-flow",
+                                },
                             }
                         ),
                     ):
@@ -1525,15 +1619,21 @@ class TestTaskFlowManager(unittest.TestCase):
 
         # Verify create_pools calls
         mock_create_pools.assert_any_call(
-            pool_names={"device_a", "device_b", "device_c"}
+            pool_names=[
+                "device|device_a",
+                "device|device_b",
+                "device|device_c",
+            ]
         )
         mock_create_pools.assert_any_call(
-            pool_names=["device_a_monitor", "device_b_monitor"]
+            pool_names=["monitor|device_a", "monitor|device_b"]
         )
-        mock_create_pools.assert_any_call(
-            pool_names=["device_a_mgr", "device_b_mgr"]
-        )
+        mock_create_pools.assert_any_call(pool_names=["mgr|device_a"])
 
         mock_create_queues.assert_called_once_with(
-            queue_names={"device_a", "device_b", "device_c"}
+            queue_names=[
+                "device|device_a",
+                "device|device_b",
+                "device|device_c",
+            ]
         )

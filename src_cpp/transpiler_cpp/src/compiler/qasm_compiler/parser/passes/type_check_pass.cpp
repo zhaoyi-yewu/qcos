@@ -64,7 +64,7 @@ void TypeCheckPass::visitDeclarationStatement(
     auto type = visit(typeExpr->getDesignator());
     if (type.isError || !type.type->isUint()) {
       error("Designator expression type check failed.",
-            declarationStatement->debugInfo);
+            &declarationStatement->debugInfo);
       return;
     }
   }
@@ -112,7 +112,7 @@ void TypeCheckPass::visitAssignmentStatement(
     auto indexTy = visit(assignmentStatement->indexExpression);
     if (!indexTy.isError && !indexTy.type->isUint()) {
       error("Index must be an unsigned integer.",
-            assignmentStatement->debugInfo);
+            &assignmentStatement->debugInfo);
       return;
     }
   }
@@ -123,7 +123,7 @@ void TypeCheckPass::visitAssignmentStatement(
   if (idTy == env.end()) {
     error("Unknown identifier '" +
               assignmentStatement->identifier->identifier + "'.",
-          assignmentStatement->debugInfo);
+          &assignmentStatement->debugInfo);
     return;
   }
 
@@ -134,7 +134,7 @@ void TypeCheckPass::visitAssignmentStatement(
     ss << "', found '";
     ss << exprTy.type->toString();
     ss << "'.";
-    error(ss.str(), assignmentStatement->debugInfo);
+    error(ss.str(), &assignmentStatement->debugInfo);
   }
 }
 

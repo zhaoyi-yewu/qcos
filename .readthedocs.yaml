@@ -27,10 +27,8 @@ python:
       path: .
       extra_requirements:
         - docs
-    
-    - requirements: ./requirements/requirements-docs.txt
 
 formats:
   - pdf
-  - htmlzip
-#   - epub
+#  - htmlzip  # max 15mins building time allowed in ReadTheDocs, ignore building htmlzip
+#  - epub

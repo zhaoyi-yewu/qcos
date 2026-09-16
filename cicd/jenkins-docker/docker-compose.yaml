@@ -17,7 +17,8 @@ services:
     build: . 
     container_name: jenkins-cicd
     restart: always
-    user: root # 
+    user: root
+    network_mode: host
     ports:
       - "8080:8080"
       - "50000:50000"
@@ -28,3 +29,4 @@ services:
       - /etc/hosts:/etc/hosts
     environment:
       - TZ=Asia/Shanghai
+      - JENKINS_OPTS=--httpPort=8080

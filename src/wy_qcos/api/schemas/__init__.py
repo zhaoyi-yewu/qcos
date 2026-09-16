@@ -67,6 +67,8 @@ from .device import (
     GetCalibrateResultResponse,
     GetDeviceOptionsRequest,
     GetDeviceOptionsResponse,
+    SetDeviceRequest,
+    SetDeviceResponse,
 )
 from .transpiler import (
     GetTranspilersRequest,
@@ -95,6 +97,18 @@ from .system import (
     PongResponse,
     SystemInfoRequest,
     SystemInfoResponse,
+    ShowMemRequest,
+    ShowMemResponse,
+    GcMemRequest,
+    GcMemResponse,
+    TraceMemRequest,
+    TraceMemStatItem,
+    TraceMemResponse,
+    ListWorkersRequest,
+    WorkerInfo,
+    ListWorkersResponse,
+    RestartWorkerRequest,
+    RestartWorkerResponse,
 )
 from .metrics import (
     GetMetricsRequest,
@@ -105,4 +119,24 @@ from .metrics import (
     GetApiStatsResponse,
     GetJobStatsRequest,
     GetJobStatsResponse,
+)
+from .flavor import (
+    CreateFlavorRequest,
+    FlavorResponse,
+    GetFlavorRequest,
+    GetFlavorsRequest,
+    UpdateFlavorRequest,
+    DeleteFlavorsRequest,
+    DeleteFlavorResponseItem,
+    DeleteFlavorsResponse,
+)
+from .device_group import (
+    CreateDeviceGroupRequest,
+    UpdateDeviceGroupRequest,
+    GetDeviceGroupRequest,
+    GetDeviceGroupsRequest,
+    DeleteDeviceGroupsRequest,
+    DeleteDeviceGroupResponseItem,
+    DeleteDeviceGroupsResponse,
+    DeviceGroupResponse,
 )

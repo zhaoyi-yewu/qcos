@@ -292,10 +292,10 @@ class DataParseHandler(BaseHTTPRequestHandler):
         )
 
 
-def main():
-    server_address = ("", 18601)
+def main(port=18601):
+    server_address = ("", port)
     httpd = HTTPServer(server_address, DataParseHandler)
-    logger.info("server start")
+    logger.info(f"server start on port {port}")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

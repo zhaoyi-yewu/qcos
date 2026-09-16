@@ -20,12 +20,14 @@ import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from functools import partial
 
 import redis.asyncio as async_redis
 from prefect.client.schemas.objects import WorkerStatus
 from sqlalchemy.orm import Session
 
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import (
     Constant,
     HttpCode,
@@ -153,9 +155,8 @@ async def get_redis_client():
     """Get a singleton Redis client for health checks."""
     global _redis_client
     if _redis_client is None:
-        _redis_client = async_redis.Redis(
-            host=Constant.DEFAULT_REDIS_SERVER_IP,
-            port=Constant.DEFAULT_REDIS_SERVER_PORT,
+        _redis_client = async_redis.Redis.from_url(
+            Config.REDIS.REDIS_URL,
             decode_responses=True,
             socket_connect_timeout=REDIS_CHECK_TIMEOUT,
             socket_timeout=REDIS_CHECK_TIMEOUT,
@@ -256,11 +257,28 @@ async def update_job_metrics():
         cancelled = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_CANCELLED
         )
+        deleting = repo.count_by_attr(
+            Job, "job_status", Constant.JOB_STATUS_DELETING
+        )
         deleted = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_DELETED
         )
         unknown = repo.count_by_attr(
             Job, "job_status", Constant.JOB_STATUS_UNKNOWN
+        )
+
+        # Count jobs created in the last minute to compute submission
+        # rate (jobs per minute). Uses a sliding 1-minute window over
+        # created_at so no persistent snapshot is needed.
+        recent_cutoff = datetime.now() - timedelta(minutes=1)
+        submitted_job_count = repo.count_recent(recent_cutoff)
+        # Count jobs ended in the last minute to compute completion rate.
+        # Uses ended_at so the rate reflects actual job completions rather
+        # than creations.
+        completed_job_count = repo.count_recent(
+            recent_cutoff,
+            time_field="ended_at",
+            job_status=Constant.JOB_STATUS_COMPLETED,
         )
 
         data = metrics_collector.job_metrics.JobMetricsData(
@@ -271,8 +289,11 @@ async def update_job_metrics():
             queued=queued,
             cancelling=cancelling,
             cancelled=cancelled,
+            deleting=deleting,
             deleted=deleted,
             unknown=unknown,
+            submitted_job_rate_min=float(submitted_job_count),
+            completed_job_rate_min=float(completed_job_count),
         )
 
         metrics_collector.update_job_metrics(data=data)
@@ -312,11 +333,12 @@ async def check_worker_health(sync_client=None) -> tuple[bool, str]:
 
         for attempt in range(2):
             try:
+                pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
                 workers = await call_sync_with_timeout(
                     sync_client.read_workers_for_work_pool,
                     timeout=WORKER_CHECK_TIMEOUT,
                     executor=worker_executor,
-                    work_pool_name=device_name,
+                    work_pool_name=pool_name,
                 )
 
                 if not workers:
@@ -459,6 +481,27 @@ async def update_system_health_metrics():
             f"redis={redis_healthy}, "
             f"redis_error={redis_error}"
         )
+
+        # Auto-restart dead workers when prefect is healthy but workers
+        # are not. Skip if prefect itself is down (restarts would fail
+        # anyway because worker registration requires prefect API).
+        if (
+            fastapi_healthy
+            and prefect_healthy
+            and redis_healthy
+            and not worker_healthy
+        ):
+            task_manager = scheduler.get_task_manager()
+            if task_manager:
+                try:
+                    await call_sync_with_timeout(
+                        task_manager.watchdog_restart_dead_workers,
+                        timeout=30.0,
+                    )
+                except TimeoutError:
+                    logger.warning("Watchdog restart timed out")
+                except Exception as e:
+                    logger.warning(f"Watchdog restart error: {e}")
 
     except Exception as e:
         logger.error(

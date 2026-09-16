@@ -3,7 +3,7 @@ ST_API_SERVER_IP = "127.0.0.1"
 ST_API_SERVER_PORT = 18400
 
 [USERS]
-ADMIN_PASSWORD = "++gAAAAABpt8fIFNquoHfkm0jqDAtQWKit9f1y7Ns479NBgzSGCUvwhlJcrUaL0CU0qkXX9OQpDFXNzCUU1dR37-HqqTFIevAWqQ=="
+DEFAULT_ADMIN_PASSWORD = "P*ssword1"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 [VIRT]
@@ -12,4 +12,14 @@ PASSWORD_SALT = "123456"
 
 [DEVICES]
 # override DEVICE_LIST in qcos.toml for ST tests
-DEVICE_LIST = ["dummy", "tiangong100", "tiangong550_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "uqc_matrix2", "qutip_sim", "ciqtek_ion_1", "quafu"]
+DEVICE_LIST = [
+    "dummy", "dummy1", "dummy2", "qutip_sim", "qutip_sim1", "qutip_sim2",
+    "stim",
+    "wy_hanyuan1", "wy_hanyuan1_sim",
+    "tiangong100", "tiangong550_v2",
+    "spinq_rpc", "spinq_gemini", "spinq_triangulum", "spinq_sqc_25",
+    "uqc_matrix2", "ciqtek_ion_1",
+    "lq_mq02", "lq_qz01_surface",
+    "quafu",
+    "cetc_baihua"
+]

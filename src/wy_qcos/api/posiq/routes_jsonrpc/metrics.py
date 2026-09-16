@@ -33,6 +33,7 @@ module_name = "METRICS"
 
 
 @metrics_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def get_system_health(
@@ -84,6 +85,7 @@ def get_system_health(
 
 
 @metrics_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def get_api_stats(
@@ -128,6 +130,7 @@ def get_api_stats(
 
 
 @metrics_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
 )
 def get_job_stats(
@@ -157,8 +160,15 @@ def get_job_stats(
             Constant.JOB_METRICS_FIELD_QUEUED: job_metrics_data.queued,
             Constant.JOB_METRICS_FIELD_CANCELLING: job_metrics_data.cancelling,
             Constant.JOB_METRICS_FIELD_CANCELLED: job_metrics_data.cancelled,
+            Constant.JOB_METRICS_FIELD_DELETING: job_metrics_data.deleting,
             Constant.JOB_METRICS_FIELD_DELETED: job_metrics_data.deleted,
             Constant.JOB_METRICS_FIELD_UNKNOWN: job_metrics_data.unknown,
+            Constant.JOB_METRICS_FIELD_SUBMITTED_JOB_RATE_MIN: (
+                job_metrics_data.submitted_job_rate_min
+            ),
+            Constant.JOB_METRICS_FIELD_COMPLETED_JOB_RATE_MIN: (
+                job_metrics_data.completed_job_rate_min
+            ),
         }
         response_info = schemas.GetJobStatsResponse.model_validate(
             _response_info

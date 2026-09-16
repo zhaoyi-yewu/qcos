@@ -20,7 +20,7 @@ Merge local git branch to remote branch / Split commits to single branches
 
 Prerequisite:
 yum install -y git
-pip3 install git-filter-repo GitPython
+pip3 install --break-system-packages git-filter-repo GitPython
 
 1. Initialize git repo (Init only once, no need to run in the next time)
 mkdir WuYue
@@ -40,6 +40,7 @@ git branch --set-upstream-to=gitee/develop gitee-develop
 
 2. One-click full sync (pull + diff + merge all new commits + push)
 ./merge-to-gitee.py -f -s "2025-11-01"
+./merge-to-gitee.py -f -s "2025-11-01" --skip-commit 12345 23456  # skip commits
 
 3. One-click sync specified commits (pull + merge + push)
 ./merge-to-gitee.py -f -c "12345 23456"
@@ -47,15 +48,24 @@ git branch --set-upstream-to=gitee/develop gitee-develop
 4. Split commits to single branches and push to Gitee
 ./merge-to-gitee.py -S -s "2025-11-01"  # Split commits since 2025-11-01
 ./merge-to-gitee.py -S -c "12345 23456"  # Split specified commits
+./merge-to-gitee.py -S -s "2025-11-01" --dry-run  # Dry-run, no push
 
 5. Original commands are still available:
 ./merge-to-gitee.py -p (pull only)
 ./merge-to-gitee.py -d (diff only)
 ./merge-to-gitee.py -c {COMMIT_ID} (merge only)
+
+6. Cleanup branches (delete local/remote feature branches):
+./merge-to-gitee.py --delete-local-branches
+./merge-to-gitee.py --delete-remote-branches
+./merge-to-gitee.py -S -s "2025-11-01" --delete-local-branches --delete-remote-branches
+# skip some commits
+./merge-to-gitee.py -S -s "2025-11-01" --delete-local-branches --delete-remote-branches --skip-commits 1234 2345
 """
 
 import hashlib
 import re
+import shlex
 import subprocess
 import sys
 from collections import OrderedDict
@@ -71,27 +81,33 @@ cmss_remote = "origin"
 cmss_local_branch = "dev_gitee"
 cmss_local_merge_branch = "gitee-merge"
 
+branch_prefix = "feature_new-"
+
 
 class MergeException(Exception):
     """Merge Exception."""
 
 
-def run_command(command, check=True, capture_output=True, text=True):
+def run_command(command, check=True, capture_output=True, text=True,
+                ignore_error=False):
     """Run command.
 
     Args:
-        command: command
+        command: command, a list of args or a shell string (split via shlex)
         check: check exit code
         capture_output: capture output
         text: print text
+        ignore_error: ignore error
 
     Returns:
         command results
     """
+    if isinstance(command, str):
+        command = shlex.split(command)
     try:
         results = subprocess.run(
             command,
-            shell=True,
+            shell=False,
             check=check,
             capture_output=capture_output,
             text=text,
@@ -100,46 +116,67 @@ def run_command(command, check=True, capture_output=True, text=True):
     except subprocess.CalledProcessError as e:
         print(f"Command failed: {command}")
         print(f"Error output: {e.stderr}")
-        raise
+        if not ignore_error:
+            raise
 
 
 def pull_branches():
     """Pull branches."""
-    run_command(f"git branch -D {cmss_local_merge_branch} || true")
+    run_command(
+        ["git", "branch", "-D", cmss_local_merge_branch], check=False
+    )
 
-    delete_branch_cmds = [
-        f"git checkout -b {cmss_local_merge_branch} {gitee_local_branch}"
-        f" || git checkout {cmss_local_merge_branch}"
-    ]
     print(f"Recreate branch: {cmss_local_merge_branch}")
-    results = run_command(";".join(delete_branch_cmds))
+    results = run_command(
+        [
+            "git", "checkout", "-b", cmss_local_merge_branch,
+            gitee_local_branch,
+        ],
+        check=False,
+    )
+    if results.returncode != 0:
+        results = run_command(
+            ["git", "checkout", cmss_local_merge_branch]
+        )
     ret_code = results.returncode
     if ret_code != 0:
         raise MergeException(results.stderr)
 
     fetch_from_gitee_cmds = [
-        "git reset --hard",
-        "git cherry-pick --abort || true",
-        f"git checkout {gitee_local_branch}",
-        f"git pull --rebase {gitee_remote} "
-        f"{gitee_remote_branch}:{gitee_local_branch}",
+        ["git", "reset", "--hard"],
+        ["git", "cherry-pick", "--abort"],
+        ["git", "checkout", gitee_local_branch],
+        [
+            "git", "pull", "--rebase", gitee_remote,
+            f"{gitee_remote_branch}:{gitee_local_branch}",
+        ],
     ]
     print(f"Fetch from {gitee_remote}, branch: {gitee_remote_branch} ...")
-    results = run_command(";".join(fetch_from_gitee_cmds))
-    ret_code = results.returncode
+    last_result = None
+    for idx, cmd in enumerate(fetch_from_gitee_cmds):
+        # cherry-pick --abort may fail; ignore its errors
+        if idx == 1:
+            last_result = run_command(cmd, check=False)
+        else:
+            last_result = run_command(cmd)
+    ret_code = last_result.returncode
     if ret_code != 0:
-        raise MergeException(results.stderr)
+        raise MergeException(last_result.stderr)
 
     fetch_from_cmss_cmds = [
-        f"git checkout {cmss_local_branch}",
-        f"git pull --rebase {cmss_remote} "
-        f"{cmss_local_branch}:{cmss_local_branch}",
+        ["git", "checkout", cmss_local_branch],
+        [
+            "git", "pull", "--rebase", cmss_remote,
+            f"{cmss_local_branch}:{cmss_local_branch}",
+        ],
     ]
     print(f"Fetch codes from {cmss_remote}, branch: {cmss_local_branch} ...")
-    results = run_command(";".join(fetch_from_cmss_cmds))
-    ret_code = results.returncode
+    last_result = None
+    for cmd in fetch_from_cmss_cmds:
+        last_result = run_command(cmd)
+    ret_code = last_result.returncode
     if ret_code != 0:
-        raise MergeException(results.stderr)
+        raise MergeException(last_result.stderr)
 
 
 def get_commits_dict(branch_name, since_str=None, repo_path="."):
@@ -170,6 +207,7 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
         options["since"] = since_str
 
     # list all commit logs
+    ignore_pattern = rb'@@.*?@@'
     for commit in repo.iter_commits(branch_name, **options):
         # get commit info
         commit_hash = commit.hexsha  # %H (Commit Hash)
@@ -183,7 +221,8 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
         diffs = commit.diff(parent, create_patch=True)
         full_diff_text = b""
         for d in diffs:
-            full_diff_text += d.diff  # data type is bytes
+            diff = re.sub(ignore_pattern, b'', d.diff, flags=re.MULTILINE)
+            full_diff_text += diff
         content_hash = hashlib.md5(full_diff_text).hexdigest()
 
         # store commit info
@@ -206,10 +245,29 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
     return commits_dict
 
 
-def get_unsynced_commits(start_since=None):
-    """Get unsynced commits from cmss to gitee."""
+def get_unsynced_commits(start_since=None, skip_commits=None):
+    """Get unsynced commits from cmss to gitee.
+
+    Args:
+        start_since: start since date
+        skip_commits: commit IDs to skip
+
+    Returns:
+        unsynced commit list
+    """
     cmss_commits_dict = get_commits_dict(cmss_local_branch, start_since)
     gitee_commits_dict = get_commits_dict(gitee_local_branch, start_since)
+
+    # Remove skipped commits from cmss_commits_dict
+    if skip_commits:
+        skip_set = set(skip_commits)
+        keys_to_remove = []
+        for content_key, commit_info in cmss_commits_dict.items():
+            commit_hash = commit_info["commit_hash"]
+            if any(commit_hash.startswith(s) for s in skip_set):
+                keys_to_remove.append(content_key)
+        for key in keys_to_remove:
+            del cmss_commits_dict[key]
 
     cmss_keys = set(cmss_commits_dict.keys())
     gitee_keys = set(gitee_commits_dict.keys())
@@ -219,11 +277,23 @@ def get_unsynced_commits(start_since=None):
     if only_in_cmss:
         for k, commit_info in cmss_commits_dict.items():
             if k in only_in_cmss:
-                unsynced_commits.append(commit_info["commit_hash"])
-    unsynced_commits.reverse()
-    unsynced_commits.sort(key=lambda x: cmss_commits_dict[
-        next(k for k, v in cmss_commits_dict.items() if v["commit_hash"] == x)
-    ]["committed_datetime"])
+                unsynced_commits.append(
+                    (commit_info["commit_hash"],
+                     commit_info["commit_summary"])
+                )
+    enable_sort = False
+    if enable_sort:
+        # build reverse index once: commit_hash -> authored_datetime
+        hash_to_authored = {
+            v["commit_hash"]: v["authored_datetime"]
+            for v in cmss_commits_dict.values()
+        }
+        # sort ascending by authored_datetime (O(n log n), key lookup O(1))
+        unsynced_commits.sort(
+            key=lambda x: hash_to_authored.get(x[0])
+        )
+    else:
+        unsynced_commits.reverse()
     return unsynced_commits
 
 
@@ -348,44 +418,55 @@ def create_single_commit_branch(
         New branch name, masked commit ID
     """
     # generate branch name
-    branch_name = f"commit-{num}"
+    branch_name = f"{branch_prefix}{num}"
     if num > 1:
-        base_branch = f"commit-{num - 1}"
+        base_branch = f"{branch_prefix}{num - 1}"
 
     # 1. Delete existing branch with the same name
-    run_command(f"git branch -D {branch_name} || true")
+    run_command(["git", "branch", "-D", branch_name], check=False)
     # 2. Create a new branch based on the base branch
-    run_command(f"git checkout {base_branch}")
-    run_command(f"git checkout -b {branch_name}")
+    run_command(["git", "checkout", base_branch])
+    run_command(["git", "checkout", "-b", branch_name])
     # 3. Clear the current branch
-    run_command("git reset --hard")
+    run_command(["git", "reset", "--hard"])
     # 4. Cherry-pick single commit
-    run_command(f"git cherry-pick -m 1 {commit_hash}")
+    run_command(["git", "cherry-pick", commit_hash])
 
     # 5. Submit desensitized information
-    author_email = run_command("git log -1 --format=%ae").stdout.strip()
-    author_name = run_command("git log -1 --format=%an").stdout.strip()
-    message = run_command("git log -1 --format=%B").stdout.strip()
+    author_email = run_command(
+        ["git", "log", "-1", "--format=%ae"]
+    ).stdout.strip()
+    author_name = run_command(
+        ["git", "log", "-1", "--format=%an"]
+    ).stdout.strip()
+    message = run_command(
+        ["git", "log", "-1", "--format=%B"]
+    ).stdout.strip()
 
     new_email, new_name = sanitize_author(author_email, author_name)
     new_message = sanitize_message(message)
 
     # 6. Rewrite commit message
-    amend_cmd = (
-        f'git -c user.name="{new_name}" '
-        f'-c user.email="{new_email}" '
-        f"commit --amend --no-edit "
-        f'--author="{new_name} <{new_email}>"'
-    )
+    amend_cmd = [
+        "git",
+        "-c", f"user.name={new_name}",
+        "-c", f"user.email={new_email}",
+        "commit", "--amend", "--no-edit",
+        f"--author={new_name} <{new_email}>",
+    ]
     run_command(amend_cmd)
 
     if new_message != message:
         msg_file = "/tmp/git_commit_msg.txt"
         with open(msg_file, "w", encoding="utf-8") as f:
             f.write(new_message)
-        run_command(f'git commit --amend --no-edit -F "{msg_file}"')
+        run_command(
+            ["git", "commit", "--amend", "--no-edit", "-F", msg_file]
+        )
 
-    new_commit_hash = run_command("git log -1 --format=%H").stdout.strip()
+    new_commit_hash = run_command(
+        ["git", "log", "-1", "--format=%H"]
+    ).stdout.strip()
     print(
         f"Created branch [{branch_name}] for commit"
         f" [{commit_hash}] -> new commit [{new_commit_hash}]"
@@ -399,7 +480,9 @@ def push_single_branch(branch_name):
     Args:
         branch_name: branch name
     """
-    push_cmd = f"git push {gitee_remote} {branch_name}:{branch_name}"
+    push_cmd = [
+        "git", "push", gitee_remote, f"{branch_name}:{branch_name}",
+    ]
     results = run_command(push_cmd)
     if results.returncode == 0:
         print(f"Pushed branch [{branch_name}] to Gitee success!")
@@ -409,45 +492,114 @@ def push_single_branch(branch_name):
         )
 
 
-def split_and_push_single_commits(start_since=None, commit_id=None):
+def cleanup_branches(del_local, del_remote):
+    """Delete local/remote branches matching branch_prefix.
+
+    Args:
+        del_local: If True, delete local branches with branch_prefix
+        del_remote: If True, delete remote branches with branch_prefix
+    """
+    if del_local:
+        print("\n==== Cleanup: delete local branches ====")
+        # checkout base branch to avoid deleting current branch
+        run_command(
+            ["git", "checkout", gitee_local_branch], check=False
+        )
+        results = run_command(
+            ["git", "branch", "--format=%(refname:short)"]
+        )
+        branches = results.stdout.splitlines()
+        for b in branches:
+            b = b.strip()
+            if b and b.startswith(branch_prefix):
+                run_command(
+                    ["git", "branch", "-D", b], check=False
+                )
+                print(f"Deleted local branch: {b}")
+
+    if del_remote:
+        print(
+            f"\n==== Cleanup: delete remote branches"
+            f" on {gitee_remote} ===="
+        )
+        results = run_command(
+            ["git", "ls-remote", "--heads", gitee_remote]
+        )
+        for line in results.stdout.splitlines():
+            # format: <sha>\trefs/heads/<branch>
+            parts = line.split("\trefs/heads/", 1)
+            if len(parts) == 2:
+                b = parts[1].strip()
+                if b and b.startswith(branch_prefix):
+                    run_command(
+                        ["git", "push", gitee_remote,
+                         "--delete", b],
+                        check=False,
+                    )
+                    print(f"Deleted remote branch: {b}")
+
+
+def split_and_push_single_commits(start_since=None, commit_id=None,
+                                   skip_commits=None, dry_run=False):
     """Split submission into an independent branch and push to Gitee
 
     Args:
         start_since: Time Range
         commit_id: Specify the commit ID to split
+        skip_commits: Commit IDs to skip when auto-finding unsynced commits
+        dry_run: If True, create branches but do not push to Gitee
     """
-    print("==== Step 1: Pull latest code ====")
+    print("\n==== Step 1: Pull latest code ====")
     pull_branches()
 
     print("\n==== Step 2: Determine commits to split ====")
     target_commits = []
     if commit_id:
         if ".." in commit_id:
-            cmd = f"git log --oneline --no-merges --format='%h' {commit_id}"
+            cmd = [
+                "git", "log", "--oneline", "--no-merges",
+                "--format=%h", commit_id,
+            ]
             results = run_command(cmd)
             target_commits = results.stdout.splitlines()[::-1]
         else:
             target_commits = commit_id.split()
         print(f"Specified commits to split: {target_commits}")
     else:
-        unsynced_commits = get_unsynced_commits(start_since)
+        unsynced_commits = get_unsynced_commits(start_since, skip_commits)
         if not unsynced_commits:
             print("No unsynced commits found, exit.")
             return
-        target_commits = unsynced_commits
-        print(f"Auto-found unsynced commits to split: {target_commits}")
+        target_commits = [c[0] for c in unsynced_commits]
+        print("Auto-found unsynced commits to split:")
+        for commit_hash, commit_summary in unsynced_commits:
+            print(f"  [{commit_hash}] {commit_summary}")
 
     print("\n==== Step 3: Split and push single commits ====")
+    success = True
+    err_msg = None
+    if dry_run:
+        print("[Dry-run mode] Branches will be created but NOT pushed.")
     for i, commit in enumerate(target_commits, 1):
         print(f"\nProcessing commit [{i}/{len(target_commits)}]: {commit}")
         try:
             branch_name, new_commit = create_single_commit_branch(commit, i)
-            push_single_branch(branch_name)
+            if dry_run:
+                print(f"[Dry-run] Skip pushing branch [{branch_name}]")
+            else:
+                push_single_branch(branch_name)
         except Exception as e:
-            print(f"Failed to process commit [{commit}]: {e}")
-            continue
+            err_msg = f"Failed to process commit [{commit}]: {e}"
+            print(err_msg)
+            success = False
+            break
 
-    print("\n==== Split and push all single commits completed! ====")
+    if not success:
+        print("\n==== Failed to Split and push commits! ====")
+        raise Exception(err_msg)
+    else:
+        print("\n==== Split and push all single commits completed! ====")
+
 
 
 def merge_branches(commit_id):
@@ -462,11 +614,8 @@ def merge_branches(commit_id):
     print(f"Merge commits to branch: {cmss_local_merge_branch}")
 
     # checkout local merge branch
-    cmds = [
-        "git cherry-pick --abort || true",
-        f"git checkout {cmss_local_merge_branch}",
-    ]
-    results = run_command(";".join(cmds))
+    run_command(["git", "cherry-pick", "--abort"], check=False)
+    results = run_command(["git", "checkout", cmss_local_merge_branch])
     ret_code = results.returncode
     if ret_code != 0:
         raise MergeException(results.stderr)
@@ -474,7 +623,10 @@ def merge_branches(commit_id):
     # Analyze the list of commits to be merged
     commits = []
     if ".." in commit_id:
-        cmd = f"git log --oneline --no-merges --format='%h' {commit_id}"
+        cmd = [
+            "git", "log", "--oneline", "--no-merges",
+            "--format=%h", commit_id,
+        ]
         results = run_command(cmd)
         commits = results.stdout.splitlines()[::-1]
     else:
@@ -487,38 +639,43 @@ def merge_branches(commit_id):
     merged_commit_ids = []
     for i, commit in enumerate(commits, 1):
         print(f"Processing commit [{i}/{commits_count}]: {commit}")
-        run_command(f"git cherry-pick -m 1 {commit}")
+        run_command(["git", "cherry-pick", "-m", "1", commit])
 
         # Read the author and message information of the current HEAD
         author_email = run_command(
-            "git log -1 --format=%ae"
+            ["git", "log", "-1", "--format=%ae"]
         ).stdout.strip()
         author_name = run_command(
-            "git log -1 --format=%an"
+            ["git", "log", "-1", "--format=%an"]
         ).stdout.strip()
         message = run_command(
-            "git log -1 --format=%B"
+            ["git", "log", "-1", "--format=%B"]
         ).stdout.strip()
 
         new_email, new_name = sanitize_author(author_email, author_name)
         new_message = sanitize_message(message)
 
         # amend current commit
-        amend_cmd = (
-            f'git -c user.name="{new_name}" '
-            f'-c user.email="{new_email}" '
-            f"commit --amend --no-edit "
-            f'--author="{new_name} <{new_email}>"'
-        )
+        amend_cmd = [
+            "git",
+            "-c", f"user.name={new_name}",
+            "-c", f"user.email={new_email}",
+            "commit", "--amend", "--no-edit",
+            f"--author={new_name} <{new_email}>",
+        ]
         run_command(amend_cmd)
 
         if new_message != message:
             msg_file = "/tmp/git_commit_msg.txt"
             with open(msg_file, "w", encoding="utf-8") as f:
                 f.write(new_message)
-            run_command(f'git commit --amend --no-edit -F "{msg_file}"')
+            run_command(
+                ["git", "commit", "--amend", "--no-edit", "-F", msg_file]
+            )
 
-        merged_commit = run_command("git log -1 --format=%H").stdout.strip()
+        merged_commit = run_command(
+            ["git", "log", "-1", "--format=%H"]
+        ).stdout.strip()
         merged_commit_ids.append(merged_commit)
 
     print(f"Successfully merged commits: {merged_commit_ids}")
@@ -528,10 +685,10 @@ def merge_branches(commit_id):
 def push_to_gitee():
     """Push merged branch to gitee."""
     print(f"Push to {gitee_remote}/{gitee_remote_branch} ...")
-    push_cmd = (
-        f"git push {gitee_remote} "
-        f"{cmss_local_merge_branch}:{gitee_remote_branch}"
-    )
+    push_cmd = [
+        "git", "push", gitee_remote,
+        f"{cmss_local_merge_branch}:{gitee_remote_branch}",
+    ]
     results = run_command(push_cmd)
     if results.returncode == 0:
         print("Push to gitee success!")
@@ -539,12 +696,13 @@ def push_to_gitee():
         raise MergeException(f"Push failed: {results.stderr}")
 
 
-def full_auto_sync(start_since=None, commit_id=None):
+def full_auto_sync(start_since=None, commit_id=None, skip_commits=None):
     """auto push to Gitee
 
     Args:
         start_since: Time Range
         commit_id: commit ID
+        skip_commits: Commit IDs to skip when auto-finding unsynced commits
     """
     print("==== Step 1: Pull latest code ====")
     pull_branches()
@@ -554,12 +712,14 @@ def full_auto_sync(start_since=None, commit_id=None):
         target_commits = commit_id
         print(f"Specified commits to merge: {target_commits}")
     else:
-        unsynced_commits = get_unsynced_commits(start_since)
+        unsynced_commits = get_unsynced_commits(start_since, skip_commits)
         if not unsynced_commits:
             print("No unsynced commits found, exit.")
             return
-        target_commits = " ".join(unsynced_commits)
-        print(f"Auto-found unsynced commits: {target_commits}")
+        target_commits = " ".join(c[0] for c in unsynced_commits)
+        print("Auto-found unsynced commits:")
+        for commit_hash, commit_summary in unsynced_commits:
+            print(f"  [{commit_hash}] {commit_summary}")
 
     print("\n==== Step 3: Merge commits ====")
     merge_branches(target_commits)
@@ -627,6 +787,31 @@ def main(argv=None):
             action="store_true",
             help="Split commits to single branches and push to Gitee"
         )
+        parser.add_argument(
+            "--skip-commits",
+            dest="skip_commits",
+            nargs="+",
+            metavar="COMMITS",
+            help="Commit IDs to skip when auto-finding unsynced commits"
+        )
+        parser.add_argument(
+            "--dry-run",
+            dest="dry_run",
+            action="store_true",
+            help="Dry-run mode: create branches but do not push to Gitee"
+        )
+        parser.add_argument(
+            "--delete-local-branches",
+            dest="delete_local_branches",
+            action="store_true",
+            help="Delete all local branches matching branch_prefix"
+        )
+        parser.add_argument(
+            "--delete-remote-branches",
+            dest="delete_remote_branches",
+            action="store_true",
+            help="Delete all remote branches matching branch_prefix"
+        )
 
         # parse arguments
         args = parser.parse_args()
@@ -636,6 +821,10 @@ def main(argv=None):
         start_since = args.start_since
         full_sync = args.full_sync
         split = args.split
+        skip_commits = args.skip_commits
+        dry_run = args.dry_run
+        del_local = args.delete_local_branches
+        del_remote = args.delete_remote_branches
 
         commit_id_pattern = r"^[0-9a-fA-F]{7,40}$"
         if commit_id:
@@ -651,6 +840,13 @@ def main(argv=None):
                     if not re.match(commit_id_pattern, _commit_id):
                         parser.error(f"Invalid commit ID format: {_commit_id}")
 
+        if skip_commits:
+            for _skip_id in skip_commits:
+                if not re.match(commit_id_pattern, _skip_id):
+                    parser.error(
+                        f"Invalid skip commit ID format: {_skip_id}"
+                    )
+
         if full_sync and split:
             parser.error("Cannot use --full-sync with --split")
         if full_sync and (pull or branch_diff):
@@ -659,17 +855,25 @@ def main(argv=None):
             parser.error("Cannot use --split with --pull/--branch-diff")
 
         if split:
-            split_and_push_single_commits(start_since, commit_id)
+            if del_local or del_remote:
+                cleanup_branches(del_local, del_remote)
+            split_and_push_single_commits(start_since, commit_id,
+                                          skip_commits, dry_run)
             return 0
 
         if full_sync:
-            full_auto_sync(start_since, commit_id)
+            if del_local or del_remote:
+                cleanup_branches(del_local, del_remote)
+            full_auto_sync(start_since, commit_id, skip_commits)
             return 0
         else:
             if pull and commit_id:
                 parser.error("Cannot use --pull with --commit-id")
             if branch_diff and commit_id:
                 parser.error("Cannot use --branch-diff with --commit-id")
+
+            if del_local or del_remote:
+                cleanup_branches(del_local, del_remote)
 
             if pull:
                 print("Pull branches ...")
@@ -686,9 +890,6 @@ def main(argv=None):
                     f"\nRun: git push {gitee_remote}"
                     f" {cmss_local_merge_branch}:{gitee_remote_branch}"
                 )
-
-            if not pull and not branch_diff and not commit_id:
-                parser.error("You must specify either -p, -d, -c, -f or -S")
         return 0
     except KeyboardInterrupt:
         print("\nUser interrupt", file=sys.stderr)

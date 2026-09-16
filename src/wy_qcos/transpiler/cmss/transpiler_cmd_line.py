@@ -18,6 +18,7 @@
 import os
 import sys
 import csv
+import re
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -37,8 +38,14 @@ from wy_qcos.transpiler.common.utils import (
 from wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp import (
     TranspilerHighPerformanceCmss,
 )
+from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
+    DEFAULT_SC_MAPPING_OPTIONS,
+)
+from wy_qcos.transpiler.common.errors import TranspilerException
 from wy_qcos.transpiler.common.transpiler_cfg import trans_cfg_inst
+from wy_qcos.transpiler.high_performance import qasm_to_ir
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.cmss.qasm_converter import QasmConverter
 
 logger = logging.getLogger(__name__)
 
@@ -72,13 +79,22 @@ class CMSSTranspilerPerf:
         # dict[TranspileParams, TranspileRuntime]
         self.transpile_result = {}
         # base transpile configs
-        self.run_count = 1
         self.output_log = ""
         self.csv_file = ""
         self.file_list = ["samples/qasm/2.0/simple-qasm.qasm"]
         self.dir_list = []
         self.total_files = []
+        self.tmax = 0
         self.perf_enabled = False
+        # whether to enable the C++ all-in-one transpile (single-circuit
+        # sabre routing path); defaults to True
+        self.enable_transpile_single = True
+        # whether to write the transpiled basis_gate_list to a qasm file
+        self.enable_output_qasm = False
+        # directory for qasm output; empty means alongside the input file
+        self.qasm_output_dir = ""
+        # qasm version for output, "2.0" or "3.0"
+        self.qasm_version = "2.0"
         # transpiler configs
         self.base_gates = []
         # optimization level, 0, 1, 2, 3
@@ -104,9 +120,14 @@ class CMSSTranspilerPerf:
             "cx": Constant.TWO_QUBIT_GATE_CX,
             "cy": Constant.TWO_QUBIT_GATE_CY,
             "cz": Constant.TWO_QUBIT_GATE_CZ,
+            "u3": Constant.SINGLE_QUBIT_GATE_U3,
+            "u": Constant.SINGLE_QUBIT_GATE_U,
         }
-
+        self.gates_rev_map = {v: k for k, v in self.gates_map.items()}
         self.parse_results = {}
+
+    def _format_basis_gate_set(self, gates):
+        return ",".join(self.gates_rev_map.get(g, "?") for g in gates)
 
     @staticmethod
     def init_output_head(
@@ -187,21 +208,40 @@ class CMSSTranspilerPerf:
             logger.error(f"read file error: {e}")
             return None
 
+    @staticmethod
+    def _infer_tech_type_from_config(config_file):
+        """Infer tech_type from the driver field in the config file.
+
+        The driver value is matched case-insensitively: a driver containing
+        "spinq" maps to superconducting, "hanyuan" maps to neutral_atom.
+        Returns None when the driver field is absent or matches neither
+        keyword, in which case no matching check is enforced.
+        """
+        try:
+            config_path = Path(config_file).resolve()
+            with open(config_path, encoding="utf-8") as f:
+                content = f.read()
+        except OSError as e:
+            logger.error(f"read config file error: {e}")
+            return None
+        match = re.search(r'driver\s*=\s*"([^"]*)"', content, re.IGNORECASE)
+        if not match:
+            return None
+        driver = match.group(1).lower()
+        if "spinq" in driver:
+            return Constant.TECH_TYPE_SUPERCONDUCTING
+        if "hanyuan" in driver:
+            return Constant.TECH_TYPE_NEUTRAL_ATOM
+        return None
+
     def init_transpile_params(self, extra_configs):
         """Init transpile parameters."""
         if extra_configs is None or "transpile" not in extra_configs:
             raise ValueError("configs is invalid!")
 
-        run_count = extra_configs["transpile"].get("run_count", 1)
-        if run_count <= 0:
-            self.run_count = 1
-        elif run_count > 5:
-            self.run_count = 5
-        else:
-            self.run_count = run_count
-
         self.output_log = extra_configs["transpile"].get("output_log", "")
         self.csv_file = extra_configs["transpile"].get("csv_file", "")
+        self.tmax = extra_configs["transpile"].get("tmax", 0)
 
         # init input files
         self.file_list = extra_configs["transpile"].get("files", [])
@@ -210,6 +250,18 @@ class CMSSTranspilerPerf:
             raise ValueError("input files or dirs is not configured!")
         self.perf_enabled = extra_configs["transpile"].get(
             "perf_enabled", False
+        )
+        self.enable_transpile_single = extra_configs["transpile"].get(
+            "enable_transpile_single", True
+        )
+        self.enable_output_qasm = extra_configs["transpile"].get(
+            "enable_output_qasm", False
+        )
+        self.qasm_output_dir = extra_configs["transpile"].get(
+            "qasm_output_dir", ""
+        )
+        self.qasm_version = extra_configs["transpile"].get(
+            "qasm_version", "2.0"
         )
 
         self.enable_transpiler = extra_configs["transpile"]["transpiler"].get(
@@ -256,6 +308,15 @@ class CMSSTranspilerPerf:
             raise ValueError("mapping config file is not configured!")
 
         self.mapping_info = list(zip(self.tech_type, self.mapping_config_file))
+
+        # verify each tech_type matches the driver declared in its config file
+        for tech_type, config_file in self.mapping_info:
+            inferred = self._infer_tech_type_from_config(config_file)
+            if inferred is not None and inferred != tech_type:
+                raise ValueError(
+                    f"tech_type[{tech_type}] does not match config file"
+                    f"[{config_file}], whose driver indicates[{inferred}]"
+                )
 
         # mapping config
         sc_mapping_options = extra_configs["transpile"]["mapping"].get(
@@ -315,6 +376,225 @@ class CMSSTranspilerPerf:
         # delete the duplicated files and keep the order
         self.total_files = list(dict.fromkeys(total_files))
 
+    def _init_csv_file(self):
+        """Initialize CSV file for streaming output.
+
+        Returns:
+            Path | None: path to the CSV file, or None if no csv output.
+        """
+        if self.csv_file == "":
+            return None
+        csv_file_path = Path(self.csv_file).resolve()
+        if csv_file_path.suffix != ".csv":
+            raise ValueError(f"csv file[{csv_file_path}] is not a csv file!")
+        if csv_file_path.exists():
+            logger.warning(f"csv file has existed! file: {csv_file_path}.")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            csv_file_path = csv_file_path.with_stem(
+                f"{csv_file_path.stem}_{timestamp}"
+            )
+        csv_titles = self._get_csv_titles(
+            self.enable_transpiler, self.enable_mapping
+        )
+        with open(csv_file_path, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(csv_titles)
+        return csv_file_path
+
+    def _append_csv_error_row(self, csv_file_path, params, error_msg):
+        row = self._build_csv_error_row(params, error_msg)
+        with open(csv_file_path, "a", encoding="utf-8-sig", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+
+    def _build_csv_error_row(self, params, error_msg):
+        num_qubits = 0
+        gate_count = 0
+        depth = 0
+        if params.file in self.parse_results:
+            num_qubits = self.parse_results[params.file][0]
+            qc = QuantumCircuit(num_qubits=num_qubits)
+            qc.append_operations(self.parse_results[params.file][1])
+            depth = qc.depth()
+            gate_count = len(self.parse_results[params.file][1])
+
+        row = [
+            params.file.name,
+            num_qubits,
+            gate_count,
+            depth,
+            params.mapping_info[0],
+            params.opt_level,
+            error_msg,
+        ]
+        if not self.enable_transpiler:
+            row.append("")
+        elif not self.enable_mapping:
+            row.extend([""] * 10)
+        else:
+            row.extend([""] * 12)
+        row.append("")
+        return row
+
+    def _append_csv_row(self, csv_file_path, params, runtime):
+        """Append a single CSV row to the output file.
+
+        Args:
+            csv_file_path (Path): path to the CSV file.
+            params (TranspileParams): transpile parameters.
+            runtime (TranspileRuntime): transpile runtime statistics.
+        """
+        params.num_qubits = self.parse_results[params.file][0]
+        qc = QuantumCircuit(num_qubits=params.num_qubits)
+        qc.append_operations(self.parse_results[params.file][1])
+        params.depth = qc.depth()
+        row = self._build_csv_row(
+            params,
+            runtime,
+            self.parse_results,
+            self.enable_transpiler,
+            self.enable_mapping,
+        )
+        row.append(runtime.basis_gate_set)
+        with open(csv_file_path, "a", encoding="utf-8-sig", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(row)
+
+    def _pre_scan_file(self, file_path):
+        """Pre-scan a qasm file to get circuit scale (num_qubits, gate_count).
+
+        Args:
+            file_path (Path): path to the qasm file.
+
+        Returns:
+            tuple: (num_qubits, gate_count)
+        """
+        qasm_data = self.read_qasm_from_file(str(file_path))
+        if qasm_data is None:
+            return (0, 0)
+        try:
+            ops, num_qubits = qasm_to_ir(qasm_data)
+            return (num_qubits, len(ops))
+        except Exception:
+            return (0, 0)
+
+    def _sort_files_by_scale(self):
+        """Sort total_files by circuit scale (num_qubits, then gate_count)."""
+        file_scales = {}
+        for file_path in self.total_files:
+            file_scales[file_path] = self._pre_scan_file(file_path)
+        self.total_files.sort(key=lambda f: file_scales.get(f, (0, 0)))
+
+    @staticmethod
+    def _get_csv_titles(enable_transpiler, enable_mapping):
+        """Get CSV header titles based on transpile configuration.
+
+        Args:
+            enable_transpiler (bool): whether transpiler is enabled.
+            enable_mapping (bool): whether mapping is enabled.
+
+        Returns:
+            list: CSV header titles.
+        """
+        csv_titles = [
+            TPC.QASM_FILE,
+            TPC.NUM_QUBITS,
+            TPC.GATE_COUNT,
+            TPC.DEPTH,
+            TPC.TECH_TYPE,
+            TPC.OPT_LEVEL,
+            TPC.PARSE_TIME,
+        ]
+        if not enable_transpiler:
+            csv_titles.append(TPC.TOTAL_TIME)
+        elif not enable_mapping:
+            csv_titles.extend([
+                TPC.OPT_TIME1,
+                TPC.DECOMPOSE_RULE_TIME,
+                TPC.DECOMPOSE_APPLY_TIME,
+                TPC.DECOMPOSED_TIME,
+                TPC.OPT_TIME2,
+                TPC.TRANSPILE_TIME,
+                TPC.TOTAL_TIME,
+                TPC.TRANSPILED_GATE_COUNT,
+                TPC.TRANSPILED_DEPTH,
+                TPC.TRANSPILED_TWO_QUBIT_GATE_COUNT,
+            ])
+        else:
+            csv_titles.extend([
+                TPC.OPT_TIME1,
+                TPC.DECOMPOSE_RULE_TIME,
+                TPC.DECOMPOSE_1Q2Q_TIME,
+                TPC.MAPPING_TIME,
+                TPC.DECOMPOSE_APPLY_TIME,
+                TPC.DECOMPOSED_TIME,
+                TPC.OPT_TIME2,
+                TPC.TRANSPILE_TIME,
+                TPC.TOTAL_TIME,
+                TPC.TRANSPILED_GATE_COUNT,
+                TPC.TRANSPILED_DEPTH,
+                TPC.TRANSPILED_TWO_QUBIT_GATE_COUNT,
+            ])
+        csv_titles.append(TPC.BASIS_GATE_SET)
+        return csv_titles
+
+    @staticmethod
+    def _build_csv_row(
+        params, runtime, parse_results, enable_transpiler, enable_mapping
+    ):
+        """Build a single CSV row from transpile result.
+
+        Args:
+            params (TranspileParams): transpile parameters.
+            runtime (TranspileRuntime): transpile runtime statistics.
+            parse_results (dict): parsed circuit info.
+            enable_transpiler (bool): whether transpiler is enabled.
+            enable_mapping (bool): whether mapping is enabled.
+
+        Returns:
+            list: a single CSV row.
+        """
+        row = [
+            params.file.name,
+            params.num_qubits,
+            len(parse_results[params.file][1]),
+            params.depth,
+            params.mapping_info[0],
+            params.opt_level,
+            f"{runtime.parse_time:.4f}",
+        ]
+        if not enable_transpiler:
+            row.append(f"{runtime.total_time:.4f}")
+        elif not enable_mapping:
+            row.extend([
+                f"{runtime.opt_time1:.4f}",
+                f"{runtime.decompose_rule_time:.4f}",
+                f"{runtime.decompose_apply_time:.4f}",
+                f"{runtime.decomposed_time:.4f}",
+                f"{runtime.opt_time2:.4f}",
+                f"{runtime.transpile_time:.4f}",
+                f"{runtime.total_time:.4f}",
+                runtime.transpiled_gate_count,
+                runtime.transpiled_depth,
+                runtime.transpiled_two_qubit_gate_count,
+            ])
+        else:
+            row.extend([
+                f"{runtime.opt_time1:.4f}",
+                f"{runtime.decompose_rule_time:.4f}",
+                f"{runtime.decompose_1q2q_time:.4f}",
+                f"{runtime.mapping_time:.4f}",
+                f"{runtime.decompose_apply_time:.4f}",
+                f"{runtime.decomposed_time:.4f}",
+                f"{runtime.opt_time2:.4f}",
+                f"{runtime.transpile_time:.4f}",
+                f"{runtime.total_time:.4f}",
+                runtime.transpiled_gate_count,
+                runtime.transpiled_depth,
+                runtime.transpiled_two_qubit_gate_count,
+            ])
+        return row
+
     def main_cmss_transpiler(
         self,
         config_file: str = "",
@@ -325,6 +605,21 @@ class CMSSTranspilerPerf:
         Config.load_config_file(str(abs_config_path), extra_config=True)
         self.init_transpile_params(extra_configs)
         self.parse_file_args()
+
+        # sort files by circuit scale (num_qubits, gate_count)
+        self._sort_files_by_scale()
+
+        # csv output is not supported when the C++ all-in-one transpile path
+        # is enabled, because that path does not produce per-gate statistics
+        # required by the csv report.
+        if self.csv_file and self.enable_transpile_single:
+            raise TranspilerException(
+                "csv output is not supported when "
+                "enable_transpile_single is true"
+            )
+
+        # initialize csv output file when needed
+        csv_file_path = self._init_csv_file()
 
         # CLI quiet mode: control what levels appear
         if handlers:
@@ -359,24 +654,27 @@ class CMSSTranspilerPerf:
 
         # get the transpile result of all combinations and
         # calculate the average runtime
-        self.get_transpile_result()
+        self.get_transpile_result(csv_file_path)
 
-        _ = self.output_csv_file()
-
-    def get_transpile_result(self):
-        transpile_all_result = {}
-        for _ in range(self.run_count):
-            for params in self.params_list:
-                log_perf(
-                    logger,
-                    "[parameters]\n"
-                    f"input_file: {params.file}\n"
-                    f"opt_level: {params.opt_level}\n"
-                    f"base_gates: {params.tech_gates}\n"
-                    f"tech_type: {params.mapping_info[0]}\n"
-                    f"config_file: {params.mapping_info[1]}\n"
-                    f"sc_mapping_options: {params.sc_mapping_options}\n",
-                )
+    def get_transpile_result(self, csv_file_path=None):
+        failed_params = []
+        combos_per_file = len(self.params_list) // len(self.total_files)
+        skip_combos = set()
+        for idx, params in enumerate(self.params_list):
+            combo_idx = idx % combos_per_file
+            if combo_idx in skip_combos:
+                continue
+            log_perf(
+                logger,
+                "[parameters]\n"
+                f"input_file: {params.file}\n"
+                f"opt_level: {params.opt_level}\n"
+                f"base_gates: {params.tech_gates}\n"
+                f"tech_type: {params.mapping_info[0]}\n"
+                f"config_file: {params.mapping_info[1]}\n"
+                f"sc_mapping_options: {params.sc_mapping_options}\n",
+            )
+            try:
                 runtime = self.cmss_transpiler_perf_exec(
                     input_file=params.file,
                     opt_level=params.opt_level,
@@ -385,14 +683,38 @@ class CMSSTranspilerPerf:
                     config_file=params.mapping_info[1],
                     sc_mapping_options=params.sc_mapping_options,
                 )
-                if params in transpile_all_result:
-                    transpile_all_result[params].add_runtime(runtime)
-                else:
-                    transpile_all_result[params] = runtime
+            except Exception as e:
+                logger.error(f"Transpile failed for {params.file}: {e}")
+                failed_params.append(params)
+                if csv_file_path:
+                    self._append_csv_error_row(csv_file_path, params, str(e))
+                continue
 
-        for params, runtime in transpile_all_result.items():
-            runtime.avg_runtime(self.run_count)
             self.transpile_result[params] = runtime
+            if csv_file_path:
+                self._append_csv_row(csv_file_path, params, runtime)
+
+            if (
+                self.tmax > 0
+                and runtime.total_time > self.tmax
+                and combo_idx not in skip_combos
+            ):
+                skip_combos.add(combo_idx)
+                logger.warning(
+                    f"total_time [{runtime.total_time:.4f}] exceeded "
+                    f"tmax [{self.tmax}s] for combo {combo_idx}, "
+                    f"skipping remaining files of this combo"
+                )
+
+        if failed_params:
+            logger.warning(
+                f"{len(failed_params)} parameter combination(s) failed:"
+            )
+            for params in failed_params:
+                logger.warning(
+                    f"  - {params.file} (opt_level={params.opt_level}, "
+                    f"tech_type={params.mapping_info[0]})"
+                )
 
     def output_csv_file(self):
         csv_file_path = None
@@ -427,6 +749,8 @@ class CMSSTranspilerPerf:
             perf_content.append(params.file.name)
             # add qubit number
             perf_content.append(params.num_qubits)
+            # gate count
+            perf_content.append(len(parse_results[params.file][1]))
             # circuit depth
             perf_content.append(params.depth)
             # tech_type
@@ -445,6 +769,9 @@ class CMSSTranspilerPerf:
             perf_content.append(runtime.opt_time2)
             perf_content.append(runtime.transpile_time)
             perf_content.append(runtime.total_time)
+            perf_content.append(runtime.transpiled_gate_count)
+            perf_content.append(runtime.transpiled_depth)
+            perf_content.append(runtime.transpiled_two_qubit_gate_count)
             total_content.append(perf_content)
 
         total_content = sorted(
@@ -455,6 +782,7 @@ class CMSSTranspilerPerf:
         csv_titles = [
             TPC.QASM_FILE,
             TPC.NUM_QUBITS,
+            TPC.GATE_COUNT,
             TPC.DEPTH,
             TPC.TECH_TYPE,
             TPC.OPT_LEVEL,
@@ -469,13 +797,9 @@ class CMSSTranspilerPerf:
             for row in total_content:
                 row_content = []
                 row_content.extend(row[l:r])
-                row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}s"
-                )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}")
                 # total time
-                row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
-                )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}")
                 csv_content.append(row_content)
         elif not self.enable_mapping:
             # parse + transpile(no mapping)
@@ -487,29 +811,35 @@ class CMSSTranspilerPerf:
                 TPC.OPT_TIME2,
                 TPC.TRANSPILE_TIME,
                 TPC.TOTAL_TIME,
+                TPC.TRANSPILED_GATE_COUNT,
+                TPC.TRANSPILED_DEPTH,
+                TPC.TRANSPILED_TWO_QUBIT_GATE_COUNT,
             ])
             for row in total_content:
                 row_content = []
                 row_content.extend(row[l:r])
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}")
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME1]]:.4f}")
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}s"
-                )
-                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME1]]:.4f}s")
-                row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_RULE_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_RULE_TIME]]:.4f}"
                 )
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}"
                 )
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSED_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSED_TIME]]:.4f}"
                 )
-                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}s")
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}")
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.TRANSPILE_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.TRANSPILE_TIME]]:.4f}"
                 )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}")
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
+                    row[TPC.CONS_DICT[TPC.TRANSPILED_GATE_COUNT]]
+                )
+                row_content.append(row[TPC.CONS_DICT[TPC.TRANSPILED_DEPTH]])
+                row_content.append(
+                    row[TPC.CONS_DICT[TPC.TRANSPILED_TWO_QUBIT_GATE_COUNT]]
                 )
                 csv_content.append(row_content)
         else:
@@ -524,35 +854,41 @@ class CMSSTranspilerPerf:
                 TPC.OPT_TIME2,
                 TPC.TRANSPILE_TIME,
                 TPC.TOTAL_TIME,
+                TPC.TRANSPILED_GATE_COUNT,
+                TPC.TRANSPILED_DEPTH,
+                TPC.TRANSPILED_TWO_QUBIT_GATE_COUNT,
             ])
             for row in total_content:
                 row_content = []
                 row_content.extend(row[l:r])
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}")
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME1]]:.4f}")
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.PARSE_TIME]]:.4f}s"
-                )
-                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME1]]:.4f}s")
-                row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_RULE_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_RULE_TIME]]:.4f}"
                 )
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_1Q2Q_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_1Q2Q_TIME]]:.4f}"
                 )
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.MAPPING_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.MAPPING_TIME]]:.4f}"
                 )
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSE_APPLY_TIME]]:.4f}"
                 )
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSED_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.DECOMPOSED_TIME]]:.4f}"
                 )
-                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}s")
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.OPT_TIME2]]:.4f}")
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.TRANSPILE_TIME]]:.4f}s"
+                    f"{row[TPC.CONS_DICT[TPC.TRANSPILE_TIME]]:.4f}"
                 )
+                row_content.append(f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}")
                 row_content.append(
-                    f"{row[TPC.CONS_DICT[TPC.TOTAL_TIME]]:.4f}s"
+                    row[TPC.CONS_DICT[TPC.TRANSPILED_GATE_COUNT]]
+                )
+                row_content.append(row[TPC.CONS_DICT[TPC.TRANSPILED_DEPTH]])
+                row_content.append(
+                    row[TPC.CONS_DICT[TPC.TRANSPILED_TWO_QUBIT_GATE_COUNT]]
                 )
                 csv_content.append(row_content)
 
@@ -562,6 +898,39 @@ class CMSSTranspilerPerf:
             writer.writerows(csv_content)
 
         return csv_file_path
+
+    def output_qasm_file(
+        self,
+        circuit: QuantumCircuit,
+        input_file: str | os.PathLike[str],
+        opt_level: int,
+        tech_type: str,
+    ):
+        """Write the transpiled circuit to a qasm file via QasmConverter.
+
+        The output file is named after the input file, suffixed with the
+        tech type and optimization level to avoid collisions across the
+        parameter combinations. When ``qasm_output_dir`` is configured the
+        file is written there, otherwise alongside the input file.
+
+        Args:
+            circuit (QuantumCircuit): the transpiled circuit to convert.
+            input_file (Path): the input qasm file path.
+            opt_level (int): optimization level, used in the output name.
+            tech_type (str): technology type, used in the output name.
+        """
+        stem = Path(input_file).stem
+        out_name = f"{stem}_{tech_type}_opt{opt_level}.qasm"
+        if self.qasm_output_dir:
+            out_dir = Path(self.qasm_output_dir).resolve()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / out_name
+        else:
+            out_path = Path(input_file).resolve().parent / out_name
+
+        converter = QasmConverter(circuit)
+        converter.save(str(out_path), version=self.qasm_version)
+        logger.info(f"write transpiled qasm to: {out_path}")
 
     def cmss_transpiler_perf_exec(
         self,
@@ -608,12 +977,13 @@ class CMSSTranspilerPerf:
         abs_config_path = Path(config_file).resolve()
         if not abs_config_path.exists():
             raise ValueError(f"config file[{config_file}] not existed!")
+        chip_name = abs_config_path.stem
 
         qpu_config = {}
         extra_configs = Config.get_extra_configs()
         Config.load_config_file(config_file, extra_config=True)
         if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
-            qpu_config = extra_configs["hanyuan1"]["transpiler"]["qpu_configs"]
+            qpu_config = extra_configs[chip_name]["transpiler"]["qpu_configs"]
             trans_cfg_inst.set_qpu_cfg(qpu_config)
             trans_cfg_inst.set_tech_type(tech_type)
             trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
@@ -638,9 +1008,7 @@ class CMSSTranspilerPerf:
                     Constant.TWO_QUBIT_GATE_CZ,
                 ]
         elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
-            qpu_config = extra_configs["spinq_rpc"]["transpiler"][
-                "qpu_configs"
-            ]
+            qpu_config = extra_configs[chip_name]["transpiler"]["qpu_configs"]
             trans_cfg_inst.set_qpu_cfg(qpu_config)
             trans_cfg_inst.set_tech_type(tech_type)
             trans_cfg_inst.set_max_qubits(qpu_config["qubits"])
@@ -679,6 +1047,10 @@ class CMSSTranspilerPerf:
                     Constant.TWO_QUBIT_GATE_CX,
                 ]
 
+        runtime.basis_gate_set = self._format_basis_gate_set(
+            expected_basis_gates
+        )
+
         # add qasm information into output log head
         self.init_output_head(
             output_file_path,
@@ -692,16 +1064,89 @@ class CMSSTranspilerPerf:
         with Timer() as total_timer:
             # generate basis gates list
             log_perf(logger, "Start performace testing of cmss compiling.")
-            with Timer() as ast_timer:
-                src_code_info = {"000": qasm_data}
-                parse_result = transpiler.parse(src_code_info)
-                self.parse_results[input_file] = list(parse_result.values())[0]
-            runtime.parse_time = ast_timer.elapsed
-            log_perf(logger, f"parse openqasm: {ast_timer.elapsed:.4f}s")
 
-            # optimize the transpiled gates
-            if self.enable_transpiler:
-                with Timer() as tranpile_timer:
+            # transpiled basis gate list and the QuantumCircuit built from it,
+            # kept for post-transpile statistics and qasm output.
+            basis_gate_list = []
+            transpiled_qc = None
+
+            # whether the C++ all-in-one transpile path can be used
+            # (single-circuit sabre routing path). It requires
+            # enable_transpile_single to be true plus the existing conditions.
+            routing_algorithm = sc_mapping_options.get(
+                "routing_algorithm",
+                DEFAULT_SC_MAPPING_OPTIONS["routing_algorithm"],
+            )
+            is_na = (
+                tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM
+                and self.na_mapping_type == "default"
+            )
+            is_sc_sabre = (
+                tech_type == Constant.TECH_TYPE_SUPERCONDUCTING
+                and routing_algorithm == "sabre"
+            )
+            use_cpp_transpile = (
+                self.enable_transpile_single
+                and self.enable_mapping
+                and self.enable_transpiler
+                and (is_na or is_sc_sabre)
+            )
+
+            if use_cpp_transpile:
+                # C++ all-in-one transpile: merge parse + transpile into
+                # a single C++ call
+                transpiler.transpiler_options["sc_mapping_options"] = (
+                    sc_mapping_options
+                )
+                result = transpiler.transpile_single(
+                    qasm_data, expected_basis_gates, qpu_config
+                )
+                # fill Python TranspileRuntime from C++ TranspileTimings;
+                # copy field by field because the C++ object cannot carry the
+                # extra attributes (transpiled_gate_count/depth,
+                # decomposed_time, ...) that downstream code writes onto
+                # runtime.
+                basis_gate_list = result.basis_gate_list
+                cpp_timings = result.timings
+                for attr in (
+                    "parse_time",
+                    "opt_time1",
+                    "decompose_1q2q_time",
+                    "decompose_rule_time",
+                    "mapping_time",
+                    "decompose_apply_time",
+                    "opt_time2",
+                    "transpile_time",
+                    "total_time",
+                ):
+                    setattr(runtime, attr, getattr(cpp_timings, attr))
+                for label, attr in [
+                    ("parse time", "parse_time"),
+                    ("first optimize time", "opt_time1"),
+                    ("decompose 1q2q time", "decompose_1q2q_time"),
+                    ("decompose rule time", "decompose_rule_time"),
+                    ("mapping time", "mapping_time"),
+                    ("decompose apply time", "decompose_apply_time"),
+                    ("second optimize time", "opt_time2"),
+                    ("transpile", "total_time"),
+                ]:
+                    log_perf(
+                        logger,
+                        f"cpp {label}: {getattr(runtime, attr):.4f}\n",
+                    )
+            else:
+                # original Python flow: run parse + transpile step by step
+                with Timer() as ast_timer:
+                    src_code_info = {"000": qasm_data}
+                    parse_result = transpiler.parse(src_code_info)
+                    self.parse_results[input_file] = list(
+                        parse_result.values()
+                    )[0]
+                runtime.parse_time = ast_timer.elapsed
+                log_perf(logger, f"parse openqasm: {ast_timer.elapsed:.4f}s\n")
+
+                # optimize the transpiled gates
+                if self.enable_transpiler:
                     if len(sc_mapping_options) > 0:
                         transpiler.transpiler_options["sc_mapping_options"] = (
                             sc_mapping_options
@@ -711,24 +1156,63 @@ class CMSSTranspilerPerf:
                     )
                     transpiler.transpiler_runtime = runtime
 
-                    _, _ = transpiler.transpile(
+                    basis_gate_list, _, _ = transpiler.transpile(
                         parse_result, expected_basis_gates
                     )
-                runtime.transpile_time = tranpile_timer.elapsed
-                log_perf(
-                    logger, f"cmss tranpiler: {tranpile_timer.elapsed:.4f}s\n"
-                )
-        runtime.decomposed_time = (
-            runtime.decompose_rule_time
-            + runtime.decompose_1q2q_time
-            + runtime.decompose_apply_time
-        )
+
+                    for label, attr in [
+                        ("first optimize time", "opt_time1"),
+                        ("decompose 1q2q time", "decompose_1q2q_time"),
+                        ("decompose rule time", "decompose_rule_time"),
+                        ("mapping time", "mapping_time"),
+                        ("decompose apply time", "decompose_apply_time"),
+                        ("second optimize time", "opt_time2"),
+                        ("cmss transpile time", "transpile_time"),
+                    ]:
+                        log_perf(
+                            logger,
+                            f"{label}: {getattr(runtime, attr):.4f}s\n",
+                        )
         runtime.total_time = total_timer.elapsed
         log_perf(
             logger,
             "total running time of cmss-transpiler:"
             f" {total_timer.elapsed:.4f}s\n\n",
         )
+
+        # gate count and depth of the transpiled circuit, derived from the
+        # final basis gate list. Computed outside the timing blocks so it
+        # does not pollute the transpile/total time statistics.
+        if self.enable_transpiler and basis_gate_list:
+            runtime.transpiled_gate_count = len(basis_gate_list)
+            runtime.transpiled_two_qubit_gate_count = sum(
+                1
+                for op in basis_gate_list
+                if op.name in Constant.TWO_QUBIT_GATE_LIST
+            )
+            if use_cpp_transpile:
+                # the C++ path reports the post-mapping qubit count directly
+                transpiled_num_qubits = result.num_qubits
+            else:
+                # num_qubits after mapping may exceed the input circuit; use
+                # the qpu max qubits when available, otherwise fall back to
+                # counting the physical qubits referenced by the basis
+                # gate list.
+                transpiled_num_qubits = trans_cfg_inst.get_max_qubits()
+                if transpiled_num_qubits <= 0:
+                    transpiled_num_qubits = (
+                        max(q for op in basis_gate_list for q in op.targets)
+                        + 1
+                    )
+            transpiled_qc = QuantumCircuit(num_qubits=transpiled_num_qubits)
+            transpiled_qc.append_operations(basis_gate_list)
+            runtime.transpiled_depth = transpiled_qc.depth()
+
+            # write the transpiled circuit to a qasm file when enabled
+            if self.enable_output_qasm:
+                self.output_qasm_file(
+                    transpiled_qc, file_path, opt_level, tech_type
+                )
         return runtime
 
 

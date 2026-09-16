@@ -1,0 +1,108 @@
+[lq_qz01_repetition]
+alias_name = "逻辑比特 QZ01-repetition_code"
+driver = "DriverLqQZ01RepetitionCode"
+description = "逻辑比特 QZ01-repetition_code"
+
+# [Optional] enable or disable the device
+# enable = true
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_lq_qz01_repetition.log
+device_log_file = "/var/log/qcos/device_lq_qz01_repetition.log"
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_mgr_lq_qz01_repetition.log
+
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
+# [Optional] max job wait time, default value is 604800 seconds (7 days)
+max_job_wait_time = 604800
+
+# [Optional] job query interval, default value is 5 seconds
+job_query_interval = 5
+
+chip_name = "QZ01-repetition_code"
+token = ""
+url = "https://cloud.logicalqubit.com"
+
+[lq_qz01_repetition.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = true
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_lq_qz01_repetition.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
+
+[lq_qz01_repetition.transpiler.qpu_configs]
+qubits = 17
+
+coupler_map.CZ0_1 = ["Q0", "Q1"]
+coupler_map.CZ1_2 = ["Q1", "Q2"]
+coupler_map.CZ2_3 = ["Q2", "Q3"]
+coupler_map.CZ3_4 = ["Q3", "Q4"]
+coupler_map.CZ4_5 = ["Q4", "Q5"]
+coupler_map.CZ5_6 = ["Q5", "Q6"]
+coupler_map.CZ6_7 = ["Q6", "Q7"]
+coupler_map.CZ7_8 = ["Q7", "Q8"]
+coupler_map.CZ8_9 = ["Q8", "Q9"]
+coupler_map.CZ9_10 = ["Q9", "Q10"]
+coupler_map.CZ10_11 = ["Q10", "Q11"]
+coupler_map.CZ11_12 = ["Q11", "Q12"]
+coupler_map.CZ12_13 = ["Q12", "Q13"]
+coupler_map.CZ13_14 = ["Q13", "Q14"]
+coupler_map.CZ14_15 = ["Q14", "Q15"]
+coupler_map.CZ15_16 = ["Q15", "Q16"]
+
+readout_error.Q0 = 0.011
+readout_error.Q1 = 0.0085
+readout_error.Q2 = 0.011
+readout_error.Q3 = 0.0115
+readout_error.Q4 = 0.0105
+readout_error.Q5 = 0.01
+readout_error.Q6 = 0.009
+readout_error.Q7 = 0.008
+readout_error.Q8 = 0.0185
+readout_error.Q9 = 0.022
+readout_error.Q10 = 0.015
+readout_error.Q11 = 0.0135
+readout_error.Q12 = 0.0125
+readout_error.Q13 = 0.01
+readout_error.Q14 = 0.0125
+readout_error.Q15 = 0.009
+readout_error.Q16 = 0.011
+
+coupler_error.CZ0_1 = 0.0048
+coupler_error.CZ1_2 = 0.0066
+coupler_error.CZ2_3 = 0.0065
+coupler_error.CZ3_4 = 0.004
+coupler_error.CZ4_5 = 0.0054
+coupler_error.CZ5_6 = 0.0051
+coupler_error.CZ6_7 = 0.0051
+coupler_error.CZ7_8 = 0.0047
+coupler_error.CZ8_9 = 0.0059
+coupler_error.CZ9_10 = 0.0057
+coupler_error.CZ10_11 = 0.0052
+coupler_error.CZ11_12 = 0.0039
+coupler_error.CZ12_13 = 0.0039
+coupler_error.CZ13_14 = 0.0043
+coupler_error.CZ14_15 = 0.0044
+coupler_error.CZ15_16 = 0.0088

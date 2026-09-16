@@ -87,6 +87,22 @@ std::vector<std::string> BuildGateNameList(
   return {name_set.begin(), name_set.end()};
 }
 
+/**
+ * @brief Validate that all gates in the result belong to the target basis.
+ *
+ * @param result Decomposed gate list
+ * @param target Target basis gate name list
+ */
+void ValidateGatesInTargets(
+    const std::vector<std::shared_ptr<BaseOperation>>& result,
+    const std::vector<std::string>& target) {
+  std::unordered_set<std::string> target_set(target.begin(), target.end());
+  for (const auto& op : result) {
+    EXPECT_TRUE(target_set.count(op->name))
+        << "Gate '" << op->name << "' is not in target basis";
+  }
+}
+
 /* ============================================================
  * Tests
  * ============================================================ */
@@ -358,4 +374,50 @@ TEST(DecomposerCppTest, DecomposeCUGate) {
   ValidateGateIR(result[3].get(), "cx", {0, 1}, 2, true);
 
   ValidateGateIR(result[9].get(), "cx", {0, 1}, 2, true);
+}
+
+/**
+ * @brief Test U3 gate decomposition to rz/sx/x/cx basis.
+ *
+ * Since sx is in the target basis, it is not further decomposed.
+ * Result: rz, sx, rz, sx, rz (5 gates).
+ */
+TEST(DecomposerCppTest, DecomposeU3ToSxBasis) {
+  Decomposer decomposer;
+
+  std::vector<std::shared_ptr<BaseOperation>> source;
+
+  source.push_back(create_gate("u3", {0}, {M_PI / 2, M_PI / 3, M_PI / 4}));
+
+  std::vector<std::string> target = {"rz", "sx", "x", "cx"};
+
+  auto gate_names = BuildGateNameList(source);
+
+  auto [table, usage] = decomposer.get_decompose_rules(gate_names, target);
+
+  auto result = decomposer.apply_decompose_rules(source, table);
+
+  ASSERT_EQ(result.size(), 5);
+
+  // Validate gate sequence: rz, sx, rz, sx, rz
+  ValidateGateIR(result[0].get(), "rz", {0}, 1, false);
+  ValidateGateIR(result[1].get(), "sx", {0}, 1, false);
+  ValidateGateIR(result[2].get(), "rz", {0}, 1, false);
+  ValidateGateIR(result[3].get(), "sx", {0}, 1, false);
+  ValidateGateIR(result[4].get(), "rz", {0}, 1, false);
+
+  // Validate parameters
+  // rz(lam) = rz(pi/4)
+  ASSERT_EQ(result[0]->arg_value.size(), 1);
+  EXPECT_NEAR(result[0]->arg_value[0], M_PI / 4, 1e-9);
+
+  // rz(theta + pi) = rz(pi/2 + pi) = rz(3*pi/2)
+  ASSERT_EQ(result[2]->arg_value.size(), 1);
+  EXPECT_NEAR(result[2]->arg_value[0], 3 * M_PI / 2, 1e-9);
+
+  // rz(phi + 3*pi) = rz(pi/3 + 3*pi)
+  ASSERT_EQ(result[4]->arg_value.size(), 1);
+  EXPECT_NEAR(result[4]->arg_value[0], M_PI / 3 + 3 * M_PI, 1e-9);
+
+  ValidateGatesInTargets(result, target);
 }

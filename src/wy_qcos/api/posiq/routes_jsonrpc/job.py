@@ -27,6 +27,8 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
 from wy_qcos.db.models import Job
 from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.db.utils.db_utils import get_db_filters, get_repository
+from wy_qcos.scheduler import AutoScheduler, NoValidDeviceError
+from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.common import args_schema, errors
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
@@ -43,6 +45,7 @@ module_name = "JOB"
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[
         jsonrpc_errors.BadRequestError,
@@ -79,15 +82,20 @@ def submit_job(
     description = body.description
     shots = body.shots
     backend = body.backend
+    flavor_id = body.flavor_id
+    extra_specs = body.extra_specs
     driver_options = body.driver_options
     transpiler_name = body.transpiler
     transpiler_options = body.transpiler_options
     qec_options = body.qec_options
+    qem_options = body.qem_options
     profiling = body.profiling
     callbacks = body.callbacks
     dry_run = body.dry_run
     code_compression_level = body.code_compression_level
     tags = body.tags
+
+    extra_job_data_info = {}
 
     # validate: code_type
     code_type = code_type.lower()
@@ -169,9 +177,7 @@ def submit_job(
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_schema(
-            job_name, args_schema.NAME_SCHEMA, allow_none=True
-        ),
+        Library.validate_name(job_name),
     )
 
     # validate: job_type
@@ -212,9 +218,7 @@ def submit_job(
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
         func_name,
-        Library.validate_values_range(
-            shots, "shots", Constant.MIN_SHOTS, Constant.MAX_SHOTS
-        ),
+        Library.validate_values_range(shots, "shots", Constant.MIN_SHOTS),
     )
 
     # validate: code_compression_level
@@ -247,6 +251,116 @@ def submit_job(
     device_manger = scheduler.get_device_manager()
     devices = device_manger.get_devices()
 
+    # validate: backend / flavor_id / extra_specs constraints.
+    # Either backend or flavor_id must be specified (mutually
+    # exclusive). extra_specs is only allowed together with
+    # flavor_id; it must not be specified when backend is set.
+    if backend and flavor_id:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                "backend and flavor_id are mutually exclusive, "
+                "please specify only one of them",
+            ),
+        )
+    if backend and extra_specs:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                "extra_specs is only allowed together with "
+                "flavor_id, not with backend",
+            ),
+        )
+    if extra_specs:
+        ok, err_msg = RequestSpec.validate_extra_specs(extra_specs)
+        if not ok:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, err_msg),
+            )
+    if not backend and not flavor_id:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                "Either backend or flavor_id must be specified "
+                "for job submission",
+            ),
+        )
+
+    # auto scheduling: if backend is not specified
+    job_scheduling_started_at = time.time()
+    if not backend:
+        # check whether auto scheduling is enabled via the
+        # [SCHEDULER].ENABLE_AUTO_SCHEDULE config flag; when disabled,
+        # clients must specify an explicit backend
+        if not Config.SCHEDULER.ENABLE_AUTO_SCHEDULE:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (
+                    False,
+                    "Auto scheduling is disabled, please specify "
+                    "an explicit backend",
+                ),
+            )
+
+        # get auto scheduler
+        auto_scheduler = scheduler.get_auto_scheduler()
+        if auto_scheduler is None:
+            jsonrpc_errors.handle_error_internal_server(
+                module_name,
+                func_name,
+                (False, "Auto scheduler is not initialized"),
+            )
+
+        # build request spec: parse the maximum qubit count from
+        # the source_code list so the QubitCountFilter can select a
+        # device whose max_qubits is large enough
+        flavor_id_str = str(flavor_id) if flavor_id else None
+        num_qubits = Library.get_max_qubits_from_source_code(
+            source_code, code_type
+        )
+        request_spec = AutoScheduler.build_request_spec(
+            code_type=code_type,
+            num_qubits=num_qubits,
+            shots=shots,
+            circuit_aggregation=circuit_aggregation,
+            driver_options=driver_options,
+            transpiler_options=transpiler_options,
+            flavor_id=flavor_id_str,
+            extra_specs=extra_specs,
+            flavor_manager=scheduler.get_flavor_manager(),
+        )
+
+        # execute auto scheduling
+        try:
+            backend = auto_scheduler.schedule(request_spec)
+            body.backend = backend
+        except NoValidDeviceError as e:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name, func_name, (False, str(e))
+            )
+        except Exception as e:
+            logger.error(f"Auto scheduling error: {e}")
+            jsonrpc_errors.handle_error_internal_server(
+                module_name, func_name, (False, f"Auto scheduling failed: {e}")
+            )
+
+    job_scheduling_ended_at = time.time()
+    job_schedule_duration = job_scheduling_ended_at - job_scheduling_started_at
+    extra_job_data_info = {
+        "job_schedule_started_at": job_scheduling_started_at,
+        "job_schedule_ended_at": job_scheduling_ended_at,
+        "job_schedule_duration": job_schedule_duration,
+    }
+
     # validate auth of virtual instance
     jsonrpc_errors.handle_error_bad_requests(
         module_name,
@@ -264,7 +378,8 @@ def submit_job(
     # get driver from backend
     device = devices.get(backend)
     driver = device.get_driver()
-    device_status = device.get_status()
+    # use effective status (considers manual state override)
+    device_status, _ = device.get_effective_status()
     enable_device = device.enable
 
     # check device status
@@ -353,7 +468,7 @@ def submit_job(
                 transpiler_options_schema,
                 allow_none=True,
             ),
-            param_name="transpiler_options",
+            param_name=f"transpiler: {transpiler_name}, transpiler_options",
         )
 
     # validate: qec_options
@@ -379,6 +494,25 @@ def submit_job(
             param_name="qec_options",
         )
 
+    # validate: qem_options
+    if qem_options:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(
+                qem_options,
+                args_schema.QEM_OPTIONS,
+                allow_none=True,
+            ),
+        )
+        if not isinstance(qem_options, dict):
+            jsonrpc_errors.handle_error_bad_request(
+                module_name,
+                func_name,
+                message="qem_options must be a dict",
+                param_name="qem_options",
+            )
+
     # get supported_code_types
     supported_code_types = transpiler.get_supported_code_types()
     if supported_code_types is None or len(supported_code_types) == 0:
@@ -392,6 +526,20 @@ def submit_job(
             code_type, "code_type", supported_code_types, allow_none=False
         ),
     )
+
+    # Validate: circuit_aggregation is supported
+    if not driver.enable_circuit_aggregation and circuit_aggregation in (
+        Constant.AGGREGATION_TYPE_INTERNAL,
+        Constant.AGGREGATION_TYPE_EXTERNAL,
+    ):
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            (
+                False,
+                f"Driver: {driver.name} does not support circuit aggregation",
+            ),
+        )
 
     # validate: profiling
     if profiling:
@@ -427,9 +575,12 @@ def submit_job(
     # Begin transaction and create job record in database
     job_record = None
     try:
-        # check max job count is reached
+        # check max job count is reached (-1 means unlimited)
         all_jobs_count = job_repo.get_jobs_count()
-        if all_jobs_count >= Config.DEFAULT.MAX_JOBS:
+        if (
+            Config.DEFAULT.MAX_JOBS != -1
+            and all_jobs_count >= Config.DEFAULT.MAX_JOBS
+        ):
             jsonrpc_errors.handle_error_internal_server(
                 module_name,
                 func_name,
@@ -440,12 +591,16 @@ def submit_job(
                 ),
             )
 
-        # check max job count is reached per user/virtual instance
+        # check max job count per user/virtual instance
+        # (-1 means unlimited)
         filters = {
             "user_id": body.user_id,
         }
         user_jobs_count = job_repo.get_jobs_count(filters=filters)
-        if user_jobs_count >= Config.USERS.MAX_JOBS:
+        if (
+            Config.USERS.MAX_JOBS != -1
+            and user_jobs_count >= Config.USERS.MAX_JOBS
+        ):
             jsonrpc_errors.handle_error_internal_server(
                 module_name,
                 func_name,
@@ -467,12 +622,14 @@ def submit_job(
                 )
 
         # Create job record in database without auto commit
-        success, e, job_record = job_repo.create_job(body, auto_commit=False)
-        if not success or e:
+        success, err_msg, job_record = job_repo.create_job(
+            body, auto_commit=False
+        )
+        if not success or err_msg:
             jsonrpc_errors.handle_error_internal_server(
                 module_name,
                 func_name,
-                (False, f"Failed to create job record: {str(e)}"),
+                (False, f"Failed to create job record: {str(err_msg)}"),
             )
         # Verify job_record is not None after creation
         if not job_record:
@@ -491,12 +648,6 @@ def submit_job(
     # update job id by db if empty
     if not job_id:
         body.job_id = job_record.id
-
-    # auto schedule
-    job_scheduling_at = time.time()
-    # TODO(zhaoyi): auto schedule
-    job_schedule_duration = time.time() - job_scheduling_at
-    extra_job_data_info = {"job_schedule_duration": job_schedule_duration}
 
     # submit job
     res = {}
@@ -545,6 +696,7 @@ def submit_job(
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
         )
+
     # handle submit response - scheduler returned error
     if err:
         # Rollback DB transaction
@@ -576,6 +728,8 @@ def submit_job(
         "source_code": source_code,
         "description": description,
         "backend": backend,
+        "flavor_id": flavor_id,
+        "extra_specs": extra_specs,
         "driver_options": driver_options,
         "transpiler": transpiler_name,
         "transpiler_options": transpiler_options,
@@ -586,6 +740,7 @@ def submit_job(
         "code_compression_level": code_compression_level,
         "tags": tags,
         "qec_options": qec_options,
+        "qem_options": qem_options,
         "created_at": created_at,
         "updated_at": created_at,
         "started_at": started_at,
@@ -596,6 +751,7 @@ def submit_job(
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
@@ -640,6 +796,7 @@ def get_job_status(
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
@@ -686,6 +843,7 @@ def get_job_results(
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": Constant.ALL_ROLES},
     errors=[jsonrpc_errors.InternalServerError],
 )
@@ -735,7 +893,9 @@ def get_jobs(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def update_job(
     body: schemas.UpdateJobRequest,
@@ -836,7 +996,9 @@ def update_job(
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def cancel_jobs(
     body: schemas.CancelJobsRequest,
@@ -862,6 +1024,7 @@ def cancel_jobs(
     job_ids = list(dict.fromkeys(job_ids))
     flow_run_id_dict = {}
     flow_run_id_list = []
+    job_id_flow_run_id = {}
 
     # Get job run ids
     for job_id in job_ids:
@@ -875,22 +1038,38 @@ def cancel_jobs(
         if success and job_record:
             flow_run_id_dict[job_record.flow_run_id] = job_id
             flow_run_id_list.append(job_record.flow_run_id)
+            job_id_flow_run_id[job_id] = job_record.flow_run_id
+            if job_record.job_status == Constant.JOB_STATUS_RUNNING:
+                job_record.job_status = Constant.JOB_STATUS_CANCELLING
+                try:
+                    job_repo.commit()
+                    job_repo.refresh(job_record)
+                except Exception as e:
+                    job_repo.rollback()
+                    logger.warning(
+                        f"Failed to update job {job_id} status to CANCELLING: "
+                        f"{e}"
+                    )
 
     # cancel jobs
     cancelled_flow_run_list = scheduler.cancel_flows(flow_run_id_list)
 
     # construct response using flow_run_id_dict to map back to job_ids
-    response_info = [
-        schemas.CancelJobsResponse(
-            job_id=flow_run_id_dict.get(flow_run_info.get("flow_run_id"))
-        )
-        for flow_run_info in cancelled_flow_run_list
-    ]
+    response_info = []
+    for job_id in job_ids:
+        flow_run_id = job_id_flow_run_id[job_id]
+        if flow_run_id in cancelled_flow_run_list:
+            response = schemas.CancelJobsResponse(job_id=job_id)
+            response_info.append(response)
+        else:
+            logger.warning(f"Failed to cancel job {job_id}")
     return response_info
 
 
 @job_api_v1.method(
-    openapi_extra={"allowed_roles": Constant.ALL_ROLES}, errors=[]
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": Constant.ALL_ROLES},
+    errors=[],
 )
 def delete_jobs(
     body: schemas.DeleteJobsRequest,
@@ -917,6 +1096,8 @@ def delete_jobs(
     job_ids = list(dict.fromkeys(job_ids))
     flow_run_id_dict = {}
     flow_run_id_list = []
+    job_id_flow_run_id = {}
+    delete_results = {}
 
     # Update job status to DELETING in database
     for job_id in job_ids:
@@ -930,22 +1111,25 @@ def delete_jobs(
         if success and job_record:
             flow_run_id_dict[job_record.flow_run_id] = job_id
             flow_run_id_list.append(job_record.flow_run_id)
-            job_record.job_status = Constant.JOB_STATUS_DELETING
-            try:
-                job_repo.commit()
-                job_repo.refresh(job_record)
-            except Exception as e:
-                job_repo.rollback()
-                logger.warning(
-                    f"Failed to update job {job_id} status to DELETING: {e}"
-                )
+            job_id_flow_run_id[job_id] = job_record.flow_run_id
+            if job_record.job_status != Constant.JOB_STATUS_RUNNING:
+                job_record.job_status = Constant.JOB_STATUS_DELETING
+                try:
+                    job_repo.commit()
+                    job_repo.refresh(job_record)
+                except Exception as e:
+                    job_repo.rollback()
+                    logger.warning(
+                        f"Failed to update job {job_id} status to DELETING: "
+                        f"{e}"
+                    )
 
     # delete jobs from scheduler
     try:
         if force:
             # Force delete: directly delete without waiting for scheduler
             logger.info(f"Force deleting {len(flow_run_id_list)} jobs")
-        deleted_flow_run_list = scheduler.delete_flows(flow_run_id_list)
+        delete_results = scheduler.delete_flows(flow_run_id_list)
     except Exception as e:
         # If scheduler delete fails, rollback database changes
         if not force:
@@ -956,60 +1140,60 @@ def delete_jobs(
             )
         else:
             logger.warning(f"Force delete failed (non-critical): {str(e)}")
-            deleted_flow_run_list = []
-
-    # Handle scheduler returned error
-    if not deleted_flow_run_list and not force:
-        jsonrpc_errors.handle_error_internal_server(
-            module_name,
-            func_name,
-            (False, "No jobs are deleted, jobs may in RUNNING state"),
-        )
-
-    # If force delete and no jobs returned from scheduler, construct response
-    # from remaining flow_run_ids and delete from database anyway
-    if force and not deleted_flow_run_list:
-        deleted_flow_run_list = [
-            {"flow_run_id": fid, "state": Constant.JOB_STATUS_DELETED}
-            for fid in flow_run_id_list
-        ]
-        logger.info(
-            f"Force delete: scheduler returned empty, "
-            f"deleting {len(deleted_flow_run_list)} jobs from database anyway"
-        )
 
     # Delete jobs from database
-    for flow_run_info in deleted_flow_run_list:
-        flow_run_id = flow_run_info["flow_run_id"]
-        job_id = flow_run_id_dict[flow_run_id]
-        if job_id is not None:
-            try:
-                success, error = job_repo.delete_by_uuid(Job, str(job_id))
-                if not success or error:
-                    logger.warning(
-                        f"Failed to delete job {job_id} from database: {error}"
+    deleted_entries = []
+    for job_id in job_ids:
+        flow_run_id = job_id_flow_run_id.get(job_id, None)
+        if flow_run_id is not None:
+            delete_result = delete_results.get(flow_run_id, None)
+            if not delete_result:
+                continue
+            delete = False
+            if delete_result["state"] == Constant.JOB_STATUS_DELETED:
+                delete = True
+            if (
+                job_record.job_status == Constant.JOB_STATUS_RUNNING
+                or delete_result["state"] == Constant.JOB_STATUS_RUNNING
+            ):
+                pass
+            if delete:
+                try:
+                    success, error = job_repo.delete_by_uuid(Job, str(job_id))
+                    if not success or error:
+                        logger.warning(
+                            f"Failed to delete job {job_id} from database: "
+                            f"{error}"
+                        )
+                    else:
+                        logger.info(
+                            f"Successfully deleted job {job_id} from database"
+                        )
+                    deleted_entries.append((job_id, delete_result))
+                except Exception as e:
+                    logger.error(
+                        f"Error deleting job {job_id} from database: {str(e)}"
                     )
-                else:
-                    logger.info(
-                        f"Successfully deleted job {job_id} from database"
-                    )
-            except Exception as e:
-                logger.error(
-                    f"Error deleting job {job_id} from database: {str(e)}"
+            else:
+                logger.warning(
+                    f"Failed to delete job {job_id}. "
+                    f"Job is in RUNNING state. "
+                    f"Please cancel it first."
                 )
 
-    # construct response using flow_run_id_dict to map back to job_ids
+    # construct response
     response_info = [
         schemas.DeleteJobsResponse(
-            job_id=flow_run_id_dict.get(flow_run_info.get("flow_run_id")),
-            job_status=flow_run_info.get("state"),
+            job_id=job_id,
+            job_status=delete_result["state"],
         )
-        for flow_run_info in deleted_flow_run_list
+        for job_id, delete_result in deleted_entries
     ]
     return response_info
 
 
 @job_api_v1.method(
+    tags=[module_name.lower()],
     openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
     errors=[jsonrpc_errors.NotFoundError, jsonrpc_errors.InternalServerError],
 )
@@ -1098,6 +1282,7 @@ def set_job_results(
             db_new_result.update(new_result)
             db_new_result["metadata"]["status"] = Constant.JOB_STATUS_COMPLETED
         db_new_results.append(db_new_result)
+
     job_status = (
         Constant.JOB_STATUS_FAILED
         if is_failed

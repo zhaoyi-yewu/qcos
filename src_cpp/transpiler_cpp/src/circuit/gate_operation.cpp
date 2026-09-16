@@ -27,8 +27,8 @@ namespace qcos {
 GateOperation::GateOperation(std::string_view name_, std::vector<int> targets_,
                              std::vector<double> arg_value_,
                              OperationType op_type_, bool hermitian_)
-    : BaseOperation(name_, std::move(targets_),
-                    std::move(arg_value_), op_type_),
+    : BaseOperation(name_, std::move(targets_), std::move(arg_value_),
+                    op_type_),
       hermitian(hermitian_) {
   validate_params();
 }
@@ -512,6 +512,24 @@ std::array<std::complex<double>, 4> SXDG ::to_matrix() const {
 
 std::string SXDG ::to_string() const {
   return "SXDG(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
+I ::I(std::vector<int> targets_, std::vector<double> arg_value_)
+    : GateOperation(Constant::SINGLE_QUBIT_GATE_I, std::move(targets_),
+                    std::move(arg_value_),
+                    OperationType::SINGLE_QUBIT_OPERATION, true) {}
+
+std::vector<std::shared_ptr<BaseOperation>> I ::default_decompose() {
+  return {};
+}
+
+std::array<std::complex<double>, 4> I ::to_matrix() const {
+  return {1.0, 0.0, 0.0, 1.0};
+}
+
+std::string I ::to_string() const {
+  return "I(targets=" + targets_to_string() +
          ", arg_value=" + arg_value_to_string() + ")";
 }
 
@@ -1664,33 +1682,12 @@ std::vector<std::shared_ptr<BaseOperation>> ECR ::default_decompose() {
 }
 
 std::array<std::complex<double>, 16> ECR ::to_matrix() const {
-  // ECR 门矩阵 (Echoed Cross Resonance)
-  const double inv_sqrt2 = 1.0 / std::sqrt(2.0);
+  // ECR = 1/√2 * (IX - XY)
+  using C = std::complex<double>;
+  const double s = 1.0 / std::sqrt(2.0);
 
-  std::array<std::complex<double>, 16> ecr_matrix = {
-      // |00⟩, |01⟩, |10⟩, |11⟩
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2 * std::complex<double>(0.0, 1.0),  // 0, +i/√2
-      inv_sqrt2,
-      std::complex<double>(0.0, 0.0),
-
-      inv_sqrt2 * std::complex<double>(0.0, 1.0),
-      std::complex<double>(0.0, 0.0),  // +i/√2, 0
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2,
-
-      inv_sqrt2,
-      std::complex<double>(0.0, 0.0),
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2 * std::complex<double>(0.0, -1.0),  // 0, -i/√2
-
-      std::complex<double>(0.0, 0.0),
-      inv_sqrt2,
-      inv_sqrt2 * std::complex<double>(0.0, -1.0),
-      std::complex<double>(0.0, 0.0)  // -i/√2, 0
-  };
-
-  return ecr_matrix;
+  return {C(0), C(0),     C(s), C(0, s), C(0),     C(0), C(0, s), C(s),
+          C(s), C(0, -s), C(0), C(0),    C(0, -s), C(s), C(0),    C(0)};
 }
 
 std::string ECR ::to_string() const {
@@ -2034,7 +2031,7 @@ std::array<std::complex<double>, 16> RZX ::to_matrix() const {
       std::complex<double>(0.0, 0.0),
       std::complex<double>(cos_theta2, 0.0),
       std::complex<double>(0.0, 0.0),
-      i_sin_theta2,
+      i_sin_theta2_pos,
 
       i_sin_theta2,
       std::complex<double>(0.0, 0.0),
@@ -2134,7 +2131,7 @@ std::vector<std::shared_ptr<BaseOperation>> CCX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> CCX ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> CCX::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 3) {
@@ -2216,6 +2213,109 @@ std::string CCX ::to_string() const {
   return "CCX(targets=" + targets_to_string() +
          ", arg_value=" + arg_value_to_string() + ")";
 }
+
+CCZ::CCZ(std::vector<int> targets_, std::vector<double> arg_value_,
+         OperationType gate_type)
+    : GateOperation(Constant::THREE_QUBIT_GATE_CCZ, std::move(targets_),
+                    std::move(arg_value_), gate_type) {}
+
+std::vector<std::shared_ptr<BaseOperation>> CCZ::default_decompose() {
+  std::vector<std::shared_ptr<BaseOperation>> gates;
+
+  if (targets.size() < 3) {
+    return {std::make_shared<CCZ>(targets, arg_value)};
+  }
+
+  int c1 = targets[0];
+  int c2 = targets[1];
+  int t = targets[2];
+
+  auto h_gates = std::make_shared<H>(std::vector<int>{t})->default_decompose();
+  gates.insert(gates.end(), h_gates.begin(), h_gates.end());
+
+  auto ccx_gates =
+      std::make_shared<CCX>(std::vector<int>{c1, c2, t})->default_decompose();
+  gates.insert(gates.end(), ccx_gates.begin(), ccx_gates.end());
+
+  auto h_gates2 =
+      std::make_shared<H>(std::vector<int>{t})->default_decompose();
+  gates.insert(gates.end(), h_gates2.begin(), h_gates2.end());
+
+  return gates;
+}
+
+std::vector<std::shared_ptr<BaseOperation>> CCZ::decompose_to_1q2q() const {
+  std::vector<std::shared_ptr<BaseOperation>> gates;
+
+  if (targets.size() < 3) {
+    return {std::make_shared<CCZ>(targets, arg_value)};
+  }
+
+  int c1 = targets[0];
+  int c2 = targets[1];
+  int t = targets[2];
+
+  gates.push_back(std::make_shared<H>(std::vector<int>{t}));
+
+  auto ccx_gates =
+      std::make_shared<CCX>(std::vector<int>{c1, c2, t})->decompose_to_1q2q();
+  gates.insert(gates.end(), ccx_gates.begin(), ccx_gates.end());
+
+  gates.push_back(std::make_shared<H>(std::vector<int>{t}));
+
+  return gates;
+}
+
+std::array<std::complex<double>, 64> CCZ::to_matrix() const {
+  std::array<std::complex<double>, 64> ccz_matrix = {
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(1.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(1.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(1.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(1.0, 0.0), std::complex<double>(0.0, 0.0),
+
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0),
+      std::complex<double>(0.0, 0.0), std::complex<double>(-1.0, 0.0)};
+
+  return ccz_matrix;
+}
+
+std::string CCZ::to_string() const {
+  return "CCZ(targets=" + targets_to_string() +
+         ", arg_value=" + arg_value_to_string() + ")";
+}
+
 CSWAP ::CSWAP(std::vector<int> targets_, std::vector<double> arg_value_,
               OperationType gate_type)
     : GateOperation(Constant::THREE_QUBIT_GATE_CSWAP, std::move(targets_),
@@ -2247,7 +2347,7 @@ std::vector<std::shared_ptr<BaseOperation>> CSWAP ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> CSWAP ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> CSWAP::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 3) {
@@ -2389,7 +2489,7 @@ std::vector<std::shared_ptr<BaseOperation>> RCCX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> RCCX ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> RCCX::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 3) {
@@ -2582,7 +2682,7 @@ std::vector<std::shared_ptr<BaseOperation>> RC3X ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> RC3X ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> RC3X::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 4) {
@@ -2814,7 +2914,7 @@ std::vector<std::shared_ptr<BaseOperation>> C3X ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> C3X ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> C3X::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 4) {
@@ -3047,7 +3147,8 @@ std::vector<std::shared_ptr<BaseOperation>> C3SQRTX ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> C3SQRTX ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> C3SQRTX::decompose_to_1q2q()
+    const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 4) {
@@ -3209,7 +3310,7 @@ std::vector<std::shared_ptr<BaseOperation>> C4X ::default_decompose() {
   return gates;
 }
 
-std::vector<std::shared_ptr<BaseOperation>> C4X ::decompose_to_1q2q() {
+std::vector<std::shared_ptr<BaseOperation>> C4X::decompose_to_1q2q() const {
   std::vector<std::shared_ptr<BaseOperation>> gates;
 
   if (targets.size() < 5) {
@@ -3506,10 +3607,21 @@ std::string Sync::to_string() const {
          ", arg_value=" + arg_value_to_string() + ")";
 }
 
-Measure::Measure(std::vector<int> targets, std::vector<double> arg_value,
+Measure::Measure(std::vector<int> targets, std::vector<int> cbits,
                  OperationType operation_type)
-    : BaseOperation("measure", std::move(targets), std::move(arg_value),
-                    operation_type) {}
+    : BaseOperation("measure", std::move(targets), {}, operation_type),
+      cbits(std::move(cbits)) {
+  if (this->targets.size() != 1) {
+    throw std::invalid_argument("Measure targets must have exactly 1 qubit");
+  }
+  if (this->cbits.empty()) this->cbits = this->targets;
+}
+
+std::string Measure::to_openqasm(const std::string& qubit_prefix) const {
+  int cb = cbits.empty() ? targets[0] : cbits[0];
+  return "measure " + qubit_prefix + "[" + std::to_string(targets[0]) +
+         "] -> c[" + std::to_string(cb) + "];";
+}
 
 std::string Measure::to_string() const {
   return "Measure(targets=" + targets_to_string() +
@@ -3560,6 +3672,8 @@ std::shared_ptr<BaseOperation> create_gate(std::string_view name,
     return std::make_shared<SX>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::SINGLE_QUBIT_GATE_SXDG) {
     return std::make_shared<SXDG>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::SINGLE_QUBIT_GATE_I) {
+    return std::make_shared<I>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::SINGLE_QUBIT_GATE_S) {
     return std::make_shared<S>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::SINGLE_QUBIT_GATE_T) {
@@ -3624,6 +3738,8 @@ std::shared_ptr<BaseOperation> create_gate(std::string_view name,
     return std::make_shared<RZX>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::THREE_QUBIT_GATE_CCX) {
     return std::make_shared<CCX>(std::move(targets), std::move(arg_value));
+  } else if (name == Constant::THREE_QUBIT_GATE_CCZ) {
+    return std::make_shared<CCZ>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::THREE_QUBIT_GATE_CSWAP) {
     return std::make_shared<CSWAP>(std::move(targets), std::move(arg_value));
   } else if (name == Constant::THREE_QUBIT_GATE_RCCX) {
@@ -3639,7 +3755,7 @@ std::shared_ptr<BaseOperation> create_gate(std::string_view name,
   } else if (name == "sync") {
     return std::make_shared<Sync>(std::move(targets), std::move(arg_value));
   } else if (name == "measure") {
-    return std::make_shared<Measure>(std::move(targets), std::move(arg_value));
+    return std::make_shared<Measure>(std::move(targets));
   } else if (name == "move") {
     return std::make_shared<Move>(std::move(targets), std::move(arg_value));
   } else if (name == "reset") {

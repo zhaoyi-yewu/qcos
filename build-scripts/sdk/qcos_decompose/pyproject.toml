@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qcos-decompose"
+version = "0.1.0"
+description = "QASM parse and decompose utility based on wy_qcos"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src", "../../../src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

@@ -1,0 +1,29 @@
+# .dockerignore for the qcos-compiler image build
+# build context is the project root
+
+# virtualenvs
+.venv/
+venv/
+
+# python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# C++ transpiler build artifacts (must not leak the host's CMakeCache
+# into the image, which would break the in-image rebuild)
+src_cpp/transpiler_cpp/build/
+src_cpp/transpiler_cpp/dist/
+
+# pre-built high_performance extension from the host (rebuilt in-image)
+src/wy_qcos/transpiler/*.so
+
+# git / docs / samples not needed by the compiler service
+.git/
+.gitlab-ci.yml
+docs/
+samples/
+.zhanlu/
+*.md

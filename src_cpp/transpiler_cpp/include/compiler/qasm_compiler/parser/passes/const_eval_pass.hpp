@@ -132,7 +132,7 @@ class ConstEvalPass : public CompilerPass,
     try {
       statement.accept(this);
     } catch (const ConstEvalError& e) {
-      throw CompilerError(e.toString(), statement.debugInfo);
+      throw CompilerError(e.toString(), DebugInfo(statement.debugInfo));
     }
   }
 

@@ -50,8 +50,11 @@ class JobMetrics:
             "queued",
             "cancelling",
             "cancelled",
+            "deleting",
             "deleted",
             "unknown",
+            "submitted_job_rate_min",
+            "completed_job_rate_min",
         )
 
         def __init__(
@@ -63,8 +66,11 @@ class JobMetrics:
             queued: int = 0,
             cancelling: int = 0,
             cancelled: int = 0,
+            deleting: int = 0,
             deleted: int = 0,
             unknown: int = 0,
+            submitted_job_rate_min: float = 0.0,
+            completed_job_rate_min: float = 0.0,
         ):
             self.total = total
             self.completed = completed
@@ -73,8 +79,11 @@ class JobMetrics:
             self.queued = queued
             self.cancelling = cancelling
             self.cancelled = cancelled
+            self.deleting = deleting
             self.deleted = deleted
             self.unknown = unknown
+            self.submitted_job_rate_min = submitted_job_rate_min
+            self.completed_job_rate_min = completed_job_rate_min
 
         def __repr__(self):
             return (
@@ -84,15 +93,18 @@ class JobMetrics:
                 f"running={self.running}, "
                 f"queued={self.queued}, "
                 f"cancelled={self.cancelled}, "
+                f"deleting={self.deleting}, "
                 f"deleted={self.deleted}, "
-                f"unknown={self.unknown})"
+                f"unknown={self.unknown}, "
+                f"submitted_job_rate_min={self.submitted_job_rate_min}, "
+                f"completed_job_rate_min={self.completed_job_rate_min})"
             )
 
     def __init__(self) -> None:
         # Prometheus gauge with status label for job metrics
 
         self.job_gauge = Gauge(
-            Constant.JOB_METRICS_FIELD_TOTAL,
+            Constant.JOB_METRICS_PROMETHEUS_NAME,
             "Total number of jobs by status",
             ["status"],
         )
@@ -127,11 +139,23 @@ class JobMetrics:
                 status=Constant.JOB_METRICS_FIELD_CANCELLED
             ).set(data.cancelled)
             self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_DELETING
+            ).set(data.deleting)
+            self.job_gauge.labels(
                 status=Constant.JOB_METRICS_FIELD_DELETED
             ).set(data.deleted)
             self.job_gauge.labels(
                 status=Constant.JOB_METRICS_FIELD_UNKNOWN
             ).set(data.unknown)
+            self.job_gauge.labels(status=Constant.JOB_METRICS_FIELD_TOTAL).set(
+                data.total
+            )
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_SUBMITTED_JOB_RATE_MIN
+            ).set(data.submitted_job_rate_min)
+            self.job_gauge.labels(
+                status=Constant.JOB_METRICS_FIELD_COMPLETED_JOB_RATE_MIN
+            ).set(data.completed_job_rate_min)
 
         logger.debug(f"Job metrics updated: {data}")
 
@@ -317,6 +341,12 @@ class APIMetrics:
 
         # Internal tracking for quick access to total requests
         self._total_requests_count = 0
+        # Prometheus gauge for API request stats by time window
+        self.api_request_gauge = Gauge(
+            Constant.API_METRICS_REQUEST_STATS,
+            "API request statistics by time window",
+            ["type"],
+        )
 
     def record_api_request(self, data: APIMetricsData):
         """Record an API request.
@@ -353,6 +383,27 @@ class APIMetrics:
             idx = bisect.bisect_left(self._api_request_timestamps, cutoff)
             self._api_request_timestamps = self._api_request_timestamps[idx:]
 
+            # Update Prometheus gauge for time-windowed stats
+            one_hour_ago = current_time - timedelta(hours=1)
+            one_day_ago = current_time - timedelta(hours=24)
+            idx_hour = bisect.bisect_right(
+                self._api_request_timestamps, one_hour_ago
+            )
+            idx_day = bisect.bisect_right(
+                self._api_request_timestamps, one_day_ago
+            )
+            last_hour_count = len(self._api_request_timestamps) - idx_hour
+            last_day_count = len(self._api_request_timestamps) - idx_day
+            self.api_request_gauge.labels(type="total_requests").set(
+                self._total_requests_count
+            )
+            self.api_request_gauge.labels(type="last_hour_requests").set(
+                last_hour_count
+            )
+            self.api_request_gauge.labels(type="last_day_requests").set(
+                last_day_count
+            )
+
     def increment_api_requests_in_progress(self):
         """Increment the counter of in-progress API requests."""
         self.api_requests_in_progress.inc()
@@ -385,6 +436,17 @@ class APIMetrics:
             last_hour_count = len(self._api_request_timestamps) - idx_hour
             last_day_count = len(self._api_request_timestamps) - idx_day
             total_requests = self._total_requests_count
+
+            # Refresh Prometheus gauge so /metrics is always up-to-date
+            self.api_request_gauge.labels(type="total_requests").set(
+                total_requests
+            )
+            self.api_request_gauge.labels(type="last_hour_requests").set(
+                last_hour_count
+            )
+            self.api_request_gauge.labels(type="last_day_requests").set(
+                last_day_count
+            )
 
         return {
             "total_requests": total_requests,
@@ -497,6 +559,8 @@ class MetricsCollector:
             Prometheus metrics in text format
         """
         with self._global_lock:
+            # Refresh API request gauge so /metrics is always current
+            self.api_metrics.get_api_stats()
             return generate_latest()
 
     def get_content_type(self) -> str:

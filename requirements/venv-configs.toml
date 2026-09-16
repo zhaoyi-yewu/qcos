@@ -1,45 +1,84 @@
 # Driver running environments
 
 [default]
-deps_filepaths = ["./requirements-qcos.txt"]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["main"]
 envs = ["python3"]
 
 [sandbox]
-deps_filepaths = [
-    "./requirements-qcos.txt",
-    "./requirements-sandbox.txt",
-    "./requirements-test.txt",
-    "./requirements-docs.txt",
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = [
+    "main",
+    "sandbox",
+    "test",
+    "docs",
 ]
 envs = ["python3"]
 
 #[pypy]
-#deps_filepaths = ["./requirements-transpiler-cmss.txt"]
+#deps_pyproject_file = "../pyproject.toml"
+#deps_sections = ["transpiler-cmss"]
 #envs = ["pypy3"]
 
 [DriverQutipSim]
 module_name = "driver_qutip_sim"
-deps_filepaths = ["./drivers/requirements-qutip.txt"]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-qutip"]
+envs = ["python3"]
+
+[DriverQutipAshnSim]
+module_name = "driver_qutip_ashn_sim"
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-qutip"]
 envs = ["python3"]
 
 [DriverSpinQRpc]
 module_name = "driver_spinq_rpc"
-deps_filepaths = ["./drivers/requirements-spinq-rpc.txt"]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-spinq-rpc"]
 envs = ["python3"]
 
 [DriverUQCMatrix2]
 module_name = "driver_uqc"
-deps_filepaths = ["./drivers/requirements-uqc.txt"]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-uqc"]
 envs = ["python3"]
 
 [DriverQuafu]
 module_name = "driver_quafu"
-deps_filepaths = ["./drivers/requirements-quafu.txt"]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-quafu"]
 envs = ["python3"]
 no_deps = true
 
+[logical_qubit]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-logical-qubit"]
+envs = ["python3"]
+
+[DriverLqMQ02]
+module_name = "driver_lq_mq02"
+copy_from = "logical_qubit"
+
+[DriverLqQZ01SurfaceCode]
+module_name = "driver_lq_qz01_surface_code"
+copy_from = "logical_qubit"
+
+[DriverLqQZ01RepetitionCode]
+module_name = "driver_lq_qz01_repetition_code"
+copy_from = "logical_qubit"
+
+[DriverLqQZ02]
+module_name = "driver_lq_qz02"
+copy_from = "logical_qubit"
+
+[DriverLqAGate100]
+module_name = "driver_lq_agate100"
+copy_from = "logical_qubit"
+
 [qiskit]
-deps_filepaths = ["./drivers/requirements-qiskit.txt"]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-qiskit"]
 envs = ["python3"]
 
 [DriverQiskitQasmSim]

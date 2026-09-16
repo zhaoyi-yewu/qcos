@@ -57,7 +57,11 @@ echo "Docs linter start ..."
 MD_FILES=$(find ${TOP_DIR} \
   -not -path "*/build-scripts/*" \
   -not -path "*/samples/*" \
+  -not -path "*/dist/*" \
   -not -path "*/.pytest_cache/*" \
+  -not -path "*/.roo/*" \
+  -not -path "*/plans/*" \
+  -not -path "*/webui/*" \
   -type f -name "*.md" \
 )
 if [ "${fix}" = false ]; then

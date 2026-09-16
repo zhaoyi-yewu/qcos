@@ -16,6 +16,8 @@
 # ----------------------------------------------------------------------
 
 from wy_qcos.transpiler.cmss.circuit.dag_circuit import DAGCircuit
+import math
+
 from wy_qcos.transpiler.cmss.circuit.dag_node import DAGOpNode
 
 
@@ -52,7 +54,10 @@ class AdjacentPhaseOptPass:
         for node in dag.topological_op_nodes():
             if node.name not in phase_gates:
                 continue
-            n_node = list(dag.successors(node))[0]
+            succs = list(dag.successors(node))
+            if not succs:
+                continue
+            n_node = succs[0]
             if not isinstance(n_node, DAGOpNode):
                 continue
             if (
@@ -62,6 +67,11 @@ class AdjacentPhaseOptPass:
                 n_node.op.arg_value[0] += node.op.arg_value[0]
                 dag.remove_op_node(node)
                 cnt += 1
+                # Remove gate if merged angle is ~0 (mod 2π)
+                mod_angle = n_node.op.arg_value[0] % (2 * math.pi)
+                if mod_angle < 1e-8 or mod_angle > 2 * math.pi - 1e-8:
+                    dag.remove_op_node(n_node)
+                    cnt += 1
 
         op_counts = dag.count_ops()
         if op_counts.get("rz", 0) > 0:

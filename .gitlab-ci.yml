@@ -1,3 +1,6 @@
+# run in sandbox docker
+image: qcos-sandbox:cicd
+
 # stages
 stages:
   # commit messages
@@ -17,6 +20,7 @@ commit-messages:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - python3 ./cicd/check-commit-message.py
 
 # files check
@@ -25,6 +29,7 @@ check-files:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/check-files.sh
 
 # code-linter
@@ -33,6 +38,7 @@ code-linter:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/code-linter.sh
 
 # code-style
@@ -41,6 +47,7 @@ code-style:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/code-formatter.sh
 
 # docstring-check
@@ -49,6 +56,7 @@ docstring-check:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/docstring-check.sh
 
 # docs-linter
@@ -57,20 +65,8 @@ docs-linter:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/docs-linter.sh
-
-# ut (qcos)
-ut-qcos:
-  stage: functional-tests
-  tags:
-    - sonic-runner
-  script:
-    - ./cicd/run-tests.sh -b
-    - ./cicd/run-tests.sh -u default
-  artifacts:
-    when: always
-    reports:
-      junit: cicd/reports/wy_qcos/report.xml
 
 # cpp ut (qcos)
 cpp-ut-qcos:
@@ -78,6 +74,7 @@ cpp-ut-qcos:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/run-tests.sh -b
     - ./cicd/run-tests.sh -t default
   artifacts:
@@ -85,30 +82,24 @@ cpp-ut-qcos:
     reports:
       junit: cicd/reports/wy_qcos/cpp_ut_report.xml
 
-# code-coverage (qcos)
+# UT/Coverage (qcos)
 code-coverage-qcos:
   stage: functional-tests
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/run-tests.sh -b
     - ./cicd/run-tests.sh -c default
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)/'
 
-# ut (qcos_client)
-ut-qcos-client:
-  stage: functional-tests
-  tags:
-    - sonic-runner
-  script:
-    - ./cicd/run-tests.sh -j all
-
-# code-coverage (qcos_client)
+# UT/Coverage (qcos_client)
 code-coverage-qcos-client:
   stage: functional-tests
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
     - ./cicd/run-tests.sh -e all
 
 # system tests (qcos)
@@ -117,6 +108,9 @@ st-qcos:
   tags:
     - sonic-runner
   script:
+    - source /var/lib/qcos/venv/sandbox/bin/activate
+    - export LC_ALL=en_US.UTF-8
+    - export LANG=en_US.UTF-8
     - |
       JENKINS_BASE_URL=${JENKINS_BASE_URL:-"http://127.0.0.1:18080/job"}
       JENKINS_JOB_NAME=${JENKINS_JOB_NAME:-"WuYueOS-CICD-Daily"}
@@ -204,4 +198,5 @@ st-qcos:
 #  tags:
 #    - sonic-runner
 #  script:
+#    - source /var/lib/qcos/venv/sandbox/bin/activate
 #    - ./cicd/run-tests.sh -s all

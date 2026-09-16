@@ -4,7 +4,7 @@ requires = ["setuptools>=61.0", "wheel>=0.37.1"]
 
 [project]
 name = "wy-qcos-client"
-version = "1.5.0"
+version = "1.8.0"
 description = """WuYue QCOS Client and CLI. \
 WuYue QCOS (Quantum Computing Operating System), \
 is an open-source, general-purpose Quantum Computing Operating System \
@@ -44,11 +44,13 @@ classifiers = [
 # Format for dependency strings: https://peps.python.org/pep-0508/
 dependencies = [
     # requirements
-    "argcomplete==3.6.2",
-    "cliff==4.10.0",
+    "alembic==1.18.5",
+    "argcomplete==3.7.0",
+    "cliff==4.15.0",
     "jsonrpcclient==4.0.3",
-    "requests==2.32.5",
-    "schema==0.7.7",
+    "requests==2.34.2",
+    "schema==0.7.8",
+    "toml==0.10.2",
 ]
 
 [project.scripts]

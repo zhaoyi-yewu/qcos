@@ -15,6 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import ast
+import operator
+
 import numpy as np
 from math import sqrt, cos, sin, log2
 from cmath import exp
@@ -28,6 +31,82 @@ from wy_qcos.common.cmss.measure import Measure
 from wy_qcos.common.cmss.move import Move
 from wy_qcos.common.cmss.sync import Sync
 from wy_qcos.common.cmss.reset import Reset
+
+# Allowed binary operators for safe expression evaluation
+_SAFE_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+# Allowed unary operators for safe expression evaluation
+_SAFE_UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+
+# Allowed modules whose attributes may be accessed in safe expressions
+_SAFE_MODULES = {"np": np, "numpy": np}
+
+
+def _safe_eval(expr, locals_dict):
+    """Safely evaluate a math expression without using eval().
+
+    Only arithmetic operations, constants, variable names, calls to
+    whitelisted module functions (e.g. np.sin) and attribute access on
+    whitelisted modules are permitted.
+
+    Args:
+        expr: expression string
+        locals_dict: mapping of variable names to values
+
+    Returns:
+        evaluated result
+    """
+    tree = ast.parse(expr, mode="eval")
+
+    def _eval(node):
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Num):  # pragma: no cover  # py<3.8 compat
+            return node.n
+        if isinstance(node, ast.Name):
+            if node.id in locals_dict:
+                return locals_dict[node.id]
+            if node.id in _SAFE_MODULES:
+                return _SAFE_MODULES[node.id]
+            raise NameError(f"name '{node.id}' is not allowed")
+        if isinstance(node, ast.BinOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_BINOPS:
+                raise ValueError(f"operator {op_type.__name__} not allowed")
+            return _SAFE_BINOPS[op_type](_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.UnaryOp):
+            op_type = type(node.op)
+            if op_type not in _SAFE_UNARYOPS:
+                raise ValueError(f"operator {op_type.__name__} not allowed")
+            return _SAFE_UNARYOPS[op_type](_eval(node.operand))
+        if isinstance(node, ast.Attribute):
+            value = _eval(node.value)
+            # only allow attribute access on whitelisted modules
+            if value not in _SAFE_MODULES.values():
+                raise ValueError("attribute access not allowed")
+            return getattr(value, node.attr)
+        if isinstance(node, ast.Call):
+            func = _eval(node.func)
+            if not callable(func):
+                raise ValueError("call target is not callable")
+            args = [_eval(a) for a in node.args]
+            return func(*args)
+        raise ValueError(f"node type {type(node).__name__} not allowed")
+
+    return _eval(tree)
 
 
 class GateOperation(BaseOperation):
@@ -120,8 +199,7 @@ class GateOperation(BaseOperation):
             gates = []
             for name, qids, arg_value in decomposed_gates:
                 qubits = [self.targets[qid] for qid in qids]
-                # pylint: disable=eval-used
-                args = [eval(arg, params) for arg in arg_value]  # noqa: S307
+                args = [_safe_eval(arg, params) for arg in arg_value]
                 gates.append(create_gate(name, qubits, args))
             return gates
 
@@ -582,6 +660,32 @@ class SXDG(GateOperation):
     def __array__(self, dtype=None):
         sdg_array = [[0.5 - 0.5j, 0.5 + 0.5j], [0.5 + 0.5j, 0.5 - 0.5j]]
         return GateOperation.with_gate_array(sdg_array, dtype)
+
+
+class I(GateOperation):  # noqa: E742
+    """恒等门（Identity gate）.
+
+    对量子比特不做任何操作，对应 2×2 单位矩阵。
+    在 QASM 中用 ``id q[0];`` 表示。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+    ) -> None:
+        super().__init__(
+            Constant.SINGLE_QUBIT_GATE_I,
+            targets,
+            arg_value,
+        )
+
+    def default_decompose(self):
+        return []
+
+    def __array__(self, dtype=None):
+        id_array = [[1.0, 0.0], [0.0, 1.0]]
+        return GateOperation.with_gate_array(id_array, dtype)
 
 
 class CZ(GateOperation):
@@ -1339,6 +1443,30 @@ class RYY(GateOperation):
             hermitian=False,
         )
 
+    def default_decompose(self):
+        gates = []
+        gates += RX([self.targets[0]], [np.pi / 2]).decompose()
+        gates += RX([self.targets[1]], [np.pi / 2]).decompose()
+        gates.append(RZZ(self.targets, self.arg_value))
+        gates += RX([self.targets[0]], [-np.pi / 2]).decompose()
+        gates += RX([self.targets[1]], [-np.pi / 2]).decompose()
+        return gates
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the RYY gate."""
+        theta2 = float(self.arg_value[0]) / 2
+        ryy_cos = cos(theta2)
+        ryy_isin = 1j * sin(theta2)
+        return np.array(
+            [
+                [ryy_cos, 0, 0, ryy_isin],
+                [0, ryy_cos, -ryy_isin, 0],
+                [0, -ryy_isin, ryy_cos, 0],
+                [ryy_isin, 0, 0, ryy_cos],
+            ],
+            dtype=dtype,
+        )
+
 
 class RZZ(GateOperation):
     """RZZ门（双量子比特 Z-Z 旋转门）.
@@ -1405,6 +1533,68 @@ class RZX(GateOperation):
         )
 
 
+class ASHN(GateOperation):
+    """ASHN门（双量子比特 Z-X 旋转门）.
+
+    ASHN 门是一种双量子比特门，
+    可以通过调整参数实现所有的双量子比特门。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.TWO_QUBIT_GATE_ASHN,
+            targets,
+            arg_value,
+            gate_type,
+            hermitian=False,
+        )
+
+    def __array__(self, dtype=None):
+        """Return a Numpy.ndarray for the ASHN gate."""
+        a = self.arg_value[0]
+        b = self.arg_value[1]
+        c = self.arg_value[2]
+        Hamilton = (
+            a
+            * np.array(
+                [
+                    [0, 0, 0, 1],
+                    [0, 0, 1, 0],
+                    [0, 1, 0, 0],
+                    [1, 0, 0, 0],
+                ],
+                dtype=dtype,
+            )
+            + b
+            * np.array(
+                [
+                    [0, 0, 0, -1],
+                    [0, 0, 1, 0],
+                    [0, 1, 0, 0],
+                    [-1, 0, 0, 0],
+                ],
+                dtype=dtype,
+            )
+            + c
+            * np.array(
+                [
+                    [1, 0, 0, 0],
+                    [0, -1, 0, 0],
+                    [0, 0, -1, 0],
+                    [0, 0, 0, 1],
+                ],
+                dtype=dtype,
+            )
+        )
+        unitary = (1j * Hamilton).expm()
+        return unitary
+
+
 class CCX(GateOperation):
     """Toffoli门，如果两个控制量子比特都处于`|1⟩`状态，则对目标量子比特应用X门（Pauli-X门）."""
 
@@ -1460,6 +1650,48 @@ class CCX(GateOperation):
         x_array = [[0, 1], [1, 0]]
         return GateOperation.with_controlled_gate_array(
             base_array=x_array,
+            ctrl_state=int("11", 2),
+            num_ctrl_qubits=2,
+            cached_states=(3,),
+            dtype=dtype,
+        )
+
+
+class CCZ(GateOperation):
+    """CCZ门（双控制Z门 / Doubly-Controlled-Z Gate）.
+
+    当两个控制量子比特都处于`|1⟩`状态时，对目标量子比特应用Z门（Pauli-Z门），
+    即对|111⟩态施加一个-1的相位因子，其余基态保持不变。
+    """
+
+    def __init__(
+        self,
+        targets=None,
+        arg_value=None,
+        gate_type=OperationType.TRIPLE_QUBIT_OPERATION.value,
+    ) -> None:
+        super().__init__(
+            Constant.THREE_QUBIT_GATE_CCZ, targets, arg_value, gate_type
+        )
+
+    def default_decompose(self):
+        gates = []
+        gates += H([self.targets[2]]).decompose()
+        gates += CCX(self.targets).decompose()
+        gates += H([self.targets[2]]).decompose()
+        return gates
+
+    def decompose_to_1q2q(self):
+        gates = []
+        gates.append(H([self.targets[2]]))
+        gates += CCX(self.targets).decompose_to_1q2q()
+        gates.append(H([self.targets[2]]))
+        return gates
+
+    def __array__(self, dtype=None):
+        z_array = [[1, 0], [0, -1]]
+        return GateOperation.with_controlled_gate_array(
+            base_array=z_array,
             ctrl_state=int("11", 2),
             num_ctrl_qubits=2,
             cached_states=(3,),
@@ -2224,6 +2456,8 @@ def create_gate(
         return SX(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_SXDG:
         return SXDG(targets, arg_value)
+    elif name == Constant.SINGLE_QUBIT_GATE_I:
+        return I(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_S:
         return S(targets, arg_value)
     elif name == Constant.SINGLE_QUBIT_GATE_T:
@@ -2270,10 +2504,14 @@ def create_gate(
         return CU(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_RXX:
         return RXX(targets, arg_value)
+    elif name == Constant.TWO_QUBIT_GATE_RYY:
+        return RYY(targets, arg_value)
     elif name == Constant.TWO_QUBIT_GATE_RZZ:
         return RZZ(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_CCX:
         return CCX(targets, arg_value)
+    elif name == Constant.THREE_QUBIT_GATE_CCZ:
+        return CCZ(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_CSWAP:
         return CSWAP(targets, arg_value)
     elif name == Constant.THREE_QUBIT_GATE_RCCX:

@@ -24,6 +24,9 @@ class GetDevicesRequest(BaseModel):
     Pydantic Model for Get Devices Request.
     """
 
+    # need details or not
+    details: bool = Field(description="Details info needed or not")
+
 
 class GetDeviceRequest(BaseModel):
     """Get Device Request.
@@ -57,15 +60,63 @@ class GetDeviceResponse(BaseModel):
     enable: bool = Field(description="Device enable status")
     # device status
     status: str = Field(description="Device status")
-    # device status timestamp
-    timestamp: str = Field(description="Device status timestamp")
+    # whether status is manually overridden
+    is_manual: bool = Field(
+        default=False,
+        description="Whether status is manually overridden",
+    )
     # tech type
     tech_type: str = Field(description="Technology type")
     # max qubits
     max_qubits: int = Field(description="Maximum number of qubits")
+    # available_qubits qubits
+    available_qubits: int | None = Field(
+        default=None,
+        description="Maximum number of available qubits",
+    )
+    # enable device monitor
+    enable_device_monitor: bool = Field(
+        default=False,
+        description="Whether device monitor is enabled",
+    )
+    # device monitor worker status
+    device_monitor_status: str = Field(
+        default="unknown",
+        description="Device monitor worker status",
+    )
+    # monitor polling interval (seconds)
+    monitor_polling_interval: int = Field(
+        default=60,
+        description="Device monitor polling interval in seconds",
+    )
+    # enable device manager
+    enable_device_manager: bool = Field(
+        default=False,
+        description="Whether device manager is enabled",
+    )
+    # device manager worker status
+    device_manager_status: str = Field(
+        default="unknown",
+        description="Device manager worker status",
+    )
     # configs
     configs: dict | None = Field(
         default=None, description="Device configurations"
+    )
+    # job count by job status (e.g. QUEUED, RUNNING, COMPLETED)
+    job_count: dict = Field(
+        default_factory=dict,
+        description="Job count grouped by job status",
+    )
+    # device status last updated at
+    last_updated_at: str | None = Field(
+        default=None, description="Device status last updated at"
+    )
+    # metrics: availability rate and other device metrics
+    metrics: dict | None = Field(
+        default=None,
+        description="Device metrics including availability_hourly, "
+        "availability_last_hour, availability_history",
     )
     # details info
     details: dict | None = Field(default=None, description="Details info")
@@ -168,4 +219,71 @@ class GetDeviceOptionsResponse(BaseModel):
     # get device options detail
     details: dict | None = Field(
         default=None, description="Get Device Options Response details"
+    )
+
+
+class SetDeviceRequest(BaseModel):
+    """Set Device Request.
+
+    Pydantic Model for Set Device Request. Allows updating device
+    state, enable flag, and max qubits in a single call.
+
+    """
+
+    # device name
+    device_name: str = Field(description="Device name")
+    # device state: auto/online/offline/busy/calibrating/
+    # maintain/unknown
+    # None means no change; "auto" means use in-memory status
+    state: str | None = Field(
+        default=None,
+        description="Device state: auto, online, offline, busy, "
+        "calibrating, maintain, unknown. "
+        "None means no change; 'auto' means use in-memory status",
+    )
+    # enable flag: true/false
+    # None means no change
+    enable: bool | None = Field(
+        default=None,
+        description="Enable or disable the device. None means no change",
+    )
+    # max qubits: "auto" or a positive integer string
+    # None means no change
+    max_qubits: str | None = Field(
+        default=None,
+        description="Max qubits: 'auto' to restore driver default, "
+        "or a positive integer string. None means no change",
+    )
+    # available qubits: "auto" or a positive integer string
+    # None means no change
+    available_qubits: str | None = Field(
+        default=None,
+        description="Available qubits: 'auto' to restore driver "
+        "default, or a positive integer string. "
+        "None means no change",
+    )
+
+
+class SetDeviceResponse(BaseModel):
+    """Set Device Response.
+
+    Pydantic Model for Set Device Response. Returns the device
+    attributes after the operation.
+
+    """
+
+    # device name
+    name: str = Field(description="Device name")
+    # device state after operation
+    state: str = Field(description="Device state after operation")
+    # device effective status after operation
+    status: str = Field(description="Device effective status after operation")
+    # device enable flag after operation
+    enable: bool = Field(description="Device enable flag after operation")
+    # device max qubits after operation
+    max_qubits: int = Field(description="Device max qubits after operation")
+    # device available qubits after operation
+    available_qubits: int | None = Field(
+        default=None,
+        description="Device available qubits after operation",
     )

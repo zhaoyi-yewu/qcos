@@ -9,19 +9,19 @@ rule_files:
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ['localhost:9093']
+        - targets: ["${ALERT_MANAGER_TARGETS}"]
 
 scrape_configs:
   - job_name: "qcos-metrics"
     metrics_path: /metrics
     static_configs:
-      - targets: ["localhost:19400"]
+      - targets: ["${QCOS_METRICS_TARGETS}"]
         labels:
           instance: "qcos-server"
           service: "wuyue-qcos"
 
   - job_name: "prometheus"
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["${PROMETHEUS_TARGETS}"]
         labels:
           instance: "prometheus-server"

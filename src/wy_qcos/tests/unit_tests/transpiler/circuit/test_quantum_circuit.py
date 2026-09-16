@@ -30,7 +30,6 @@ from wy_qcos.common.cmss.register import (
     QuantumRegister,
     ClassicalRegister,
 )
-from wy_qcos.transpiler.common.errors import CircuitException
 
 
 @pytest.mark.usefixtures("global_configs")
@@ -43,13 +42,13 @@ class TestQuantumCircuit:
         assert qc.num_clbits == 2
         assert len(qc.get_operations()) == 0
 
-        with pytest.raises(CircuitException) as e:
+        with pytest.raises(ValueError) as e:
             qc = QuantumCircuit(num_qubits="2", num_clbits="2")
 
         err_msg = str(e.value)
         assert err_msg == "num_qubits and num_clbits must be integers."
 
-        with pytest.raises(CircuitException) as e:
+        with pytest.raises(ValueError) as e:
             qc = QuantumCircuit(num_qubits=-1, num_clbits=-1)
 
         err_msg = str(e.value)

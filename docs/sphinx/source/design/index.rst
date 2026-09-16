@@ -12,3 +12,4 @@
    architecture
    project-structure
    module-design/index.rst
+   api/index.rst

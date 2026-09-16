@@ -38,13 +38,6 @@ from wy_qcos.task_manager import scheduler
 
 logger = logging.getLogger(__name__)
 
-# Default admin user
-DEFAULT_ADMIN_PASSWORD = (
-    Config.USERS.ADMIN_PASSWORD
-    if Config.USERS.ADMIN_PASSWORD
-    else Constant.DEFAULT_ADMIN_PASSWORD
-)
-
 
 class UserManager:
     """User manager."""
@@ -85,6 +78,12 @@ class UserManager:
         self.roles_db = {}
         self._username_to_id = {}
         self._role_name_to_id = {}
+        # In-memory login log buffer kept only as a lightweight ring buffer for
+        # fast recent-log access. The authoritative store is the database
+        # (users_repo.create_login_log / get_login_logs / delete_login_logs).
+        # Previously this was an unbounded list that leaked one pydantic
+        # LoginLog model per login attempt forever; cap it to avoid the leak.
+        self._login_logs_maxlen = 1000
         self.login_logs = []
         self.perms_check = self.permission_manager
 
@@ -238,6 +237,12 @@ class UserManager:
         )
 
         # init users
+        # Default admin user
+        DEFAULT_ADMIN_PASSWORD = (
+            Config.USERS.DEFAULT_ADMIN_PASSWORD
+            if Config.USERS.DEFAULT_ADMIN_PASSWORD
+            else Constant.DEFAULT_ADMIN_PASSWORD
+        )
         init_users(
             Constant.ADMIN_USERNAME,
             Constant.ADMIN_PROJECT_ID,
@@ -1468,8 +1473,14 @@ class UserManager:
             login_time=datetime.now(),
         )
 
-        # Add to memory
+        # Add to memory (bounded ring buffer; authoritative store is the DB).
+        # Trim oldest entries once the cap is exceeded to prevent the
+        # unbounded growth leak that previously retained every LoginLog
+        # pydantic model for the process lifetime.
         self.login_logs.append(log_entry)
+        _excess = len(self.login_logs) - self._login_logs_maxlen
+        if _excess > 0:
+            del self.login_logs[:_excess]
 
         # Save to database directly with user_name
         self.users_repo.create_login_log(

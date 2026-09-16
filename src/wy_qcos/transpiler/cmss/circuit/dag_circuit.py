@@ -662,6 +662,8 @@ class DAGCircuit:
         tmp_qubits = set()
         for gate in ir:
             tmp_qubits.update(gate.targets)
+        if not tmp_qubits:
+            return dag_circuit
         num_qubits = max(int(x) for x in tmp_qubits) + 1
 
         dag_circuit.add_qubits(num_qubits)
@@ -686,6 +688,8 @@ class DAGCircuit:
         tmp_qubits = set()
         for gate in circ.get_operations():
             tmp_qubits.update(gate.targets)
+        if not tmp_qubits:
+            return dag_circuit
         num_qubits = max(int(x) for x in tmp_qubits) + 1
 
         dag_circuit.add_qubits(num_qubits)

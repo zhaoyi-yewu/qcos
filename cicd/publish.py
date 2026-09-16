@@ -15,8 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-"""
-Publish artifacts (packages, docs, docker images)
+"""Publish artifacts (packages, docs, docker images).
 
 publish.py packages [--dry-run]
 publish.py docs [--dry-run]
@@ -36,7 +35,7 @@ top_dir = str(parent_dir)
 
 
 class PublishException(Exception):
-    """Publish Exception"""
+    """Publish Exception."""
 
 
 def get_config_value(file_path, key):
@@ -50,16 +49,16 @@ def get_config_value(file_path, key):
         str: config value
     """
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith(("#", ";")):
                     continue
                 if "=" in line:
-                    key, value = line.split("=", 1)
-                    key = key.strip()
+                    _key, value = line.split("=", 1)
+                    _key = _key.strip()
                     value = value.strip()
-                    if key == key:
+                    if key == _key:
                         return value
         return None
     except FileNotFoundError:
@@ -119,7 +118,6 @@ def publish_packages(qcos_version, repository="testpypi", dry_run=False):
         repository: PYPI repository name
         dry_run: dry run
     """
-
     dry_run_str = "(dry-run)" if dry_run else ""
     print(f"Publishing packages {dry_run_str}...")
 
@@ -130,11 +128,11 @@ def publish_packages(qcos_version, repository="testpypi", dry_run=False):
     cmds = [
         # upload wy-qcos packages
         f"twine {action} {repository_args} "
-        f"{qcos_dist_dir}/wy_qcos-{qcos_version}-py3*.whl "
+        f"{qcos_dist_dir}/wy_qcos-{qcos_version}-*.whl "
         f"{qcos_dist_dir}/wy_qcos-{qcos_version}.tar.gz",
         # upload wy-qcos-client packages
         f"twine {action} {repository_args} "
-        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-py3*.whl "
+        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-*.whl "
         f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}.tar.gz",
     ]
     results = run_command(";".join(cmds))
@@ -153,7 +151,6 @@ def publish_docs(dry_run=False):
     Args:
         dry_run: dry run
     """
-
     dry_run_str = "(dry-run)" if dry_run else ""
     print(f"Publishing docs {dry_run_str}...")
     print("ReadTheDocs will build automatically")
@@ -169,7 +166,6 @@ def publish_images(qcos_version, docker_registry=None, dry_run=False):
         docker_registry: docker registry to publish
         dry_run: dry run
     """
-
     image_version = qcos_version
     images = [f"qcos:{image_version}", f"qcos-cli:{image_version}"]
     target_images = []

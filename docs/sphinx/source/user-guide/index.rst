@@ -7,5 +7,7 @@
    :maxdepth: 2
 
    deploy-guide/index.rst
+   operations
    compatibility
-   cli
+   cli/index
+   sdk
