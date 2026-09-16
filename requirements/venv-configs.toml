@@ -44,12 +44,31 @@ deps_pyproject_file = "../pyproject.toml"
 deps_sections = ["driver-uqc"]
 envs = ["python3"]
 
-[DriverQuafu]
-module_name = "driver_quafu"
+[quafu]
 deps_pyproject_file = "../pyproject.toml"
 deps_sections = ["driver-quafu"]
 envs = ["python3"]
 no_deps = true
+
+[DriverQuafuDongling]
+module_name = "driver_quafu_dongling"
+copy_from = "quafu"
+
+[DriverQuafuShenglian]
+module_name = "driver_quafu_shenglian"
+copy_from = "quafu"
+
+[DriverQuafuBaihua]
+module_name = "driver_quafu_baihua"
+copy_from = "quafu"
+
+[DriverQuafuHongluo]
+module_name = "driver_quafu_hongluo"
+copy_from = "quafu"
+
+[DriverQuafuLing]
+module_name = "driver_quafu_ling"
+copy_from = "quafu"
 
 [logical_qubit]
 deps_pyproject_file = "../pyproject.toml"
