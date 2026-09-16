@@ -28,7 +28,7 @@ authors = [
     {name = "Wang Jujun", email = "wangjujun_yewu@cmss.chinamobile.com"},
     {name = "Lian Wencong", email = "lianwencong_yewu@cmss.chinamobile.com"},
     {name = "Xu Yu", email = "xuyu2_yewu@cmss.chinamobile.com"},
-    {name="Yang Yunhui", email = "yangyunhui_yewu@cmss.chinamobile.com"}
+    {name = "Yang Yunhui", email = "yangyunhui_yewu@cmss.chinamobile.com"}
 ]
 keywords = ["qcos", "quantum", "operating", "system"]
 
