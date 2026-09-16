@@ -11,7 +11,7 @@ runs:
         YUM_MIRROR: ${{ env.YUM_MIRROR }}
       run: |
         if [ -n "${YUM_MIRROR}" ]; then
-          sed -i "s@http://repo.openeuler.org@${YUM_MIRROR}@g" /etc/yum.repos.d/openEuler.repo
+          sed -i "s@https://repo.openeuler.org@${YUM_MIRROR}@g" /etc/yum.repos.d/openEuler.repo
           yum clean all && yum makecache
         fi
         yum install -y util-linux
