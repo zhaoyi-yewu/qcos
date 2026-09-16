@@ -1,11 +1,8 @@
-Python客户端库使用指导
+Python客户端
 =========================
 
-QCOS 提供 Python 客户端库:
-QCOS-Client（``wy_qcos_client.client.Client``）。
-开发者可通过 Client 库在应用程序中直接调用
-QCOS API，实现量子作业提交、查询、取消、
-设备管理等操作。
+QCOS 提供 Python 客户端库: QCOS-Client（``wy_qcos_client.client.Client``）。
+开发者可通过 Client 库在应用程序中直接调用QCOS API，实现量子作业提交、查询、取消、设备管理等操作。
 
 .. contents:: 目录
    :local:
