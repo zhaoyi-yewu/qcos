@@ -6,6 +6,24 @@
 
 ### 新增功能
 
+- 无
+
+### 变更功能
+
+- 无
+
+### 修复问题
+
+- 无
+
+### 移除内容
+
+- 无
+
+## [1.8.0] - 2026-09-16
+
+### 新增功能
+
 - 新增北京量子院夸父驱动: DriverQuafu, 逻辑比特驱动: DriverLqQZ01SurfaceCode, DriverLqQZ01RepetitionCode,
   DriverLqMQ02, DriverLqQZ02, DriverLqAGate100, QUTIP模拟器(支持ASHN门): DriverQutipAshnSim
 - 支持量子作业自动调度功能：用户提交作业时不指定backend，由系统自动选择后端设备
