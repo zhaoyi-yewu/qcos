@@ -29,6 +29,7 @@ import requests
 import shlex
 import subprocess
 import sys
+import time
 from urllib.parse import quote
 
 
@@ -102,7 +103,9 @@ def run_command(command, cwd=None, check=True,
 # GitLab API
 # ======================================================================
 
-def gitlab_get(path, base_url, token, params=None, timeout=30):
+def gitlab_get(
+    path, base_url, token, params=None, timeout=30, retries=3
+):
     """Send a GET request to GitLab API v4.
 
     Args:
@@ -111,25 +114,60 @@ def gitlab_get(path, base_url, token, params=None, timeout=30):
         token: GitLab private access token
         params: query parameters dict
         timeout: request timeout in seconds
+        retries: max retry attempts on retryable failures (network
+            errors and 5xx server errors). Default 3.
 
     Returns:
         parsed JSON response
 
     Raises:
-        SyncException: on request failure
+        SyncException: on request failure after all retries, or
+            immediately on non-retryable 4xx client errors
     """
     api_url = f"{base_url.rstrip('/')}/api/v4/{path}"
     headers = {"PRIVATE-TOKEN": token}
-    try:
-        resp = requests.get(
-            api_url, headers=headers, params=params, timeout=timeout
-        )
-        resp.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise SyncException(
-            f"GitLab API request failed: {e}"
-        ) from e
-    return resp.json()
+    last_exception = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(
+                api_url, headers=headers, params=params, timeout=timeout
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except requests.exceptions.HTTPError as e:
+            # 4xx client errors are not retryable
+            status_code = (
+                e.response.status_code
+                if e.response is not None
+                else None
+            )
+            if (
+                status_code is not None
+                and 400 <= status_code < 500
+            ):
+                raise SyncException(
+                    f"GitLab API request failed: {e}"
+                ) from e
+            last_exception = e
+        except requests.exceptions.RequestException as e:
+            last_exception = e
+        # retryable failure: retry with backoff if attempts remain
+        if attempt < retries:
+            print(
+                f"GitLab API request failed (attempt "
+                f"{attempt}/{retries}), retrying: "
+                f"{last_exception}",
+                file=sys.stderr,
+            )
+            time.sleep(attempt)
+        else:
+            raise SyncException(
+                f"GitLab API request failed after "
+                f"{retries} attempts: {last_exception}"
+            ) from last_exception
+    raise SyncException(
+        f"GitLab API request failed: {last_exception}"
+    ) from last_exception
 
 
 def gitlab_get_paginated(path, base_url, token, params=None,
