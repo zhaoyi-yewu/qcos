@@ -281,11 +281,19 @@ def get_unsynced_commits(start_since=None, skip_commits=None):
                     (commit_info["commit_hash"],
                      commit_info["commit_summary"])
                 )
-    unsynced_commits.reverse()
-    unsynced_commits.sort(key=lambda x: cmss_commits_dict[
-        next(k for k, v in cmss_commits_dict.items()
-             if v["commit_hash"] == x[0])
-    ]["committed_datetime"])
+    enable_sort = False
+    if enable_sort:
+        # build reverse index once: commit_hash -> authored_datetime
+        hash_to_authored = {
+            v["commit_hash"]: v["authored_datetime"]
+            for v in cmss_commits_dict.values()
+        }
+        # sort ascending by authored_datetime (O(n log n), key lookup O(1))
+        unsynced_commits.sort(
+            key=lambda x: hash_to_authored.get(x[0])
+        )
+    else:
+        unsynced_commits.reverse()
     return unsynced_commits
 
 
@@ -541,7 +549,7 @@ def split_and_push_single_commits(start_since=None, commit_id=None,
         skip_commits: Commit IDs to skip when auto-finding unsynced commits
         dry_run: If True, create branches but do not push to Gitee
     """
-    print("==== Step 1: Pull latest code ====")
+    print("\n==== Step 1: Pull latest code ====")
     pull_branches()
 
     print("\n==== Step 2: Determine commits to split ====")
