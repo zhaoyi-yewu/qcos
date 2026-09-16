@@ -142,7 +142,7 @@ def main():
         )
         sys.exit(1)
 
-    # check MANDATORY_KEYWORDS should not im commit message summary
+    # check MANDATORY_KEYWORDS should not in commit message summary
     commit_message_list = get_commit_messages_summary(start_from_merge=True)
     for commit_hash, commit_summary in commit_message_list:
         commit_summary = commit_summary.strip()
