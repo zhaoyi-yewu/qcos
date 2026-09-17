@@ -1,0 +1,22 @@
+# ide/virtual env/logs
+.idea
+*.patch
+.build-context/
+
+# Packages
+dist
+build
+node_modules
+
+# Unit test / coverage reports
+.coverage
+.coverage*
+symbols
+htmlcov
+
+# build temp files
+build-scripts/.build-context/
+build-scripts/.env
+build-scripts/images/
+build-scripts/output/
+

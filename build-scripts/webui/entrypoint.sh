@@ -32,7 +32,7 @@ if [ "${DEV,,}" = "true" ]; then
   npm run dev | tee /var/log/qcos/qcos-webui.log
   sleep infinity
 else
-  cd /app
+  cd /apps
   # run in production env
   cp -rf /root/nginx.conf /etc/nginx/.nginx.conf
   if [ -n "${WEBUI_LISTEN_IP}" ]; then

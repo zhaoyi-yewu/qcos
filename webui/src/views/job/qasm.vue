@@ -1,0 +1,534 @@
+<template>
+  <div v-if="loaded" class="task-submit-container">
+    <div class="header">
+      <h2>OpenQASM作业提交</h2>
+    </div>
+    <div class="form-container">
+      <el-form
+        ref="taskForm"
+        :model="taskData"
+        :rules="rules"
+        label-width="150px"
+        status-icon
+        class="task-form"
+      >
+        <el-form-item label="选择QASM文件" prop="taskFile">
+          <div class="file-upload">
+            <el-upload
+              ref="upload"
+              class="upload-demo"
+              accept=".qasm"
+              action=""
+              :auto-upload="false"
+              :on-change="handleFileChange"
+              :on-remove="handleFileChange"
+              :multiple="true"
+              :file-list="taskData.taskFileList"
+            >
+              <el-button type="primary">选择文件</el-button>
+            </el-upload>
+          </div>
+        </el-form-item>
+
+        <el-form-item label="作业名称" prop="taskName">
+          <el-input
+            v-model="taskData.taskName"
+            placeholder="请输入作业名称 (可选)"
+            label="作业名称"
+          />
+        </el-form-item>
+
+        <el-form-item label="作业描述" prop="taskDescription">
+          <el-input
+            v-model="taskData.taskDescription"
+            type="textarea"
+            rows="2"
+            placeholder="请输入作业描述 (可选)"
+            label="作业描述"
+          />
+        </el-form-item>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="后端设备" prop="taskBackend">
+              <el-select
+                v-model="taskData.taskBackend"
+                class="auto-width"
+                placeholder="请输入后端设备"
+                label="后端设备"
+                @change="handleBackendChange"
+              >
+                <el-option
+                  v-for="(device, device_name) in devices"
+                  :key="device_name"
+                  :label="device['alias_name'] + ' (' + device_name + ')'"
+                  :value="device_name"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12">
+            <el-form-item label="驱动自定义参数" prop="driverOptions">
+              <el-input
+                v-model="taskData.driverOptions"
+                type="textarea"
+                rows="2"
+                placeholder="请输入驱动自定义参数 (可选)"
+                label="驱动自定义参数"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="转译器" prop="taskTranspiler">
+              <el-select
+                v-model="taskData.taskTranspiler"
+                class="auto-width"
+                placeholder="请输入转译器"
+                label="转译器"
+              >
+                <el-option
+                  v-for="(transpiler) in devices[taskData.taskBackend]['transpilers']"
+                  :key="transpiler['name']"
+                  :label="transpiler['alias_name'] + ' (' + transpiler['name'] + ')'"
+                  :value="transpiler['name']"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12">
+            <el-form-item label="转译器自定义参数" prop="transpilerOptions">
+              <el-input
+                v-model="taskData.transpilerOptions"
+                type="textarea"
+                rows="2"
+                placeholder="请输入转译器自定义参数 (可选)"
+                label="转译器自定义参数"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="测量次数(shots)" prop="shotCount">
+          <el-input-number
+            v-model="taskData.shotCount"
+            :min="1"
+            :max="10240"
+            label="测量次数(shots)"
+            :step="1"
+          />
+        </el-form-item>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="作业优先级" prop="taskPriority">
+              <el-input-number
+                v-model="taskData.taskPriority"
+                :min="1"
+                :max="10"
+                label="作业优先级"
+              />
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12">
+            <el-form-item label="线路聚合模式" prop="circuitAggregation">
+              <el-radio-group v-model="taskData.circuitAggregation">
+                <el-radio label="none" border>无(串行)</el-radio>
+                <el-radio label="internal" border>作业内并行</el-radio>
+                <el-radio label="external" border>多作业并行</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="运行模式" prop="taskDryRun">
+          <el-radio-group v-model="taskData.taskDryRun">
+            <el-radio label="false" border>真实运行</el-radio>
+            <el-radio label="true" border>模拟运行(dry-run)</el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+        <el-form-item label="性能调测选项" prop="profiling">
+          <el-checkbox v-model="taskData.profilingScheduling">记录调度器耗时</el-checkbox>
+          <el-checkbox v-model="taskData.profilingDriverParse">记录代码解析耗时</el-checkbox>
+          <el-checkbox v-model="taskData.profilingDriverTranspile">记录转译耗时</el-checkbox>
+          <el-checkbox v-model="taskData.profilingCode">记录单代码运行耗时</el-checkbox>
+          <el-checkbox v-model="taskData.profilingDriverRun">记录后端运行耗时</el-checkbox>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button type="primary" @click="submitForm">提交作业</el-button>
+          <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+  </div>
+</template>
+
+<script>
+import { getDevices } from '@/api/device'
+import { postSubmitJob } from '@/api/job'
+import { queryVersion } from '@/api/version'
+import {
+  filterDevices,
+  isEmptyStr,
+  qasmParser,
+  readMultiFiles
+} from '@/common/library'
+
+export default {
+  data() {
+    return {
+      loaded: false,
+      versionData: {
+        version: '',
+        api_version: '',
+        supported_api_versions: [],
+        platform_version: '',
+        capabilities: {}
+      },
+      devices: {},
+      devicesDetails: {},
+      taskData: {
+        taskFile: '',
+        taskFileList: [],
+        taskName: null,
+        taskDescription: null,
+        taskTranspiler: 'cmss',
+        transpilerOptions: null,
+        taskBackend: 'dummy',
+        driverOptions: null,
+        taskDryRun: 'false',
+        shotCount: 10,
+        taskPriority: 5,
+        circuitAggregation: 'none',
+        profilingScheduling: false,
+        profilingDriverParse: false,
+        profilingDriverTranspile: false,
+        profilingCode: false,
+        profilingDriverRun: false
+      },
+
+      /*
+      typeList: [
+        { label: 'type1', value: 'PriorityTask' },
+        { label: 'type2', value: 'ResponseRatioTask' },
+        { label: 'type3', value: 'ShortestJobFirstTask' },
+        { label: 'type4', value: 'TimePrecedenceTask' },
+        { label: 'type5', value: 'Periodicask' },
+        { label: 'type6', value: 'DependentTask' },
+        { label: 'type7', value: 'BatchTask' },
+        { label: 'type8', value: 'RealTimeTask' }
+      ],
+      */
+
+      rules: {
+        taskFile: [
+          { required: true, message: '请选择OpenQASM文件', trigger: 'change' }
+        ],
+        taskName: [
+          { required: false, message: '请输入作业名称 (可选)', trigger: 'blur' }
+        ],
+        taskDescription: [
+          { required: false, message: '请输入作业描述 (可选)', trigger: 'blur' }
+        ],
+        taskTranspiler: [
+          { required: true, message: '请输入转译器', trigger: 'blur' }
+        ],
+        taskBackend: [
+          { required: true, message: '请输入后端驱动', trigger: 'blur' }
+        ],
+        taskDryRun: [
+          { required: true, message: '请输入是否模拟运行(dry-run) (可选)', trigger: 'blur' }
+        ],
+        shotCount: [
+          { required: true, message: '请输入测量次数(shots)', trigger: 'blur' }
+        ],
+        taskPriority: [
+          { required: true, message: '请输入作业优先级', trigger: 'blur' }
+        ],
+        circuitAggregation: [
+          { required: true, message: '请输入线路聚合模式', trigger: 'blur' }
+        ]
+        /*
+        taskType: [
+          { required: true, message: '请选择任务类型', trigger: 'blur' }
+        ]
+          */
+      }
+    }
+  },
+
+  created() {
+    this.queryData()
+  },
+
+  methods: {
+    async queryData() {
+      await this.fetchVersion()
+      await this.fetchDevices()
+      this.devices = filterDevices(
+        this.versionData,
+        this.devicesDetails,
+        {
+          'code_types': ['qasm', 'qasm2', 'qasm3'],
+          'enable': true
+        }
+      )
+      this.loaded = true
+    },
+
+    async fetchVersion() {
+      try {
+        const response = await queryVersion()
+        if (!response.error) {
+          this.versionData = response.result
+        } else {
+          this.$message.error(`获取版本能力失败：${response.message || '未知错误'}`)
+        }
+      } catch (error) {
+        console.error('获取版本能力失败:', error)
+        this.$message.error('获取版本能力失败，请检查网络连接')
+      }
+    },
+
+    async fetchDevices() {
+      try {
+        const response = await getDevices()
+        if (!response.error) {
+          this.devicesDetails = response.result
+        } else {
+          this.$message.error(`获取设备列表失败：${response.message || '未知错误'}`)
+        }
+      } catch (error) {
+        console.error('获取设备列表失败:', error)
+        this.$message.error('获取设备列表失败，请检查网络连接')
+      }
+    },
+
+    // 处理后端选择变更
+    handleBackendChange(value) {
+      this.taskData.taskTranspiler = this.devices[value]['transpilers'][0]['name']
+    },
+
+    // 处理文件上传变化
+    handleFileChange(file, fileList) {
+      // 添加文件类型验证
+      const isAllowedType = file.name.endsWith('.qasm')
+      if (!isAllowedType) {
+        this.$message.error('只能上传qasm格式的文件！')
+        fileList.pop() // 如果类型不正确，移除该文件
+        return
+      }
+
+      // 添加文件大小验证
+      const isLt2M = file.size / 1024 / 1024 < 2
+      if (!isLt2M) {
+        this.$message.error('上传的文件大小不能超过 2MB！')
+        fileList.pop() // 如果大小超过限制，移除该文件
+        return
+      }
+
+      this.taskData.taskFile = file
+      this.taskData.taskFileList = fileList
+    },
+
+    submitForm() {
+      this.$refs.taskForm.validate((valid) => {
+        if (!valid) {
+          this.$message.error('请完善作业提交信息！')
+          return
+        }
+
+        if (!this.taskData.taskFile) {
+          this.$message.error('请至少上传一个文件！')
+          return
+        }
+
+        // 使用 readMultiFiles 方法读取多个文件
+        readMultiFiles(this.taskData.taskFileList).then((fileObjList) => {
+          const source_codes = []
+          fileObjList.forEach(fileObj => {
+            const fileName = fileObj['fileName']
+            const content = fileObj['content']
+            source_codes.push(qasmParser(fileName, content))
+          })
+
+          let driverOptions = null
+          if (!isEmptyStr(this.taskData.driverOptions)) {
+            try {
+              driverOptions = JSON.parse(this.taskData.driverOptions.trim())
+            } catch (error) {
+              this.$notify.error({
+                title: '作业提交失败',
+                message: error.message,
+                duration: 4500
+              })
+              return
+            } finally {
+              this.isSubmitting = false
+            }
+          }
+
+          let transpilerOptions = null
+          if (!isEmptyStr(this.taskData.transpilerOptions)) {
+            try {
+              transpilerOptions = JSON.parse(this.taskData.transpilerOptions.trim())
+            } catch (error) {
+              this.$notify.error({
+                title: '作业提交失败',
+                message: error.message,
+                duration: 4500
+              })
+              return
+            } finally {
+              this.isSubmitting = false
+            }
+          }
+
+          let circuitAggregation = null
+          if (this.taskData.circuitAggregation !== 'none') {
+            circuitAggregation = this.taskData.circuitAggregation
+          }
+
+          const profiling = []
+          if (this.taskData.profilingScheduling) {
+            profiling.push('scheduling')
+          }
+          if (this.taskData.profilingDriverParse) {
+            profiling.push('driver:parse')
+          }
+          if (this.taskData.profilingDriverTranspile) {
+            profiling.push('driver:transpile')
+          }
+          if (this.taskData.profilingCode) {
+            profiling.push('code')
+          }
+          if (this.taskData.profilingDriverRun) {
+            profiling.push('driver:run')
+          }
+
+          const requestData = {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'submit_job',
+            params: {
+              body: {
+                source_code: source_codes,
+                code_type: 'qasm',
+                job_name: this.taskData.taskName,
+                description: this.taskData.taskDescription,
+                job_type: 'sampling',
+                job_sched_policy: 'time_precedence',
+                job_priority: this.taskData.taskPriority,
+                backend: this.taskData.taskBackend,
+                driver_options: driverOptions,
+                transpiler: this.taskData.taskTranspiler,
+                transpiler_options: transpilerOptions,
+                circuit_aggregation: circuitAggregation,
+                profiling: profiling,
+                dry_run: this.taskData.taskDryRun,
+                shots: this.taskData.shotCount
+              }
+            }
+          }
+
+          postSubmitJob(requestData)
+            .then((response) => {
+              if (!response.error) {
+                this.$notify({
+                  title: '作业提交成功',
+                  message: '作业已成功启动',
+                  type: 'success',
+                  duration: 2000
+                })
+              } else {
+                this.$notify.error({
+                  title: '作业提交失败',
+                  message: '未知错误导致失败',
+                  duration: 3500
+                })
+              }
+            })
+            .catch((error) => {
+              this.$notify.error({
+                title: '作业提交失败',
+                message: error.message || '网络通信出现问题，请检查连接',
+                duration: 4500
+              })
+            })
+            .finally(() => {
+              this.isSubmitting = false
+            })
+        }).catch((error) => {
+          this.$notify.error({
+            title: '文件读取错误',
+            message: error.message,
+            duration: 4500
+          })
+        })
+      })
+    },
+
+    resetForm() {
+      this.$refs.taskForm.resetFields()
+      this.taskData.taskFileList = []
+      this.taskData.taskFile = null
+    }
+  }
+}
+</script>
+
+<style scoped>
+.task-submit-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f7fa;
+  padding: 20px;
+}
+
+.header {
+  margin-bottom: 10px;
+}
+
+.form-container {
+  flex: 1;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.task-form {
+  max-width: 1500px;
+}
+
+.file-upload {
+  width: 100%;
+}
+
+.upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.el-form-item {
+  margin-bottom: 25px;
+}
+
+.el-button {
+  margin-right: 15px;
+}
+
+.auto-width {
+  min-width: 350px;
+  text-align: start;
+}
+</style>
