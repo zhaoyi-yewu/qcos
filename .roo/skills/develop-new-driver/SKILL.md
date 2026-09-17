@@ -38,7 +38,7 @@ QCOS 驱动继承体系（`src/wy_qcos/driver/`）：
 DriverBase (driver_base.py)                   # 驱动基类
 ├── DriverGateBase (driver_gate_base.py)      # 门级驱动基类，支持 QASM
 │   ├── DriverDummy (dummy/)                  # 空载测试
-│   ├── DriverQuafu (quafu/)                  # 北京量子院夸父
+│   ├── DriverQuafuBase (quafu/)              # 北京量子院夸父
 │   ├── DriverCetcBase (cetc/)                # 国基量子
 │   ├── DriverLogicalQubitBase (logical_qubit/) # 逻辑比特
 │   └── DriverQutipSim (qutip/)               # Qutip模拟器
@@ -67,8 +67,8 @@ src/wy_qcos/driver/<vendor厂商>/
 **目录命名规范：**
 
 - 按厂商命名，如 `quafu/`、`cetc/`、`qutip/`、`spinq/`
-- 驱动文件名格式：`driver_<name>.py`，如 `driver_quafu.py`
-- 驱动类名格式：`Driver<Name>`，如 `DriverQuafu`、`DriverCetcBaihua`
+- 驱动文件名格式：`driver_<name>.py`，如 `driver_quafu_dongling.py`
+- 驱动类名格式：`Driver<Name>`，如 `DriverQuafuDongling`、`DriverCetcBaihua`
 
 **要点：**
 
@@ -78,7 +78,7 @@ src/wy_qcos/driver/<vendor厂商>/
 ### 步骤 4: 实现驱动类
 
 参考 [`DriverDummy`](src/wy_qcos/driver/dummy/driver_dummy.py) 和
-[`DriverQuafu`](src/wy_qcos/driver/logical_qubit/driver_lq_base.py) 实现。
+[`DriverQuafuBase`](src/wy_qcos/driver/quafu/driver_quafu_base.py) 实现。
 
 **4.1 `__init__` 设置驱动属性**
 

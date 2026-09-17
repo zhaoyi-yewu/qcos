@@ -83,7 +83,7 @@ class TestJob:
             "job_type": Constant.JOB_TYPE_SAMPLING,
             "job_priority": Constant.DEFAULT_JOB_PRIORITY,
             "description": "description: test_quafu_submit_job",
-            "backend": "quafu",
+            "backend": "quafu_dongling",
             "shots": 1024,
             "circuit_aggregation": None,
             "driver_options": None,
