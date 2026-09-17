@@ -49,6 +49,7 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 ## 3.2 命令行手册
 
 [命令行手册](https://qcos.readthedocs.io/zh-cn/latest/user-guide/cli/index.html)
+
 [Python客户端](https://qcos.readthedocs.io/zh-cn/latest/user-guide/sdk.html)
 
 ## 4. 兼容性说明
@@ -64,6 +65,10 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 [代码开发流程](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/code-commit.html)
 
 [新功能模块开发](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/develop-new-module.html)
+
+[新量子设备驱动开发](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/develop-new-driver.html)
+
+[调试指南](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/debug-guidelines.html)
 
 [项目开发规范](https://qcos.readthedocs.io/zh-cn/latest/developer-guide/developer-guidelines.html)
 

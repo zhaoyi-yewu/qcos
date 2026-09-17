@@ -16,14 +16,14 @@ QCOS 提供 Python 客户端库: QCOS-Client（``wy_qcos_client.client.Client``�
     # 通过脚本编译出wheel包，再通过wheel包安装
     $ cd build-scripts/cli
     $ ./build-wheel.sh
-    $ pip install output/dist/wy_qcos_client-1.5.0-py3-none-any.whl
+    $ pip3 install --prefix=/usr ./output/dist/wy_qcos_client-1.8.0-py3-none-any.whl
 
     # 或者，从本地源码直接安装
     $ cd build-scripts/cli
-    $ pip install .
+    $ pip3 install .
 
     # 或者，从PyPI上安装特定版本
-    $ pip install wy-qcos-client
+    $ pip3 install wy-qcos-client
 
 
 初始化客户端
