@@ -267,6 +267,13 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
    # 百花驱动+使用高性能转译器
    qcos-cli submit-job --code-type qasm --shots 1024 --backend cetc_baihua --transpiler high_performance_cmss --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm.qasm
 
+- 启科量子
+
+.. code-block:: shell
+
+   # qudoor_abaqu100 离子阱驱动
+   qcos-cli submit-job --code-type qasm2 --shots 1024 --backend qudoor_abaqu100 --transpiler-options '{"enable_mapping": false}' -f ./samples/qasm/2.0/simple-qasm-2q-2sg-1dg.qasm
+
 - 幺正量子
 
 .. code-block:: shell

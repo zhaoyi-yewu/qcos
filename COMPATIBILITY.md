@@ -35,7 +35,9 @@
 | 量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本) | 量旋科技 | DriverSpinQRpc | 0.0.1 | 超导 | 57 | cmss | 量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本) (实验) |
 | 量旋科技 双子座 核磁量子计算机驱动 | 量旋科技 | DriverSpinQGemini | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 双子座 核磁量子计算机驱动 (实验) |
 | 量旋科技 三角座 核磁量子计算机驱动 | 量旋科技 | DriverSpinQTriangulum | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 三角座 核磁量子计算机驱动 (实验) |
+| 量旋科技 SQC-25 云平台超导驱动 | 量旋科技 | DriverSqc25 | 0.0.1 | 超导 | 25 | cmss | 量旋科技 SQC-25 云平台超导驱动 |
 | 幺正量子 UQC-Matrix2 离子阱驱动 | 幺正量子 | DriverUQCMatrix2 | 0.0.1 | 离子阱 | 5 | cmss | 幺正量子 UQC-Matrix2 离子阱驱动 |
+| 启科量子 AbaQu100 离子阱驱动 | 启科量子 | DriverAbaQu100 | 0.0.1 | 离子阱 | 20 | cmss | 启科量子 AbaQu100 离子阱驱动 |
 | 北京量子院 夸父-Dongling 超导驱动 | 北京量子院 | DriverQuafuDongling | 0.0.1 | 超导 | 84 | cmss | 北京量子院 夸父-Dongling 超导驱动 |
 | 北京量子院-夸父-Shenglian 超导驱动 | 北京量子院 | DriverQuafuShenglian | 0.0.1 | 超导 | 84 | cmss | 北京量子院-夸父-Shenglian 超导驱动 |
 | 北京量子院-夸父-Hongluo 超导驱动 | 北京量子院 | DriverQuafuHongluo | 0.0.1 | 超导 | 84 | cmss | 北京量子院-夸父-Hongluo 超导驱动 |

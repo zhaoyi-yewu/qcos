@@ -229,7 +229,42 @@ class TestDeviceInfoSchema:
             "details": {
                 "calibration": {
                     "coupler_metrics": [{"qubits": [0, 1], "cz_fidelity": 1}],
-                }
+                },
+            },
+        }
+        success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)
+        assert success is True
+
+    def test_qudoor_trapped_ion_device_info_is_valid(self):
+        # QuDoor AbaQu100 fetch_running_info output with trapped-ion
+        # hardware metrics (timing, single/double qubit fidelity, spam).
+        # Field names use snake_case matching DEVICE_INFO_SCHEMA.
+        device_info = {
+            "status": "online",
+            "available_qubits": 20,
+            "last_updated_at": "2024-03-01 00:00:00",
+            "details": {
+                "calibration": {
+                    "timing": {
+                        "t1_min": 86400000,
+                        "t2_min": 100,
+                        "t1_avg": 86400000,
+                        "t2_avg": 600,
+                        "t1_opt": 86400000,
+                        "t2_opt": 800000,
+                    },
+                    "single_qubit_fidelity": {
+                        "fidelity_min": 95.0,
+                        "fidelity_avg": 98.0,
+                        "fidelity_opt": 99.0,
+                    },
+                    "double_qubit_fidelity": {
+                        "fidelity_min": 80.0,
+                        "fidelity_avg": 95.0,
+                        "fidelity_opt": 97.0,
+                    },
+                    "spam_error": {"min": 0.06, "avg": 0.035, "opt": 0.008},
+                },
             },
         }
         success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)
