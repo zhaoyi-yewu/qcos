@@ -30,8 +30,9 @@ jobs:
       - name: Build release distributions
         run: |
           # NOTE: put your own distribution build steps here.
-          cp ./build-scripts/env.template ./build-scripts/.env
-          ./build-scripts/build-wheel.sh
+          cd ./build-scripts
+          cp ./env.template ./.env
+          ./build-wheel.sh
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:

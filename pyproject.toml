@@ -133,9 +133,11 @@ dependencies = [
 # requirements of cli and base
 base = [
     "argcomplete==3.7.0",
+    "auditwheel==6.8.2",
     "cliff==4.15.0",
     "jsonrpcclient==4.0.3",
     "memray==1.19.3",
+    "patchelf==0.19.1.0",
     "poetry==2.4.1",
     "requests==2.34.2",
     "rpdb==0.2.0",
