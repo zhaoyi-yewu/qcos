@@ -123,15 +123,15 @@ def publish_packages(qcos_version, repository="testpypi", dry_run=False):
 
     qcos_dist_dir = f"{top_dir}/build-scripts/output/dist"
     qcos_client_dist_dir = f"{top_dir}/build-scripts/cli/output/dist"
-    repository_args = "" if dry_run else f"--repository {repository}"
+    repository_args = f"--repository {repository}" if dry_run else ""
     action = "check" if dry_run else "upload"
     cmds = [
         # upload wy-qcos packages
-        f"twine {action} {repository_args} "
+        f"twine {action} --verbose {repository_args} "
         f"{qcos_dist_dir}/wy_qcos-{qcos_version}-*.whl "
         f"{qcos_dist_dir}/wy_qcos-{qcos_version}.tar.gz",
         # upload wy-qcos-client packages
-        f"twine {action} {repository_args} "
+        f"twine {action} --verbose {repository_args} "
         f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-*.whl "
         f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}.tar.gz",
     ]
