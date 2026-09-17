@@ -256,7 +256,7 @@
 
 **AI Skill**
 
-:download:`SKILL.md <../../../../../.roo/skills/develop-new-driver/SKILL.md>`
+:download:`新量子设备驱动开发 SKILL.md <../../../../../.roo/skills/develop-new-driver/SKILL.md>`
 提供了完整的驱动开发流程指引，包括基类选择、目录结构、
 驱动类实现、配置注册、venv 部署、单元测试和系统测试等步骤。
 开发者可以在AI编程助手中使用 ``/develop-new-driver`` 命令
@@ -268,14 +268,12 @@
 
 **参考实现**
 
-- ``DriverDummy``（``src/wy_qcos/driver/dummy/driver_dummy.py``）：
+- DriverDummy（``src/wy_qcos/driver/dummy/driver_dummy.py``）：
   最简单的驱动实现，适合作为新驱动开发的起点
-- ``DriverQuafu``（``src/wy_qcos/driver/quafu/driver_quafu.py``）：
+- DriverQuafu（``src/wy_qcos/driver/quafu/driver_quafu.py``）：
   对接远程 API 的真实驱动实现
-- ``DriverLogicalQubitBase``
-  （``src/wy_qcos/driver/logical_qubit/driver_lq_base.py``）：
-  中间基类，展示了 input_constrains 和
-  transpiler_options_schema 的使用
+- DriverLogicalQubitBase（``src/wy_qcos/driver/logical_qubit/driver_lq_base.py``）：
+  中间基类，展示了 input_constrains 和 transpiler_options_schema 的使用
 
 **调试方法**
 

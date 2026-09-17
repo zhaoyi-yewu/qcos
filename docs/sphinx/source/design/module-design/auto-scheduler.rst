@@ -1,16 +1,7 @@
 作业自动调度
 =================
 
-作业调度是指，用户提交作业时，系统根据用户提交的作业信息和设备的动态信息，选择合适的后端设备，并将作业提交到该设备所关联的deployment/workpool环境中运行。
-调度可分为静态调度和自动调度两种方式。
-
-静态调度
---------------------
-提交任务时，需要用户指定后端的backend名称，即设备名称，此时任务会直接提交到设备所关联的deployment/workpool环境中运行。
-
-自动调度
---------------------
-自动调度是指，用户提交任务时，不指定backend名称，由操作系统自动选择后端设备，并提交任务到该设备所关联的deployment/workpool环境中运行。
+作业自动调度是指，用户提交任务时，不指定backend名称，由操作系统自动选择后端设备，并提交任务到该设备所关联的deployment/workpool环境中运行。
 
 自动调度功能依赖于设备动态信息来做调度决策。目前设备动态信息会由每个设备独立的prefect长任务进行定时收集，信息回存在redis数据库中供其它组件读取和使用。
 
@@ -25,7 +16,7 @@
 
 
 调度流程
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 .. plantuml:: ../../_static/design/module-design/auto-scheduler-flow.puml
    :alt: 自动调度流程图
@@ -44,7 +35,7 @@
 7. 选择权重最高的设备作为调度结果
 
 Filter过滤器
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 Filter 分为必须过滤器和可选过滤器，可选过滤器仅在相关参数指定时启用。
 
 **必须过滤器：**
@@ -82,7 +73,7 @@ Filter 分为必须过滤器和可选过滤器，可选过滤器仅在相关参�
     时放行。
 
 Weigher权重器
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 Weigher 通过加权求和对设备进行排序，权重越高越优先选择。
 
 - ``DeviceLoadWeigher`` - 设备繁忙度、排队情况，设备越空闲权重越高
@@ -91,7 +82,7 @@ Weigher 通过加权求和对设备进行排序，权重越高越优先选择。
   权重公式： ``0.1 * availability_hourly + availability_total``
 
 设备可用率统计
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 设备可用率通过 ``DeviceAvailabilityCollector`` 实时采集：
 
 - 后台线程 psubscribe Redis 设备运行信息频道
@@ -101,7 +92,7 @@ Weigher 通过加权求和对设备进行排序，权重越高越优先选择。
 - ``get_device`` 接口返回 ``availability_hourly`` 和 ``availability_total`` （5位小数）
 
 flavor_id与extra_specs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------------
 自动调度会在submit_job中增加2个可选参数: flavor_id和extra_specs。
 
 - ``flavor_id`` 是用户选择的预设的调度策略，定义静态的、硬件的物理规格
@@ -184,7 +175,7 @@ extra_specs 支持的字段如下：
      - 设备名黑名单
 
 Flavor管理
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 Flavor 通过 API 接口进行管理：
 
 - ``create_flavor`` - 创建 Flavor
@@ -197,7 +188,7 @@ Flavor 的 ``extra_properties`` 支持 ``namespace:key=value`` 格式的
 ``extra_specs`` 会覆盖 flavor 中同名字段。
 
 配置
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 在 ``qcos.toml`` 中可通过 ``[SCHEDULER]`` 配置段自定义启用的
 Filter 和 Weigher 列表。AutoScheduler 在初始化时会通过
 ``Library.import_classes`` 动态扫描 ``scheduler/filters`` 和

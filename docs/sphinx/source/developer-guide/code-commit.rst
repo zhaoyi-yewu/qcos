@@ -81,8 +81,9 @@
 
 .. note::
 
-    具体项目开发规范，参考： :doc:`项目开发规范 <developer-guidelines>` 和 :doc:`新功能模块开发 <develop-new-module>`，
-    也可以在AI编程Agent中把下列SKILL作为技能库引用： :download:`SKILL.md <../../../../.roo/skills/develop-new-module/SKILL.md>`
+    具体项目开发规范，参考： :doc:`项目开发规范 <developer-guidelines>` 、 :doc:`新功能模块开发 <develop-new-module>` 和  :doc:`新量子设备驱动开发 <develop-new-driver>`，
+
+    也可以在AI编程Agent中把下列SKILL作为技能库引用： :download:`新功能模块开发 SKILL.md <../../../../.roo/skills/develop-new-module/SKILL.md>` 和  :download:`新量子设备驱动开发 SKILL.md <../../../../.roo/skills/develop-new-driver/SKILL.md>`
 
 修改代码：
 
