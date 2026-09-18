@@ -79,7 +79,30 @@
                        "qubits": [0, 1],
                        "cz_fidelity": 0.9941850270405544
                      }
-                   ]
+                   ],
+                    "timing": {
+                      "t1_min": 86400000,
+                      "t2_min": 100,
+                      "t1_avg": 86400000,
+                      "t2_avg": 600,
+                      "t1_opt": 86400000,
+                      "t2_opt": 800000
+                    },
+                    "single_qubit_fidelity": {
+                      "fidelity_min": 95.0,
+                      "fidelity_avg": 98.0,
+                      "fidelity_opt": 99.0
+                    },
+                    "double_qubit_fidelity": {
+                      "fidelity_min": 80.0,
+                      "fidelity_avg": 95.0,
+                      "fidelity_opt": 97.0
+                    },
+                    "spam_error": {
+                      "min": 0.06,
+                      "avg": 0.035,
+                      "opt": 0.008
+                    }
                  },
                  "topo_configs": null,
                  "metrics": {
