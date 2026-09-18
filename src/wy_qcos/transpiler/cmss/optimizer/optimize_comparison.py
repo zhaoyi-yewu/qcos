@@ -66,17 +66,17 @@ OPT_LEVEL: int = 3
 
 # All benchpress sub-directories, mirroring the decomposer benchmark.
 BENCHPRESS_SUBDIRS: list[str] = [
-    "bigint",
-    "clifford",
-    "dtc",
-    "feynman",
-    "qaoa",
+    # "bigint",
+    # "clifford",
+    # "dtc",
+    # "feynman",
+    # "qaoa",
     "qasmbench-large",
     "qasmbench-medium",
     "qasmbench-small",
-    "qft",
-    "qv",
-    "square-heisenberg",
+    # "qft",
+    # "qv",
+    # "square-heisenberg",
 ]
 
 # Pass execution order (for column ordering in timing output).
@@ -310,11 +310,17 @@ def _write_result(result: ComparisonResult, fh: TextIO) -> None:
     )
 
 
-def _write_summary(results: list[ComparisonResult], fh: TextIO) -> None:
+def _write_summary(
+    results: list[ComparisonResult],
+    fh: TextIO,
+    show_all: bool = False,
+) -> None:
     """Write aggregate statistics to *fh*.
 
-    Shows base, optimized, absolute reduction, and percentage
-    for both gate count and circuit depth.
+    When *show_all* is True, outputs all three comparison
+    methods: total comparison, per-circuit average, and relative
+    comparison. When False (default), only outputs the relative
+    comparison (qiskit - cmss) / qiskit.
     """
     if not results:
         print("  (no results)", file=fh)
@@ -328,136 +334,220 @@ def _write_summary(results: list[ComparisonResult], fh: TextIO) -> None:
     total_cmss_depth = sum(res["cpp_opt_depth"] for res in results)
     total_qiskit_depth = sum(res["qiskit_opt_depth"] for res in results)
 
-    cmss_better = sum(
-        1
-        for res in results
-        if res["cpp_opt_gate_count"] < res["qiskit_opt_gate_count"]
-    )
-    qiskit_better = sum(
-        1
-        for res in results
-        if res["qiskit_opt_gate_count"] < res["cpp_opt_gate_count"]
-    )
-    tied = sum(
-        1
-        for res in results
-        if res["cpp_opt_gate_count"] == res["qiskit_opt_gate_count"]
-    )
-
     col_width = 10
 
-    def _summary_row(label: str, base: int, opt: int) -> str:
-        """Format one summary table row."""
-        reduced = base - opt
-        pct = reduced / base * 100 if base else 0
-        return (
-            f"  {label:<16}| {base:>{col_width}}"
-            f" | {opt:>{col_width}} | {reduced:>{col_width}}"
-            f" | {pct:>6.2f}%"
+    if show_all:
+        # Method 1: total comparison (sum then compute)
+        cmss_better = sum(
+            1
+            for res in results
+            if res["cpp_opt_gate_count"] < res["qiskit_opt_gate_count"]
         )
+        qiskit_better = sum(
+            1
+            for res in results
+            if res["qiskit_opt_gate_count"] < res["cpp_opt_gate_count"]
+        )
+        tied = sum(
+            1
+            for res in results
+            if res["cpp_opt_gate_count"] == res["qiskit_opt_gate_count"]
+        )
+
+        def _summary_row(label: str, base: int, opt: int) -> str:
+            """Format one summary table row."""
+            reduced = base - opt
+            pct = reduced / base * 100 if base else 0
+            return (
+                f"  {label:<16}| {base:>{col_width}}"
+                f" | {opt:>{col_width}}"
+                f" | {reduced:>{col_width}}"
+                f" | {pct:>6.2f}%"
+            )
+
+        print("", file=fh)
+        print("=" * 78, file=fh)
+        print(f"  Total files: {num_files}", file=fh)
+        print(
+            f"  {'':16}| {'base':>{col_width}}"
+            f" | {'opt':>{col_width}}"
+            f" | {'reduced':>{col_width}}"
+            f" | {'%':>7}",
+            file=fh,
+        )
+        print(
+            f"  {'-' * 16}+-{'-' * col_width}"
+            f"-+-{'-' * col_width}-+-"
+            f"{'-' * col_width}"
+            f"-+-{'-' * col_width}-+-"
+            f"{'-' * 7}",
+            file=fh,
+        )
+        print(
+            _summary_row(
+                "cmss_cpp gates",
+                total_base_gates,
+                total_cmss_gates,
+            ),
+            file=fh,
+        )
+        print(
+            _summary_row(
+                "qiskit gates",
+                total_base_gates,
+                total_qiskit_gates,
+            ),
+            file=fh,
+        )
+        print(
+            _summary_row(
+                "cmss_cpp depth",
+                total_base_depth,
+                total_cmss_depth,
+            ),
+            file=fh,
+        )
+        print(
+            _summary_row(
+                "qiskit depth",
+                total_base_depth,
+                total_qiskit_depth,
+            ),
+            file=fh,
+        )
+        print(
+            f"  cmss_cpp better: {cmss_better}"
+            f" | qiskit better: {qiskit_better}"
+            f" | tied: {tied}",
+            file=fh,
+        )
+        print("=" * 78, file=fh)
+
+        # Method 2: per-circuit average reduction
+        cmss_gate_avg = (
+            sum(
+                _reduction_pct(
+                    res["cpp_opt_gate_count"],
+                    res["base_gate_count"],
+                )
+                for res in results
+            )
+            / num_files
+        )
+        qiskit_gate_avg = (
+            sum(
+                _reduction_pct(
+                    res["qiskit_opt_gate_count"],
+                    res["base_gate_count"],
+                )
+                for res in results
+            )
+            / num_files
+        )
+        cmss_depth_avg = (
+            sum(
+                _reduction_pct(
+                    res["cpp_opt_depth"],
+                    res["base_depth"],
+                )
+                for res in results
+            )
+            / num_files
+        )
+        qiskit_depth_avg = (
+            sum(
+                _reduction_pct(
+                    res["qiskit_opt_depth"],
+                    res["base_depth"],
+                )
+                for res in results
+            )
+            / num_files
+        )
+
+        print("", file=fh)
+        print(
+            "  Per-circuit average reduction (each circuit weighted equally)",
+            file=fh,
+        )
+        print(
+            f"  {'':16}| {'gates':>12} | {'depth':>12}",
+            file=fh,
+        )
+        print(
+            f"  {'-' * 16}+-{'-' * 12}-+-{'-' * 12}",
+            file=fh,
+        )
+        print(
+            f"  {'cmss_cpp':16}|"
+            f" {cmss_gate_avg:>11.2f}%"
+            f" | {cmss_depth_avg:>11.2f}%",
+            file=fh,
+        )
+        print(
+            f"  {'qiskit':16}|"
+            f" {qiskit_gate_avg:>11.2f}%"
+            f" | {qiskit_depth_avg:>11.2f}%",
+            file=fh,
+        )
+        print("=" * 78, file=fh)
+
+    # Method 3: relative comparison (always shown)
+    # (qiskit - cmss) / qiskit on totals.
+    # Positive = cmss better (fewer gates/depth).
+    gate_diff = total_qiskit_gates - total_cmss_gates
+    depth_diff = total_qiskit_depth - total_cmss_depth
+    gate_rel = (
+        gate_diff / total_qiskit_gates * 100 if total_qiskit_gates else 0.0
+    )
+    depth_rel = (
+        depth_diff / total_qiskit_depth * 100 if total_qiskit_depth else 0.0
+    )
 
     print("", file=fh)
     print("=" * 78, file=fh)
-    print(f"  Total files: {num_files}", file=fh)
     print(
-        f"  {'':16}| {'base':>{col_width}}"
-        f" | {'opt':>{col_width}} | {'reduced':>{col_width}}"
-        f" | {'%':>7}",
+        "  Improvement over qiskit: (qiskit - cmss) / qiskit",
         file=fh,
     )
     print(
-        f"  {'-' * 16}+-{'-' * col_width}"
-        f"-+-{'-' * col_width}-+-{'-' * col_width}"
-        f"-+-{'-' * col_width}-+-{'-' * 7}",
+        "  (positive = cmss better, negative = qiskit better)",
         file=fh,
     )
     print(
-        _summary_row("cmss_cpp gates", total_base_gates, total_cmss_gates),
+        f"  {'':16}| {'gates':>{col_width}} | {'depth':>{col_width}}",
         file=fh,
     )
     print(
-        _summary_row("qiskit gates", total_base_gates, total_qiskit_gates),
+        f"  {'-' * 16}+-{'-' * col_width}-+-{'-' * col_width}",
         file=fh,
     )
     print(
-        _summary_row("cmss_cpp depth", total_base_depth, total_cmss_depth),
+        f"  {'base':16}|"
+        f" {total_base_gates:>{col_width}}"
+        f" | {total_base_depth:>{col_width}}",
         file=fh,
     )
     print(
-        _summary_row("qiskit depth", total_base_depth, total_qiskit_depth),
+        f"  {'qiskit optimized':16}|"
+        f" {total_qiskit_gates:>{col_width}}"
+        f" | {total_qiskit_depth:>{col_width}}",
         file=fh,
     )
     print(
-        f"  cmss_cpp better: {cmss_better}"
-        f" | qiskit better: {qiskit_better}"
-        f" | tied: {tied}",
-        file=fh,
-    )
-    print("=" * 78, file=fh)
-
-    # per-circuit average method
-    cmss_gate_avg = (
-        sum(
-            _reduction_pct(
-                res["cpp_opt_gate_count"],
-                res["base_gate_count"],
-            )
-            for res in results
-        )
-        / num_files
-    )
-    qiskit_gate_avg = (
-        sum(
-            _reduction_pct(
-                res["qiskit_opt_gate_count"],
-                res["base_gate_count"],
-            )
-            for res in results
-        )
-        / num_files
-    )
-    cmss_depth_avg = (
-        sum(
-            _reduction_pct(
-                res["cpp_opt_depth"],
-                res["base_depth"],
-            )
-            for res in results
-        )
-        / num_files
-    )
-    qiskit_depth_avg = (
-        sum(
-            _reduction_pct(
-                res["qiskit_opt_depth"],
-                res["base_depth"],
-            )
-            for res in results
-        )
-        / num_files
-    )
-
-    print("", file=fh)
-    print(
-        "  Per-circuit average reduction (each circuit weighted equally)",
+        f"  {'cmss optimized':16}|"
+        f" {total_cmss_gates:>{col_width}}"
+        f" | {total_cmss_depth:>{col_width}}",
         file=fh,
     )
     print(
-        f"  {'':16}| {'gates':>12} | {'depth':>12}",
+        f"  {'diff':16}| {gate_diff:>{col_width}} | {depth_diff:>{col_width}}",
         file=fh,
     )
     print(
-        f"  {'-' * 16}+-{'-' * 12}-+-{'-' * 12}",
-        file=fh,
-    )
-    print(
-        f"  {'cmss_cpp':16}|"
-        f" {cmss_gate_avg:>11.2f}% | {cmss_depth_avg:>11.2f}%",
-        file=fh,
-    )
-    print(
-        f"  {'qiskit':16}|"
-        f" {qiskit_gate_avg:>11.2f}% | {qiskit_depth_avg:>11.2f}%",
+        f"  {'%':16}|"
+        f" {gate_rel:>{col_width - 1}.2f}%"
+        f" | {depth_rel:>{col_width - 1}.2f}%",
         file=fh,
     )
     print("=" * 78, file=fh)
@@ -610,6 +700,7 @@ def run_benchmark(
     qasm_root: Path,
     max_lines: int = MAX_QASM_LINES,
     fh: TextIO = sys.stdout,
+    show_all: bool = False,
 ) -> tuple[list[ComparisonResult], list[tuple[str, str]]]:
     """Run the comparison on all benchpress QASM files.
 
@@ -620,6 +711,9 @@ def run_benchmark(
         qasm_root: Root directory containing QASM benchmark files.
         max_lines: Skip files with >= this many lines.
         fh: Output stream for per-file results and summary.
+        show_all: If True, output all three comparison
+            methods; if False (default), only the relative
+            comparison (qiskit - cmss) / qiskit.
 
     Returns:
         (results, errors) where results is a list of result dicts
@@ -648,7 +742,7 @@ def run_benchmark(
                 file=fh,
             )
 
-    _write_summary(results, fh)
+    _write_summary(results, fh, show_all=show_all)
 
     if errors:
         print("", file=fh)
@@ -666,6 +760,7 @@ def main() -> None:
     Writes results to
     optimize_comparison_results_<timestamp>.txt in the project root.
     """
+    show_all = "--all" in sys.argv
     project_root = Path(__file__).resolve().parents[5]
     bench_root = project_root / "samples" / "qasm" / "benchpress"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -685,7 +780,11 @@ def main() -> None:
             if not qasm_dir.is_dir():
                 continue
             print(f"\n--- {subdir} ---", file=fh)
-            results, errors = run_benchmark(qasm_dir, fh=fh)
+            results, errors = run_benchmark(
+                qasm_dir,
+                fh=fh,
+                show_all=show_all,
+            )
             all_results.extend(results)
             all_errors.extend(errors)
 
@@ -696,7 +795,11 @@ def main() -> None:
         print("#" * 78, file=fh)
         print("  ALL DIRECTORIES SUMMARY", file=fh)
         print("#" * 78, file=fh)
-        _write_summary(all_results, fh)
+        _write_summary(
+            all_results,
+            fh,
+            show_all=show_all,
+        )
 
         print("", file=fh)
         print(
@@ -711,6 +814,7 @@ def main() -> None:
     # Per-circuit pass timing detail to a separate file
     timings_path = project_root / f"optimize_pass_timings_{timestamp}.txt"
     with open(timings_path, "w", encoding="utf-8") as tfh:
+        _write_config(timestamp_str, tfh)
         _write_pass_timings_detail(all_results, tfh)
 
     if all_errors:
