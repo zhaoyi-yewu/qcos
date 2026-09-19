@@ -59,7 +59,7 @@ RUN set -e && \
     ln -sf libgtest_main.so.1.8.1 /usr/lib64/libgmock_main.so.1.8.1 && \
     ${VENV_PATH}/bin/pip install --no-cache-dir cmake && \
     BUILD_TARGET=high_performance bash ${BUILD_CONTEXT}/src_cpp/transpiler_cpp/build-cpp.sh release rebuild && \
-    ${VENV_PATH}/bin/pip install --no-cache-dir ${BUILD_CONTEXT} && \
+    SKIP_CPP_EXTENSION=1 ${VENV_PATH}/bin/pip install --no-cache-dir --no-build-isolation ${BUILD_CONTEXT} && \
     VENV_TRANSPILER_DIR=$(${VENV_PATH}/bin/python -c \
       "import wy_qcos.transpiler, os; print(os.path.dirname(wy_qcos.transpiler.__file__))") && \
     cp -f ${BUILD_CONTEXT}/src/wy_qcos/transpiler/*.so ${VENV_TRANSPILER_DIR}/ && \

@@ -1109,7 +1109,8 @@ class TestCompileEndpoint:
 
     def test_post_topology_missing_required_field(self, client):
         # topology present but missing singleParam/doubleParam -> pydantic
-        # validation fails at the request boundary -> MSG_INVALID_PARAM
+        # validation fails at the request boundary; the failure detail is
+        # translated to Chinese and base64-encoded into msg.
         r = client.post(
             "/compiler/qasm/compile",
             json=self._body(topology={"bits": 8, "basisGates": ["h"]}),
@@ -1117,7 +1118,10 @@ class TestCompileEndpoint:
         assert r.status_code == 200
         data = r.json()
         assert data["code"] == 0
-        assert data["msg"] == MSG_INVALID_PARAM
+        decoded = _decode_msg(data["msg"])
+        assert "单比特信息" in decoded
+        assert "双比特信息" in decoded
+        assert "必填参数" in decoded
 
     def test_post_topology_bad_linkqubit(self, client):
         # topology object is valid (passes pydantic), but linkQubit "Q0~Q1"
@@ -1138,7 +1142,8 @@ class TestCompileEndpoint:
         assert data["msg"] == MSG_TOPOLOGY_INVALID
 
     def test_post_wrong_type_inslabel(self, client):
-        # insLabel must be int; "abc" fails pydantic validation -> code=0
+        # insLabel must be int; "abc" fails pydantic validation -> code=0;
+        # the failure detail is translated to Chinese and base64-encoded.
         r = client.post(
             "/compiler/qasm/compile",
             json=self._body(insLabel="abc"),
@@ -1146,6 +1151,9 @@ class TestCompileEndpoint:
         assert r.status_code == 200
         data = r.json()
         assert data["code"] == 0
+        decoded = _decode_msg(data["msg"])
+        assert "技术路线" in decoded
+        assert "整数" in decoded
 
     def test_post_unsupported_compiler(self, client):
         r = client.post(
@@ -1159,14 +1167,17 @@ class TestCompileEndpoint:
 
     def test_post_invalid_topology(self, client):
         # topology must be a JSON object; a bare string fails pydantic
-        # validation at the request boundary -> MSG_INVALID_PARAM
+        # validation at the request boundary; the failure detail is
+        # translated to Chinese and base64-encoded into msg.
         r = client.post(
             "/compiler/qasm/compile", json=self._body(topology="not a json")
         )
         assert r.status_code == 200
         data = r.json()
         assert data["code"] == 0
-        assert data["msg"] == MSG_INVALID_PARAM
+        decoded = _decode_msg(data["msg"])
+        assert "真机拓扑结构" in decoded
+        assert "类型错误" in decoded
 
     def test_post_extend_target_bits(self, client):
         r = client.post(
@@ -1178,21 +1189,29 @@ class TestCompileEndpoint:
         assert data["code"] == 1
 
     def test_post_missing_required_field(self, client):
-        # global exception capture: missing field -> code=0, not HTTP 422
+        # global exception capture: missing field -> code=0, not HTTP 422;
+        # the failure detail is translated to Chinese and base64-encoded.
         r = client.post("/compiler/qasm/compile", json={"insLabel": 3})
         assert r.status_code == 200
         data = r.json()
         assert data["code"] == 0
+        decoded = _decode_msg(data["msg"])
+        assert "必填参数" in decoded
 
     def test_post_qasm_too_long(self, client):
-        # qasm max length 10240; exceed it -> validation failure -> code=0
-        long_qasm = "OPENQASM 2.0;\n" + "x" * 11000
+        # qasm max length 100000; exceed it -> validation failure -> code=0;
+        # the failure detail is translated to Chinese and base64-encoded.
+        long_qasm = "OPENQASM 2.0;\n" + "x" * 100001
         r = client.post(
             "/compiler/qasm/compile", json=self._body(qasm=long_qasm)
         )
         assert r.status_code == 200
         data = r.json()
         assert data["code"] == 0
+        decoded = _decode_msg(data["msg"])
+        assert "长度超过" in decoded
+        assert "100000" in decoded
+        assert "限制" in decoded
 
     def test_openapi_accessible(self, client):
         # cloud.md section 2: access the validation interface via openapi

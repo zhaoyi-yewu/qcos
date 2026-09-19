@@ -38,8 +38,10 @@ from wy_qcos.cloud.schemas import CompileRequest, CompileResponse
 from wy_qcos.cloud.service import (
     CODE_FAIL,
     MSG_COMPILE_FAILED,
-    MSG_INVALID_PARAM,
+    _encode_msg,
+    _truncate_msg,
     compile_qasm,
+    translate_validation_errors,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,7 +72,9 @@ async def validation_exception_handler(
         for e in errors
     )
     logger.warning(f"request validation failed: {detail}")
-    response = CompileResponse(code=CODE_FAIL, msg=MSG_INVALID_PARAM)
+    translated = translate_validation_errors(errors)
+    msg = _encode_msg(_truncate_msg(translated))
+    response = CompileResponse(code=CODE_FAIL, msg=msg)
     return JSONResponse(status_code=200, content=response.model_dump())
 
 

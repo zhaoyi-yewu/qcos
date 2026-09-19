@@ -137,7 +137,7 @@ class CompileRequest(BaseModel):
     # openqasm source code
     qasm: str = Field(
         ...,
-        max_length=10240,
+        max_length=100000,
         description="openqasm source code",
     )
     # optional parameters submitted with the task
