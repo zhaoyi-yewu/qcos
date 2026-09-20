@@ -1,5 +1,6 @@
 [qiskit_marrakesh]
 alias_name = "IBM-marrakesh"
+driver = "DriverIBMMarrakesh"
 description = "IBM-marrakesh-156比特拓扑信息"
 
 [qiskit_marrakesh.transpiler.qpu_configs]

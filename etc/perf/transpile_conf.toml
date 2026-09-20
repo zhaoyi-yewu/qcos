@@ -38,11 +38,9 @@ opt_level = [0, 1]
 [transpile.mapping]
 # 默认为true
 # enable_mapping = true
-# 拓扑类型, superconducting/neutral_atom
-# superconducting: 超导量子计算机拓扑类型
-tech_type = ["superconducting"]
-# neutral_atom: 中性原子量子计算机拓扑类型
-# tech_type = ["neutral_atom"]
+# 拓扑类型由配置文件中的 driver 字段自动判定，无需显式配置 tech_type：
+#   DriverSpinQRpc-156/DriverBaihua/DriverIBMMarrakesh -> 超导 (superconducting)
+#   DriverHanyuan1-36/DriverHanyuan1-100 -> 中性原子 (neutral_atom)
 # 拓扑类型配置文件, 当enable_mapping不为false时， 必须配置，绝对路径或项目的相对路径
 # superconducting: 超导量子计算机拓扑类型
 config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
@@ -54,7 +52,7 @@ config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]
 # na_mapping_type = "default"
 
 # json格式的字符串，表示不同算法组合输入，默认不输入，
-# 但元素必须与tech_type和config_file一一对应
+# 但元素必须与config_file一一对应
 # sc_mapping_options = ["""
 #     {
 #             "routing_algorithm": "sc",
