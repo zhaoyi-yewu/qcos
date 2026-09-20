@@ -2607,19 +2607,21 @@ def sabre_routing(
     """
     ...
 
-def cpp_na_default_routing(
+def cpp_na_routing(
     gates_list: collections.abc.Sequence[high_performance.BaseOperation],
     qpu_cfg: dict,
     qbit_num: int,
+    na_mapping_type: str = "default",
     optimize: bool = False,
 ) -> tuple[list[high_performance.BaseOperation], dict]:
-    """Execute neutral-atom default routing (NADefaultRoute).
+    """Execute neutral-atom routing (NADefaultRoute or NAZAPRoute).
 
-    Thin wrapper around ``na_routing`` fixed to the "default" NA mapping
-    strategy with MOVE support enabled, exposing only the inputs a
-    single-circuit neutral-atom mapping needs. Inserts MOVE operations to
-    shuttle atoms between the storage and operate areas so that two-qubit
-    gates act on adjacent sites.
+    Thin wrapper around ``na_routing`` with MOVE support enabled, exposing
+    only the inputs a single-circuit neutral-atom mapping needs. Dispatches to
+    the concrete strategy via ``na_mapping_type``: ``"default"`` ->
+    NADefaultRoute, ``"ZAP"`` -> NAZAPRoute (case-insensitive). Inserts MOVE
+    operations to shuttle atoms between the storage and operate areas so that
+    two-qubit gates act on adjacent sites.
 
     Args:
     gates_list (list[BaseOperation]): Logical operation sequence.
@@ -2627,6 +2629,9 @@ def cpp_na_default_routing(
     qpu_cfg (dict): QPU configuration with keys ``storage_area``,
         ``operate_area``, ``coupler_map`` and ``readout_error``.
     qbit_num (int): Number of logical qubits.
+    na_mapping_type (str, optional): NA mapping algorithm type; only
+        "default" and "ZAP" are supported by the C++ backend. Defaults to
+        "default".
     optimize (bool, optional): Whether to enable the overlap
         optimization (``execute_with_opt``). Defaults to False.
 

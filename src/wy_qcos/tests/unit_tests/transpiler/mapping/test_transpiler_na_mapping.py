@@ -28,7 +28,7 @@ from wy_qcos.tests.unit_tests.conftest import GLOBAL_CONFIGS
 from wy_qcos.transpiler.cmss.mapping.na.na_mapping import NARoute
 from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 from wy_qcos.transpiler.high_performance import (
-    cpp_na_default_routing,
+    cpp_na_routing,
     qasm_to_ir,
 )
 
@@ -344,7 +344,7 @@ class TestTranspilerNaMapping:
         assert mapping_res[0].name == "h"
         assert mapping_res[-1].name == "measure"
 
-    def test_cpp_na_default_routing_bell(self):
+    def test_cpp_na_routing_bell(self):
         bell_qasm = (
             "OPENQASM 3.0;\n"
             'include "stdgates.inc";\n'
@@ -356,7 +356,7 @@ class TestTranspilerNaMapping:
             "c[1] = measure q[1];\n"
         )
         ops, num_qubits = qasm_to_ir(bell_qasm)
-        mapped_ir, layout = cpp_na_default_routing(
+        mapped_ir, layout = cpp_na_routing(
             ops, self.qpu_config, num_qubits
         )
         assert mapped_ir
@@ -365,7 +365,7 @@ class TestTranspilerNaMapping:
         assert layout == {}
         assert "move" in [op.name for op in mapped_ir]
 
-    def test_cpp_na_default_routing_optimize(self):
+    def test_cpp_na_routing_optimize(self):
         bell_qasm = (
             "OPENQASM 3.0;\n"
             'include "stdgates.inc";\n'
@@ -377,14 +377,14 @@ class TestTranspilerNaMapping:
             "c[1] = measure q[1];\n"
         )
         ops, num_qubits = qasm_to_ir(bell_qasm)
-        mapped_ir, layout = cpp_na_default_routing(
+        mapped_ir, layout = cpp_na_routing(
             ops, self.qpu_config, num_qubits, optimize=True
         )
         assert mapped_ir
         assert mapped_ir[0].name == "h"
         assert mapped_ir[-1].name == "measure"
 
-    def test_mapping_cpp_na_default_routing(self):
+    def test_mapping_cpp_na_routing(self):
         transpiler = TranspilerHighPerformanceCmss(
             enable_na_move=True, na_mapping_type="default"
         )
@@ -404,7 +404,7 @@ class TestTranspilerNaMapping:
         assert mapping_res
         assert "move" in [op.name for op in mapping_res]
 
-    def test_cpp_na_default_routing_single_qubit(self):
+    def test_cpp_na_routing_single_qubit(self):
         single_qasm = (
             "OPENQASM 3.0;\n"
             'include "stdgates.inc";\n'
@@ -415,11 +415,49 @@ class TestTranspilerNaMapping:
             "c[0] = measure q[0];\n"
         )
         ops, num_qubits = qasm_to_ir(single_qasm)
-        mapped_ir, _ = cpp_na_default_routing(ops, self.qpu_config, num_qubits)
+        mapped_ir, _ = cpp_na_routing(ops, self.qpu_config, num_qubits)
         assert mapped_ir
         assert mapped_ir[0].name == "h"
         assert mapped_ir[-1].name == "measure"
         assert "move" not in [op.name for op in mapped_ir]
+
+    def test_cpp_na_routing_zap(self):
+        bell_qasm = (
+            "OPENQASM 3.0;\n"
+            'include "stdgates.inc";\n'
+            "qubit[2] q;\n"
+            "bit[2] c;\n"
+            "h q[0];\n"
+            "cx q[0], q[1];\n"
+            "c[0] = measure q[0];\n"
+            "c[1] = measure q[1];\n"
+        )
+        ops, num_qubits = qasm_to_ir(bell_qasm)
+        mapped_ir, layout = cpp_na_routing(
+            ops, self.qpu_config, num_qubits, na_mapping_type="ZAP"
+        )
+        assert mapped_ir
+        assert mapped_ir[-1].name == "measure"
+        assert layout == {}
+
+    def test_mapping_cpp_na_routing_zap(self):
+        transpiler = TranspilerHighPerformanceCmss(
+            enable_na_move=True, na_mapping_type="ZAP"
+        )
+        bell_qasm = (
+            "OPENQASM 3.0;\n"
+            'include "stdgates.inc";\n'
+            "qubit[2] q;\n"
+            "bit[2] c;\n"
+            "h q[0];\n"
+            "cx q[0], q[1];\n"
+            "c[0] = measure q[0];\n"
+            "c[1] = measure q[1];\n"
+        )
+        parse_result = transpiler.parse({"000": bell_qasm})
+        qpu_cfg = trans_cfg_inst.get_qpu_cfg()
+        mapping_res, _, _, _ = transpiler.mapping(qpu_cfg, parse_result)
+        assert mapping_res
 
     def test_cpp_vs_python_na_default_consistency(self):
         parse_result = self.transpiler.parse({"000": self.task2_data})
@@ -445,7 +483,7 @@ class TestTranspilerNaMapping:
             "c[4] = measure q[4];\n"
         )
         ops, num_qubits = qasm_to_ir(task2_qasm3)
-        cpp_res, _ = cpp_na_default_routing(ops, self.qpu_config, num_qubits)
+        cpp_res, _ = cpp_na_routing(ops, self.qpu_config, num_qubits)
         cpp_names = [op.name for op in cpp_res]
 
         assert py_names == cpp_names

@@ -214,11 +214,37 @@ TEST(NaMappingTest, UnifiedSingleRouteRejectsTwoQubitGates) {
       std::runtime_error);
 }
 
+TEST(NaMappingTest, UnifiedZapRouteSingleQubit) {
+  // na_support_move=true, na_mapping_type="ZAP" -> NAZAPRoute path:
+  // single-qubit gates only should map without throwing.
+  auto cfg = make_test_qpu_config();
+  EXPECT_NO_THROW(na_mapping(make_simple_gates(), cfg, /*qbit_num=*/1,
+                             /*na_support_move=*/true, "ZAP",
+                             /*optimize=*/false));
+}
+
+TEST(NaMappingTest, UnifiedZapRouteTwoQubit) {
+  // ZAP supports two-qubit gates via ASAP scheduling + simulated annealing.
+  auto cfg = make_test_qpu_config();
+  auto res = na_mapping(make_task2_gates(), cfg, /*qbit_num=*/4,
+                       /*na_support_move=*/true, "ZAP", /*optimize=*/false);
+  EXPECT_FALSE(res.empty());
+  // The routed output must contain MOVE ops and at least one two-qubit gate.
+  bool has_move = false;
+  bool has_twoq = false;
+  for (const auto& op : res) {
+    if (op->operation_type == OperationType::MOVE) has_move = true;
+    if (op->targets.size() == 2) has_twoq = true;
+  }
+  EXPECT_TRUE(has_move);
+  EXPECT_TRUE(has_twoq);
+}
+
 TEST(NaMappingTest, UnifiedUnsupportedMappingTypeThrows) {
-  // ZAC/ZAP are not implemented in the C++ backend yet.
+  // Unknown na_mapping_type is rejected (ZAP is now supported).
   auto cfg = make_test_qpu_config();
   EXPECT_THROW(
       na_mapping(make_simple_gates(), cfg, /*qbit_num=*/1,
-                 /*na_support_move=*/true, "ZAP", /*optimize=*/false),
+                 /*na_support_move=*/true, "bogus", /*optimize=*/false),
       std::invalid_argument);
 }

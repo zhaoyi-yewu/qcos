@@ -18,7 +18,9 @@
 #pragma once
 
 #include <memory>
+#include <random>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -349,6 +351,113 @@ class NADefaultRoute : public NARoute {
 };
 
 /**
+ * @class NAZAPRoute
+ * @brief Neutral-atom routing via ASAP scheduling + simulated annealing.
+ *
+ * Mirrors the Python-side NA_ZAP_Route (the "ZAP" na_mapping_type). The
+ * pipeline is:
+ *   1. scheduling()        — ASAP stage grouping of single/two-qubit gates.
+ *   2. sa_mapping_and_placing() — simulated annealing over per-stage qubit
+ *      placement that minimizes total atom movement (Manhattan-style distance).
+ *   3. routing_asap()      — emit Move ops for atoms whose position changed
+ *      between stages, then the gates of each stage; measurements last.
+ *
+ * Movement cost uses a 20-column grid model (row = id/20, col = id%20), matching
+ * the Python implementation. The simulated annealing is deterministic when the
+ * caller seeds the RNG (defaults to a fixed seed for reproducibility).
+ */
+class NAZAPRoute : public NARoute {
+ public:
+  /// 20-column grid width used by the movement-cost model.
+  static constexpr int kGridCols = 20;
+
+  /**
+   * @brief Configure qpu_config/gates/qbit_num and build the coupling graph.
+   */
+  void prepare_data(int qbit_num,
+                    const std::vector<std::shared_ptr<BaseOperation>>& gates,
+                    const NAQpuConfig& qpu_config) override;
+
+  /**
+   * @brief Run scheduling + simulated-annealing placement + routing.
+   * @return (mapped gate list, final_layout); final_layout is always empty.
+   */
+  std::pair<std::vector<std::shared_ptr<BaseOperation>>,
+            std::unordered_map<int, int>>
+  execute_with_order() override;
+
+  /// Stage i gate list (indices match qubit_scheduling_list_).
+  std::vector<std::vector<std::shared_ptr<BaseOperation>>>
+      gate_scheduling_list_;
+  /// Stage i qubit-id list (the qubits active in stage i).
+  std::vector<std::vector<int>> qubit_scheduling_list_;
+
+  /// storage_area_oloc_[stage][pos] = logical qubit id or -1 if free.
+  std::vector<std::unordered_map<std::string, int>> storage_area_oloc_;
+  /// operate_area_oloc_[stage][pos] = logical qubit id or -1 if free.
+  std::vector<std::unordered_map<std::string, int>> operate_area_oloc_;
+
+ private:
+  /// Edge list of the operate-area coupling graph (cached for random pick).
+  std::vector<std::pair<std::string, std::string>> edges_;
+  /// Measurement operations collected during scheduling.
+  std::vector<std::shared_ptr<BaseOperation>> measure_;
+  /// Result operation list (Move + gates), filled by routing_asap.
+  std::vector<std::shared_ptr<BaseOperation>> res_;
+  /// RNG; seeded for determinism.
+  std::mt19937 rng_{0x5EED1234u};
+
+  /// Per-logical-qubit planned position for each stage.
+  using StageMap = std::vector<std::unordered_map<int, std::string>>;
+
+  /// ASAP scheduling: populate gate_scheduling_list_ / qubit_scheduling_list_
+  /// and the storage/operate occupancy maps; return collected measures.
+  std::vector<std::shared_ptr<BaseOperation>> scheduling();
+
+  /// Manhattan distance on the 20-col grid between two position strings.
+  int get_steps(const std::string& posa, const std::string& posb) const;
+
+  /// Total movement cost across all stages of a mapping plan.
+  int get_cost(const StageMap& mapping) const;
+
+  /// Cost delta contributed by the affected qubits between adjacent stages.
+  int get_affect_cost(const std::vector<int>& affect_qubit_id, int idx,
+                       const StageMap& mapping) const;
+
+  /// Pick an unused operate-area coupler edge for the stage; returns (a, b).
+  std::pair<std::string, std::string> find_ryd_pos(int stage);
+  /// Pick an unused storage-area position for the stage.
+  std::string find_pos(int stage);
+
+  /// Fill the initial per-stage placement (readout-error-ranked storage at
+  /// stage 0; subsequent stages allocate operate pairs / storage as needed).
+  void get_init_mapping_and_placing(StageMap& mapping);
+
+  /// Propose a new mapping by a random local update; records the inverse move
+  /// so recover() can undo it. Returns the cost delta.
+  int update_mapping(StageMap& mapping);
+
+  /// Undo the last update_mapping move recorded in movement_.
+  void recover(StageMap& mapping);
+
+  /// Rebuild storage_area_oloc_ / operate_area_oloc_ from a mapping plan.
+  void update_storage_and_operate_area_oloc(const StageMap& mapping);
+
+  /// Post-process: if a qubit stays in storage across two stages, keep the
+  /// previous storage position (no move needed).
+  StageMap validate_mapping(const StageMap& mapping) const;
+
+  /// Simulated-annealing search for a low-cost mapping plan.
+  StageMap sa_mapping_and_placing();
+
+  /// Convert a mapping plan into the Move + gate execution sequence.
+  void routing_asap(const StageMap& mapping);
+
+  /// Recorded inverse moves from update_mapping, consumed by recover().
+  std::vector<std::tuple<int, int, std::string>> movement_;
+};
+
+/**
  * @brief Unified neutral-atom mapping entry point (analogous to sabre_routing).
  *
  * Selects a concrete NARoute strategy from the parameters and runs it, so the
@@ -357,16 +466,16 @@ class NADefaultRoute : public NARoute {
  *   - na_support_move == false  -> NASingleRoute (single-qubit-only layout).
  *   - na_support_move == true && na_mapping_type == "default" -> NADefaultRoute
  *     (full two-qubit routing with MOVE shuttling).
- *   - na_support_move == true with any other na_mapping_type is rejected
- *     (ZAC/ZAP are not implemented in the C++ backend yet).
+ *   - na_support_move == true && na_mapping_type == "ZAP" -> NAZAPRoute
+ *     (ASAP scheduling + simulated annealing, MOVE shuttling).
  *
  * @param gates_list Logical operation sequence (targets are logical qubits).
  * @param qpu_config Neutral-atom QPU topology configuration.
  * @param qbit_num Number of logical qubits.
  * @param na_support_move Whether the device supports MOVE + two-qubit gates.
  *        Defaults to false (NASingleRoute).
- * @param na_mapping_type NA mapping algorithm type; only "default" is supported
- *        in C++. Defaults to "default".
+ * @param na_mapping_type NA mapping algorithm type; "default" or "ZAP" are
+ *        supported in C++. Defaults to "default".
  * @param optimize Whether to enable overlap optimization (execute_with_opt);
  *        strategies without one fall back to execute_with_order. Defaults to
  *        false.

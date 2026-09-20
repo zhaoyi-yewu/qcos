@@ -50,7 +50,7 @@ from wy_qcos.transpiler.high_performance import (
     transpile_from_ir as cpp_transpile_from_ir,
     transpile_na_from_qasm as cpp_transpile_na_from_qasm,
     transpile_na_from_ir as cpp_transpile_na_from_ir,
-    cpp_na_default_routing,
+    cpp_na_routing,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
@@ -215,9 +215,17 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     edge_fidelities=edge_fidelities,
                     single_qubit_fidelities=single_qubit_fidelities,
                 )
-            elif routing_algorithm == "default" and enable_na_move:
-                mapping_res, final_layout = cpp_na_default_routing(
-                    value[1], qpu_cfg, value[0]
+            elif (
+                trans_cfg_inst.get_tech_type()
+                == Constant.TECH_TYPE_NEUTRAL_ATOM
+                and enable_na_move
+                and routing_algorithm.lower() in ("default", "zap")
+            ):
+                mapping_res, final_layout = cpp_na_routing(
+                    gates_list=value[1],
+                    qpu_cfg=qpu_cfg,
+                    qbit_num=value[0],
+                    na_mapping_type=routing_algorithm,
                 )
                 final_layout_dict[key] = final_layout
                 return (
@@ -323,6 +331,9 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
         opt_level = self.transpiler_options.get(
             "optimization_level", Constant.DEFAULT_OPTIMIZATION_LEVEL
         )
+        na_mapping_type = self.transpiler_options.get(
+            "na_mapping_type", "default"
+        )
 
         # neutral_atom + enable_na_move -> NA mapping path
         if tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM and enable_na_move:
@@ -344,6 +355,7 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     supp_basis_gates,
                     qpu_cfg,
                     opt_level=opt_level,
+                    na_mapping_type=na_mapping_type,
                 )
             except RuntimeError as e:
                 raise TranspilerException(
@@ -490,6 +502,9 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                         supp_basis_gates=supp_basis_gates,
                         qpu_cfg=qpu_cfg,
                         opt_level=opt_level,
+                        na_mapping_type=self.transpiler_options.get(
+                            "na_mapping_type", "default"
+                        ),
                     )
                 else:
                     # superconducting route: SABRE routing
