@@ -356,9 +356,7 @@ class TestTranspilerNaMapping:
             "c[1] = measure q[1];\n"
         )
         ops, num_qubits = qasm_to_ir(bell_qasm)
-        mapped_ir, layout = cpp_na_routing(
-            ops, self.qpu_config, num_qubits
-        )
+        mapped_ir, layout = cpp_na_routing(ops, self.qpu_config, num_qubits)
         assert mapped_ir
         assert mapped_ir[0].name == "h"
         assert mapped_ir[-1].name == "measure"

@@ -57,7 +57,7 @@ class TranspileParams:
         # base transpile configs
         self.output_log = ""
         self.csv_file = ""
-        self.file = "samples/qasm/2.0/simple-qasm.qasm"
+        self.file = Path("samples/qasm/2.0/simple-qasm.qasm")
         # circuit info
         self.num_qubits = 0
         self.depth = 0
@@ -86,6 +86,7 @@ class CMSSTranspilerPerf:
         self.total_files = []
         self.tmax = 0
         self.perf_enabled = False
+        self.enable_detail = False
         # whether to enable the C++ all-in-one transpile (single-circuit
         # sabre routing path); defaults to True
         self.enable_transpile_single = True
@@ -230,7 +231,6 @@ class CMSSTranspilerPerf:
         driver, in which case no matching check is enforced here (the caller
         raises for an unknown driver during validation).
         """
-
         try:
             config_path = Path(config_file).resolve()
             with open(config_path, encoding="utf-8") as f:
@@ -280,6 +280,9 @@ class CMSSTranspilerPerf:
         self.perf_enabled = extra_configs["transpile"].get(
             "perf_enabled", False
         )
+        self.enable_detail = extra_configs["transpile"].get(
+            "enable_detail", False
+        )
         self.enable_transpile_single = extra_configs["transpile"].get(
             "enable_transpile_single", True
         )
@@ -302,7 +305,6 @@ class CMSSTranspilerPerf:
         base_gates = extra_configs["transpile"]["transpiler"].get(
             "base_gates", []
         )
-        # parse base gates
         if base_gates:
             for gates in base_gates:
                 tech_gates = gates.strip().split(",")
@@ -314,34 +316,80 @@ class CMSSTranspilerPerf:
                     else:
                         raise ValueError(f"gate[{gate}] is not supported!")
                 self.base_gates.append(tuple(gate_list))
+        else:
+            self.base_gates = [()]
 
         self.enable_mapping = extra_configs["transpile"]["mapping"].get(
             "enable_mapping", True
         )
+        configured_tech_type = extra_configs["transpile"]["mapping"].get(
+            "tech_type", []
+        )
+        if isinstance(configured_tech_type, str):
+            configured_tech_type = [configured_tech_type]
         self.mapping_config_file = extra_configs["transpile"]["mapping"].get(
             "config_file", []
         )
+        if isinstance(self.mapping_config_file, str):
+            self.mapping_config_file = [self.mapping_config_file]
         self.na_mapping_type = self._normalize_na_mapping_type(
             extra_configs["transpile"]["mapping"].get(
                 "na_mapping_type", "default"
             )
         )
-        if self.mapping_config_file == []:
-            raise ValueError("mapping config file is not configured!")
 
-        # tech_type is inferred from the driver field declared in each
-        # config file; an unknown or missing driver is rejected.
+        default_config_files = {
+            Constant.TECH_TYPE_SUPERCONDUCTING: (
+                "./etc/topology/spinq_rpc_156.toml"
+            ),
+            Constant.TECH_TYPE_NEUTRAL_ATOM: (
+                "./etc/topology/hanyuan1_100.toml"
+            ),
+        }
+
+        if not configured_tech_type and not self.mapping_config_file:
+            raise ValueError("tech_type or config_file must be configured!")
+
+        if configured_tech_type and not self.mapping_config_file:
+            self.mapping_config_file = [
+                default_config_files.get(tt, "") for tt in configured_tech_type
+            ]
+            for tt, cf in zip(configured_tech_type, self.mapping_config_file):
+                if not cf:
+                    raise ValueError(
+                        f"no default config_file for tech_type[{tt}]"
+                    )
+
+        if configured_tech_type and len(configured_tech_type) != len(
+            self.mapping_config_file
+        ):
+            raise ValueError(
+                f"tech_type count[{len(configured_tech_type)}] "
+                f"does not match config_file count"
+                f"[{len(self.mapping_config_file)}]"
+            )
+
         self.tech_type = []
-        for config_file in self.mapping_config_file:
+        for idx, config_file in enumerate(self.mapping_config_file):
             inferred = self._infer_tech_type_from_config(config_file)
             if inferred is None:
                 raise ValueError(
                     f"cannot infer tech_type from config file"
-                    f"[{config_file}], whose driver is not in the supported"
-                    f" driver-to-tech-type map: "
+                    f"[{config_file}], whose driver is not in the"
+                    f" supported driver-to-tech-type map: "
                     f"{list(self.DRIVER_TECH_TYPE_MAP.keys())}"
                 )
-            self.tech_type.append(inferred)
+            if configured_tech_type:
+                expected_tt = configured_tech_type[idx]
+                if inferred != expected_tt:
+                    raise ValueError(
+                        f"tech_type[{expected_tt}] does not match config"
+                        f" file[{config_file}], whose driver implies"
+                        f" tech_type[{inferred}]"
+                    )
+                self.tech_type.append(expected_tt)
+            else:
+                self.tech_type.append(inferred)
 
         self.mapping_info = list(zip(self.tech_type, self.mapping_config_file))
 
@@ -690,15 +738,67 @@ class CMSSTranspilerPerf:
             combo_idx = idx % combos_per_file
             if combo_idx in skip_combos:
                 continue
+            tech_type = params.mapping_info[0]
+            if params.tech_gates:
+                base_gates_display = self._format_basis_gate_set(
+                    params.tech_gates
+                )
+            elif tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
+                base_gates_display = self._format_basis_gate_set([
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CX,
+                ])
+            elif tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
+                base_gates_display = self._format_basis_gate_set([
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CZ,
+                ])
+            else:
+                base_gates_display = self._format_basis_gate_set([
+                    Constant.SINGLE_QUBIT_GATE_RX,
+                    Constant.SINGLE_QUBIT_GATE_RY,
+                    Constant.TWO_QUBIT_GATE_CX,
+                ])
+            if tech_type == Constant.TECH_TYPE_SUPERCONDUCTING:
+                mapping_opt = f"超导映射参数: {params.sc_mapping_options}"
+            elif tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM:
+                mapping_opt = f"中性原子映射参数: {self.na_mapping_type}"
+            else:
+                mapping_opt = ""
+
+            if params.file in self.parse_results:
+                input_num_qubits = self.parse_results[params.file][0]
+                input_qc = QuantumCircuit(num_qubits=input_num_qubits)
+                input_qc.append_operations(self.parse_results[params.file][1])
+                input_depth = input_qc.depth()
+            else:
+                qasm_data = self.read_qasm_from_file(str(params.file))
+                if qasm_data:
+                    ops, input_num_qubits = qasm_to_ir(qasm_data)
+                    self.parse_results[params.file] = (
+                        input_num_qubits,
+                        ops,
+                    )
+                    input_qc = QuantumCircuit(num_qubits=input_num_qubits)
+                    input_qc.append_operations(ops)
+                    input_depth = input_qc.depth()
+                else:
+                    input_num_qubits = 0
+                    input_depth = 0
+
             log_perf(
                 logger,
-                "[parameters]\n"
-                f"input_file: {params.file}\n"
-                f"opt_level: {params.opt_level}\n"
-                f"base_gates: {params.tech_gates}\n"
-                f"tech_type: {params.mapping_info[0]}\n"
-                f"config_file: {params.mapping_info[1]}\n"
-                f"sc_mapping_options: {params.sc_mapping_options}\n",
+                "[参数信息]\n"
+                f"输入QASM文件: {params.file.name}\n"
+                f"量子比特数: {input_num_qubits}\n"
+                f"量子线路深度: {input_depth}\n"
+                f"优化级别: {params.opt_level}\n"
+                f"基础门集: {base_gates_display}\n"
+                f"芯片类型: {tech_type}\n"
+                f"拓扑文件: {params.mapping_info[1]}\n"
+                f"{mapping_opt}\n",
             )
             try:
                 runtime = self.cmss_transpiler_perf_exec(
@@ -717,6 +817,7 @@ class CMSSTranspilerPerf:
                 continue
 
             self.transpile_result[params] = runtime
+
             if csv_file_path:
                 self._append_csv_row(csv_file_path, params, runtime)
 
@@ -1146,7 +1247,7 @@ class CMSSTranspilerPerf:
                     "total_time",
                 ):
                     setattr(runtime, attr, getattr(cpp_timings, attr))
-                for label, attr in [
+                cpp_perf_labels = [
                     ("parse time", "parse_time"),
                     ("first optimize time", "opt_time1"),
                     ("decompose 1q2q time", "decompose_1q2q_time"),
@@ -1155,10 +1256,16 @@ class CMSSTranspilerPerf:
                     ("decompose apply time", "decompose_apply_time"),
                     ("second optimize time", "opt_time2"),
                     ("transpile", "total_time"),
-                ]:
+                ]
+                if not self.enable_detail:
+                    cpp_perf_labels = [
+                        cpp_perf_labels[0],
+                        cpp_perf_labels[7],
+                    ]
+                for label, attr in cpp_perf_labels:
                     log_perf(
                         logger,
-                        f"cpp {label}: {getattr(runtime, attr):.4f}\n",
+                        f"cpp {label}: {getattr(runtime, attr):.4f}s\n",
                     )
             else:
                 # original Python flow: run parse + transpile step by step
@@ -1186,7 +1293,7 @@ class CMSSTranspilerPerf:
                         parse_result, expected_basis_gates
                     )
 
-                    for label, attr in [
+                    py_perf_labels = [
                         ("first optimize time", "opt_time1"),
                         ("decompose 1q2q time", "decompose_1q2q_time"),
                         ("decompose rule time", "decompose_rule_time"),
@@ -1194,7 +1301,10 @@ class CMSSTranspilerPerf:
                         ("decompose apply time", "decompose_apply_time"),
                         ("second optimize time", "opt_time2"),
                         ("cmss transpile time", "transpile_time"),
-                    ]:
+                    ]
+                    if not self.enable_detail:
+                        py_perf_labels = [py_perf_labels[6]]
+                    for label, attr in py_perf_labels:
                         log_perf(
                             logger,
                             f"{label}: {getattr(runtime, attr):.4f}s\n",
