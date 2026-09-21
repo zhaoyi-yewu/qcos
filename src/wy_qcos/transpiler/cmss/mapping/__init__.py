@@ -18,5 +18,6 @@
 from wy_qcos.transpiler.cmss.mapping.na.na_mapping import (
     NASingleRoute,
     NARoute,
+    NAMultiRoute,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import SCRoute

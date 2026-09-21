@@ -19,6 +19,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.cmss.mapping.na.na_mapping import (
     NASingleRoute,
     NARoute,
+    NAMultiRoute,
 )
 from wy_qcos.transpiler.cmss.mapping.na.zap.na_zap_mapping import NA_ZAP_Route
 from wy_qcos.transpiler.cmss.mapping.na.zac.na_zac_mapping import NA_ZAC_Route
@@ -58,6 +59,8 @@ class MappingFactory:
                 return NA_ZAP_Route()
             elif na_mapping_type == "default":
                 return NARoute()
+            elif na_mapping_type == "multi":
+                return NAMultiRoute()
             else:
                 raise MappingException(
                     f"na_mapping_type: {na_mapping_type} not support"

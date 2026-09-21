@@ -21,6 +21,7 @@ import rustworkx as rx
 from copy import deepcopy
 from collections import defaultdict
 
+from wy_qcos.common.cmss.base_operation import BaseOperation, OperationType
 from wy_qcos.common.cmss.move import Move
 from wy_qcos.transpiler.common.errors import MappingException
 
@@ -38,6 +39,7 @@ class NASingleRoute(ABC):
         self.storage_area = None
         self.qpu_config = None
         self.initial_layout = None
+        self.final_layout = None
 
     def prepare_data(self, qbit_num, gates, qpu_configs):
         """配置qpu_config、gates、qbit_num，量子比特映射.
@@ -82,6 +84,7 @@ class NASingleRoute(ABC):
             a: b[0] for a, b in zip(range(self.qbit_num), sq)
         }
         self.qids = [int(q[0][1:]) for q in sq]
+        self.initial_layout = dict(self.logical_to_storage)
 
     def execute_with_order(self):
         """遍历比特门，将逻辑量子比特映射到物理量子比特.
@@ -111,7 +114,8 @@ class NASingleRoute(ABC):
         for value in gates_on_qubit.values():
             gates += value
         gates += measure
-        return gates, None
+        self.final_layout = dict(self.logical_to_storage)
+        return gates, self.final_layout
 
 
 class NARoute(ABC):
@@ -127,6 +131,7 @@ class NARoute(ABC):
         self.storage_area = None
         self.qpu_config = None
         self.initial_layout = None
+        self.final_layout = None
 
     def prepare_data(self, qbit_num, gates, qpu_configs):
         """配置qpu_config、gates、qbit_num，量子比特映射.
@@ -273,6 +278,7 @@ class NARoute(ABC):
         self.free_edges = {tuple(sorted(e)) for e in self.ag.edges()}
         self.locked = set()
         self.res = []
+        self.initial_layout = dict(self.logical_to_storage)
 
     def get_front_layer(self):
         """获取当前可执行的节点，节点可执行的条件是入度为0."""
@@ -362,7 +368,7 @@ class NARoute(ABC):
         """
         all_q = set()
         for node in nodes:
-            qubits = node["qubits"]
+            qubits = self.dg.get_node_data(node)["qubits"]
             for q in qubits:
                 all_q.add(q)
         ohas = self.op_occupied.copy()
@@ -482,16 +488,15 @@ class NARoute(ABC):
         remain = self.mov_multi_nodes(nodes)
         for node in remain:
             # 不能执行的两比特门，对应比特需要放回存储区
-            for q in node["qubits"]:
+            for q in self.dg.get_node_data(node)["qubits"]:
                 if self.logical_to_op[q] != -1:
                     self.back(self.logical_to_op[q])
         for node in nodes:
             if node in remain:
                 continue
             self.pre_node = node
-            self.res.append(node["gate"])
-            idx = node["original_idx"]
-            self.dg_opt.remove_node(self.node_indices[idx])
+            self.res.append(self.dg.get_node_data(node)["gate"])
+            self.dg_opt.remove_node(node)
 
     def mov_multi_nodes(self, nodes):
         """两比特门执行前，将比特先放置在操作区合适的位置.
@@ -504,7 +509,7 @@ class NARoute(ABC):
         remain = []
         for node in nodes:
             # 每个两比特门判断当前两个比特的位置是否符合要求
-            qubits = node["qubits"]
+            qubits = self.dg.get_node_data(node)["qubits"]
             p1, p2 = (
                 self.logical_to_op[qubits[0]],
                 self.logical_to_op[qubits[1]],
@@ -534,9 +539,8 @@ class NARoute(ABC):
         """
         # 无论原子在哪一个区域直接执行
 
-        self.res += node["gate"]
-        idx = node["original_idx"]
-        self.dg_opt.remove_node(self.node_indices[idx])
+        self.res += self.dg.get_node_data(node)["gate"]
+        self.dg_opt.remove_node(node)
 
     def overlap(self, nd1, nd2):
         """判断两个单比特节点包含的门列表是否满足nd2为nd1的后缀.
@@ -552,8 +556,8 @@ class NARoute(ABC):
             nd1: 节点1
             nd2: 节点2
         """
-        gt1 = self.dg.nodes[nd1]["gate"]
-        gt2 = self.dg.nodes[nd2]["gate"]
+        gt1 = self.dg.get_node_data(nd1)["gate"]
+        gt2 = self.dg.get_node_data(nd2)["gate"]
         if len(gt1) < len(gt2):
             return False
         l = 0
@@ -636,14 +640,18 @@ class NARoute(ABC):
         posq = []
         front_layer = self.front_layer.copy()
         for node in front_layer:
-            if len(self.dg.nodes[node]["qubits"]) == 1:
-                if self.overlap(self.pre_node, node):
-                    q = self.dg.nodes[node]["qubits"][0]
+            if len(self.dg.get_node_data(node)["qubits"]) == 1:
+                if self.pre_node is not None and self.overlap(
+                    self.pre_node, node
+                ):
+                    q = self.dg.get_node_data(node)["qubits"][0]
                     p = self.find_pos(1)
                     if p != -1:
                         # 如果能找到空的位置，则移到操作区一起执行
                         self.put(q, p)
-                        pos.append(-1 * len(self.dg.nodes[node]["gate"]))
+                        pos.append(
+                            -1 * len(self.dg.get_node_data(node)["gate"])
+                        )
                         posq.append(q)
                         self.dg_opt.remove_node(node)
                         self.front_layer.remove(node)
@@ -688,8 +696,9 @@ class NARoute(ABC):
         """按顺序执行门，不进行优化."""
         self.get_init_mapping()
 
-        for node in self.dg.nodes():
-            if len(node["qubits"]) == 1:
+        for node in self.dg.node_indices():
+            data = self.dg.get_node_data(node)
+            if len(data["qubits"]) == 1:
                 self.execute_single_node(node)
             else:
                 self.execute_multi_nodes([node])
@@ -701,7 +710,6 @@ class NARoute(ABC):
         for gate in self.res:
             if gate.name == "move":
                 pid = gate.arg_value[1]
-                # if isinstance(pid, str) and pid.startswith('P'):
                 operator_list[gate.targets[0]] = pid
                 gate.arg_value = [
                     int(gate.arg_value[0][1:]),
@@ -712,39 +720,30 @@ class NARoute(ABC):
                     int(operator_list[q][1:]) for q in gate.targets
                 ]
 
-        return self.res, None
+        self.final_layout = dict(self.logical_to_storage)
+        return self.res, self.final_layout
 
     def execute_with_opt(self):
-        """按拓扑序执行门，进行简单的优化."""
+        """按优化策略执行门，利用overlap和并行执行."""
         self.get_init_mapping()
+        self.pre_node = None
 
-        self.front_layer = self.get_front_layer()
-        t = 0
-        while self.front_layer:
-            # 若前一个执行的为单比特节点，
-            # 可从当前可执行节点中找所有的单比特节点，进行overlap优化.
-            if self.pre_node is not None and (
-                len(self.pre_node["qubits"]) == 1
-            ):
-                self.execute_single_node_opt()
-                self.front_layer = self.get_front_layer()
-
-            if self.front_layer:
-                i, node = self.get_max_common()
-                if i == 1:
-                    self.execute_single_node(self.dg.get_node_data(node))
-                else:
-                    self.execute_multi_nodes([
-                        self.dg.get_node_data(i) for i in node
-                    ])
-
+        while self.dg_opt.num_nodes() > 0:
             self.front_layer = self.get_front_layer()
-            t += 1
+            if not self.front_layer:
+                raise MappingException("cycle detected in DAG")
+            comm, nodes = self.get_max_common()
+            if comm == 1:
+                self.execute_single_node_opt()
+                self.execute_single_node(nodes)
+                self.pre_node = nodes
+            else:
+                self.execute_multi_nodes(nodes)
 
         self.res += self.measure
 
         # 遍历比特门，将逻辑量子比特映射到物理量子比特.
-        operator_list = deepcopy(self.logical_to_storage)
+        operator_list = self.logical_to_storage
         for gate in self.res:
             if gate.name == "move":
                 pid = gate.arg_value[1]
@@ -758,4 +757,480 @@ class NARoute(ABC):
                     int(operator_list[q][1:]) for q in gate.targets
                 ]
 
-        return self.res
+        self.final_layout = dict(self.logical_to_storage)
+        return self.res, self.final_layout
+
+
+class NAMultiRoute(ABC):
+    """中性原子多路由（单比特任意位置、两比特固定操作区、防串扰驱散）.
+
+    适配行列坐标网格配置（如 hanyuan1_100_new.toml），operate_area 支持
+    区间字典 {row:[r1,r2], col:[c1,c2]}、整数、坐标列表三种格式，物理位点
+    以网格序号 p = row * column + col 表示.
+    """
+
+    def __init__(self):
+        self.qids = None
+        self.logical_to_storage = None
+        self.qbit_num = None
+        self.gates = None
+        self.ag = None
+        self.pg = None
+        self.operate_area = None
+        self.all_sites = None
+        self.qpu_config = None
+        self.initial_layout = None
+        self.rows = None
+        self.cols = None
+
+    def prepare_data(self, qbit_num, gates, qpu_configs):
+        """配置qpu_config、gates、qbit_num，构建操作区拓扑与物理网格图.
+
+        Args:
+            qbit_num: 比特数
+            gates: 门列表
+            qpu_configs: 拓扑
+        """
+        self.qpu_config = qpu_configs
+        self.rows = self.qpu_config.get("row")
+        self.cols = self.qpu_config.get("column")
+
+        self.operate_area = self.get_operate_area(
+            self.qpu_config["operate_area"]
+        )
+        self.all_sites = self.operate_area
+
+        self.ag = rx.PyGraph(multigraph=False)
+        self.ag_val_to_idx = {}
+        ag_edges = []
+        for k, (a, b) in self.qpu_config["coupler_map"].items():
+            if (a in self.operate_area) and (b in self.operate_area):
+                if a not in self.ag_val_to_idx:
+                    self.ag_val_to_idx[a] = self.ag.add_node(a)
+                if b not in self.ag_val_to_idx:
+                    self.ag_val_to_idx[b] = self.ag.add_node(b)
+                ag_edges.append((self.ag_val_to_idx[a], self.ag_val_to_idx[b]))
+        for ua, ub in ag_edges:
+            self.ag.add_edge(ua, ub, None)
+
+        self.pg = rx.PyGraph(multigraph=False)
+        self.pg.add_nodes_from(list(range(self.rows * self.cols)))
+        pg_edges = []
+        for r in range(self.rows):
+            for c in range(self.cols):
+                p = r * self.cols + c
+                if c < self.cols - 1:
+                    pg_edges.append((p, p + 1))
+                if r < self.rows - 1:
+                    pg_edges.append((p, p + self.cols))
+        self.pg.add_edges_from_no_data(pg_edges)
+
+        self.gates = gates
+        self.qbit_num = qbit_num
+
+    def get_operate_area(self, operate_area):
+        """解析operate_area，支持整数、坐标列表、区间字典三种格式.
+
+        Args:
+            operate_area: 操作区配置列表
+        """
+        ope = []
+        for atom in operate_area:
+            if isinstance(atom, int):
+                if 0 <= atom < self.rows * self.cols:
+                    ope.append(atom)
+            elif isinstance(atom, list):
+                if (
+                    len(atom) == 2
+                    and 0 <= atom[0] < self.rows
+                    and 0 <= atom[1] < self.cols
+                ):
+                    ope.append(atom[0] * self.cols + atom[1])
+            elif isinstance(atom, dict):
+                r, c = atom.get("row", []), atom.get("col", [])
+                if len(r) == 2 and len(c) == 2:
+                    for i in range(r[0], r[1]):
+                        for j in range(c[0], c[1]):
+                            ope.append(i * self.cols + j)
+        return ope
+
+    def get_dg(self, gates, pos_num):
+        """从门列表构建依赖图(DAG).
+
+        Args:
+            gates: 门列表
+            pos_num: 操作区容量
+        """
+        dg = rx.PyDiGraph()
+        measure = []
+        pre_nodes = defaultdict(lambda: -1)
+
+        for idx, gate in enumerate(gates):
+            if gate.name in ("sync", "measure"):
+                if gate.name == "measure":
+                    measure.append(gate)
+                continue
+
+            if len(gate.targets) > pos_num:
+                raise MappingException(
+                    f"operate_area only holds {pos_num} qubits, "
+                    f"gate {gate.name} needs {len(gate.targets)}"
+                )
+
+            if len(gate.targets) == 1:
+                qubit = gate.targets[0]
+                if pre_nodes[qubit] == -1:
+                    node_idx = dg.add_node({
+                        "gate": [gate],
+                        "qubits": gate.targets,
+                        "type": "single",
+                    })
+                    pre_nodes[qubit] = node_idx
+                else:
+                    prev_node_idx = pre_nodes[qubit]
+                    prev_data = dg.get_node_data(prev_node_idx)
+                    if prev_data["type"] == "single":
+                        prev_data["gate"].append(gate)
+                    else:
+                        node_idx = dg.add_node({
+                            "gate": [gate],
+                            "qubits": gate.targets,
+                            "type": "single",
+                        })
+                        dg.add_edge(prev_node_idx, node_idx, None)
+                        pre_nodes[qubit] = node_idx
+            else:
+                node_idx = dg.add_node({
+                    "gate": gate,
+                    "qubits": gate.targets,
+                    "type": "multi",
+                })
+                for qid in gate.targets:
+                    if pre_nodes[qid] != -1:
+                        dg.add_edge(pre_nodes[qid], node_idx, None)
+                    pre_nodes[qid] = node_idx
+        return dg, measure
+
+    def get_init_mapping(self):
+        """比特初始映射，首波两比特门图同构匹配，剩余比特按读取误差兜底."""
+        self.dg, self.measure = self.get_dg(self.gates, len(self.operate_area))
+        self.dg_opt = deepcopy(self.dg)
+        self.res = []
+
+        first_2q_layer = set()
+        for node in self.dg_opt.node_indices():
+            if self.dg_opt.get_node_data(node)["type"] == "multi":
+                ancestors = rx.ancestors(self.dg_opt, node)
+                has_multi_ancestor = any(
+                    self.dg_opt.get_node_data(anc)["type"] == "multi"
+                    for anc in ancestors
+                )
+                if not has_multi_ancestor:
+                    first_2q_layer.add(node)
+
+        initial_logical_graph = rx.PyGraph(multigraph=False)
+        ilg_val_to_idx = {}
+        for node in first_2q_layer:
+            qubits = self.dg_opt.get_node_data(node)["qubits"]
+            for q in qubits:
+                if q not in ilg_val_to_idx:
+                    ilg_val_to_idx[q] = initial_logical_graph.add_node(q)
+            initial_logical_graph.add_edge(
+                ilg_val_to_idx[qubits[0]], ilg_val_to_idx[qubits[1]], None
+            )
+
+        best_mapping = {}
+        if initial_logical_graph.num_edges() > 0:
+            if rx.graph_is_subgraph_isomorphic(self.ag, initial_logical_graph):
+                vf2 = rx.graph_vf2_mapping(
+                    self.ag, initial_logical_graph, subgraph=True
+                )
+                match = next(vf2)
+                for phy_idx, log_idx in match.items():
+                    p = self.ag.get_node_data(phy_idx)
+                    q = initial_logical_graph.get_node_data(log_idx)
+                    best_mapping[q] = p
+
+        err_dict = self.qpu_config.get("readout_error", {})
+        site_errors = [
+            (site, err_dict.get(str(site), 5.0)) for site in self.all_sites
+        ]
+        sq = sorted(site_errors, key=lambda e: e[1])
+
+        self.q_to_p = defaultdict(lambda: -1)
+        self.p_to_q = defaultdict(lambda: -1)
+
+        for q, p in best_mapping.items():
+            self.q_to_p[q] = p
+            self.p_to_q[p] = q
+
+        unmapped_qs = [q for q in range(self.qbit_num) if q not in self.q_to_p]
+        avail_ps = [p for p, err in sq if self.p_to_q[p] == -1]
+
+        if len(unmapped_qs) > len(avail_ps):
+            raise MappingException(
+                "not enough sites to place all logical qubits"
+            )
+
+        for q, p in zip(unmapped_qs, avail_ps):
+            self.q_to_p[q] = p
+            self.p_to_q[p] = q
+
+        self.initial_layout = {q: p for q, p in self.q_to_p.items() if p != -1}
+
+    def get_front_layer(self):
+        """获取当前可执行的节点（入度为0）."""
+        return {
+            node
+            for node in self.dg_opt.node_indices()
+            if self.dg_opt.in_degree(node) == 0
+        }
+
+    def get_mapping(self):
+        """获取逻辑比特到物理位置的映射表."""
+        return {q: p for q, p in self.q_to_p.items()}
+
+    def is_site_safe(self, site, exclude_sites=None):
+        """判断一个位置是否安全（无寄生耦合风险）."""
+        exclude_sites = exclude_sites or []
+        site_idx = self.ag_val_to_idx.get(site)
+        if site_idx is None:
+            return True
+        for neighbor_idx in self.ag.neighbors(site_idx):
+            neighbor = self.ag.get_node_data(neighbor_idx)
+            occ = self.p_to_q.get(neighbor, -1)
+            if occ != -1 and neighbor not in exclude_sites:
+                return False
+        return True
+
+    def find_empty_site(self, curr_p, exclude_sites=None):
+        """BFS寻找最近的安全空位，返回路径或-1."""
+        exclude_sites = exclude_sites or []
+        queue = [curr_p]
+        pre = defaultdict(lambda: -1)
+        visited = {curr_p}
+
+        def get_path(curr):
+            path = []
+            while curr != -1:
+                path.append(curr)
+                curr = pre[curr]
+            return path[::-1]
+
+        while queue:
+            curr = queue.pop(0)
+            if (
+                curr != curr_p
+                and self.p_to_q[curr] == -1
+                and curr not in exclude_sites
+            ):
+                if self.is_site_safe(curr, exclude_sites):
+                    return get_path(curr)
+            for neighbor in self.pg.neighbors(curr):
+                if neighbor not in visited:
+                    occ = self.p_to_q.get(neighbor, -1)
+                    if occ != -1 and neighbor not in exclude_sites:
+                        continue
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+                    pre[neighbor] = curr
+        return -1
+
+    def get_empty_path(self, start_p, end_p, exclude_sites=None):
+        """BFS搜索：寻找从start_p到end_p的物理相邻空位路径."""
+        if start_p == end_p:
+            return []
+        exclude_sites = exclude_sites or []
+        queue = [[start_p]]
+        visited = {start_p}
+        while queue:
+            path = queue.pop(0)
+            curr = path[-1]
+            if curr == end_p:
+                return path
+            for neighbor in self.pg.neighbors(curr):
+                if neighbor not in visited:
+                    if neighbor == end_p or (
+                        self.p_to_q.get(neighbor, -1) == -1
+                        and neighbor not in exclude_sites
+                    ):
+                        visited.add(neighbor)
+                        queue.append(path + [neighbor])
+        return None
+
+    def _do_move(self, q, path):
+        """执行底层Move指令并更新映射表."""
+        frm, to = path[0], path[-1]
+        self.res.append(Move(targets=[frm], arg_value=path))
+        self.p_to_q[frm] = -1
+        self.p_to_q[to] = q
+        self.q_to_p[q] = to
+
+    def move_qubit(self, q, target_p):
+        """将逻辑比特移动到目标位置，包含多步寻路与智能避让机制."""
+        curr_p = self.q_to_p[q]
+        if curr_p == target_p:
+            return
+
+        if self.p_to_q[target_p] != -1:
+            occupying_q = self.p_to_q[target_p]
+            temp_q = self.p_to_q[target_p]
+            self.p_to_q[target_p] = -1
+            incoming_path = self.get_empty_path(curr_p, target_p)
+            self.p_to_q[target_p] = temp_q
+            exclude_for_eviction = [curr_p, target_p]
+            if incoming_path:
+                exclude_for_eviction.extend(incoming_path[:-1])
+            empty_p = self.find_empty_site(
+                target_p, exclude_sites=exclude_for_eviction
+            )
+            if empty_p == -1:
+                raise MappingException(
+                    f"no empty site to evict qubit {occupying_q}"
+                )
+            self._do_move(occupying_q, empty_p)
+
+        final_path = self.get_empty_path(curr_p, target_p)
+        if final_path:
+            self._do_move(q, final_path)
+        else:
+            raise MappingException(
+                f"deadlock: cannot move qubit {q} from {curr_p} to {target_p}"
+            )
+
+    def execute_single_nodes(self, nodes):
+        """执行单比特门：In-place执行，无需移动."""
+        for node in nodes:
+            gates = self.dg.get_node_data(node)["gate"]
+            for gate in gates:
+                gate.targets = [self.q_to_p[q] for q in gate.targets]
+                self.res.append(gate)
+            self.dg_opt.remove_node(node)
+
+    def find_best_operate_edge(self, q1, q2, exclude_nodes=None):
+        """寻找代价最小的操作边，需避开已被占用的节点."""
+        exclude_nodes = exclude_nodes or set()
+        best_edge = None
+        min_cost = float("inf")
+        for edge in self.ag.edge_list():
+            p1 = self.ag.get_node_data(edge[0])
+            p2 = self.ag.get_node_data(edge[1])
+            edge_vals = (p1, p2)
+            if p1 in exclude_nodes or p2 in exclude_nodes:
+                continue
+            evictions = 0
+            for p in edge_vals:
+                occ = self.p_to_q[p]
+                if occ != -1 and occ != q1 and occ != q2:
+                    evictions += 1
+            arrivals = 0
+            if self.q_to_p[q1] not in edge_vals:
+                arrivals += 1
+            if self.q_to_p[q2] not in edge_vals:
+                arrivals += 1
+            cost = evictions + arrivals * 1.5
+            if cost < min_cost:
+                min_cost = cost
+                best_edge = edge_vals
+                if cost == 0:
+                    break
+        return best_edge
+
+    def disperse_inactive_qubits(self, active_edges):
+        """发射全局脉冲前，驱散非参与比特."""
+        locked_sites = set()
+        for p1, p2 in active_edges:
+            locked_sites.update([p1, p2])
+        inactive_qs = [
+            q
+            for q in range(self.qbit_num)
+            if self.q_to_p[q] not in locked_sites
+        ]
+        for q in inactive_qs:
+            curr_p = self.q_to_p[q]
+            if not self.is_site_safe(curr_p):
+                safe_p = self.find_empty_site(curr_p, exclude_sites=[curr_p])
+                if safe_p == -1:
+                    raise MappingException(
+                        f"no empty site to disperse qubit {q}"
+                    )
+                self._do_move(q, safe_p)
+
+    def execute_multi_nodes(self, nodes):
+        """执行两比特门（支持并行），并保证全局脉冲的安全."""
+        active_edges = []
+        active_nodes = set()
+        for node in nodes:
+            qubits = self.dg.get_node_data(node)["qubits"]
+            q1, q2 = qubits[0], qubits[1]
+            p1, p2 = self.q_to_p[q1], self.q_to_p[q2]
+            p1_idx = self.ag_val_to_idx.get(p1)
+            p2_idx = self.ag_val_to_idx.get(p2)
+            if (
+                p1 in self.operate_area
+                and p2 in self.operate_area
+                and p1_idx is not None
+                and p2_idx is not None
+                and self.ag.has_edge(p1_idx, p2_idx)
+            ):
+                active_edges.append((p1, p2))
+                active_nodes.update([p1, p2])
+            else:
+                target_edge = self.find_best_operate_edge(
+                    q1, q2, exclude_nodes=active_nodes
+                )
+                if not target_edge:
+                    raise MappingException(
+                        f"no operate edge for qubits {q1}, {q2}"
+                    )
+                tp1, tp2 = target_edge
+                p1, p2 = self.q_to_p[q1], self.q_to_p[q2]
+                if p1 == tp2 or p2 == tp1:
+                    tp1, tp2 = tp2, tp1
+                self.move_qubit(q1, tp1)
+                self.move_qubit(q2, tp2)
+                active_edges.append((tp1, tp2))
+                active_nodes.update([tp1, tp2])
+        self.disperse_inactive_qubits(active_edges)
+        self.res.append(
+            BaseOperation(
+                "cz",
+                targets=[],
+                operation_type=OperationType.DOUBLE_QUBIT_OPERATION.value,
+            )
+        )
+        for node in nodes:
+            self.dg_opt.remove_node(node)
+
+    def execute_with_order(self):
+        """按拓扑序执行门，单比特门原地执行，两比特门移动到操作边后全局脉冲.
+
+        Returns:
+            从逻辑映射到物理量子比特的门列表
+        """
+        self.get_init_mapping()
+        while self.dg_opt.num_nodes() > 0:
+            front = self.get_front_layer()
+            if not front:
+                raise MappingException("cycle detected in DAG")
+            single_nodes = [
+                n
+                for n in front
+                if self.dg.get_node_data(n)["type"] == "single"
+            ]
+            if single_nodes:
+                self.execute_single_nodes(single_nodes)
+            else:
+                multi_nodes = [
+                    n
+                    for n in front
+                    if self.dg.get_node_data(n)["type"] != "single"
+                ]
+                self.execute_multi_nodes(multi_nodes)
+
+        for gate in self.measure:
+            gate.targets = [self.q_to_p[q] for q in gate.targets]
+            self.res.append(gate)
+
+        self.final_mapping = self.get_mapping()
+        return self.res, self.final_mapping
