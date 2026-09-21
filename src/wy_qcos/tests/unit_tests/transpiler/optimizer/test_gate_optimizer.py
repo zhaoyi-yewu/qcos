@@ -28,7 +28,7 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
     validate_gate_ir,
     validate_non_gate_ir,
 )
-from wy_qcos.common.cmss.gate_operation import H, CX, X, Y, Z, S, T, SDG
+from wy_qcos.common.cmss.gate_operation import H, CX, X, Y, Z, S, T, SDG, I
 from wy_qcos.common.cmss.measure import Measure
 
 
@@ -383,3 +383,27 @@ class TestOptimizeBoundary:
             result = optimize(copy.deepcopy(ir), opt_level=level)
             cx_count = sum(1 for op in result if op.name == "cx")
             assert cx_count == 2
+
+
+class TestIdentityGateRemoval:
+    def test_id_only_removed_all_levels(self):
+        ir = [I([0]), I([1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            assert len(result) == 0
+
+    def test_id_removed_mixed_with_measure(self):
+        ir = [I([0]), H([0]), I([1]), Measure([0]), Measure([1])]
+        for level in range(1, 4):
+            result = optimize(copy.deepcopy(ir), opt_level=level)
+            id_count = sum(1 for op in result if op.name == "id")
+            assert id_count == 0
+            measure_count = sum(1 for op in result if op.name == "measure")
+            assert measure_count == 2
+
+    def test_id_preserved_at_level_0(self):
+        ir = [I([0]), H([1])]
+        result = optimize(ir, opt_level=0)
+        assert result is ir
+        id_count = sum(1 for op in result if op.name == "id")
+        assert id_count == 1
