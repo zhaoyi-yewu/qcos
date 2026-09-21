@@ -277,13 +277,17 @@ def optimize(
     elif opt_level > 3 or opt_level < 0:
         raise ValueError(f"Optimization level {opt_level} is not supported.")
 
-    # Extract measure gates, optimize the remaining gates, then append
-    # measure gates to the end of the optimized result.
+    # Extract measure gates and identity gates, optimize the remaining
+    # gates, then append measure gates to the end of the optimized result.
+    # Identity gates (name="id") are no-ops and are unconditionally removed
+    # at any optimization level >= 1.
     regular_ops = []
     measures = []
     for op in ir:
         if op.name == "measure":
             measures.append(op)
+        elif op.name == "id":
+            continue
         else:
             regular_ops.append(op)
 

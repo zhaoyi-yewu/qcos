@@ -291,12 +291,15 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
   }
 
   // 提取 measure, 优化完成后追加到末尾
+  // 移除 I 门（恒等门），level >= 1 时不做任何操作等价于空操作
   std::vector<std::shared_ptr<BaseOperation>> regular_ops;
   std::vector<std::shared_ptr<BaseOperation>> measures;
   regular_ops.reserve(ir.size());
   for (const auto& op : ir) {
     if (op->name == "measure") {
       measures.push_back(op);
+    } else if (op->name == "id") {
+      continue;
     } else {
       regular_ops.push_back(op);
     }

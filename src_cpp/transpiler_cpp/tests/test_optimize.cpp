@@ -21,8 +21,8 @@
 #include <string>
 #include <vector>
 
-#include "circuit/gate_operation.h"
 #include "circuit/dag_circuit.h"
+#include "circuit/gate_operation.h"
 #include "compiler/qasm_to_ir.hpp"
 #include "decomposer/decomposer.h"
 #include "optimizer/collect_block.h"
@@ -150,13 +150,15 @@ namespace {
 using C = std::complex<double>;
 
 // 将 op 序列累乘为 nq 比特上的整体酉矩阵。
-// 跳过 measure/barrier 等非量子门(不参与酉),1Q 门按其 target 张量提升为 2^n 维。
+// 跳过 measure/barrier 等非量子门(不参与酉),1Q 门按其 target 张量提升为 2^n
+// 维。
 CMatrix ops_unitary(const std::vector<std::shared_ptr<BaseOperation>>& ops,
                     int nq) {
   size_t dim = static_cast<size_t>(1) << nq;
   CMatrix result = matrix_utils::identity(dim);
   for (const auto& op : ops) {
-    if (!dynamic_cast<const GateOperation*>(op.get())) continue;  // skip measure/barrier
+    if (!dynamic_cast<const GateOperation*>(op.get()))
+      continue;  // skip measure/barrier
     auto gm = matrix_utils::gate_to_matrix(op);
     size_t nqg = op->targets.size();
     if (nqg == static_cast<size_t>(nq)) {
@@ -225,24 +227,23 @@ TEST(OptimizeUnitarySynthesisTest, SingleQubit_RoundtripZRYBasis) {
 
 // 2Q: Bell 态电路在 cx+rz+ry basis 下合成后须酉等价。
 TEST(OptimizeUnitarySynthesisTest, TwoQubit_BellStateCXBasis) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}), create_gate("cx", {0, 1})};
+  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
+                                                    create_gate("cx", {0, 1})};
   expect_synthesis_correct(ir, 2, 3, {"cx", "rz", "ry"});
 }
 
 // 2Q: cz 原生门电路在 u3+cz basis 下走纯酉合成短路径,须酉等价。
 TEST(OptimizeUnitarySynthesisTest, TwoQubit_U3CZPureSynthesisPath) {
   std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}), create_gate("cz", {0, 1}),
-      create_gate("t", {1})};
+      create_gate("h", {0}), create_gate("cz", {0, 1}), create_gate("t", {1})};
   expect_synthesis_correct(ir, 2, 3, {"u3", "cz"});
 }
 
 // 交叉校验:opt_level=0 不优化(不走合成),前后酉严格相等。
 // 用作 ops_unitary helper 的正确性基线。
 TEST(OptimizeUnitarySynthesisTest, Level0IsIdentityForHelper) {
-  std::vector<std::shared_ptr<BaseOperation>> ir = {
-      create_gate("h", {0}), create_gate("cx", {0, 1})};
+  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("h", {0}),
+                                                    create_gate("cx", {0, 1})};
   CMatrix original = ops_unitary(ir, 2);
   auto result = optimize(ir, 0);
   ASSERT_EQ(result.size(), ir.size());
@@ -270,8 +271,8 @@ std::string read_qasm_file(const std::string& rel_path) {
 }
 
 // 解析 QASM 文本为 (ops, nq),ops 中含 measure;optimize() 会剥离 measure。
-std::pair<std::vector<std::shared_ptr<BaseOperation>>, int>
-qasm_to_ops(const std::string& qasm_str) {
+std::pair<std::vector<std::shared_ptr<BaseOperation>>, int> qasm_to_ops(
+    const std::string& qasm_str) {
   auto [ops, nq] = qasm_to_ir(qasm_str);
   return {ops, nq};
 }
@@ -431,8 +432,8 @@ TEST(OptimizePerformanceTest, QVN32_DecomposeThenOptimize_TimeBudget) {
   Decomposer decomposer;
   auto [decompose_table, usage_stats] =
       decomposer.get_decompose_rules(gate_names, basis_vec);
-  auto in_basis = decomposer.apply_decompose_rules(decomp_1q2q,
-                                                   decompose_table);
+  auto in_basis =
+      decomposer.apply_decompose_rules(decomp_1q2q, decompose_table);
   auto t3 = clock::now();
   double rule_sec = std::chrono::duration<double>(t3 - t2).count();
 
@@ -473,11 +474,12 @@ TEST(OptimizePerformanceTest, QVN32_DecomposeThenOptimize_TimeBudget) {
 
 // 同一 RB 电路在 u3+cz basis 下走纯酉合成短路径,须酉等价。
 TEST(OptimizeQasmSynthesisTest, File_iswap_n2_U3CZBasis) {
-  std::string rel_path="qasm/benchpress/qasmbench-small/iswap_n2/iswap_n2.qasm";
-  const std::set<std::string>& basis= {"u3", "cz"};
+  std::string rel_path =
+      "qasm/benchpress/qasmbench-small/iswap_n2/iswap_n2.qasm";
+  const std::set<std::string>& basis = {"u3", "cz"};
   double tol = 1e-6;
   bool check_basis = true;
-  
+
   std::string qasm = read_qasm_file(rel_path);
   ASSERT_FALSE(qasm.empty()) << "Empty QASM: " << rel_path;
   auto [ops, nq] = qasm_to_ops(qasm);
@@ -500,10 +502,11 @@ TEST(OptimizeQasmSynthesisTest, File_iswap_n2_U3CZBasis) {
 }
 // ======== optimize() 门数观测 — square-heisenberg N4 ========
 //
-// samples/qasm/benchpress/square-heisenberg/square_heisenberg_N4.qasm 是 4 比特
-// Heisenberg 模型 Trotter 电路, 原生门为 cx/rz/rx/ry。目标 basis {h,rx,ry,rz,cx}
-// 中已含全部原生门 (电路无 h/u3/x, 无需转基础门), 故直接 optimize(level=3)。
-// 本用例观测优化前后门数与门类型分布, 评估优化效果; 同时做 4Q 酉等价 + 基合规校验。
+// samples/qasm/benchpress/square-heisenberg/square_heisenberg_N4.qasm 是 4
+// 比特 Heisenberg 模型 Trotter 电路, 原生门为 cx/rz/rx/ry。目标 basis
+// {h,rx,ry,rz,cx} 中已含全部原生门 (电路无 h/u3/x, 无需转基础门), 故直接
+// optimize(level=3)。 本用例观测优化前后门数与门类型分布, 评估优化效果; 同时做
+// 4Q 酉等价 + 基合规校验。
 TEST(OptimizeGateCountTest, SquareHeisenbergN4_HRxRyRzCx_Basis) {
   const std::string rel_path =
       "qasm/benchpress/square-heisenberg/square_heisenberg_N9.qasm";
@@ -549,10 +552,10 @@ TEST(OptimizeGateCountTest, SquareHeisenbergN4_HRxRyRzCx_Basis) {
   auto opt_hist = gate_hist(result_gates);
 
   std::cout << "[gatecount] square_heisenberg_N4 basis={h,rx,ry,rz,cx}\n";
-  std::cout << "[gatecount] raw total=" << regular.size() << " -> opt total="
-            << result_gates.size()
-            << " (reduced=" << (static_cast<long long>(regular.size())
-                                - static_cast<long long>(result_gates.size()))
+  std::cout << "[gatecount] raw total=" << regular.size()
+            << " -> opt total=" << result_gates.size() << " (reduced="
+            << (static_cast<long long>(regular.size()) -
+                static_cast<long long>(result_gates.size()))
             << ")\n";
   std::cout << "[gatecount] raw hist:";
   for (const auto& [g, c] : raw_hist) std::cout << " " << g << "=" << c;
@@ -610,7 +613,6 @@ TEST(OptimizeGateCountTest, InteractingBlocksQubitWidthBounded) {
   }
 }
 
-
 // ======== optimize() 门数观测 — ising_model_10 ========
 //
 // samples/qasm/2.0/benchmark/compiler_qasm/ising_model_10.qasm 是 10 比特
@@ -665,8 +667,8 @@ TEST(OptimizeGateCountTest, IsingModel10_U3CZBasis) {
   Decomposer decomposer;
   auto [decompose_table, usage_stats] =
       decomposer.get_decompose_rules(gate_names, basis_vec);
-  auto in_basis = decomposer.apply_decompose_rules(decomp_1q2q,
-                                                   decompose_table);
+  auto in_basis =
+      decomposer.apply_decompose_rules(decomp_1q2q, decompose_table);
 
   // 3) level=3 优化: 输入已是全 basis 门, 合成器仅做块内合并, 不再跨门类替换
   auto result = optimize(in_basis, 3, false, basis);
@@ -683,11 +685,13 @@ TEST(OptimizeGateCountTest, IsingModel10_U3CZBasis) {
   std::cout << "[gatecount] raw total=" << regular.size()
             << " -> decompose=" << in_basis.size()
             << " -> opt total=" << result_gates.size()
-            << " (reduced=" << (in_basis.size() - result_gates.size()) << ")\n";
+            << " (reduced=" << (in_basis.size() - result_gates.size())
+            << ")\n";
   std::cout << "[gatecount] raw hist:";
   for (const auto& [g, c] : raw_hist) std::cout << " " << g << "=" << c;
   std::cout << "\n[gatecount] decompose hist:";
-  for (const auto& [g, c] : gate_hist(in_basis)) std::cout << " " << g << "=" << c;
+  for (const auto& [g, c] : gate_hist(in_basis))
+    std::cout << " " << g << "=" << c;
   std::cout << "\n[gatecount] opt hist:";
   for (const auto& [g, c] : opt_hist) std::cout << " " << g << "=" << c;
   std::cout << "\n[gatecount] opt gate list:";
@@ -800,10 +804,10 @@ TEST(OptimizeGateCountTest, adder_n10_HRxRyRzCx_Basis) {
   std::cout << "\n";
 
   std::cout << "[gatecount] square_heisenberg_N4 basis={h,rx,ry,rz,cx}\n";
-  std::cout << "[gatecount] raw total=" << regular.size() << " -> opt total="
-            << result_gates.size()
-            << " (reduced=" << (static_cast<long long>(regular.size())
-                                - static_cast<long long>(result_gates.size()))
+  std::cout << "[gatecount] raw total=" << regular.size()
+            << " -> opt total=" << result_gates.size() << " (reduced="
+            << (static_cast<long long>(regular.size()) -
+                static_cast<long long>(result_gates.size()))
             << ")\n";
   std::cout << "[gatecount] raw hist:";
   for (const auto& [g, c] : raw_hist) std::cout << " " << g << "=" << c;
@@ -816,7 +820,44 @@ TEST(OptimizeGateCountTest, adder_n10_HRxRyRzCx_Basis) {
   // 张量提升处理任意 qubit 数的门, 故可覆盖含 ccx 的场景。
   CMatrix original_unitary = ops_unitary(ops, nq);
   CMatrix opt_unitary = ops_unitary(result, nq);
-  EXPECT_TRUE(matrix_utils::is_close_up_to_phase(original_unitary,
-                                                 opt_unitary, 1e-6))
+  EXPECT_TRUE(
+      matrix_utils::is_close_up_to_phase(original_unitary, opt_unitary, 1e-6))
       << "optimize() changed adder_n10 circuit unitary after synthesis";
+}
+
+TEST(OptimizeIdentityTest, IdOnlyRemovedAllLevels) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("id", {0}),
+                                                    create_gate("id", {1})};
+  for (int level = 1; level <= 3; ++level) {
+    auto result = optimize(ir, level);
+    EXPECT_EQ(result.size(), 0u) << "level " << level;
+  }
+}
+
+TEST(OptimizeIdentityTest, IdRemovedMixedWithMeasure) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {
+      create_gate("id", {0}), create_gate("h", {0}), create_gate("id", {1}),
+      create_gate("measure", {0}), create_gate("measure", {1})};
+  for (int level = 1; level <= 3; ++level) {
+    auto result = optimize(ir, level);
+    int id_count = 0, measure_count = 0;
+    for (const auto& op : result) {
+      if (op->name == "id") ++id_count;
+      if (op->name == "measure") ++measure_count;
+    }
+    EXPECT_EQ(id_count, 0) << "level " << level;
+    EXPECT_EQ(measure_count, 2) << "level " << level;
+  }
+}
+
+TEST(OptimizeIdentityTest, IdPreservedAtLevel0) {
+  std::vector<std::shared_ptr<BaseOperation>> ir = {create_gate("id", {0}),
+                                                    create_gate("h", {1})};
+  auto result = optimize(ir, 0);
+  ASSERT_EQ(result.size(), 2u);
+  int id_count = 0;
+  for (const auto& op : result) {
+    if (op->name == "id") ++id_count;
+  }
+  EXPECT_EQ(id_count, 1);
 }
