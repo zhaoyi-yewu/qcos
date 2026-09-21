@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.11)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -21,6 +21,7 @@ add_executable(${TEST_NAME} test_main.cpp
                             test_sabre_mapping.cpp
                             test_dense_layout.cpp
                             test_vf2_layout.cpp
+                            test_ion_trap_layout.cpp
                             test_chip_data.cpp
                             test_qasm_to_ir.cpp
                             test_parallel_optimize.cpp

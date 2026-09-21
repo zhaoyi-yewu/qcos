@@ -38,6 +38,7 @@ add_library(${LIB_TRANSPILER} STATIC
                             mapping/sabre_mapping.cpp
                             mapping/dense_layout.cpp
                             mapping/vf2_layout.cpp
+                            mapping/ion_trap_layout.cpp
                             mapping/na_mapping.cpp
                             utils/load_files.cpp
                             compiler/operations/classic_controlled_operation.cpp
