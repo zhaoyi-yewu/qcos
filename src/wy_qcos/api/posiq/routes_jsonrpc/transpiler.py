@@ -23,6 +23,12 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import transpiler_api_v1
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.pagination import (
+    apply_memory_filters,
+    apply_memory_sort,
+    paginate_list,
+    parse_query,
+)
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth
 
@@ -56,19 +62,25 @@ def _get_transpiler_info(transpiler_info):
 )
 def get_transpilers(
     body: schemas.GetTranspilersRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> dict[str, schemas.GetTranspilerResponse]:
-    """Get transpiler list request.
+) -> dict[str, schemas.GetTranspilerResponse] | schemas.PaginatedResponse:
+    """Get transpiler list request with optional pagination.
 
     Args:
         body(schemas.GetTranspilersRequest): message
+        query: dict containing optional filters, pagination, and sort
         auth_data: auth data
 
     Returns:
-        Get transpilers response
+        Get transpilers response, or PaginatedResponse when pagination
+        is provided
     """
     func_name = "get_transpilers"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     transpiler_manager = scheduler.get_transpiler_manager()
     transpilers = transpiler_manager.get_transpilers()
@@ -78,6 +90,16 @@ def get_transpilers(
         response_info[transpiler_name] = (
             schemas.GetTranspilerResponse.model_validate(_response_info)
         )
+    items = list(response_info.values())
+    if filters:
+        items = apply_memory_filters(items, filters)
+        # Rebuild dict with only filtered items
+        response_info = {getattr(item, "name", ""): item for item in items}
+    if sort:
+        items = apply_memory_sort(items, sort)
+        response_info = {getattr(item, "name", ""): item for item in items}
+    if pagination:
+        return paginate_list(items, pagination.page, pagination.page_size)
     return response_info
 
 

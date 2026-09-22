@@ -33,6 +33,7 @@ from wy_qcos.common import args_schema, errors
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.common.pagination import parse_query
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import (
     auth,
@@ -849,47 +850,101 @@ def get_job_results(
 )
 def get_jobs(
     body: schemas.GetJobsRequest | None = None,
-    filters: dict | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
     job_repo: JobRepository = Depends(get_repository(JobRepository)),
-) -> list[schemas.GetJobStatusResponse]:
-    """Get job list with optional filtering.
+) -> list[schemas.GetJobStatusResponse] | schemas.PaginatedResponse:
+    """Get job list with optional filtering, sorting and pagination.
 
     Args:
         body(schemas.GetJobsRequest): job requests body
-        filters: filters
+        query: dict containing optional filters, pagination, and sort
         auth_data: auth data
         job_repo: job repository
 
     Returns:
-        job list sorted by created_at in descending order
+        job list sorted by created_at in descending order,
+        or PaginatedResponse when pagination is provided
     """
     func_name = "get_jobs"
-    logger.info(f"Call {func_name}: body={body}, filters: {filters}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     # Query job record from database with user filters
     db_filters = get_db_filters(auth_data, filters=filters)
-    success, error, job_records = job_repo.get_jobs(db_filters)
-    if not success or job_records is None:
-        return []
 
-    # Sort by created_at in descending order
-    job_records = sorted(
-        job_records,
-        key=lambda x: x.created_at if x.created_at else "",
-        reverse=True,
-    )
+    # Default sort: created_at descending
+    sort_fields = sort if sort else ["-created_at"]
 
-    # Construct response
-    response_list = []
-    for job_record in job_records:
-        _response_info = job_record.asdict()
-        _response_info["job_id"] = _response_info.pop("id")
-        response_info = schemas.GetJobStatusResponse.model_validate(
-            _response_info
+    # Map API field names to ORM column names
+    _sort_field_map = {"job_id": "id"}
+    _mapped = []
+    for f in sort_fields:
+        desc = f.startswith("-")
+        name = f[1:] if desc else f
+        name = _sort_field_map.get(name, name)
+        _mapped.append(f"-{name}" if desc else name)
+    sort_fields = _mapped
+
+    if pagination:
+        # Paginated path
+        success, error, result = job_repo.get_jobs_paginated(
+            filters=db_filters,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            sort=sort_fields,
         )
-        response_list.append(response_info)
-    return response_list
+        if not success or result is None:
+            return schemas.PaginatedResponse(
+                items=[],
+                total=0,
+                page=pagination.page,
+                page_size=pagination.page_size,
+                total_pages=0,
+            )
+        items = []
+        for job_record in result["items"]:
+            _response_info = job_record.asdict()
+            _response_info["job_id"] = _response_info.pop("id")
+            response_info = schemas.GetJobStatusResponse.model_validate(
+                _response_info
+            )
+            items.append(response_info)
+        total = result["total"]
+        ps = pagination.page_size
+        total_pages = (total + ps - 1) // ps if ps > 0 else 1
+        return schemas.PaginatedResponse(
+            items=items,
+            total=total,
+            page=pagination.page,
+            page_size=ps,
+            total_pages=total_pages,
+        )
+    else:
+        # Non-paginated path (backward compatible)
+        # Use DB-side sort via get_jobs_paginated with page_size=-1
+        # (unlimited) to leverage SQLAlchemy order_by
+        success, error, result = job_repo.get_jobs_paginated(
+            filters=db_filters,
+            page=1,
+            page_size=-1,
+            sort=sort_fields,
+        )
+        if not success or result is None:
+            return []
+
+        # Construct response
+        response_list = []
+        for job_record in result["items"]:
+            _response_info = job_record.asdict()
+            _response_info["job_id"] = _response_info.pop("id")
+            response_info = schemas.GetJobStatusResponse.model_validate(
+                _response_info
+            )
+            response_list.append(response_info)
+        return response_list
 
 
 @job_api_v1.method(

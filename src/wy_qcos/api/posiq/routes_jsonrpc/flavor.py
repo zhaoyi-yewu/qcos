@@ -30,6 +30,12 @@ from wy_qcos.api.posiq.routes_jsonrpc.project import get_project_manager
 from wy_qcos.api.posiq.routes_jsonrpc.routes import flavor_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.common.pagination import (
+    apply_memory_filters,
+    apply_memory_sort,
+    paginate_list,
+    parse_query,
+)
 from wy_qcos.db.utils.db_utils import get_db_filters
 from wy_qcos.task_manager import scheduler
 
@@ -501,34 +507,39 @@ def get_flavor(
 )
 def get_flavors(
     body: schemas.GetFlavorsRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> list[schemas.FlavorResponse]:
-    """Get all flavors with optional filtering.
+) -> list[schemas.FlavorResponse] | schemas.PaginatedResponse:
+    """Get all flavors with optional filtering, sorting and pagination.
 
     Args:
         body: get flavors request with optional filter dict
+        query: dict containing optional filters, pagination, and sort
         auth_data: authentication data
 
     Returns:
-        list of flavor responses
-
-    Filter example:
-        {"flavor_name": "g1.all"} - filter by flavor_name
+        list of flavor responses,
+        or PaginatedResponse when pagination is provided
     """
     func_name = "get_flavors"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     flavor_manager = scheduler.get_flavor_manager()
     if flavor_manager is None:
         jsonrpc_errors.handle_error_internal_server(
-            module_name, func_name, (False, "Flavor manager not initialized")
+            module_name,
+            func_name,
+            (False, "Flavor manager not initialized"),
         )
-    # Visibility scoping: public flavors are visible to all users,
-    # private flavors only to the owning project.
-    # Super admins see all flavors.
-    filter_conditions = None
-    if body:
+    # Use params filters first, fallback to body.filters
+    filter_conditions = filters
+    if not filter_conditions and body:
         filter_conditions = body.filters
+    # Visibility scoping: public flavors visible to all users,
+    # private flavors only to the owning project.
     if _is_super_admin(auth_data):
         flavors = flavor_manager.get_flavor_responses(
             filters=filter_conditions
@@ -538,7 +549,25 @@ def get_flavors(
             filters=filter_conditions,
             project_id=_current_project_id(auth_data),
         )
-    return [schemas.FlavorResponse.model_validate(f) for f in flavors]
+    items = [schemas.FlavorResponse.model_validate(f) for f in flavors]
+    # Apply memory filters for fields not handled by Manager.
+    # flavor_name/flavor_names/flavor_ids are already applied
+    # by FlavorManager, so exclude them to avoid mismatched keys
+    # (e.g. item has 'name', not 'flavor_name').
+    _manager_keys = {"flavor_name", "flavor_names", "flavor_ids"}
+    if filter_conditions:
+        leftover = {
+            k: v
+            for k, v in filter_conditions.items()
+            if k not in _manager_keys
+        }
+        if leftover:
+            items = apply_memory_filters(items, leftover)
+    if sort:
+        items = apply_memory_sort(items, sort)
+    if pagination:
+        return paginate_list(items, pagination.page, pagination.page_size)
+    return items
 
 
 @flavor_api_v1.method(

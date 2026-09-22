@@ -121,6 +121,35 @@ class JobRepository(BaseRepository):
         """
         return self.get_all(Job, filters=filters)
 
+    def get_jobs_paginated(
+        self,
+        filters: dict | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        sort: list[str] | None = None,
+    ):
+        """Get jobs with pagination, filtering and sorting.
+
+        Args:
+            filters: Dictionary with filter conditions (AND logic)
+            page: 1-based page number
+            page_size: items per page, -1 for unlimited
+            sort: list of sort fields, '-' prefix means descending.
+                Defaults to ["-created_at"] if not provided.
+
+        Returns:
+            Tuple[bool, Exception|None, dict|None]:
+                (success, error, {"items": list[Job], "total": int})
+        """
+        sort_fields = sort if sort else ["-created_at"]
+        return self.get_all_with_pagination(
+            Job,
+            filters=filters,
+            page=page,
+            page_size=page_size,
+            sort=sort_fields,
+        )
+
     def get_jobs_count(self, filters: dict | None = None) -> int:
         """Get count of jobs with optional filtering.
 

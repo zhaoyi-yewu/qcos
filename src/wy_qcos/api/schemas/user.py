@@ -497,7 +497,11 @@ class LoginLog(BaseModel):
 
 
 class GetLoginLogsRequest(BaseModel):
-    """Get login logs request by user ID or user_name."""
+    """Get login logs request by user ID or user_name.
+
+    Pagination and sorting are handled via params.pagination
+    and params.sort (not in body).
+    """
 
     user_id: uuid.UUID | None = Field(
         default=None, description="Filter by user ID (UUID)"
@@ -510,15 +514,6 @@ class GetLoginLogsRequest(BaseModel):
     )
     end_time: str | None = Field(
         default=None, description="Filter by end time (ISO format)"
-    )
-    limit: int | None = Field(
-        default=100,
-        ge=-1,
-        le=10000,
-        description="Maximum number of logs to return (use -1 for unlimited)",
-    )
-    offset: int | None = Field(
-        default=0, ge=0, description="Number of logs to skip"
     )
 
     @model_validator(mode="after")

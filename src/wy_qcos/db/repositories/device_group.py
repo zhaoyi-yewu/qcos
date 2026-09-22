@@ -152,6 +152,35 @@ class DeviceGroupRepository(BaseRepository):
         """
         return self.get_all(DeviceGroup, filters=filters)
 
+    def get_device_groups_paginated(
+        self,
+        filters: dict | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        sort: list[str] | None = None,
+    ):
+        """Get device groups with pagination, filtering and sorting.
+
+        Args:
+            filters: Dictionary with filter conditions (AND logic)
+            page: 1-based page number
+            page_size: items per page, -1 for unlimited
+            sort: list of sort fields, '-' prefix means descending.
+                Defaults to ["-created_at"] if not provided.
+
+        Returns:
+            Tuple[bool, Exception|None, dict|None]:
+                (success, error, {"items": list, "total": int})
+        """
+        sort_fields = sort if sort else ["-created_at"]
+        return self.get_all_with_pagination(
+            DeviceGroup,
+            filters=filters,
+            page=page,
+            page_size=page_size,
+            sort=sort_fields,
+        )
+
     def delete_device_group(
         self, group_id: UUID | str, filters: dict | None = None
     ):

@@ -33,6 +33,11 @@ from wy_qcos.api.posiq.routes_jsonrpc.project import (
 from wy_qcos.api.posiq.routes_jsonrpc.routes import device_group_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.common.pagination import (
+    apply_memory_sort,
+    paginate_list,
+    parse_query,
+)
 from wy_qcos.db.utils.db_utils import get_db_filters
 from wy_qcos.task_manager import scheduler
 
@@ -388,19 +393,25 @@ def get_device_group(
 )
 def get_device_groups(
     body: schemas.GetDeviceGroupsRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> list[schemas.DeviceGroupResponse]:
-    """Get all device groups with optional filtering.
+) -> list[schemas.DeviceGroupResponse] | schemas.PaginatedResponse:
+    """Get all device groups with optional filtering, sorting and pagination.
 
     Args:
         body: get device groups request with optional filter dict
+        query: dict containing optional filters, pagination, and sort
         auth_data: authentication data
 
     Returns:
-        list of device group responses
+        list of device group responses,
+        or PaginatedResponse when pagination is provided
     """
     func_name = "get_device_groups"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     device_group_manager = scheduler.get_device_group_manager()
     if device_group_manager is None:
@@ -409,8 +420,9 @@ def get_device_groups(
             func_name,
             (False, "Device group manager not initialized"),
         )
-    filter_conditions = None
-    if body:
+    # Use params filters first, fallback to body.filters
+    filter_conditions = filters
+    if not filter_conditions and body:
         filter_conditions = body.filters
     if _is_super_admin(auth_data):
         groups = device_group_manager.get_device_groups(
@@ -421,7 +433,12 @@ def get_device_groups(
             filters=filter_conditions,
             project_id=_current_project_id(auth_data),
         )
-    return [schemas.DeviceGroupResponse.model_validate(g) for g in groups]
+    items = [schemas.DeviceGroupResponse.model_validate(g) for g in groups]
+    if sort:
+        items = apply_memory_sort(items, sort)
+    if pagination:
+        return paginate_list(items, pagination.page, pagination.page_size)
+    return items
 
 
 @device_group_api_v1.method(

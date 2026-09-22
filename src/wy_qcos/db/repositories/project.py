@@ -120,6 +120,35 @@ class ProjectRepository(BaseRepository):
             logger.error(f"Failed to get projects: {e}")
             return (False, str(e), None)
 
+    def get_projects_paginated(
+        self,
+        filters: dict | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        sort: list[str] | None = None,
+    ):
+        """Get projects with pagination, filtering and sorting.
+
+        Args:
+            filters: Dictionary with filter conditions (AND logic)
+            page: 1-based page number
+            page_size: items per page, -1 for unlimited
+            sort: list of sort fields, '-' prefix means descending.
+                Defaults to ["-created_at"] if not provided.
+
+        Returns:
+            Tuple[bool, Exception|None, dict|None]:
+                (success, error, {"items": list[Project], "total": int})
+        """
+        sort_fields = sort if sort else ["-created_at"]
+        return self.get_all_with_pagination(
+            Project,
+            filters=filters,
+            page=page,
+            page_size=page_size,
+            sort=sort_fields,
+        )
+
     def create_project(
         self, project_id: str, name: str, description: str | None = None
     ) -> tuple[bool, str | None, Project | None]:

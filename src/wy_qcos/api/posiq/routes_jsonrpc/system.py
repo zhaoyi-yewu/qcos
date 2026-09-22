@@ -28,6 +28,12 @@ from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.common.pagination import (
+    apply_memory_filters,
+    apply_memory_sort,
+    paginate_list,
+    parse_query,
+)
 from wy_qcos.db.utils.db_utils import get_repository
 from wy_qcos.db.repositories.job import JobRepository
 from .dependencies.authentication import auth
@@ -289,20 +295,26 @@ def trace_mem(
 def list_workers(
     request: Request,
     body: schemas.ListWorkersRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> schemas.ListWorkersResponse:
+) -> schemas.ListWorkersResponse | schemas.PaginatedResponse:
     """List all prefect workers with name and status.
 
     Args:
         body(schemas.ListWorkersRequest): list workers request
+        query: dict containing optional filters, pagination, and sort
         request: fastapi request
         auth_data: auth data
 
     Returns:
-        list workers response
+        list workers response, or PaginatedResponse when pagination
+        is provided
     """
     func_name = "list_workers"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     task_manager = getattr(request.app.state, "_task_manager", None)
     if not task_manager:
@@ -313,6 +325,12 @@ def list_workers(
         raise err
 
     workers = task_manager.list_workers()
+    if filters:
+        workers = apply_memory_filters(workers, filters)
+    if sort:
+        workers = apply_memory_sort(workers, sort)
+    if pagination:
+        return paginate_list(workers, pagination.page, pagination.page_size)
     response_info = schemas.ListWorkersResponse.model_validate({
         "workers": workers
     })

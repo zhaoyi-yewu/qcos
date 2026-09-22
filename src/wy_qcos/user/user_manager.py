@@ -1508,22 +1508,24 @@ class UserManager:
         user_name: str | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list:
-        """Get login logs with optional filtering.
+        page: int = 1,
+        page_size: int = 20,
+        sort: list[str] | None = None,
+    ):
+        """Get login logs with pagination, filtering and sorting.
 
         Args:
             user_id: Filter logs by user_id (UUID, optional)
             user_name: Filter logs by user_name (optional)
             start_time: Filter logs after this time (optional)
             end_time: Filter logs before this time (optional)
-            limit: Maximum number of logs to return. Use -1 to get all
-                  logs without limit (default: 100)
-            offset: Number of logs to skip (default: 0)
+            page: 1-based page number (default: 1)
+            page_size: items per page, -1 for unlimited (default: 20)
+            sort: list of sort fields, '-' prefix means descending
 
         Returns:
-            List of login logs with response format
+            Tuple of (success, error, result) where result is
+            {"items": list[LoginLogResponse], "total": int}
 
         Raises:
             ValueError: if both user_id and user_name are provided,
@@ -1545,19 +1547,20 @@ class UserManager:
 
         # Get login logs from repository
         try:
-            success, error, logs = self.users_repo.get_login_logs(
+            success, error, result = self.users_repo.get_login_logs(
                 user_id=str(user_id) if user_id else None,
                 start_time=start_time,
                 end_time=end_time,
-                limit=limit,
-                offset=offset,
+                page=page,
+                page_size=page_size,
+                sort=sort,
             )
             if not success:
                 raise ValueError(f"Failed to get login logs: {error}")
             # Convert to response format
             response_info = []
-            for log in logs:
-                # When user_id is not specified, need to get it from username
+            for log in result["items"]:
+                # When user_id is not specified, need to get it
                 response_user_id: str | None = user_id
                 if response_user_id is None:
                     # Query user by username to get user_id
@@ -1586,15 +1589,24 @@ class UserManager:
                 log_response = schemas.LoginLogResponse(**log_data)
                 response_info.append(log_response)
             log_count = len(response_info)
-            limit_str = "unlimited" if limit == -1 else str(limit)
+            total = result["total"]
+            page_size_str = "unlimited" if page_size == -1 else str(page_size)
             logger.info(
                 f"Retrieved {log_count} login logs "
-                f"(limit={limit_str}, offset={offset})"
+                f"(page={page}, page_size={page_size_str}, "
+                f"total={total})"
             )
-            return response_info
+            return (
+                True,
+                None,
+                {
+                    "items": response_info,
+                    "total": total,
+                },
+            )
         except Exception as e:
             logger.error(f"Failed to get login logs: {e}")
-            raise ValueError(f"Failed to get login logs: {str(e)}")
+            return False, str(e), None
 
     def clear_login_logs(
         self, user_id: str | None = None, user_name: str | None = None

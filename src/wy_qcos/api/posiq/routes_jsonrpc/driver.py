@@ -23,6 +23,12 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import driver_api_v1
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.pagination import (
+    apply_memory_filters,
+    apply_memory_sort,
+    paginate_list,
+    parse_query,
+)
 from wy_qcos.task_manager import scheduler
 from .dependencies.authentication import auth
 
@@ -70,19 +76,24 @@ def _get_driver_info(driver, transpiler):
 )
 def get_drivers(
     body: schemas.GetDriversRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> dict[str, schemas.GetDriverResponse]:
-    """Get driver dict request.
+) -> dict[str, schemas.GetDriverResponse] | schemas.PaginatedResponse:
+    """Get driver dict request with optional pagination.
 
     Args:
         body(schemas.GetDriversRequest): message
+        query: dict containing optional filters, pagination, and sort
         auth_data: auth data
 
     Returns:
-        Get drivers response
+        Get drivers response, or PaginatedResponse when pagination is provided
     """
     func_name = "get_drivers"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     driver_manager = scheduler.get_driver_manager()
     drivers = driver_manager.get_drivers()
@@ -94,6 +105,16 @@ def get_drivers(
         response_info[driver_name] = schemas.GetDriverResponse.model_validate(
             _response_info
         )
+    items = list(response_info.values())
+    if filters:
+        items = apply_memory_filters(items, filters)
+        # Rebuild dict with only filtered items
+        response_info = {getattr(item, "name", ""): item for item in items}
+    if sort:
+        items = apply_memory_sort(items, sort)
+        response_info = {getattr(item, "name", ""): item for item in items}
+    if pagination:
+        return paginate_list(items, pagination.page, pagination.page_size)
     return response_info
 
 

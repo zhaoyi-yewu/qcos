@@ -17,23 +17,28 @@
 
 import logging
 
-from wy_qcos.metrics.device_availability_collector import (
-    DeviceAvailabilityCollector,
-)
-
 from fastapi import Depends
 
+from .dependencies.authentication import auth, validate_virtual_instance
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
 from wy_qcos.common.constant import Constant
+from wy_qcos.common.pagination import (
+    apply_memory_filters,
+    apply_memory_sort,
+    paginate_list,
+    parse_query,
+)
 from wy_qcos.db.repositories.device_availability import (
     DeviceAvailabilityRepository,
 )
 from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.db.utils.db_utils import get_repository
+from wy_qcos.metrics.device_availability_collector import (
+    DeviceAvailabilityCollector,
+)
 from wy_qcos.task_manager import scheduler
-from .dependencies.authentication import auth, validate_virtual_instance
 
 logger = logging.getLogger(__name__)
 module_name = "DEVICE"
@@ -285,26 +290,31 @@ def _get_device_info(
 )
 def get_devices(
     body: schemas.GetDevicesRequest,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
     job_repo: JobRepository = Depends(get_repository(JobRepository)),
     availability_repo: DeviceAvailabilityRepository = Depends(
         get_repository(DeviceAvailabilityRepository)
     ),
-) -> dict[str, schemas.GetDeviceResponse]:
-    """Get device dict request.
+) -> dict[str, schemas.GetDeviceResponse] | schemas.PaginatedResponse:
+    """Get device dict request with optional pagination.
 
     Args:
         body(schemas.GetDevicesRequest): devices request
+        query: dict containing optional filters, pagination, and sort
         auth_data: auth data
         job_repo: JobRepository instance for querying job counts
         availability_repo: DeviceAvailabilityRepository instance for querying
             historical availability rates
 
     Returns:
-        Get devices response
+        Get devices response, or PaginatedResponse when pagination is provided
     """
     func_name = "get_devices"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     details = body.details
     device_manager = scheduler.get_device_manager()
@@ -334,6 +344,16 @@ def get_devices(
         response_info[device_name] = schemas.GetDeviceResponse.model_validate(
             _response_info
         )
+    items = list(response_info.values())
+    if filters:
+        items = apply_memory_filters(items, filters)
+        # Rebuild dict with only filtered items
+        response_info = {getattr(item, "name", ""): item for item in items}
+    if sort:
+        items = apply_memory_sort(items, sort)
+        response_info = {getattr(item, "name", ""): item for item in items}
+    if pagination:
+        return paginate_list(items, pagination.page, pagination.page_size)
     return response_info
 
 
