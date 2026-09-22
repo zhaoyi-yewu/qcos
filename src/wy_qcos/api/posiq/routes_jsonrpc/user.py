@@ -351,7 +351,7 @@ def get_users(
     # Coerce string values for known boolean columns
     if filter_conditions:
         _bool_fields = {"is_enabled", "is_locked", "is_super_admin"}
-        coerced = {}
+        coerced: dict[str, object] = {}
         for k, v in filter_conditions.items():
             if k in _bool_fields and isinstance(v, str):
                 if v.lower() in ("true", "1", "yes"):

@@ -200,6 +200,7 @@ Filter 和 Weigher 列表。AutoScheduler 在初始化时会通过
 ``DeviceGroupFilter`` 已在 ``DEFAULT_FILTERS`` 中，其
 ``device_group_manager`` 由 ``BaseFilterHandler`` 在实例化后
 统一通过 ``set_device_group_manager()`` 注入，无需特殊处理。
+如有不满足，用户可自行开发新的filter和weigher并进行配置。
 
 .. code-block:: toml
 

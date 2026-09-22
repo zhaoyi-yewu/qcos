@@ -46,11 +46,15 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 
 [编译部署（基于wheel）](https://qcos.readthedocs.io/zh-cn/latest/user-guide/deploy-guide/build-run-wheel.html)
 
-## 3.2 命令行手册
+## 3.2 用户指导
 
 [命令行手册](https://qcos.readthedocs.io/zh-cn/latest/user-guide/cli/index.html)
 
+[场景介绍和操作](https://qcos.readthedocs.io/zh-cn/latest/user-guide/scenario/index.html)
+
 [Python客户端](https://qcos.readthedocs.io/zh-cn/latest/user-guide/sdk.html)
+
+[运维指导](https://qcos.readthedocs.io/zh-cn/latest/user-guide/operations.html)
 
 ## 4. 兼容性说明
 

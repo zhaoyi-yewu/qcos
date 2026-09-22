@@ -690,8 +690,16 @@ class StLibrary:
         client, username=None, user_id=None, limit=100, offset=0
     ):
         """Get login logs."""
+        # Convert legacy limit/offset to pagination params
+        if limit > 0:
+            page = (offset // limit) + 1
+            pagination = {"page": page, "page_size": limit}
+        else:
+            pagination = {"page": 1, "page_size": -1}
         status_code, reason, text, result = client.get_login_logs(
-            user_id=user_id, user_name=username, limit=limit, offset=offset
+            user_id=user_id,
+            user_name=username,
+            pagination=pagination,
         )
         assert status_code == HttpCode.SUCCESS_OK, (
             f"Get login logs failed: {status_code} {reason} {text}"
@@ -701,8 +709,11 @@ class StLibrary:
         error_code = error.get("code", 0)
         msg = f"Get login logs error: {error_code}"
         assert error_code == 0, msg
-        logs = response.get("result", response)
-        return logs
+        result_data = response.get("result", response)
+        # If result is a paginated dict, extract items list
+        if isinstance(result_data, dict) and "items" in result_data:
+            return result_data["items"]
+        return result_data
 
     @staticmethod
     def clear_login_logs(client, user_id=None, user_name=None):
