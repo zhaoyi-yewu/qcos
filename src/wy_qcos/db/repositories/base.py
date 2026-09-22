@@ -19,7 +19,7 @@ import logging
 import uuid as uuid_lib
 from typing import Any
 
-from sqlalchemy import select, delete, func
+from sqlalchemy import asc, desc, select, delete, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
@@ -318,6 +318,124 @@ class BaseRepository:
                 f"with filters {filters}: {e}"
             )
             return 0
+
+    def get_all_with_pagination(
+        self,
+        model_class: type,
+        filters: dict | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        sort: list[str] | None = None,
+    ):
+        """Get paginated records with optional filtering and sorting.
+
+        Args:
+            model_class: The model class to query
+            filters: Dictionary with filter conditions (AND logic).
+                Each key is a column attribute name, value is the
+                filter value. List values use IN operator.
+            page: 1-based page number
+            page_size: number of items per page, -1 for unlimited
+            sort: list of sort fields, '-' prefix means descending.
+                Example: ["-created_at", "job_name"]
+
+        Returns:
+            Tuple[bool, Exception|None, dict|None]:
+                (success, error, {"items": list, "total": int})
+        """
+        try:
+            query = select(model_class)
+
+            # Apply dynamic filters
+            if filters:
+                for key, value in filters.items():
+                    if value is None:
+                        continue
+                    if hasattr(model_class, key):
+                        if isinstance(value, list):
+                            query = query.where(
+                                getattr(model_class, key).in_(value)
+                            )
+                        else:
+                            query = query.where(
+                                getattr(model_class, key) == value
+                            )
+                    else:
+                        logger.warning(
+                            f"Filter key '{key}' does not exist on "
+                            f"model {model_class.__name__}"
+                        )
+
+            # Build count query with same filters
+            count_query = select(func.count()).select_from(model_class)
+            if filters:
+                for key, value in filters.items():
+                    if value is None:
+                        continue
+                    if hasattr(model_class, key):
+                        if isinstance(value, list):
+                            count_query = count_query.where(
+                                getattr(model_class, key).in_(value)
+                            )
+                        else:
+                            count_query = count_query.where(
+                                getattr(model_class, key) == value
+                            )
+
+            # Execute count query
+            count_result = self._db_session.execute(count_query)
+            total = count_result.scalar()
+            if total is None:
+                total = 0
+
+            # Apply sort
+            if sort:
+                order_cols = []
+                for field_spec in sort:
+                    descending = field_spec.startswith("-")
+                    field_name = field_spec[1:] if descending else field_spec
+                    if hasattr(model_class, field_name):
+                        col = getattr(model_class, field_name)
+                        order_cols.append(
+                            desc(col) if descending else asc(col)
+                        )
+                    else:
+                        logger.warning(
+                            f"Sort field '{field_name}' does not exist "
+                            f"on model {model_class.__name__}"
+                        )
+                if order_cols:
+                    query = query.order_by(*order_cols)
+
+            # Apply pagination (skip if page_size == -1)
+            if page_size != -1:
+                query = query.offset((page - 1) * page_size).limit(page_size)
+
+            # Execute items query
+            result = self._db_session.execute(query)
+            db_records = result.scalars().all()
+
+            # Refresh all objects in the result list
+            for obj in db_records:
+                try:
+                    self._db_session.refresh(obj)
+                except Exception as e:
+                    logger.debug(f"Refresh error for record: {e}")
+
+            return (
+                True,
+                None,
+                {
+                    "items": db_records,
+                    "total": total,
+                },
+            )
+        except Exception as e:
+            logger.error(
+                f"Error fetching paginated records from "
+                f"{model_class.__name__} with filters {filters}: {e}"
+            )
+            return False, e, None
 
     def update(self, model_class: type, uuid: str, **kwargs: Any):
         """Update a record with UUID string using args."""
