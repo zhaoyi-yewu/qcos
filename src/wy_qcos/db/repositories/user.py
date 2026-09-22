@@ -21,7 +21,7 @@ from datetime import datetime
 
 import pwdlib
 from pwdlib.hashers.bcrypt import BcryptHasher
-from sqlalchemy import select, delete, func
+from sqlalchemy import asc, desc, select, delete, func
 from sqlalchemy.orm import Session
 
 from wy_qcos.db.models import (
@@ -430,21 +430,23 @@ class UserRepository(BaseRepository):
         user_id: str | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        limit: int = 100,
-        offset: int = 0,
+        page: int = 1,
+        page_size: int = 20,
+        sort: list[str] | None = None,
     ):
-        """Get login logs with optional filters.
+        """Get login logs with pagination, filtering and sorting.
 
         Args:
             user_id: Filter by user ID (optional)
             start_time: Filter logs after this time (optional)
             end_time: Filter logs before this time (optional)
-            limit: Maximum number of logs to return. Use -1 to get all
-                  logs without limit
-            offset: Number of logs to skip
+            page: 1-based page number
+            page_size: items per page, -1 for unlimited
+            sort: list of sort fields, '-' prefix means descending.
+                Defaults to ["-login_time"] if not provided.
 
         Returns:
-            Tuple of (success, error, logs)
+            Tuple of (success, error, {"items": list, "total": int})
         """
         try:
             query = select(LoginLog)
@@ -466,20 +468,51 @@ class UserRepository(BaseRepository):
             if end_time:
                 query = query.where(LoginLog.login_time <= end_time)
 
-            # Order by login_time descending (most recent first)
-            query = query.order_by(LoginLog.login_time.desc())
+            # Build count query with same filters
+            count_query = select(func.count(LoginLog.id))
 
-            # Apply pagination
-            query = query.offset(offset)
+            if user_id:
+                # Re-resolve user for count query (already validated above)
+                _, _, user = self.get_by_uuid(User, user_id)
+                if user:
+                    count_query = count_query.where(
+                        LoginLog.user_name == user.user_name
+                    )
+            if start_time:
+                count_query = count_query.where(
+                    LoginLog.login_time >= start_time
+                )
+            if end_time:
+                count_query = count_query.where(
+                    LoginLog.login_time <= end_time
+                )
 
-            # Apply limit only if not -1 (unlimited)
-            if limit != -1:
-                query = query.limit(limit)
+            # Execute count query
+            count_result = self._db_session.execute(count_query)
+            total = count_result.scalar()
+            if total is None:
+                total = 0
+
+            # Apply sort (default: login_time descending)
+            sort_fields = sort if sort else ["-login_time"]
+            order_cols = []
+            for field_spec in sort_fields:
+                descending = field_spec.startswith("-")
+                field_name = field_spec[1:] if descending else field_spec
+                if hasattr(LoginLog, field_name):
+                    col = getattr(LoginLog, field_name)
+                    order_cols.append(desc(col) if descending else asc(col))
+            if order_cols:
+                query = query.order_by(*order_cols)
+
+            # Apply pagination (skip if page_size == -1)
+            if page_size != -1:
+                query = query.offset((page - 1) * page_size).limit(page_size)
 
             result = self._db_session.execute(query)
             logs = result.scalars().all()
 
-            return True, None, logs
+            return True, None, {"items": logs, "total": total}
         except Exception as e:
             logger.error(f"Exception while getting login logs: {e}")
             return False, e, None

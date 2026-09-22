@@ -20,11 +20,15 @@ import logging
 
 from fastapi import Depends, Request
 
-from wy_qcos.api.schemas import project as schemas
+from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import project_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
+from wy_qcos.common.pagination import (
+    paginate_list,
+    parse_query,
+)
 from .dependencies.authentication import auth
 
 
@@ -183,50 +187,72 @@ def get_project(
 def get_projects(
     request: Request,
     body: schemas.GetProjectsRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> dict[str, schemas.GetProjectsResponse]:
-    """Get projects with optional filtering.
+) -> dict[str, schemas.GetProjectsResponse] | schemas.PaginatedResponse:
+    """Get projects with optional filtering, sorting and pagination.
 
     Args:
         request: request object
         body: get projects request with optional filter dict
+        query: dict containing optional filters, pagination, and sort
         auth_data: auth data
 
     Returns:
-        Dictionary of projects keyed by project ID
-
-    Filter example:
-        {"name": "default"} - filter by project name
+        Dictionary of projects keyed by project ID,
+        or PaginatedResponse when pagination is provided
     """
     func_name = "get_projects"
-    logger.info(f"Call {func_name}: {body}")
+    logger.info(f"Call {func_name}: body={body}, query={query}")
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     # Get project manager from request state
     project_manager = get_project_manager(request)
 
-    # Extract filter conditions from request body
-    filter_conditions = None
-    if body:
+    # Use params filters first, fallback to body.filters
+    filter_conditions = filters
+    if not filter_conditions and body:
         filter_conditions = body.filters
 
     # Get projects using ProjectManager with optional filtering
     try:
         projects_dict = project_manager.get_projects(filters=filter_conditions)
         projects = list(projects_dict.values()) if projects_dict else []
-        # Build response
-        response_info = {}
+        # Build response items
+        items = []
         for project in projects:
             project_data = _get_project_response(project)
-            response_info[str(project.id)] = (
+            items.append(
                 schemas.GetProjectsResponse.model_validate(project_data)
             )
+
+        if pagination:
+            return paginate_list(items, pagination.page, pagination.page_size)
+        else:
+            # Backward compatible: return dict keyed by project ID
+            response_info = {}
+            for i, project in enumerate(projects):
+                response_info[str(project.id)] = items[i]
+            return response_info
     except Exception as e:
         # Handle unexpected errors
         logger.error(f"Error getting projects: {str(e)}")
         jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
         )
-    return response_info
+        return (
+            {}
+            if not pagination
+            else schemas.PaginatedResponse(
+                items=[],
+                total=0,
+                page=pagination.page,
+                page_size=pagination.page_size,
+                total_pages=0,
+            )
+        )
 
 
 @project_api_v1.method(

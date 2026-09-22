@@ -22,12 +22,17 @@ from typing import Any, Literal, cast
 
 from fastapi import Depends, Request
 
-from wy_qcos.api.schemas import user as schemas
+from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import user_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
+from wy_qcos.common.pagination import (
+    apply_memory_sort,
+    paginate_list,
+    parse_query,
+)
 from .dependencies.authentication import auth, auth_match_user_id
 
 
@@ -312,45 +317,74 @@ def get_user(
 def get_users(
     request: Request,
     body: schemas.GetUsersRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> dict[str, schemas.GetUserResponse]:
-    """Get users with optional filtering.
+) -> dict[str, schemas.GetUserResponse] | schemas.PaginatedResponse:
+    """Get users with optional filtering, sorting and pagination.
 
     Args:
         request: request object
         body: get users request with optional filter dict
+        query: dict containing optional filters, pagination, and sort
         auth_data: auth data
 
     Returns:
-        Dictionary of users keyed by user_id
-
-    Filter example:
-        {"user_name": "admin"} - filter by user_name
+        Dictionary of users keyed by user_id,
+        or PaginatedResponse when pagination is provided
     """
     func_name = "get_users"
-    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
+    logger.info(
+        f"Call {func_name}: body={_mask_hidden_fields(body)}, query={query}"
+    )
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     # Get user manager from request state
     user_manager = get_user_manager(request)
 
-    # Extract filter conditions from request body
-    filter_conditions = None
-    if body:
+    # Use params filters first, fallback to body.filters
+    filter_conditions = filters
+    if not filter_conditions and body:
         filter_conditions = body.filters
+
+    # Coerce string values for known boolean columns
+    if filter_conditions:
+        _bool_fields = {"is_enabled", "is_locked", "is_super_admin"}
+        coerced = {}
+        for k, v in filter_conditions.items():
+            if k in _bool_fields and isinstance(v, str):
+                if v.lower() in ("true", "1", "yes"):
+                    coerced[k] = True
+                elif v.lower() in ("false", "0", "no"):
+                    coerced[k] = False
+                else:
+                    coerced[k] = v
+            else:
+                coerced[k] = v
+        filter_conditions = coerced
 
     # Get users from UserManager with optional filtering
     users_dict = user_manager.get_users(filters=filter_conditions)
     users = list(users_dict.values()) if users_dict else []
 
-    # Build response
-    response_info = {}
+    # Build response items
+    items = []
     for user in users:
         user_data = get_user_response(user)
-        response_info[str(user.id)] = schemas.GetUserResponse.model_validate(
-            user_data
-        )
+        items.append(schemas.GetUserResponse.model_validate(user_data))
 
-    return response_info
+    if sort:
+        items = apply_memory_sort(items, sort)
+
+    if pagination:
+        return paginate_list(items, pagination.page, pagination.page_size)
+    else:
+        # Backward compatible: return dict keyed by user_id
+        response_info = {}
+        for i, user in enumerate(users):
+            response_info[str(user.id)] = items[i]
+        return response_info
 
 
 @user_api_v1.method(
@@ -620,45 +654,58 @@ def get_role(
 def get_roles(
     request: Request,
     body: schemas.GetRolesRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> dict[str, schemas.GetRoleResponse]:
-    """Get roles with optional filtering.
+) -> dict[str, schemas.GetRoleResponse] | schemas.PaginatedResponse:
+    """Get roles with optional filtering, sorting and pagination.
 
     Args:
         request: request object
         body: get roles request with optional filter dict
+        query: dict containing optional filters, pagination, and sort
         auth_data: auth data
 
     Returns:
-        Dictionary of roles keyed by role ID
-
-    Filter example:
-        {"role_name": "admin"} - filter by role_name
+        Dictionary of roles keyed by role ID,
+        or PaginatedResponse when pagination is provided
     """
     func_name = "get_roles"
-    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
+    logger.info(
+        f"Call {func_name}: body={_mask_hidden_fields(body)}, query={query}"
+    )
+
+    # Extract filters/pagination/sort from query dict
+    filters, pagination, sort = parse_query(query)
 
     # Get user manager from request state
     user_manager = get_user_manager(request)
 
-    # Extract filter conditions from request body
-    filter_conditions = None
-    if body:
+    # Use params filters first, fallback to body.filters
+    filter_conditions = filters
+    if not filter_conditions and body:
         filter_conditions = body.filters
 
     # Get roles from UserManager with optional filtering
     roles_dict = user_manager.get_roles(filters=filter_conditions)
     roles = list(roles_dict.values()) if roles_dict else []
 
-    # Build response
-    response_info = {}
+    # Build response items
+    items = []
     for role in roles:
         role_data = get_role_response(role)
-        response_info[str(role.id)] = schemas.GetRoleResponse.model_validate(
-            role_data
-        )
+        items.append(schemas.GetRoleResponse.model_validate(role_data))
 
-    return response_info
+    if sort:
+        items = apply_memory_sort(items, sort)
+
+    if pagination:
+        return paginate_list(items, pagination.page, pagination.page_size)
+    else:
+        # Backward compatible: return dict keyed by role_id
+        response_info = {}
+        for i, role in enumerate(roles):
+            response_info[str(role.id)] = items[i]
+        return response_info
 
 
 @user_api_v1.method(
@@ -865,34 +912,40 @@ def change_password(
 def get_login_logs(
     request: Request,
     body: schemas.GetLoginLogsRequest | None = None,
+    query: dict | None = None,
     auth_data: dict | None = Depends(auth),
-) -> list[schemas.LoginLogResponse]:
-    """Get login logs by user ID or user_name.
+) -> list[schemas.LoginLogResponse] | schemas.PaginatedResponse:
+    """Get login logs by user ID or user_name with pagination.
 
     Args:
         request: request object
         body: get login logs request (contains user_id, user_name,
-              limit, offset)
+              start_time, end_time)
+        query: dict containing optional pagination and sort
         auth_data: auth data
 
     Returns:
-        List of login logs in descending order by login_time
+        List of login logs in descending order by login_time,
+        or PaginatedResponse when pagination is provided
 
     Note:
-        user_id and user_name are mutually exclusive. Only one can be provided.
-        If both are None, all login logs will be returned.
-        Use limit=-1 to retrieve all logs without any limit restriction.
+        user_id and user_name are mutually exclusive. Only one can
+        be provided. If both are None, all login logs will be returned.
+        Use page_size=-1 to retrieve all logs without any limit.
     """
     func_name = "get_login_logs"
-    logger.info(f"Call {func_name}: {_mask_hidden_fields(body)}")
+    logger.info(
+        f"Call {func_name}: body={_mask_hidden_fields(body)}, query={query}"
+    )
 
-    # Parse parameters
+    # Extract pagination/sort from query dict
+    _filters, pagination, sort = parse_query(query)
+
+    # Parse parameters from body
     user_id = None
     user_name = None
     start_time = None
     end_time = None
-    limit = 100
-    offset = 0
 
     if body:
         if body.user_id:
@@ -903,30 +956,48 @@ def get_login_logs(
             start_time = datetime.fromisoformat(body.start_time)
         if body.end_time:
             end_time = datetime.fromisoformat(body.end_time)
-        if body.limit is not None:
-            limit = body.limit
-        if body.offset is not None:
-            offset = body.offset
+
+    # Use default pagination if not provided
+    page = pagination.page if pagination else 1
+    page_size = pagination.page_size if pagination else 20
 
     # Get user manager from request state
     user_manager = get_user_manager(request)
 
     # Get login logs using UserManager
     try:
-        logs_data = user_manager.get_login_logs(
+        success, error, result = user_manager.get_login_logs(
             user_id=user_id,
             user_name=user_name,
             start_time=start_time,
             end_time=end_time,
-            limit=limit,
-            offset=offset,
+            page=page,
+            page_size=page_size,
+            sort=sort,
         )
-        # Convert to response format
-        response_info = [
-            schemas.LoginLogResponse.model_validate(log_data)
-            for log_data in logs_data
-        ]
-        return response_info
+        if not success or result is None:
+            if pagination:
+                return schemas.PaginatedResponse(
+                    items=[],
+                    total=0,
+                    page=page,
+                    page_size=page_size,
+                    total_pages=0,
+                )
+            return []
+        items = result["items"]
+        total = result["total"]
+        if pagination:
+            ps = page_size
+            total_pages = (total + ps - 1) // ps if ps > 0 else 1
+            return schemas.PaginatedResponse(
+                items=items,
+                total=total,
+                page=page,
+                page_size=ps,
+                total_pages=total_pages,
+            )
+        return items
     except ValueError as e:
         # UserManager validation errors
         error_msg = str(e)
