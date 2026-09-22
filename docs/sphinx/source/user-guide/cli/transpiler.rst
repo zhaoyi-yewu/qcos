@@ -55,3 +55,28 @@
 
    # 查询转译器 cmss 的详情
    qcos-cli get-transpiler cmss
+
+分页、排序与过滤
+~~~~~~~~~~~~~~~~
+
+所有 list 命令均支持以下服务端参数：
+
+.. code-block:: shell
+
+    # 分页查询（第1页，每页20条）
+    qcos-cli list-transpilers --page 1 --page-size 20
+
+    # 获取全部记录（不分页）
+    qcos-cli list-transpilers --page-size -1
+
+    # 按字段排序（'-'前缀表示降序）
+    qcos-cli list-transpilers --sort=-name
+
+    # 多字段排序
+    qcos-cli list-transpilers --sort=-name,version
+
+    # 服务端过滤（key=value，可重复）
+    qcos-cli list-transpilers --filter name=example
+
+    # 多条件过滤
+    qcos-cli list-transpilers --filter name=example --filter enable=true

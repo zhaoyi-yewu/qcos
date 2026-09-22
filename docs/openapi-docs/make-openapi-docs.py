@@ -22,6 +22,8 @@ import json
 import os
 import sys
 
+import fastapi_jsonrpc as jsonrpc
+
 current_dir = os.path.split(os.path.realpath(__file__))[0]
 top_dir = os.path.abspath(f"{current_dir}/../../src")
 sys.path.insert(0, top_dir)
@@ -63,6 +65,20 @@ if __name__ == "__main__":
         openapi_dict = app.openapi()
         openapi_dict["info"]["title"] = f"{Constant.PLATFORM_NAME} API文档"
         openapi_dict["info"]["version"] = f"v{QcosVersion.VERSION}"
+        # Drop JSON-RPC entrypoint dispatcher routes (e.g. POST /v1/auth).
+        # They are just batch dispatchers and only produce noise "POST
+        # Entrypoint" headings in ReDoc; real methods live under sub-paths
+        # such as /v1/auth/login.
+        entrypoint_paths = {
+            route.path
+            for route in app.routes
+            if isinstance(route, jsonrpc.EntrypointRoute)
+        }
+        openapi_dict["paths"] = {
+            path: methods
+            for path, methods in openapi_dict["paths"].items()
+            if path not in entrypoint_paths
+        }
         openapi_str = json.dumps(openapi_dict)
         print(HTML_TEMPLATE % openapi_str, file=fd)
     print(f"Successfully created qcos api docs: {file_path}")

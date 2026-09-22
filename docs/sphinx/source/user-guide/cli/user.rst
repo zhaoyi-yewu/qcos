@@ -313,12 +313,15 @@
 .. code-block:: shell
 
    # 获取登录日志
-   usage: qcos-cli list-login-logs [-h] [--user-id USER_ID] [--user-name USER_NAME]
-                                   [--limit LIMIT] [--offset OFFSET]
-                                   [-f {csv,json,table,value,yaml}] [-c COLUMN]
-                                   [--quote {all,minimal,none,nonnumeric}]
-                                   [--noindent] [--max-width <integer>]
-                                   [--fit-width] [--print-empty]
+   usage: qcos-cli list-login-logs [-h] [--user-id USER_ID]
+                                  [--user-name USER_NAME]
+                                  [--page PAGE] [--page-size PAGE_SIZE]
+                                  [--sort SORT ...]
+                                  [-f {csv,json,table,value,yaml}]
+                                  [-c COLUMN]
+                                  [--quote {all,minimal,none,nonnumeric}]
+                                  [--noindent] [--max-width <integer>]
+                                  [--fit-width] [--print-empty]
 
    Get login logs.
 
@@ -326,10 +329,13 @@
      -h, --help            show this help message and exit
      --user-id USER_ID     User ID (UUID)
      --user-name USER_NAME User name
-     --limit LIMIT         Limit (default: 100)
-     --offset OFFSET       Offset (default: 0)
+     --page PAGE           Server-side pagination: page number
+     --page-size PAGE_SIZE Server-side pagination: items per page
+                           (use -1 for unlimited)
+     --sort SORT ...       Server-side sort fields, prefix '-'
+                           for descending
 
-   注意：--user-id 和 --user-name 不能同时指定，请只选择其中一个
+   注意：--user-id 和 --user-name 不能同时指定
 
 典型场景示例
 ~~~~~~~~~~~~~~~
@@ -342,11 +348,17 @@
     # 获取特定用户的登录日志
     qcos-cli list-login-logs --user-name admin
 
-    # 获取特定用户ID的登录日志，限制50条
-    qcos-cli list-login-logs --user-id 00000000-0000-4000-8000-000000000001 --limit 50
+    # 获取特定用户ID的登录日志
+    qcos-cli list-login-logs --user-id 00000000-0000-4000-8000-000000000001
 
     # 分页查询
-    qcos-cli list-login-logs --limit 20 --offset 40
+    qcos-cli list-login-logs --page 1 --page-size 20
+
+    # 获取全部日志（不分页）
+    qcos-cli list-login-logs --page-size -1
+
+    # 按登录时间降序排序
+    qcos-cli list-login-logs --sort -login_time
 
 登录日志清空
 ***************
@@ -576,3 +588,28 @@
 
    # 使用UUID删除角色
    qcos-cli delete-role 00000000-0000-4000-8000-000000000003
+
+分页、排序与过滤
+~~~~~~~~~~~~~~~~
+
+所有用户列表命令均支持以下服务端参数：
+
+.. code-block:: shell
+
+    # 分页查询
+    qcos-cli list-users --page 1 --page-size 20
+
+    # 获取全部记录（不分页）
+    qcos-cli list-users --page-size -1
+
+    # 按字段排序（'-'前缀表示降序）
+    qcos-cli list-users --sort=-user_name
+
+    # 多字段排序（逗号分隔）
+    qcos-cli list-users --sort=-user_name,roles
+
+    # 服务端过滤（key=value，可重复）
+    qcos-cli list-users --filter user_name=admin
+
+    # 多条件过滤
+    qcos-cli list-users --filter is_enabled=true --filter is_locked=false

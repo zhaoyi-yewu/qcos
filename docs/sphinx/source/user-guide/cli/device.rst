@@ -272,3 +272,28 @@ set-device
 
    # 组合设置
    qcos-cli set-device hanyuan1 --state online --enable true --max-qubits auto
+
+分页、排序与过滤
+~~~~~~~~~~~~~~~~
+
+所有 list 命令均支持以下服务端参数：
+
+.. code-block:: shell
+
+    # 分页查询（第1页，每页20条）
+    qcos-cli list-devices --page 1 --page-size 20
+
+    # 获取全部记录（不分页）
+    qcos-cli list-devices --page-size -1
+
+    # 按字段排序（'-'前缀表示降序）
+    qcos-cli list-devices --sort=-name
+
+    # 多字段排序
+    qcos-cli list-devices --sort=-name,max_qubits
+
+    # 服务端过滤（key=value，可重复）
+    qcos-cli list-devices --filter name=dummy
+
+    # 多条件过滤
+    qcos-cli list-devices --filter name=dummy --filter status=online

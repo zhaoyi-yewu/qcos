@@ -60,7 +60,7 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx.ext.graphviz",
     "sphinx.ext.imgconverter",
-    "sphinxcontrib.rsvgconverter",
+    # "sphinxcontrib.rsvgconverter",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
@@ -91,6 +91,7 @@ autodoc_mock_imports = [
     "fastapi_jsonrpc.api",
     "fastapi_jsonrpc.base",
     "fastapi_jsonrpc.core",
+    "jsonrpcclient",
     "loguru",
     "mqt",
     # "networkx",  # required for docstring-check.sh / sphinx-build -b html
@@ -125,6 +126,7 @@ autodoc_mock_imports = [
     "wy_qcos_client.shell",
     "wy_qcos_client.tests",
     "wy_qcos.driver.casoldatom",
+    "wy_qcos.driver.cascoldatom.driver_hanyuan1",
     "wy_qcos.driver.qboson",
     "wy_qcos.driver.qiskit",
     "wy_qcos.driver.qutip",
@@ -151,6 +153,7 @@ suppress_warnings = [
     "ref.ref",
     "ref.python",
     "myst.xref_missing",
+    "duplicate_object",
 ]
 
 
@@ -167,7 +170,7 @@ def skip_modules(app, what, name, obj, skip, options):
 
 def run_apidoc():
     """Run apidoc."""
-    apidoc.main(["-H", "QCOS API文档", "-f", "-o", sphinx_api_dir, f"{src_dir}"])
+    apidoc.main(["-H", "代码API参考文档", "-f", "-o", sphinx_api_dir, f"{src_dir}"])
 
 
 def _patch_imgconverter():

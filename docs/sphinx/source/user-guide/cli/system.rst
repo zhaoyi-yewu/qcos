@@ -214,3 +214,29 @@ Prefect Worker 管理
    （如 ``device|dummy``）。设备监控 Worker 与设备管理 Worker 分别带有
    ``_monitor`` 与 ``_mgr`` 后缀。重启操作会先终止目标进程再重新拉起，
    期间该 Worker 处理的作业会受影响，请谨慎操作。
+
+分页、排序与过滤
+~~~~~~~~~~~~~~~~
+
+所有 list 命令均支持以下服务端参数：
+
+.. code-block:: shell
+
+    # 分页查询（第1页，每页20条）
+    qcos-cli list-workers --page 1 --page-size 20
+
+    # 获取全部记录（不分页）
+    qcos-cli list-workers --page-size -1
+
+    # 按字段排序（'-'前缀表示降序）
+    qcos-cli list-workers --sort=-device_name
+
+    # 多字段排序
+    qcos-cli list-workers --sort=-device_name,worker_name
+
+    # 服务端过滤（key=value，可重复）
+    qcos-cli list-workers --filter device_name=dummy
+
+    # 多条件过滤
+    qcos-cli list-workers --filter device_name=dummy --filter worker_status=online
+
