@@ -50,6 +50,10 @@ class TestGetDevice:
         self, mock_get_device, mock_check_results, mock_get_table_data
     ):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.device_name = "device"
         mock_client.details = False
         mock_get_device.return_value = iter([None, None, None, None])
@@ -71,6 +75,10 @@ class TestGetDevices:
         self, mock_get_devices, mock_check_results, mock_get_table_list_data
     ):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.details = False
         mock_get_devices.return_value = iter([None, None, None, None])
         mock_get_table_list_data.return_value = None

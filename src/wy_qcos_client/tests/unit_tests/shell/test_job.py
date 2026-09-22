@@ -137,6 +137,10 @@ class TestSubmitJob:
             "platform_version": "1.0.0",
         }
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_name = "test-job"
         mock_client.dry_run = False
         mock_client.code_type = Constant.CODE_TYPE_QASM
@@ -186,6 +190,10 @@ class TestGetJobStatus:
         mock_get_table_data.return_value = None
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         table_values = get_job_status.take_action(mock_client)
         assert table_values is None
@@ -216,6 +224,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         mock_client.output_file = None
         mock_client.assume_override = False
@@ -242,6 +254,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         mock_client.output_file = "result.txt"
         mock_client.assume_override = True
@@ -274,6 +290,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         mock_client.output_file = "result.doc"
         mock_client.assume_override = True
@@ -306,6 +326,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         mock_client.output_file = "./result/result.doc"
         mock_client.assume_override = True
@@ -340,6 +364,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         mock_client.output_file = "result.txt"
         mock_client.assume_override = True
@@ -390,6 +418,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = "last"
         mock_client.output_file = None
         mock_client.assume_override = False
@@ -425,6 +457,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = "LAST"
         mock_client.output_file = None
         mock_client.assume_override = False
@@ -456,6 +492,10 @@ class TestGetJobResults:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = "last"
         mock_client.output_file = None
         mock_client.assume_override = False
@@ -479,6 +519,10 @@ class TestGetJobs:
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.project_id = None
         mock_client.user_id = None
         mock_client.job_ids = None
@@ -510,6 +554,10 @@ class TestCancelJobs:
         mock_cancel_jobs.return_value = (None, None, None, None)
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_ids = "ALL"
         mock_client.assume_yes = "DMA"
         cancel_jobs.take_action(mock_client)
@@ -540,6 +588,10 @@ class TestDeleteJobs:
         mock_delete_jobs.return_value = (None, None, None, None)
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_ids = "all"
         mock_client.assume_yes = "DMA"
         mock_client.force = False
@@ -569,6 +621,10 @@ class TestSetJobResults:
         mock_handle_invalid_arguments.return_value = None
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         mock_client.results = [
             '{"options": "options"}',
@@ -594,6 +650,10 @@ class TestUpdateJob:
         mock_check_results.return_value = response["result"]
         mock_update_job.return_value = iter([None, None, None, None])
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.job_id = job_id
         mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
         mock_client.job_name = None
@@ -611,6 +671,10 @@ class TestCalibrateDevice:
     @patch.object(Client, "calibrate_device")
     def test_take_action(self, mock_calibrate_device, mock_check_results):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.device_name = "device"
         mock_client.options = '{"options": "value"}'
         mock_calibrate_device.return_value = iter([None, None, None, None])
@@ -628,6 +692,10 @@ class TestGetCalibrateResults:
     @patch.object(Client, "get_calibrate_results")
     def test_take_action(self, mock_get_calibrate_results, mock_check_results):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.device_name = "device"
         mock_get_calibrate_results.return_value = iter([
             None,
@@ -649,6 +717,10 @@ class TestSetDeviceOptions:
     @patch.object(Client, "set_device_options")
     def test_take_action(self, mock_set_device_options, mock_check_results):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.device_name = "device"
         mock_client.options = '{"options": "value"}'
         mock_set_device_options.return_value = iter([None, None, None, None])
@@ -666,6 +738,10 @@ class TestGetDeviceOptions:
     @patch.object(Client, "get_device_options")
     def test_take_action(self, mock_get_device_options, mock_check_results):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.device_name = "device"
         mock_get_device_options.return_value = iter([None, None, None, None])
         mock_check_results.return_value = None

@@ -949,7 +949,9 @@ class TestGetLoginLogs:
                 failure_reason="Invalid password",
             ),
         ]
-        mock.get_login_logs = Mock(return_value=logs)
+        mock.get_login_logs = Mock(
+            return_value=(True, None, {"items": logs, "total": len(logs)})
+        )
         user_obj = user_schemas.User(
             user_name="testuser",
             hashed_password=_s("hashed"),
@@ -988,7 +990,9 @@ class TestGetLoginLogs:
             "login_status": False,
             "failure_reason": "Invalid password",
         }
-        mock_user_manager.get_login_logs = Mock(return_value=[log1, log2])
+        mock_user_manager.get_login_logs = Mock(
+            return_value=(True, None, {"items": [log1, log2], "total": 2})
+        )
 
         mock_request = Mock()
         mock_request.app = Mock()
@@ -997,7 +1001,8 @@ class TestGetLoginLogs:
 
         body = user_schemas.GetLoginLogsRequest()
 
-        result = get_login_logs(mock_request, body, None)
+        auth_data = {"is_super_admin": True}
+        result = get_login_logs(mock_request, body, None, auth_data=auth_data)
 
         assert isinstance(result, list)
         assert len(result) == 2
@@ -1015,16 +1020,19 @@ class TestGetLoginLogs:
             "login_status": True,
             "failure_reason": None,
         }
-        mock_user_manager.get_login_logs = Mock(return_value=[log])
+        mock_user_manager.get_login_logs = Mock(
+            return_value=(True, None, {"items": [log], "total": 1})
+        )
 
         mock_request = Mock()
         mock_request.app = Mock()
         mock_request.app.state = Mock()
         mock_request.app.state._user_manager = mock_user_manager
 
-        body = user_schemas.GetLoginLogsRequest(limit=1, offset=0)
+        body = user_schemas.GetLoginLogsRequest()
 
-        result = get_login_logs(mock_request, body, None)
+        auth_data = {"is_super_admin": True}
+        result = get_login_logs(mock_request, body, None, auth_data=auth_data)
 
         assert isinstance(result, list)
         assert len(result) == 1
@@ -1052,7 +1060,9 @@ class TestGetLoginLogs:
             "login_status": False,
             "failure_reason": "Invalid password",
         }
-        mock_user_manager.get_login_logs = Mock(return_value=[log1, log2])
+        mock_user_manager.get_login_logs = Mock(
+            return_value=(True, None, {"items": [log1, log2], "total": 2})
+        )
 
         mock_request = Mock()
         mock_request.app = Mock()
@@ -1061,11 +1071,12 @@ class TestGetLoginLogs:
 
         body = user_schemas.GetLoginLogsRequest()
 
-        result = get_login_logs(mock_request, body, None)
+        auth_data = {"is_super_admin": True}
+        result = get_login_logs(mock_request, body, None, auth_data=auth_data)
 
         assert len(result) == 2
         # login_time now is ISO string after conversion
-        assert result[0].login_time >= result[1].login_time
+        assert result[0]["login_time"] >= result[1]["login_time"]
 
 
 class TestClearLoginLogs:

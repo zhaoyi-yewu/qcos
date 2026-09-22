@@ -61,7 +61,13 @@ class TestClientDeviceGroup:
             device_names=["dev1", "dev2"],
             is_public=False,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["name"] == "full-group"
         assert data["project_id"] == PROJECT_ID
         assert data["description"] == "desc"
@@ -78,7 +84,13 @@ class TestClientDeviceGroup:
             device_names=None,
             is_public=True,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert "project_id" not in data
         assert "description" not in data
         assert "device_names" not in data
@@ -87,7 +99,13 @@ class TestClientDeviceGroup:
     def test_create_device_group_empty_description(self, mock_call):
         mock_call.return_value = self.return_values
         client.create_device_group(name="x", description="", device_names=[])
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert "description" not in data
 
     # --------------------------------------------------------------- #
@@ -113,7 +131,13 @@ class TestClientDeviceGroup:
             is_public=False,
             project_id=PROJECT_ID,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["name"] == "updated"
         assert data["description"] == "new"
         assert data["device_names"] == ["dev1"]
@@ -131,7 +155,13 @@ class TestClientDeviceGroup:
             is_public=None,
             project_id=None,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # explicit None clears nullable fields
         assert data["name"] is None
         assert data["description"] is None
@@ -141,7 +171,13 @@ class TestClientDeviceGroup:
     def test_update_device_group_omit_skips(self, mock_call):
         mock_call.return_value = self.return_values
         client.update_device_group(group_id=GROUP_ID, name="new")
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # omitted fields are not sent
         assert data == {"group_id": GROUP_ID, "name": "new"}
 
@@ -170,7 +206,13 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         uid = uuid.UUID(GROUP_ID)
         client.get_device_group(uid)
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["group_id"] == GROUP_ID
 
     # --------------------------------------------------------------- #
@@ -181,21 +223,40 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         client.get_device_groups()
         mock_call.assert_called_once_with(
-            client.device_group_url, "get_device_groups", {}
+            client.device_group_url,
+            "get_device_groups",
+            body_data=None,
+            filters=None,
+            pagination=None,
+            sort=None,
         )
 
     @patch.object(Client, "call_json_rpc")
     def test_get_device_groups_with_filter(self, mock_call):
         mock_call.return_value = self.return_values
         client.get_device_groups(filters={"group_name": "my-group"})
-        data = mock_call.call_args[0][2]
-        assert data["filters"] == {"group_name": "my-group"}
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
+        assert mock_call.call_args.kwargs["filters"] == {
+            "group_name": "my-group"
+        }
 
     @patch.object(Client, "call_json_rpc")
     def test_get_device_groups_none_filter(self, mock_call):
         mock_call.return_value = self.return_values
         client.get_device_groups(filters=None)
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert "filters" not in data
 
     # --------------------------------------------------------------- #
@@ -216,7 +277,13 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         second_id = "00000000-0000-4000-8000-000000000003"
         client.delete_device_groups([GROUP_ID, second_id])
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["group_ids"] == [GROUP_ID, second_id]
 
     @patch.object(Client, "call_json_rpc")
@@ -224,12 +291,24 @@ class TestClientDeviceGroup:
         mock_call.return_value = self.return_values
         uid = uuid.UUID(GROUP_ID)
         client.delete_device_groups([uid])
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["group_ids"] == [GROUP_ID]
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_device_groups_empty_list(self, mock_call):
         mock_call.return_value = self.return_values
         client.delete_device_groups([])
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["group_ids"] == []

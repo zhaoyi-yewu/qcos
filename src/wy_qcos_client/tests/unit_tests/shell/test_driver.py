@@ -51,6 +51,10 @@ class TestGetDriver:
         self, mock_get_driver, mock_check_results, mock_get_table_data
     ):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.driver_name = "driver"
         mock_get_driver.return_value = iter([None, None, None, None])
         mock_get_table_data.return_value = None
@@ -72,6 +76,10 @@ class TestGetDrivers:
     ):
         mock_get_drivers.return_value = -1, None, None, None
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_get_table_list_data.return_value = None
         mock_check_results.return_value = None
         table_values = get_drivers.take_action(mock_client)

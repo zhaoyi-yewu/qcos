@@ -82,6 +82,10 @@ class TestCreateProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_name = "new_project"
             parsed_args.description = None
 
@@ -116,6 +120,10 @@ class TestCreateProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_name = "new_project"
             parsed_args.description = "Project description"
 
@@ -169,6 +177,10 @@ class TestGetProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_id = project_id
 
             result = cmd.take_action(parsed_args)
@@ -229,6 +241,10 @@ class TestGetProjects:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
 
             result = cmd.take_action(parsed_args)
             assert result is not None
@@ -258,6 +274,10 @@ class TestGetProjects:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
 
             result = cmd.take_action(parsed_args)
             assert result is not None
@@ -305,6 +325,10 @@ class TestUpdateProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_id = project_id
             parsed_args.project_name = "updated_project"
             parsed_args.description = None
@@ -340,6 +364,10 @@ class TestUpdateProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_id = project_id
             parsed_args.project_name = None
             parsed_args.description = "Updated description"
@@ -375,6 +403,10 @@ class TestUpdateProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_id = project_id
             parsed_args.project_name = "new_name"
             parsed_args.description = "New description"
@@ -416,6 +448,10 @@ class TestDeleteProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_id = project_id
             parsed_args.force = False
 
@@ -441,6 +477,10 @@ class TestDeleteProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_id = project_id
             parsed_args.force = True
 
@@ -469,6 +509,10 @@ class TestDeleteProject:
             cmd.app = shell
             cmd.app.stdout = Mock()
             parsed_args = Mock()
+            parsed_args.filters = None
+            parsed_args.page = None
+            parsed_args.page_size = None
+            parsed_args.sort = None
             parsed_args.project_id = project_id
             parsed_args.force = False
 

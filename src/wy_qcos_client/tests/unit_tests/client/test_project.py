@@ -43,7 +43,13 @@ class TestClientProject:
         call_args = mock_call_json_rpc.call_args[0]
         assert call_args[0] == client.project_url
         assert call_args[1] == "create_project"
-        data = call_args[2]
+        call_args = mock_call_json_rpc.call_args[0]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["project_name"] == "new_project"
         assert "description" not in data
 
@@ -56,8 +62,14 @@ class TestClientProject:
             description="Project description",
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["project_name"] == "new_project"
         assert data["description"] == "Project description"
 
@@ -70,8 +82,14 @@ class TestClientProject:
             description="",
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # Empty string should still be included
         assert data["description"] == ""
 
@@ -84,8 +102,14 @@ class TestClientProject:
             description=None,
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # None should not be included in data
         assert "description" not in data
 
@@ -106,7 +130,12 @@ class TestClientProject:
         status_code, reason, text, result = client.get_projects()
         assert status_code == 200
         mock_call_json_rpc.assert_called_once_with(
-            client.project_url, "get_projects", {}
+            client.project_url,
+            "get_projects",
+            body_data=None,
+            filters=None,
+            pagination=None,
+            sort=None,
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -120,9 +149,18 @@ class TestClientProject:
         assert status_code == 200
         call_args = mock_call_json_rpc.call_args[0]
         assert call_args[1] == "get_projects"
-        data = call_args[2]
-        assert data["filters"] == filters
-        assert data["filters"]["name"] == "test_project"
+        call_args = mock_call_json_rpc.call_args[0]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
+        assert mock_call_json_rpc.call_args.kwargs["filters"] == filters
+        assert (
+            mock_call_json_rpc.call_args.kwargs["filters"]["name"]
+            == "test_project"
+        )
 
     @patch.object(Client, "call_json_rpc")
     def test_get_projects_with_multiple_filters(self, mock_call_json_rpc):
@@ -133,9 +171,15 @@ class TestClientProject:
             filters=filters
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
-        assert data["filters"] == filters
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
+        assert mock_call_json_rpc.call_args.kwargs["filters"] == filters
 
     @patch.object(Client, "call_json_rpc")
     def test_get_projects_with_empty_filter(self, mock_call_json_rpc):
@@ -143,8 +187,14 @@ class TestClientProject:
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_projects(filters={})
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # Empty filter should not be included
         assert "filters" not in data
 
@@ -159,7 +209,13 @@ class TestClientProject:
         assert status_code == 200
         call_args = mock_call_json_rpc.call_args[0]
         assert call_args[1] == "update_project"
-        data = call_args[2]
+        call_args = mock_call_json_rpc.call_args[0]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["project_id"] == self.project_id
         assert data["project_name"] == "updated_project"
         assert "description" not in data
@@ -173,8 +229,14 @@ class TestClientProject:
             description="Updated description",
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["project_id"] == self.project_id
         assert data["description"] == "Updated description"
         assert "project_name" not in data
@@ -189,8 +251,14 @@ class TestClientProject:
             description="Updated description",
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["project_id"] == self.project_id
         assert data["project_name"] == "updated_project"
         assert data["description"] == "Updated description"
@@ -203,8 +271,14 @@ class TestClientProject:
             project_id=self.project_id
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["project_id"] == self.project_id
         assert "project_name" not in data
         assert "description" not in data
@@ -218,8 +292,14 @@ class TestClientProject:
             description="",
         )
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # Empty string should be included
         assert data["description"] == ""
 
@@ -244,6 +324,12 @@ class TestClientProject:
         different_id = "00000000-0000-4000-8000-000000000999"
         status_code, reason, text, result = client.delete_project(different_id)
         assert status_code == 200
+        mock_call_json_rpc.call_args[0]
         call_args = mock_call_json_rpc.call_args[0]
-        data = call_args[2]
+        call_kwargs = mock_call_json_rpc.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["project_id"] == different_id
