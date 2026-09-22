@@ -28,6 +28,12 @@ WUYUEQbit量子计算操作系统(QCOS)文档
    other-docs/index
 
 
+.. toctree::
+   :maxdepth: 2
+
+   openapi
+
+
 .. only:: html
 
    .. toctree::

@@ -547,3 +547,28 @@ Qiskit Aer 独立环境进行理想态矢模拟，直接从 OpenQASM 2.0 源码�
 
    # 设置多作业结果（针对多源代码作业, 第2个结果带错误）
    qcos-cli set-job-results 00000000-0000-4000-8000-000000000001 --results '{"results": {"01":100}, "num_qubits": 2}' '{"code": -104, "message": "error test"}'
+
+分页、排序与过滤
+~~~~~~~~~~~~~~~~
+
+所有 list 命令均支持以下服务端参数：
+
+.. code-block:: shell
+
+    # 分页查询（第1页，每页20条）
+    qcos-cli list-jobs --page 1 --page-size 20
+
+    # 获取全部记录（不分页）
+    qcos-cli list-jobs --page-size -1
+
+    # 按字段排序（'-'前缀表示降序）
+    qcos-cli list-jobs --sort=-name
+
+    # 多字段排序
+    qcos-cli list-jobs --sort=-name,created_at
+
+    # 服务端过滤（key=value，可重复）
+    qcos-cli list-jobs --filter job_name=example
+
+    # 多条件过滤
+    qcos-cli list-jobs --filter job_name=example --filter backend=qutip_sim
