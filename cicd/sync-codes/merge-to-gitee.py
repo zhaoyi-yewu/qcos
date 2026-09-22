@@ -271,7 +271,26 @@ def get_unsynced_commits(start_since=None, skip_commits=None):
 
     cmss_keys = set(cmss_commits_dict.keys())
     gitee_keys = set(gitee_commits_dict.keys())
-    only_in_cmss = [k for k in cmss_keys if k not in gitee_keys]
+
+    # Build a set of tree_hash values from gitee commits for
+    # tree_hash-based matching: if a cmss commit's tree_hash matches
+    # any gitee commit's tree_hash, the content is considered synced
+    # even if the content_hash (dict key) differs.
+    gitee_tree_hashes = set()
+    for commit_info in gitee_commits_dict.values():
+        tree_hash = commit_info.get("tree_hash")
+        if tree_hash:
+            gitee_tree_hashes.add(tree_hash)
+
+    only_in_cmss = []
+    for k in cmss_keys:
+        if k in gitee_keys:
+            continue
+        # Check if tree_hash matches any gitee commit
+        cmss_tree_hash = cmss_commits_dict[k].get("tree_hash")
+        if cmss_tree_hash and cmss_tree_hash in gitee_tree_hashes:
+            continue
+        only_in_cmss.append(k)
 
     unsynced_commits = []
     if only_in_cmss:
@@ -310,7 +329,21 @@ def diff_branches(start_since):
     cmss_keys = set(cmss_commits_dict.keys())
     gitee_keys = set(gitee_commits_dict.keys())
 
-    only_in_cmss = [k for k in cmss_keys if k not in gitee_keys]
+    # Build gitee tree_hash set for tree_hash-based matching
+    gitee_tree_hashes = set()
+    for commit_info in gitee_commits_dict.values():
+        tree_hash = commit_info.get("tree_hash")
+        if tree_hash:
+            gitee_tree_hashes.add(tree_hash)
+
+    only_in_cmss = []
+    for k in cmss_keys:
+        if k in gitee_keys:
+            continue
+        cmss_tree_hash = cmss_commits_dict[k].get("tree_hash")
+        if cmss_tree_hash and cmss_tree_hash in gitee_tree_hashes:
+            continue
+        only_in_cmss.append(k)
     print(only_in_cmss)
     only_in_gitee = [k for k in gitee_keys if k not in cmss_keys]
 

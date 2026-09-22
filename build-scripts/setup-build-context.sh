@@ -61,13 +61,6 @@ enabled=1
 gpgcheck=1
 gpgkey=${YUM_MIRROR}/OS/\$basearch/RPM-GPG-KEY-openEuler
 
-[debuginfo]
-name=debuginfo
-baseurl=${YUM_MIRROR}/debuginfo/\$basearch/
-enabled=1
-gpgcheck=1
-gpgkey=${YUM_MIRROR}/debuginfo/\$basearch/RPM-GPG-KEY-openEuler
-
 [update]
 name=update
 baseurl=${YUM_MIRROR}/update/\$basearch/
@@ -100,6 +93,7 @@ files=(
     "pyproject.toml|"
     "requirements/|"
     "build-scripts/qcos/entrypoint.sh|"
+    "build-scripts/sandbox/entrypoint.sh|"
     "build-scripts/cli/|"
     "bin/qcos-api.py|"
     "bin/qcos-cli.py|"

@@ -35,6 +35,7 @@ fi
 # clean env
 rm -rf ${TOP_DIR}/build
 rm -rf ${TOP_DIR}/src/wy_qcos.egg-info
+rm -rf ${OUTPUT_DIR}/*-linux_x86_64.whl
 
 # build
 poetry build -C ${TOP_DIR} -o ${OUTPUT_DIR}

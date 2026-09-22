@@ -33,6 +33,22 @@ rm -rf ./dist
 rm -rf ./source/api
 mkdir -p ./dist
 mkdir -p ./source/api
+mkdir -p ./source/_static
+
+# generate openapi html and copy to sphinx _static
+OPENAPI_DOCS_DIR=${DOCS_DIR}/openapi-docs
+cd ${OPENAPI_DOCS_DIR}
+rm -rf ./dist
+mkdir -p ./dist
+# unpack js
+tar xzvf ${OPENAPI_DOCS_DIR}/js.tar.gz -C ${OPENAPI_DOCS_DIR}/dist
+# make openapi docs
+./make-openapi-docs.py
+# copy openapi html and js to sphinx _static
+cp -rf ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html ${SPHINX_DOCS_DIR}/source/_static/
+cp -rf ${OPENAPI_DOCS_DIR}/dist/js ${SPHINX_DOCS_DIR}/source/_static/
+
+cd ${SPHINX_DOCS_DIR}
 
 # create sphinx docs
 # make singlehtml
@@ -51,17 +67,6 @@ cp -rf ./dist/latex/qcos-chapter4-other-docs.pdf ./dist/pdf/qcos-chapter4-other-
 
 # make docx (not working yet)
 # make docx
-
-# 2. create openapi docs
-# create openapi dist dir
-OPENAPI_DOCS_DIR=${DOCS_DIR}/openapi-docs
-cd ${OPENAPI_DOCS_DIR}
-rm -rf ./dist
-mkdir -p ./dist
-# unpack js
-tar xzvf ${OPENAPI_DOCS_DIR}/js.tar.gz -C ${OPENAPI_DOCS_DIR}/dist
-# make openapi docs
-./make-openapi-docs.py
 
 # print results
 echo -e "\n======DOCS OUTPUT======"
