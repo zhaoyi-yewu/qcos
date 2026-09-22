@@ -319,14 +319,24 @@
                "id": 1,
                "method": "get_jobs",
                "params": {
-                 // 可选过滤参数
-                 "filters": {
-                   "all_projects": true,             // [可选] 选择所有项目, 只有管理员可用
-                   "all_users": true,                // [可选] 选择项目下所有用户, 只有管理员可用
-                   "project_id": "project-uuid",     // [可选] 按项目ID过滤
-                   "user_id": "user-uuid",           // [可选] 按用户ID过滤
-                   "job_ids": ["id1", "id2"],        // [可选] 按任务ID列表过滤
-                 }
+                 // [可选] 过滤、分页、排序参数，与 body 并列在 params 顶层
+                 "query": {
+                   // [可选] 过滤条件
+                   "filters": {
+                     "all_projects": true,             // [可选] 选择所有项目, 只有管理员可用
+                     "all_users": true,                // [可选] 选择项目下所有用户, 只有管理员可用
+                     "project_id": "project-uuid",     // [可选] 按项目ID过滤
+                     "user_id": "user-uuid",           // [可选] 按用户ID过滤
+                     "job_ids": ["id1", "id2"],        // [可选] 按任务ID列表过滤
+                   },
+                   // [可选] 分页参数，不传时返回全部记录
+                   "pagination": {
+                     "page": 1,                         // 页码，从1开始
+                     "page_size": 20                    // 每页条数，-1表示不分页
+                   },
+                   // [可选] 排序参数，'-'前缀表示降序
+                   "sort": ["-created_at", "job_name"]
+                 },
                }
              }
 

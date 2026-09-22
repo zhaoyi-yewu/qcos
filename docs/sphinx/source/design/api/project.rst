@@ -98,9 +98,14 @@
                "id": 1,
                "method": "get_projects",
                "params": {
-                 "body": {
-                   "filters": {}
-                 }
+                 // [可选] 过滤条件，与 body 并列在 params 顶层
+                 "query": {
+                   "filters": {},
+                   // [可选] 分页，不传返回全部
+                   "pagination": {"page": 1, "page_size": 20},
+                   // [可选] 排序，'-'前缀降序
+                   "sort": ["-created_at"]
+                 },
                }
              }
      - .. container:: table-code-small-font

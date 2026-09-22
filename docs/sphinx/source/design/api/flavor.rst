@@ -166,14 +166,20 @@ Flavor可以定义量子比特数范围、技术类型、门保真度等调度�
                "id": 1,
                "method": "get_flavors",
                "params": {
-                 "body": {
+                 // [可选] 过滤、分页、排序参数，与 body 并列在 params 顶层
+                 "query": {
+                   // [可选] 过滤条件
                    "filters": {
                      "flavor_name": "g1.all",
                      "flavor_ids": [
                        "4d12c756-7e2d-468e-b689-178fc660bd7b"
                      ]
-                   }
-                 }
+                   },
+                   // [可选] 分页，不传返回全部
+                   "pagination": {"page": 1, "page_size": 20},
+                   // [可选] 排序，'-'前缀降序
+                   "sort": ["-created_at"]
+                 },
                }
              }
      - .. container:: table-code-small-font
