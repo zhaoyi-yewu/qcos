@@ -46,7 +46,8 @@
 | 逻辑比特 QZ01-surface_code 超导驱动 | 逻辑比特 | DriverQZ01SurfaceCode | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01-surface_code 超导驱动 |
 | 逻辑比特 QZ01-repetition_code 超导驱动 | 逻辑比特 | DriverLqQZ01RepetitionCode | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01-repetition_code 超导驱动 |
 | 逻辑比特 QZ02 超导驱动 | 逻辑比特 | DriverLqQZ02 | 0.0.1 | 超导 | 20 | cmss | 逻辑比特 QZ02 超导驱动 |
-| 逻辑比特 MQ02 超导驱动 | 逻辑比特 | DriverMQ02 | 0.0.1 | 超导 | 24 | cmss | 逻辑比特 MQ02 超导驱动 |
+| 逻辑比特 MQ02 超导驱动 | 逻辑比特 | DriverLqMQ02 | 0.0.1 | 超导 | 24 | cmss | 逻辑比特 MQ02 超导驱动 |
+| 逻辑比特 MQ02 超导脉冲驱动 | 逻辑比特 | DriverLqMQ02Pulse | 0.0.1 | 超导 | 24 | cmss | 逻辑比特 MQ02 超导脉冲驱动 |
 | 逻辑比特 AGate-100 超导驱动 | 逻辑比特 | DriverLqAGate100 | 0.0.1 | 超导 | 101 | cmss | 逻辑比特 AGate-100 超导驱动 |
 | 国基量子 百花 超导驱动 | 国基量子 | DriverCetcBaihua | 0.0.1 | 超导 | 156 | cmss | 国基量子 百花 超导驱动 |
 | Qiskit Aer 模拟器驱动 | IBM Qiskit | DriverQiskitAerSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Aer 模拟器驱动 |

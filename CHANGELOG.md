@@ -8,7 +8,8 @@
 
 - 新增北京量子院夸父驱动: DriverQuafuDongling, DriverQuafuShenglian, DriverQuafuBaihua,
   DriverQuafuHongluo, DriverQuafuLing, 国基量子超导驱动: DriverCetcBaihua，
-  量旋科技超导驱动: DriverSpinqSqc25, 启科量子离子阱驱动: DriverQudoorAbaQu100
+  量旋科技超导驱动: DriverSpinqSqc25, 启科量子离子阱驱动: DriverQudoorAbaQu100,
+  逻辑比特超导脉冲驱动: DriverLqMQ02Pulse
 - 新增列表API统一分页、排序和过滤功能
 
 ### 变更功能
