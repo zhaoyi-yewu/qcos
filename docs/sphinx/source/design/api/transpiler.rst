@@ -65,7 +65,13 @@
                "id": 1,
                "method": "get_transpilers",
                "params": {
-                 "filters": {}  // 过滤
+                 "query": {
+                   "filters": {},  // [可选] 过滤条件
+                   // [可选] 分页，不传返回全部
+                   "pagination": {"page": 1, "page_size": 20},
+                   // [可选] 排序，'-'前缀降序
+                   "sort": ["-name"]
+                 },
                }
              }
      - .. container:: table-code-small-font

@@ -349,6 +349,59 @@ class CommandHelper:
             raise errors.InvalidArguments("\n".join(err_msg))
 
     @staticmethod
+    def parse_filters(filter_list):
+        """Parse --filter key=value pairs into a filters dict.
+
+        Each item in filter_list should be "key=value" format.
+        If a key appears multiple times, values are collected
+        into a list (IN semantics).
+
+        Args:
+            filter_list: list of "key=value" strings, or None
+
+        Returns:
+            dict of filter conditions, or None if empty
+        """
+        if not filter_list:
+            return None
+        filters = {}
+        for item in filter_list:
+            if "=" not in item:
+                raise errors.InvalidArguments(
+                    f"Invalid filter '{item}', expected format key=value"
+                )
+            key, value = item.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if not key:
+                raise errors.InvalidArguments(
+                    f"Invalid filter '{item}', empty key"
+                )
+            if key in filters:
+                if isinstance(filters[key], list):
+                    filters[key].append(value)
+                else:
+                    filters[key] = [filters[key], value]
+            else:
+                filters[key] = value
+        return filters if filters else None
+
+    @staticmethod
+    def disable_cliff_sort(parsed_args):
+        """Disable cliff's built-in sort when server-side --sort is used.
+
+        When the user passes ``--sort``, cliff's ``--sort-column``,
+        ``--sort-ascending`` and ``--sort-descending`` should have no
+        effect because the server already sorted the data.
+
+        Args:
+            parsed_args: parsed command line arguments
+        """
+        if getattr(parsed_args, "sort", None):
+            parsed_args.sort_columns = []
+            parsed_args.sort_direction = None
+
+    @staticmethod
     def check_results(resource, name, status_code, reason, jsonrpc_response):
         """Check results.
 
@@ -658,6 +711,40 @@ class GetDrivers(Lister):
             parser
         """
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter name=hanyuan1 --filter tech_type=sim",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -677,15 +764,49 @@ class GetDrivers(Lister):
             "description",
         ]
 
-        status_code, reason, text, result = self.app.client.get_drivers()
+        # Build filters from --filter key=value pairs
+        filters = CommandHelper.parse_filters(parsed_args.filters)
+
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
+        status_code, reason, text, result = self.app.client.get_drivers(
+            filters=filters, pagination=pagination, sort=sort
+        )
         json_results = CommandHelper.check_results(
             resource, "get_drivers", status_code, reason, text
         )
+
+        # Handle paginated response
+        is_paginated = False
+        page_info = {}
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            items = json_results.get("items", [])
+            json_results = {item.get("name", ""): item for item in items}
+
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
         if not json_results:
             print("No drivers found")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total drivers: {len(json_results)}\n"
         return table_values
@@ -751,6 +872,40 @@ class GetDevices(Lister):
             default=False,
             help="Show detailed device information",
         )
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter name=hanyuan1 --filter tech_type=sim",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -773,29 +928,73 @@ class GetDevices(Lister):
         ]
         details = parsed_args.details
 
+        # Build filters from --filter key=value pairs
+        filters = CommandHelper.parse_filters(parsed_args.filters)
+
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
         status_code, reason, text, result = self.app.client.get_devices(
-            details=details
+            details=details,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
         )
         json_results = CommandHelper.check_results(
             resource, "get_devices", status_code, reason, text
         )
-        # flatten metrics.availability_total to top-level so the
-        # table helper can pick it up as a regular column
-        if json_results:
-            for dev_info in json_results.values():
+
+        # Handle paginated response
+        is_paginated = False
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            items = json_results.get("items", [])
+            json_results = {}
+            for item in items:
+                dev_info = item
                 metrics = dev_info.get("metrics") or {}
                 dev_info["availability_total"] = metrics.get(
                     "availability_total"
                 )
-                # add [auto]/[manual] suffix to status
                 is_manual = dev_info.get("is_manual", False)
                 suffix = "[manual]" if is_manual else "[auto]"
                 dev_info["status"] = f"{dev_info['status']} {suffix}"
+                json_results[dev_info.get("name", "")] = dev_info
+        else:
+            # flatten metrics.availability_total to top-level so the
+            # table helper can pick it up as a regular column
+            if json_results:
+                for dev_info in json_results.values():
+                    metrics = dev_info.get("metrics") or {}
+                    dev_info["availability_total"] = metrics.get(
+                        "availability_total"
+                    )
+                    # add [auto]/[manual] suffix to status
+                    is_manual = dev_info.get("is_manual", False)
+                    suffix = "[manual]" if is_manual else "[auto]"
+                    dev_info["status"] = f"{dev_info['status']} {suffix}"
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
         if not json_results:
             print("No devices found")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total devices: {len(json_results)}\n"
         return table_values
@@ -1188,6 +1387,40 @@ class GetTranspilers(Lister):
             parser
         """
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter name=qiskit --filter enable=true",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1205,15 +1438,48 @@ class GetTranspilers(Lister):
             "supported_code_types",
         ]
 
-        status_code, reason, text, result = self.app.client.get_transpilers()
+        # Build filters from --filter key=value pairs
+        filters = CommandHelper.parse_filters(parsed_args.filters)
+
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
+        status_code, reason, text, result = self.app.client.get_transpilers(
+            filters=filters, pagination=pagination, sort=sort
+        )
         json_results = CommandHelper.check_results(
             resource, "get_transpilers", status_code, reason, text
         )
+
+        # Handle paginated response
+        is_paginated = False
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            items = json_results.get("items", [])
+            json_results = {item.get("name", ""): item for item in items}
+
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
         if not json_results:
             print("No transpilers found")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total transpilers: {len(json_results)}\n"
         return table_values
@@ -1522,6 +1788,40 @@ class ListWorkers(Lister):
             parser
         """
         parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter worker_name=myworker",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1532,12 +1832,38 @@ class ListWorkers(Lister):
         """
         resource = self.group
 
-        status_code, reason, text, result = self.app.client.list_workers()
+        # Build filters from --filter key=value pairs
+        filters = CommandHelper.parse_filters(parsed_args.filters)
+
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
+        status_code, reason, text, result = self.app.client.list_workers(
+            filters=filters, pagination=pagination, sort=sort
+        )
         json_results = CommandHelper.check_results(
             resource, "list_workers", status_code, reason, text
         )
 
-        workers = json_results.get("workers", [])
+        # Handle paginated response
+        is_paginated = False
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            workers = json_results.get("items", [])
+        else:
+            workers = json_results.get("workers", [])
+
         header_list = [
             "worker_name",
             "work_pool",
@@ -1548,6 +1874,12 @@ class ListWorkers(Lister):
         table_values = CommandHelper.get_table_list_data(workers, header_list)
         if not workers:
             print("No workers found")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total workers: {len(workers)}\n"
         return table_values
@@ -2306,6 +2638,40 @@ class GetJobs(Lister):
             default=[],
             help="Filter by job IDs (space-separated)",
         )
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter job_name=myjob --filter job_status=COMPLETED",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -2366,20 +2732,50 @@ class GetJobs(Lister):
             filters["user_id"] = parsed_args.user_id
         if parsed_args.job_ids:
             filters["job_ids"] = parsed_args.job_ids
+        # Merge generic --filter key=value pairs
+        extra_filters = CommandHelper.parse_filters(parsed_args.filters)
+        if extra_filters:
+            filters.update(extra_filters)
+        filters = filters if filters else None
+
+        # Build pagination and sort params
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
         status_code, reason, text, result = self.app.client.get_jobs(
-            filters=filters
+            filters=filters, pagination=pagination, sort=sort
         )
         json_results = CommandHelper.check_results(
             resource, "get_jobs", status_code, reason, text
         )
-        table_values = CommandHelper.get_table_list_data(
-            json_results, header_list, is_dict=False
-        )
 
-        if json_results:
+        # Handle paginated response
+        if isinstance(json_results, dict) and "items" in json_results:
+            page_info = json_results
+            json_results = json_results["items"]
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
+        elif json_results:
             self.extra_messages = f"Total jobs: {len(json_results)}\n"
         else:
             print("No jobs found")
+
+        table_values = CommandHelper.get_table_list_data(
+            json_results, header_list, is_dict=False
+        )
         return table_values
 
 
@@ -3068,6 +3464,40 @@ class GetUsers(Lister):
             dest="user_name",
             help="Filter users by user name",
         )
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter user_name=admin --filter is_enabled=true",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -3083,17 +3513,43 @@ class GetUsers(Lister):
             "description",
         ]
 
-        # Build filters if user_name is provided
-        filters = None
+        # Build filters from --user-name and --filter key=value pairs
+        filters = {}
         if parsed_args.user_name:
-            filters = {"user_name": parsed_args.user_name}
+            filters["user_name"] = parsed_args.user_name
+        extra_filters = CommandHelper.parse_filters(parsed_args.filters)
+        if extra_filters:
+            filters.update(extra_filters)
+        filters = filters if filters else None
+
+        # Build pagination and sort params
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_users(
-            filters=filters
+            filters=filters, pagination=pagination, sort=sort
         )
         json_results = CommandHelper.check_results(
             resource, "get_users", status_code, reason, text
         )
+
+        # Handle paginated response
+        is_paginated = False
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            items = json_results.get("items", [])
+            json_results = {item.get("id", ""): item for item in items}
 
         # Sort roles alphabetically for display and format other fields
         if json_results:
@@ -3120,6 +3576,12 @@ class GetUsers(Lister):
         )
         if not json_results:
             self.app.stdout.write("No users found\n")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total users: {len(json_results)}\n"
         return table_values
@@ -3325,6 +3787,30 @@ class GetRoles(Lister):
             dest="role_name",
             help="Filter roles by role name",
         )
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -3336,17 +3822,46 @@ class GetRoles(Lister):
         if parsed_args.role_name:
             filters = {"role_name": parsed_args.role_name}
 
+        # Build pagination and sort params
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
         status_code, reason, text, result = self.app.client.get_roles(
-            filters=filters
+            filters=filters, pagination=pagination, sort=sort
         )
         json_results = CommandHelper.check_results(
             resource, "get_roles", status_code, reason, text
         )
+
+        # Handle paginated response
+        is_paginated = False
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            items = json_results.get("items", [])
+            json_results = {item.get("id", ""): item for item in items}
+
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
         if not json_results:
             self.app.stdout.write("No roles found\n")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total roles: {len(json_results)}\n"
         return table_values
@@ -3398,8 +3913,30 @@ class GetLoginLogs(Lister):
         parser.add_argument(
             "--user-name", type=str, default=None, help="User name"
         )
-        parser.add_argument("--limit", type=int, default=100, help="Limit")
-        parser.add_argument("--offset", type=int, default=0, help="Offset")
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -3425,30 +3962,57 @@ class GetLoginLogs(Lister):
             "failure_reason",
         ]
 
-        # If --all is specified, set limit to a very large number
-        limit = parsed_args.limit
-        offset = parsed_args.offset
+        # Build pagination and sort params
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_login_logs(
-            user_id, user_name, limit, offset
+            user_id=user_id,
+            user_name=user_name,
+            pagination=pagination,
+            sort=sort,
         )
         json_results = CommandHelper.check_results(
             resource, "get_login_logs", status_code, reason, text
         )
 
-        # Handle both list and dict formats for backward compatibility
-        if isinstance(json_results, list):
-            # Convert list to dict format for table display
-            table_data = {}
-            for i, log_entry in enumerate(json_results):
-                table_data[f"Log {i + 1}"] = log_entry
-            json_results = table_data
+        # Handle paginated response
+        is_paginated = False
+        page_info = {}
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            log_list = json_results.get("items", [])
+        else:
+            log_list = json_results if isinstance(json_results, list) else []
+
+        # Convert list to dict format for table display
+        table_data = {}
+        for i, log_entry in enumerate(log_list):
+            table_data[f"Log {i + 1}"] = log_entry
+        json_results = table_data
 
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
         if not json_results:
             self.app.stdout.write("No login logs found\n")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total login logs: {len(json_results)}\n"
         return table_values
@@ -3684,27 +4248,94 @@ class GetProjects(Lister):
         parser.add_argument(
             "--name", type=str, dest="name", help="Filter projects by name"
         )
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), e.g. --filter name=default",
+        )
         return parser
 
     def take_action(self, parsed_args):
         resource = self.group
         header_list = ["id", "name", "description", "created_at", "updated_at"]
 
-        filters = None
+        # Build filters from --name and --filter key=value pairs
+        filters = {}
         if parsed_args.name:
-            filters = {"name": parsed_args.name}
+            filters["name"] = parsed_args.name
+        extra_filters = CommandHelper.parse_filters(parsed_args.filters)
+        if extra_filters:
+            filters.update(extra_filters)
+        filters = filters if filters else None
+
+        # Build pagination and sort params
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_projects(
-            filters=filters
+            filters=filters, pagination=pagination, sort=sort
         )
         json_results = CommandHelper.check_results(
             resource, "get_projects", status_code, reason, text
         )
+
+        # Handle paginated response
+        is_paginated = False
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            items = json_results.get("items", [])
+            json_results = {item.get("id", ""): item for item in items}
+
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list, is_dict=True
         )
         if not json_results:
             self.app.stdout.write("No projects found\n")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total projects: {len(json_results)}\n"
         return table_values
@@ -4429,6 +5060,40 @@ class GetFlavors(Lister):
             help="Filter by flavor name(s) (exact match, "
             "space-separated for multiple)",
         )
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter name=g1.all --filter is_public=true",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -4456,12 +5121,42 @@ class GetFlavors(Lister):
             filters["flavor_ids"] = parsed_args.flavor_ids
         if parsed_args.flavor_names:
             filters["flavor_names"] = parsed_args.flavor_names
+        # Merge generic --filter key=value pairs
+        extra_filters = CommandHelper.parse_filters(parsed_args.filters)
+        if extra_filters:
+            filters.update(extra_filters)
+
+        # Build pagination and sort params
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
         status_code, reason, text, result = self.app.client.get_flavors(
-            filters=filters if filters else None
+            filters=filters if filters else None,
+            pagination=pagination,
+            sort=sort,
         )
         json_results = CommandHelper.check_results(
             resource, "get_flavors", status_code, reason, text
         )
+
+        # Handle paginated response
+        is_paginated = False
+        page_info = {}
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            json_results = json_results.get("items", [])
+
         # Resolve device group IDs to names for display
         if json_results:
             for flavor in json_results:
@@ -4477,6 +5172,12 @@ class GetFlavors(Lister):
         )
         if not json_results:
             print("No flavors found")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total flavors: {len(json_results)}\n"
         return table_values
@@ -4845,6 +5546,40 @@ class GetDeviceGroups(Lister):
             help="Filter by device group name(s) (exact match, "
             "space-separated for multiple)",
         )
+        parser.add_argument(
+            "--page",
+            dest="page",
+            type=int,
+            default=None,
+            help="Server-side pagination: page number (1-based)",
+        )
+        parser.add_argument(
+            "--page-size",
+            dest="page_size",
+            type=int,
+            default=None,
+            help="Server-side pagination: items per page "
+            "(use -1 for unlimited)",
+        )
+        parser.add_argument(
+            "--sort",
+            dest="sort",
+            type=str,
+            default=None,
+            help="Server-side sort fields (comma separated), "
+            "prefix '-' for descending. "
+            "e.g. --sort=-created_at,job_name",
+        )
+        parser.add_argument(
+            "--filter",
+            dest="filters",
+            action="append",
+            type=str,
+            default=None,
+            metavar="KEY=VALUE",
+            help="Server-side filter (repeatable), "
+            "e.g. --filter name=my-group --filter is_public=true",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -4867,17 +5602,53 @@ class GetDeviceGroups(Lister):
             filters["group_ids"] = parsed_args.group_ids
         if parsed_args.group_names:
             filters["group_names"] = parsed_args.group_names
+        # Merge generic --filter key=value pairs
+        extra_filters = CommandHelper.parse_filters(parsed_args.filters)
+        if extra_filters:
+            filters.update(extra_filters)
+
+        # Build pagination and sort params
+        pagination = None
+        if parsed_args.page:
+            pagination = {
+                "page": parsed_args.page,
+                "page_size": parsed_args.page_size or 20,
+            }
+        sort = (
+            [s.strip() for s in parsed_args.sort.split(",")]
+            if parsed_args.sort
+            else None
+        )
+        CommandHelper.disable_cliff_sort(parsed_args)
+
         status_code, reason, text, result = self.app.client.get_device_groups(
-            filters=filters if filters else None
+            filters=filters if filters else None,
+            pagination=pagination,
+            sort=sort,
         )
         json_results = CommandHelper.check_results(
             resource, "get_device_groups", status_code, reason, text
         )
+
+        # Handle paginated response
+        is_paginated = False
+        page_info = {}
+        if isinstance(json_results, dict) and "items" in json_results:
+            is_paginated = True
+            page_info = json_results
+            json_results = json_results.get("items", [])
+
         table_values = CommandHelper.get_table_list_data(
             json_results, header_list
         )
         if not json_results:
             print("No device groups found")
+        elif is_paginated:
+            self.extra_messages = (
+                f"Page {page_info.get('page', '?')}/"
+                f"{page_info.get('total_pages', '?')}, "
+                f"Total: {page_info.get('total', '?')}\n"
+            )
         else:
             self.extra_messages = f"Total device groups: {len(json_results)}\n"
         return table_values

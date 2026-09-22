@@ -183,7 +183,15 @@
                "id": 1,
                "method": "get_users",
                "params": {
-                 "body": null
+                 "body": null,
+                 // [可选] 分页，不传返回全部
+                 "query": {
+                   "pagination": {"page": 1, "page_size": 20},
+                   // [可选] 排序，'-'前缀降序
+                   "sort": ["-created_at"],
+                   // [可选] 过滤条件
+                   "filters": {}
+                 },
                }
              }
      - .. container:: table-code-small-font
@@ -573,9 +581,17 @@
                    "user_name": "string (optional)",
                    "start_time": "2026-04-01T00:00:00 (optional)",
                    "end_time": "2026-04-08T23:59:59 (optional)",
-                   "limit": 100,
-                   "offset": 0
-                 }
+                 },
+                 // [可选] 分页、排序参数，与 body 并列在 params 顶层
+                 "query": {
+                   // [可选] 分页，不传时默认 page=1, page_size=20
+                   "pagination": {
+                     "page": 1,
+                     "page_size": 20
+                   },
+                   // [可选] 排序，'-'前缀降序
+                   "sort": ["-login_time"]
+                 },
                }
              }
      - .. container:: table-code-small-font

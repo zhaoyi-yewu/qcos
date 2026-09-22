@@ -140,6 +140,8 @@ class Client:
         method_name,
         body_data=None,
         filters=None,
+        pagination=None,
+        sort=None,
         fields=None,
         params=None,
     ):
@@ -150,6 +152,8 @@ class Client:
             method_name: json-rpc method
             body_data: json-rpc data (Default value = None)
             filters: json-rpc filters
+            pagination: json-rpc pagination
+            sort: json-rpc sort
             fields: json-rpc fields
             params: json-rpc params (Default value = None)
         """
@@ -199,10 +203,18 @@ class Client:
         data_params = {}
         if body_data:
             data_params["body"] = body_data
+        # Build query object for filters/pagination/sort
+        query = {}
         if filters:
-            data_params["filters"] = filters
+            query["filters"] = filters
+        if pagination:
+            query["pagination"] = pagination
+        if sort:
+            query["sort"] = sort
         if fields:
-            data_params["fields"] = fields
+            query["fields"] = fields
+        if query:
+            data_params["query"] = query
         jsonrpc_data = jsonrpcclient.request(method_name, params=data_params)
         try:
             status_code, reason, text, result = ClientLibrary.call_http_api(
@@ -270,8 +282,14 @@ class Client:
         return status_code, reason, text, result
 
     # [Driver]
-    def get_drivers(self):
+    def get_drivers(self, *, filters=None, pagination=None, sort=None):
         """Get driver list.
+
+        Args:
+            filters: filter conditions dict
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             Driver list message
@@ -280,7 +298,12 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.driver_url, method_name, body_data=None
+            self.driver_url,
+            method_name,
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
         )
         return status_code, reason, text, result
 
@@ -305,8 +328,22 @@ class Client:
         return status_code, reason, text, result
 
     # [Device]
-    def get_devices(self, details=False):
+    def get_devices(
+        self,
+        *,
+        details=False,
+        filters=None,
+        pagination=None,
+        sort=None,
+    ):
         """Get device list.
+
+        Args:
+            details: include detailed device information
+            filters: filter conditions dict
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             Device list message
@@ -316,7 +353,12 @@ class Client:
         # construct data and call json rpc
         data = {"details": details}
         status_code, reason, text, result = self.call_json_rpc(
-            self.device_url, method_name, data
+            self.device_url,
+            method_name,
+            data,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
         )
         return status_code, reason, text, result
 
@@ -468,8 +510,14 @@ class Client:
         return status_code, reason, text, result
 
     # [Transpiler]
-    def get_transpilers(self):
+    def get_transpilers(self, *, filters=None, pagination=None, sort=None):
         """Get transpiler list.
+
+        Args:
+            filters: filter conditions dict
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             Transpiler list message
@@ -478,7 +526,12 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.transpiler_url, method_name, body_data=None
+            self.transpiler_url,
+            method_name,
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
         )
         return status_code, reason, text, result
 
@@ -589,8 +642,14 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def list_workers(self):
+    def list_workers(self, *, filters=None, pagination=None, sort=None):
         """List all prefect workers with name and status.
+
+        Args:
+            filters: filter conditions dict
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             list of workers
@@ -599,7 +658,12 @@ class Client:
 
         # construct data and call json rpc
         status_code, reason, text, result = self.call_json_rpc(
-            self.system_url, method_name, body_data=None
+            self.system_url,
+            method_name,
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
         )
         return status_code, reason, text, result
 
@@ -861,22 +925,27 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def get_flavors(self, filters=None):
+    def get_flavors(self, *, filters=None, pagination=None, sort=None):
         """Get all flavors with optional filtering.
 
         Args:
             filters: Optional filter conditions dictionary,
                 e.g. {"flavor_name": "g1.all"}
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             get_flavors result
         """
         method_name = "get_flavors"
-        data = {}
-        if filters:
-            data["filters"] = filters
         status_code, reason, text, result = self.call_json_rpc(
-            self.flavor_url, method_name, data
+            self.flavor_url,
+            method_name,
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
         )
         return status_code, reason, text, result
 
@@ -996,22 +1065,27 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def get_device_groups(self, filters=None):
+    def get_device_groups(self, *, filters=None, pagination=None, sort=None):
         """Get all device groups with optional filtering.
 
         Args:
             filters: Optional filter conditions dictionary,
                 e.g. {"group_name": "my-group"}
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             get_device_groups result
         """
         method_name = "get_device_groups"
-        data = {}
-        if filters:
-            data["filters"] = filters
         status_code, reason, text, result = self.call_json_rpc(
-            self.device_group_url, method_name, data
+            self.device_group_url,
+            method_name,
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
         )
         return status_code, reason, text, result
 
@@ -1124,11 +1198,14 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def get_jobs(self, filters=None):
+    def get_jobs(self, *, filters=None, pagination=None, sort=None):
         """Get job status.
 
         Args:
             filters: filters
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             job status
@@ -1136,9 +1213,13 @@ class Client:
         method_name = "get_jobs"
 
         # construct data and call json rpc
-        data = {}
         status_code, reason, text, result = self.call_json_rpc(
-            self.job_url, method_name, data, filters=filters
+            self.job_url,
+            method_name,
+            body_data=None,
+            pagination=pagination,
+            sort=sort,
+            filters=filters,
         )
         return status_code, reason, text, result
 
@@ -1504,16 +1585,23 @@ class Client:
         data = {"user_id": user_id, "force": force}
         return self.call_json_rpc(self.user_url, "delete_user", data)
 
-    def get_users(self, filters=None):
+    def get_users(self, *, filters=None, pagination=None, sort=None):
         """Get users with optional filtering.
 
         Args:
             filters: Optional filter conditions dictionary
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
         """
-        data = {}
-        if filters:
-            data["filters"] = filters
-        return self.call_json_rpc(self.user_url, "get_users", data)
+        return self.call_json_rpc(
+            self.user_url,
+            "get_users",
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+        )
 
     def create_role(self, role_name, permissions, description=None):
         """Create role."""
@@ -1555,17 +1643,24 @@ class Client:
         data = {"role_id": role_id}
         return self.call_json_rpc(self.user_url, "delete_role", data)
 
-    def get_roles(self, filters=None):
+    def get_roles(self, *, filters=None, pagination=None, sort=None):
         """Get roles with optional filtering.
 
         Args:
             filters: Optional dict with filter conditions, e.g.
                 {'role_name': 'admin'}
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
         """
-        data = {}
-        if filters:
-            data["filters"] = filters
-        return self.call_json_rpc(self.user_url, "get_roles", data)
+        return self.call_json_rpc(
+            self.user_url,
+            "get_roles",
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+        )
 
     def change_password(self, user_id, old_password, new_password):
         """Change password for user by ID.
@@ -1583,22 +1678,34 @@ class Client:
         return self.call_json_rpc(self.user_url, "change_password", data)
 
     def get_login_logs(
-        self, user_id=None, user_name=None, limit=100, offset=0
+        self,
+        *,
+        user_id=None,
+        user_name=None,
+        pagination=None,
+        sort=None,
     ):
-        """Get login logs by user ID or user_name.
+        """Get login logs by user ID or user_name with pagination.
 
         Args:
             user_id: User ID (UUID) to filter logs (optional)
             user_name: User name to filter logs (optional)
-            limit: Maximum number of logs to return (default: 100)
-            offset: Number of logs to skip (default: 0)
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-login_time"]
         """
-        data = {"limit": limit, "offset": offset}
+        data = {}
         if user_id:
             data["user_id"] = user_id
         if user_name:
             data["user_name"] = user_name
-        return self.call_json_rpc(self.user_url, "get_login_logs", data)
+        return self.call_json_rpc(
+            self.user_url,
+            "get_login_logs",
+            data,
+            pagination=pagination,
+            sort=sort,
+        )
 
     def clear_login_logs(self, user_id=None, user_name=None):
         """Clear login logs (all or for a specific user).
@@ -1642,20 +1749,27 @@ class Client:
         data = {"project_id": project_id}
         return self.call_json_rpc(self.project_url, "get_project", data)
 
-    def get_projects(self, filters=None):
+    def get_projects(self, *, filters=None, pagination=None, sort=None):
         """Get projects with optional filtering.
 
         Args:
             filters: Optional filter conditions dictionary,
                 e.g. {"name": "default"}
+            pagination: pagination params dict, e.g.
+                {"page": 1, "page_size": 20}
+            sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
             Dictionary of projects keyed by project ID
         """
-        data = {}
-        if filters:
-            data["filters"] = filters
-        return self.call_json_rpc(self.project_url, "get_projects", data)
+        return self.call_json_rpc(
+            self.project_url,
+            "get_projects",
+            body_data=None,
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+        )
 
     def update_project(self, project_id, project_name=None, description=None):
         """Update project by ID.

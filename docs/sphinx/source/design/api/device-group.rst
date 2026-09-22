@@ -142,14 +142,20 @@
                "id": 1,
                "method": "get_device_groups",
                "params": {
-                 "body": {
+                 // [可选] 过滤、分页、排序参数，与 body 并列在 params 顶层
+                 "query": {
+                   // [可选] 过滤条件
                    "filters": {
                      "group_name": "superconducting-group",
                      "group_ids": [
                        "5e4337a0-42d1-410b-827f-761ebd6df470"
                      ]
-                   }
-                 }
+                   },
+                   // [可选] 分页，不传返回全部
+                   "pagination": {"page": 1, "page_size": 20},
+                   // [可选] 排序，'-'前缀降序
+                   "sort": ["-created_at"]
+                 },
                }
              }
      - .. container:: table-code-small-font

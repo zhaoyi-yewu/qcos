@@ -200,7 +200,12 @@
                "id": 1,
                "method": "list_workers",
                "params": {
-                 "body": {}
+                 "body": {},
+                 "query": {
+                   "pagination": {"page": 1, "page_size": 20},
+                   "sort": ["-worker_name"],
+                   "filters": {}
+                 }
                }
              }
      - .. container:: table-code-small-font
