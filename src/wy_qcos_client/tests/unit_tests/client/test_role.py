@@ -111,5 +111,10 @@ class TestClientRole:
         status_code, reason, text, result = client.get_roles()
         assert status_code == 200
         mock_call_json_rpc.assert_called_once_with(
-            client.user_url, "get_roles", {}
+            client.user_url,
+            "get_roles",
+            body_data=None,
+            filters=None,
+            pagination=None,
+            sort=None,
         )

@@ -353,3 +353,135 @@ class TestBaseRepository:
         """Test refresh method."""
         base_repository.refresh(sample_user)
         assert sample_user.user_name == "testuser"
+
+    # -- get_all_with_pagination tests -------------------------------- #
+
+    def test_get_all_with_pagination_basic(
+        self, base_repository, in_memory_db
+    ):
+        """Test basic pagination."""
+        for i in range(5):
+            base_repository.create(
+                User,
+                id=str(uuid.uuid4()),
+                user_name=f"paguser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=True,
+            )
+        success, error, result = base_repository.get_all_with_pagination(
+            User, page=1, page_size=3
+        )
+        assert success is True
+        assert error is None
+        assert len(result["items"]) == 3
+        assert result["total"] == 5
+
+    def test_get_all_with_pagination_second_page(
+        self, base_repository, in_memory_db
+    ):
+        """Test second page returns remaining items."""
+        for i in range(5):
+            base_repository.create(
+                User,
+                id=str(uuid.uuid4()),
+                user_name=f"paguser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=True,
+            )
+        success, error, result = base_repository.get_all_with_pagination(
+            User, page=2, page_size=3
+        )
+        assert success is True
+        assert len(result["items"]) == 2
+        assert result["total"] == 5
+
+    def test_get_all_with_pagination_filters(
+        self, base_repository, in_memory_db
+    ):
+        """Test pagination with filters."""
+        for i in range(5):
+            base_repository.create(
+                User,
+                id=str(uuid.uuid4()),
+                user_name=f"filteruser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=(i < 3),
+            )
+        success, error, result = base_repository.get_all_with_pagination(
+            User,
+            filters={"is_enabled": True},
+            page=1,
+            page_size=10,
+        )
+        assert success is True
+        assert len(result["items"]) == 3
+        assert result["total"] == 3
+
+    def test_get_all_with_pagination_sort_desc(
+        self, base_repository, in_memory_db
+    ):
+        """Test pagination with descending sort."""
+        for i in range(5):
+            base_repository.create(
+                User,
+                id=str(uuid.uuid4()),
+                user_name=f"sortuser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=True,
+            )
+        success, error, result = base_repository.get_all_with_pagination(
+            User,
+            page=1,
+            page_size=10,
+            sort=["-user_name"],
+        )
+        assert success is True
+        names = [r.user_name for r in result["items"]]
+        assert names == sorted(names, reverse=True)
+
+    def test_get_all_with_pagination_unlimited(
+        self, base_repository, in_memory_db
+    ):
+        """Test page_size=-1 returns all items."""
+        for i in range(5):
+            base_repository.create(
+                User,
+                id=str(uuid.uuid4()),
+                user_name=f"unlimuser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=True,
+            )
+        success, error, result = base_repository.get_all_with_pagination(
+            User, page=1, page_size=-1
+        )
+        assert success is True
+        assert len(result["items"]) == 5
+        assert result["total"] == 5
+
+    def test_get_all_with_pagination_empty(self, base_repository):
+        """Test pagination with no records."""
+        success, error, result = base_repository.get_all_with_pagination(
+            User, page=1, page_size=10
+        )
+        assert success is True
+        assert len(result["items"]) == 0
+        assert result["total"] == 0
+
+    def test_get_all_with_pagination_page_out_of_range(
+        self, base_repository, in_memory_db
+    ):
+        """Test page beyond range returns empty items."""
+        for i in range(3):
+            base_repository.create(
+                User,
+                id=str(uuid.uuid4()),
+                user_name=f"oobuser{i}",
+                hashed_password=_s("hash"),
+                is_enabled=True,
+            )
+        success, error, result = base_repository.get_all_with_pagination(
+            User, page=10, page_size=10
+        )
+        assert success is True
+        assert len(result["items"]) == 0
+        assert result["total"] == 3

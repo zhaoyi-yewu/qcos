@@ -86,6 +86,10 @@ class TestGetUserMgmt:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         result = cmd.take_action(parsed_args)
         assert result is not None
 
@@ -116,6 +120,10 @@ class TestCreateUser:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_name = "testuser"
         parsed_args.password = _s("password123")
         parsed_args.role_names = None
@@ -144,6 +152,10 @@ class TestCreateUser:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_name = "testuser"
         parsed_args.password = _s("password123")
         parsed_args.role_names = ["admin", "operator"]
@@ -176,6 +188,10 @@ class TestUpdateUser:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         parsed_args.role_names = None
         parsed_args.description = None
@@ -195,6 +211,10 @@ class TestUpdateUser:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         parsed_args.role_names = ["admin"]
         parsed_args.description = "Updated user"
@@ -213,6 +233,10 @@ class TestUpdateUser:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         parsed_args.role_names = None
         parsed_args.description = None
@@ -257,6 +281,10 @@ class TestGetUser:
         cmd = GetUser(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         result = cmd.take_action(parsed_args)
         assert result is not None
@@ -298,6 +326,10 @@ class TestGetUsers:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         result = cmd.take_action(parsed_args)
         assert result is not None
 
@@ -320,6 +352,10 @@ class TestGetUsers:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         result = cmd.take_action(parsed_args)
         assert result is not None
 
@@ -339,6 +375,10 @@ class TestDeleteUser:
         cmd = DeleteUser(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         parsed_args.force = False
         cmd.take_action(parsed_args)
@@ -370,6 +410,10 @@ class TestCreateRole:
         cmd = CreateRole(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.role_name = "test_role"
         parsed_args.permissions = json.dumps(["read", "write"])
         parsed_args.description = "Test role"
@@ -381,6 +425,10 @@ class TestCreateRole:
         cmd = CreateRole(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.role_name = "test_role"
         parsed_args.permissions = "invalid json"
         parsed_args.description = None
@@ -418,6 +466,10 @@ class TestGetRole:
         cmd = GetRole(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.role_id = role_id
         result = cmd.take_action(parsed_args)
         assert result is not None
@@ -438,6 +490,10 @@ class TestUpdateRole:
         cmd = UpdateRole(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.role_id = role_id
         parsed_args.permissions = json.dumps(["read", "write", "delete"])
         parsed_args.description = "Updated role"
@@ -451,6 +507,10 @@ class TestUpdateRole:
         cmd = UpdateRole(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.role_id = role_id
         parsed_args.permissions = None
         parsed_args.description = "Updated description only"
@@ -461,6 +521,10 @@ class TestUpdateRole:
         cmd = UpdateRole(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.role_id = role_id
         parsed_args.permissions = "invalid json"
         parsed_args.description = None
@@ -483,6 +547,10 @@ class TestDeleteRole:
         cmd = DeleteRole(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.role_id = role_id
         cmd.take_action(parsed_args)
         mock_delete_role.assert_called_once_with(role_id)
@@ -525,6 +593,10 @@ class TestGetRoles:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         result = cmd.take_action(parsed_args)
         assert result is not None
 
@@ -546,6 +618,10 @@ class TestGetRoles:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         result = cmd.take_action(parsed_args)
         assert result is not None
 
@@ -565,6 +641,10 @@ class TestChangePassword:
         cmd = ChangePassword(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         parsed_args.old_password = _s("oldpass123")
         parsed_args.new_password = _s("newpass456")
@@ -608,6 +688,10 @@ class TestGetLoginLogs:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         parsed_args.user_name = None
         parsed_args.limit = 100
@@ -633,6 +717,10 @@ class TestGetLoginLogs:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = None
         parsed_args.limit = 50
         parsed_args.offset = 10
@@ -669,6 +757,10 @@ class TestClearLoginLogs:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = None
         parsed_args.user_name = None
         parsed_args.force = False
@@ -694,6 +786,10 @@ class TestClearLoginLogs:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = user_id
         parsed_args.user_name = None
         parsed_args.force = True
@@ -719,6 +815,10 @@ class TestClearLoginLogs:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = None
         parsed_args.user_name = "admin"
         parsed_args.force = True
@@ -734,6 +834,10 @@ class TestClearLoginLogs:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.user_id = None
         parsed_args.user_name = None
         parsed_args.force = False
@@ -773,6 +877,10 @@ class TestLogin:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.username = "admin"
         parsed_args.password = _s("admin123")
         parsed_args.token_only = False
@@ -804,6 +912,10 @@ class TestLogin:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.username = "admin"
         parsed_args.password = _s("admin123")
         parsed_args.token_only = True
@@ -828,6 +940,10 @@ class TestLogin:
         cmd = Login(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.username = "admin"
         parsed_args.password = _s("wrongpassword")
         parsed_args.token_only = False
@@ -850,6 +966,10 @@ class TestLogout:
         cmd = Logout(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         cmd.take_action(parsed_args)
         mock_logout.assert_called_once()
 
@@ -886,6 +1006,10 @@ class TestRefreshToken:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.token_only = False
         parsed_args.refresh_token = _s("refresh123")
         cmd.take_action(parsed_args)
@@ -915,6 +1039,10 @@ class TestRefreshToken:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.token_only = True
         parsed_args.refresh_token = _s("refresh123")
         cmd.take_action(parsed_args)
@@ -949,6 +1077,10 @@ class TestWhoami:
         cmd = Whoami(shell, None)
         cmd.app = shell
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         result = cmd.take_action(parsed_args)
         assert result is not None
 
@@ -983,6 +1115,10 @@ class TestSetUserMgmt:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.auth_mode = "jwt"
         cmd.take_action(parsed_args)
         mock_set_user_mgmt.assert_called_once_with("jwt")
@@ -1010,6 +1146,10 @@ class TestSetUserMgmt:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.auth_mode = "virtual_instance"
         cmd.take_action(parsed_args)
         mock_set_user_mgmt.assert_called_once_with("virtual_instance")
@@ -1034,6 +1174,10 @@ class TestSetUserMgmt:
         cmd.app = shell
         cmd.app.stdout = Mock()
         parsed_args = Mock()
+        parsed_args.filters = None
+        parsed_args.page = None
+        parsed_args.page_size = None
+        parsed_args.sort = None
         parsed_args.auth_mode = "no"
         cmd.take_action(parsed_args)
         mock_set_user_mgmt.assert_called_once_with("no")

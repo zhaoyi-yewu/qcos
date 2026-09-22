@@ -76,6 +76,10 @@ def make_shell_cmd(cmd_class):
 def make_parsed_args(**kwargs):
     """Build a Mock parsed_args with flavor-related attributes."""
     args = Mock()
+    args.filters = None
+    args.page = None
+    args.page_size = None
+    args.sort = None
     defaults = {
         "name": None,
         "flavor_id": None,

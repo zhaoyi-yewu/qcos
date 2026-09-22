@@ -102,7 +102,13 @@ class TestClientFlavor:
             extra_properties=None,
             device_groups=DEVICE_GROUPS,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert "project_id" not in data
         assert "description" not in data
         assert "min_qubits" not in data
@@ -118,7 +124,13 @@ class TestClientFlavor:
         client.create_flavor(
             name="x", description="", device_groups=DEVICE_GROUPS
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert "description" not in data
 
     # --------------------------------------------------------------- #
@@ -150,7 +162,13 @@ class TestClientFlavor:
             extra_properties={"qc:devices": "new"},
             device_groups=DEVICE_GROUPS,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["flavor_id"] == FLAVOR_ID
         assert data["name"] == "updated"
         assert data["description"] == "new desc"
@@ -178,7 +196,13 @@ class TestClientFlavor:
             extra_properties=None,
             device_groups=None,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # explicit None clears nullable fields
         assert data["name"] is None
         assert data["description"] is None
@@ -196,7 +220,13 @@ class TestClientFlavor:
             flavor_id=FLAVOR_ID,
             device_groups=DEVICE_GROUPS,
         )
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         # omitted fields are not sent
         assert data == {
             "flavor_id": FLAVOR_ID,
@@ -233,7 +263,13 @@ class TestClientFlavor:
         mock_call.return_value = self.return_values
         uid = uuid.UUID(FLAVOR_ID)
         client.get_flavor(uid)
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["flavor_id"] == FLAVOR_ID
 
     # --------------------------------------------------------------- #
@@ -243,20 +279,41 @@ class TestClientFlavor:
     def test_get_flavors_no_filter(self, mock_call):
         mock_call.return_value = self.return_values
         client.get_flavors()
-        mock_call.assert_called_once_with(client.flavor_url, "get_flavors", {})
+        mock_call.assert_called_once_with(
+            client.flavor_url,
+            "get_flavors",
+            body_data=None,
+            filters=None,
+            pagination=None,
+            sort=None,
+        )
 
     @patch.object(Client, "call_json_rpc")
     def test_get_flavors_with_filter(self, mock_call):
         mock_call.return_value = self.return_values
         client.get_flavors(filters={"flavor_name": "g1.all"})
-        data = mock_call.call_args[0][2]
-        assert data["filters"] == {"flavor_name": "g1.all"}
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
+        assert mock_call.call_args.kwargs["filters"] == {
+            "flavor_name": "g1.all"
+        }
 
     @patch.object(Client, "call_json_rpc")
     def test_get_flavors_none_filter(self, mock_call):
         mock_call.return_value = self.return_values
         client.get_flavors(filters=None)
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert "filters" not in data
 
     # --------------------------------------------------------------- #
@@ -277,7 +334,13 @@ class TestClientFlavor:
         mock_call.return_value = self.return_values
         second_id = "00000000-0000-4000-8000-000000000002"
         client.delete_flavors([FLAVOR_ID, second_id])
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["flavor_ids"] == [FLAVOR_ID, second_id]
 
     @patch.object(Client, "call_json_rpc")
@@ -285,14 +348,26 @@ class TestClientFlavor:
         mock_call.return_value = self.return_values
         uid = uuid.UUID(FLAVOR_ID)
         client.delete_flavors([uid])
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["flavor_ids"] == [FLAVOR_ID]
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_flavors_empty_list(self, mock_call):
         mock_call.return_value = self.return_values
         client.delete_flavors([])
-        data = mock_call.call_args[0][2]
+        call_args = mock_call.call_args[0]
+        call_kwargs = mock_call.call_args.kwargs
+        data = (
+            call_args[2]
+            if len(call_args) > 2
+            else call_kwargs.get("body_data") or {}
+        )
         assert data["flavor_ids"] == []
 
     # --------------------------------------------------------------- #

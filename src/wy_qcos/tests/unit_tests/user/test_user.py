@@ -212,15 +212,18 @@ class TestUserManager:
             mock_users_repo.create_login_log.return_value = None
             mock_users_repo.get_login_logs.side_effect = (
                 lambda user_id=None,
+                user_name=None,
                 start_time=None,
                 end_time=None,
-                limit=100,
-                offset=0: (
+                page=1,
+                page_size=20,
+                sort=None: (
                     True,
                     None,
-                    manager.login_logs[offset : offset + limit]
-                    if limit > 0
-                    else manager.login_logs[offset:],
+                    {
+                        "items": manager.login_logs,
+                        "total": len(manager.login_logs),
+                    },
                 )
             )
 
@@ -783,7 +786,8 @@ class TestUserManager:
             "user2", "192.168.1.2", False, user_agent="Chrome/91.0"
         )
 
-        logs = user_manager.get_login_logs()
+        success, error, result = user_manager.get_login_logs()
+        logs = result["items"]
         assert len(logs) == 2
         assert logs[0].user_name == "user1"
         assert logs[1].user_name == "user2"
@@ -799,8 +803,8 @@ class TestUserManager:
         )
 
         # Verify logs exist
-        logs_before = user_manager.get_login_logs()
-        assert len(logs_before) == 2
+        _, _, logs_before_r = user_manager.get_login_logs()
+        assert len(logs_before_r["items"]) == 2
 
         # Delete all logs
         success, error, count = user_manager.users_repo.delete_login_logs()
@@ -809,8 +813,8 @@ class TestUserManager:
         assert count == 2
 
         # Verify logs are deleted
-        logs_after = user_manager.get_login_logs()
-        assert len(logs_after) == 0
+        _, _, logs_after_r = user_manager.get_login_logs()
+        assert len(logs_after_r["items"]) == 0
 
     def test_delete_login_logs_for_specific_user(self, user_manager):
         """Test deleting login logs for a specific user."""
@@ -826,8 +830,8 @@ class TestUserManager:
         )
 
         # Verify logs exist
-        logs_before = user_manager.get_login_logs()
-        assert len(logs_before) == 3
+        _, _, logs_before_r = user_manager.get_login_logs()
+        assert len(logs_before_r["items"]) == 3
 
         # Delete logs for user1
         success, error, count = user_manager.users_repo.delete_login_logs(
@@ -838,7 +842,8 @@ class TestUserManager:
         assert count == 2
 
         # Verify only user2's logs remain
-        logs_after = user_manager.get_login_logs()
+        _, _, logs_after_r = user_manager.get_login_logs()
+        logs_after = logs_after_r["items"]
         assert len(logs_after) == 1
         assert logs_after[0].user_name == "user2"
 
@@ -859,7 +864,8 @@ class TestUserManager:
         assert count == 0
 
         # Verify user1's log still exists
-        logs = user_manager.get_login_logs()
+        _, _, logs_r = user_manager.get_login_logs()
+        logs = logs_r["items"]
         assert len(logs) == 1
         assert logs[0].user_name == "user1"
 
@@ -1560,10 +1566,10 @@ class TestUserManager:
             mock_users_repo.create_login_log.side_effect = (
                 mock_create_login_log
             )
-            mock_users_repo.get_login_logs.side_effect = lambda limit=100: (
+            mock_users_repo.get_login_logs.side_effect = lambda **kwargs: (
                 True,
                 None,
-                login_logs[-limit:],
+                {"items": login_logs, "total": len(login_logs)},
             )
 
             # Add mock for delete_login_logs
@@ -1995,7 +2001,8 @@ class TestUserManager:
             )
         )
 
-        logs = user_manager.get_login_logs(user_name="log_filter_user")
+        _, _, logs_r = user_manager.get_login_logs(user_name="log_filter_user")
+        logs = logs_r["items"]
 
         assert len(logs) == 1
         assert str(logs[0].user_id) == str(user.id)

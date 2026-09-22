@@ -58,6 +58,10 @@ class TestPing:
     @patch.object(Client, "ping")
     def test_take_action(self, mock_ping, mock_check_results):
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.message = "msg"
         mock_ping.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {"message": "msg"}
@@ -80,6 +84,10 @@ class TestSystemInfo:
         mock_check_results.return_value = None
         mock_get_table_data.return_value = None
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         table_values = system_info.take_action(mock_client)
         assert table_values is None
 
@@ -99,6 +107,10 @@ class TestShowMem:
         mock_check_results.return_value = None
         mock_get_table_data.return_value = None
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         table_values = show_mem.take_action(mock_client)
         assert table_values is None
 
@@ -124,6 +136,10 @@ class TestGcMem:
             "count_after": 90,
         }
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.generations = 2
         # take_action prints output and returns None
         assert do_gc.take_action(mock_client) is None
@@ -170,6 +186,10 @@ class TestTraceMem:
             [],
         )
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.action = "snapshot"
         mock_client.nframe = 25
         mock_client.sort_count = False
@@ -201,6 +221,10 @@ class TestTraceMem:
             [],
         )
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.action = "stop"
         mock_client.nframe = 25
         mock_client.sort_count = False
@@ -252,6 +276,10 @@ class TestListWorkers:
         )
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         result = list_workers.take_action(mock_client)
         assert result is not None
         mock_list.assert_called_once()
@@ -274,6 +302,10 @@ class TestRestartWorker:
         }
 
         mock_client = Mock(spec=Namespace)
+        mock_client.filters = None
+        mock_client.page = None
+        mock_client.page_size = None
+        mock_client.sort = None
         mock_client.worker_name = "process-device|dummy"
         # take_action returns None for a Command
         assert restart_worker.take_action(mock_client) is None

@@ -476,25 +476,39 @@ class TestJob:
         response_with_id["id"] = response_info["job_id"]
         job_record_mock.created_at = response_info["created_at"]
         job_record_mock.asdict.return_value = response_with_id
-        mock_job_repo.get_jobs.return_value = (
+        mock_job_repo.get_jobs_paginated.return_value = (
             True,
             None,
-            [job_record_mock],
+            {"items": [job_record_mock], "total": 1},
         )
 
         auth_data = {"user_id": "test-user", "roles": ["user"]}
-        result = get_jobs(None, None, auth_data, job_repo=mock_job_repo)
+        result = get_jobs(
+            None,
+            None,
+            auth_data=auth_data,
+            job_repo=mock_job_repo,
+        )
         assert len(result) > 0
         assert str(result[0].job_id) == str(response_info["job_id"])
-        mock_job_repo.get_jobs.assert_called_once()
+        mock_job_repo.get_jobs_paginated.assert_called_once()
 
     def test_get_jobs_empty(self):
         """Test retrieving jobs when no jobs exist."""
         mock_job_repo = Mock()
-        mock_job_repo.get_jobs.return_value = (True, None, None)
+        mock_job_repo.get_jobs_paginated.return_value = (
+            True,
+            None,
+            {"items": [], "total": 0},
+        )
 
         auth_data = {"user_id": "test-user", "roles": ["user"]}
-        result = get_jobs(None, None, auth_data, job_repo=mock_job_repo)
+        result = get_jobs(
+            None,
+            None,
+            auth_data=auth_data,
+            job_repo=mock_job_repo,
+        )
         assert result == []
 
     def test_get_jobs_multiple(self):
@@ -521,10 +535,20 @@ class TestJob:
             job_record.asdict.return_value = response_data
             job_records.append(job_record)
 
-        mock_job_repo.get_jobs.return_value = (True, None, job_records)
+        # Reverse to simulate descending sort (default -created_at)
+        mock_job_repo.get_jobs_paginated.return_value = (
+            True,
+            None,
+            {"items": list(reversed(job_records)), "total": 3},
+        )
 
         auth_data = {"user_id": "test-user", "roles": ["user"]}
-        result = get_jobs(None, None, auth_data, job_repo=mock_job_repo)
+        result = get_jobs(
+            None,
+            None,
+            auth_data=auth_data,
+            job_repo=mock_job_repo,
+        )
         assert len(result) == 3
         # Verify sorting - should be descending (newest first)
         for i in range(len(result) - 1):

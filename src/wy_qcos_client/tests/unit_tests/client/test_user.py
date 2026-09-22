@@ -147,7 +147,12 @@ class TestClientUser:
         status_code, reason, text, result = client.get_users()
         assert status_code == 200
         mock_call_json_rpc.assert_called_once_with(
-            client.user_url, "get_users", {}
+            client.user_url,
+            "get_users",
+            body_data=None,
+            filters=None,
+            pagination=None,
+            sort=None,
         )
 
     @patch.object(Client, "call_json_rpc")
@@ -175,14 +180,11 @@ class TestClientUser:
         """Test get_login_logs method without user_id."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_login_logs(
-            limit=50,
-            offset=10,
+            pagination={"page": 1, "page_size": 50},
         )
         assert status_code == 200
-        call_args = mock_call_json_rpc.call_args[0][2]
-        assert call_args["limit"] == 50
-        assert call_args["offset"] == 10
-        assert "user_id" not in call_args
+        data = mock_call_json_rpc.call_args[0][2]
+        assert data == {}
 
     @patch.object(Client, "call_json_rpc")
     def test_get_login_logs_with_user_id(self, mock_call_json_rpc):
@@ -190,14 +192,11 @@ class TestClientUser:
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_login_logs(
             user_id=self.user_id,
-            limit=100,
-            offset=0,
+            pagination={"page": 1, "page_size": 100},
         )
         assert status_code == 200
-        call_args = mock_call_json_rpc.call_args[0][2]
-        assert call_args["user_id"] == self.user_id
-        assert call_args["limit"] == 100
-        assert call_args["offset"] == 0
+        data = mock_call_json_rpc.call_args[0][2]
+        assert data["user_id"] == self.user_id
 
     @patch.object(Client, "call_json_rpc")
     def test_get_login_logs_default_values(self, mock_call_json_rpc):
@@ -205,9 +204,8 @@ class TestClientUser:
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_login_logs()
         assert status_code == 200
-        call_args = mock_call_json_rpc.call_args[0][2]
-        assert call_args["limit"] == 100
-        assert call_args["offset"] == 0
+        data = mock_call_json_rpc.call_args[0][2]
+        assert data == {}
 
     @patch.object(Client, "call_json_rpc")
     def test_clear_login_logs_all(self, mock_call_json_rpc):

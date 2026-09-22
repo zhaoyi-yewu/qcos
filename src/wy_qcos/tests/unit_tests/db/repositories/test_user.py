@@ -309,6 +309,7 @@ class TestUserRepositoryLoginLogOperations:
         in_memory_db.commit()
 
         success, error, logs = user_repository.get_login_logs()
+        logs = logs["items"]
         assert success is True
         assert len(logs) == 3
 
@@ -323,6 +324,7 @@ class TestUserRepositoryLoginLogOperations:
         success, error, logs = user_repository.get_login_logs(
             start_time=past, end_time=future
         )
+        logs = logs["items"] if isinstance(logs, dict) else logs
         assert success is True
 
     def test_get_login_logs_with_user_id_found(
@@ -344,6 +346,7 @@ class TestUserRepositoryLoginLogOperations:
         success, error, logs = user_repository.get_login_logs(
             user_id=sample_user.id
         )
+        logs = logs["items"] if isinstance(logs, dict) else logs
         if success:
             assert len(logs) >= 0
 
@@ -551,6 +554,7 @@ class TestUserRepositoryEdgeCases:
     def test_get_login_logs_empty(self, user_repository):
         """Test getting login logs when none exist."""
         success, error, logs = user_repository.get_login_logs()
+        logs = logs["items"]
         assert success is True
         assert len(logs) == 0
 
@@ -570,6 +574,7 @@ class TestUserRepositoryEdgeCases:
         in_memory_db.commit()
 
         success, error, logs = user_repository.get_login_logs()
+        logs = logs["items"] if isinstance(logs, dict) else logs
         if success:
             assert len(logs) >= 0
 
@@ -659,6 +664,7 @@ class TestUserRepositoryEdgeCases:
         success, error, logs = user_repository.get_login_logs(
             user_id="nonexistent_user_id"
         )
+        logs = logs["items"] if isinstance(logs, dict) else logs
         assert success is False
         assert error is not None
 
@@ -667,6 +673,7 @@ class TestUserRepositoryEdgeCases:
         with patch("wy_qcos.db.repositories.user.select") as mock_select:
             mock_select.side_effect = Exception("DB Error")
             success, error, logs = user_repository.get_login_logs()
+            logs = logs["items"] if isinstance(logs, dict) else logs
             assert success is False
 
     def test_create_login_log_with_cleanup(
