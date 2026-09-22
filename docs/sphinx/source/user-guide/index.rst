@@ -10,4 +10,5 @@
    operations
    compatibility
    cli/index
+   scenario/index
    sdk

@@ -9,10 +9,11 @@
 - 新增北京量子院夸父驱动: DriverQuafuDongling, DriverQuafuShenglian, DriverQuafuBaihua,
   DriverQuafuHongluo, DriverQuafuLing, 国基量子超导驱动: DriverCetcBaihua，
   量旋科技超导驱动: DriverSpinqSqc25, 启科量子离子阱驱动: DriverQudoorAbaQu100
+- 新增列表API统一分页、排序和过滤功能
 
 ### 变更功能
 
-- 无
+- get_login_logs 移除 limit/offset 参数，统一使用 pagination.page/page_size
 
 ### 修复问题
 
@@ -20,7 +21,7 @@
 
 ### 移除内容
 
-- 无
+- get_login_logs 的 limit/offset 参数（不向后兼容）
 
 ## [1.8.0] - 2026-09-16
 
