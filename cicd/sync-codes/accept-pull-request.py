@@ -26,8 +26,12 @@ https://gitee.com/api/v5/swagger
 """
 
 import os
+import time
 import requests
 import sys
+
+MAX_RETRY_ATTEMPTS = 3
+RETRY_DELAY_SECONDS = 5
 
 gitee_access_token = os.getenv("GITEE_ACCESS_TOKEN")
 owner = "WUYUEQbit"
@@ -106,7 +110,7 @@ def get_pr_list_by_time(
 
 
 def gitee_action(pull_request_number: int, action_type: str):
-    """Perform actions on the specified PR
+    """Perform actions on the specified PR with retry on no response.
 
     Args:
         pull_request_number: PR number to be operated
@@ -114,55 +118,68 @@ def gitee_action(pull_request_number: int, action_type: str):
     """
     params = {"access_token": gitee_access_token}
     base_url = f"{api_base}/{owner}/{repo}/pulls/{pull_request_number}"
-    response = None
 
     if action_type == "approve":
         url = f"{base_url}/review"
         data = {"force": True}
-        response = requests.post(
-            url,
-            params=params,
-            json=data,
-            headers=headers,
-        )
-
+        method = requests.post
     elif action_type == "test":
         url = f"{base_url}/test"
         data = {"force": True}
-        response = requests.post(
-            url,
-            params=params,
-            json=data,
-            headers=headers,
-        )
-
+        method = requests.post
     elif action_type == "merge":
         url = f"{base_url}/merge"
-        data = {
-            "merge_method": "merge",
-        }
-        response = requests.put(
-            url,
-            params=params,
-            json=data,
-            headers=headers,
-        )
+        data = {"merge_method": "merge"}
+        method = requests.put
     else:
         print(f"PR#{pull_request_number} 跳过不支持的操作: {action_type}")
         return
 
-    if response:
-        if response.status_code in [200, 201]:
-            print(f"PR#{pull_request_number} 成功执行: {action_type}")
-        else:
-            if action_type == "merge":
+    for attempt in range(1, MAX_RETRY_ATTEMPTS + 1):
+        try:
+            response = method(
+                url,
+                params=params,
+                json=data,
+                headers=headers,
+            )
+        except requests.exceptions.RequestException as e:
+            print(
+                f"PR#{pull_request_number} 执行 {action_type} "
+                f"请求异常(第{attempt}次): {e}"
+            )
+            response = None
+
+        if response:
+            if response.status_code in [200, 201]:
                 print(
-                    f"PR#{pull_request_number} 执行 {action_type} 失败: "
-                    f"{response.status_code}, {response.text}"
+                    f"PR#{pull_request_number} 成功执行: {action_type}"
                 )
-                sys.exit()
-    else:
-        print(f"PR#{pull_request_number} 执行 {action_type} 无响应")
+                return
+            else:
+                if action_type == "merge":
+                    print(
+                        f"PR#{pull_request_number} 执行 "
+                        f"{action_type} 失败: "
+                        f"{response.status_code}, {response.text}"
+                    )
+                    sys.exit()
+                return
+        else:
+            print(
+                f"PR#{pull_request_number} 执行 {action_type} "
+                f"无响应(第{attempt}次)"
+            )
+            if attempt < MAX_RETRY_ATTEMPTS:
+                print(f"等待{RETRY_DELAY_SECONDS}秒后重试...")
+                time.sleep(RETRY_DELAY_SECONDS)
+
+    print(
+        f"PR#{pull_request_number} 执行 {action_type} "
+        f"重试{MAX_RETRY_ATTEMPTS}次后仍无响应"
+    )
+    if action_type == "merge":
+        sys.exit()
 
 
 if __name__ == "__main__":

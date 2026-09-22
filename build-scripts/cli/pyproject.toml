@@ -15,7 +15,8 @@ NMR, etc.) and drive the ecological development of quantum computing. \
 """
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
-license = { file = "LICENSE" }
+license = "MulanPSL-2.0"
+license-files = ["LICENSE"]
 authors = [
     {name = "Zhao Yi", email = "zhaoyi_yewu@cmss.chinamobile.com"},
     {name = "Ji Dalong", email = "jidalong_yewu@cmss.chinamobile.com"},

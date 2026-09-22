@@ -59,11 +59,14 @@ RUN set -e && \
 # install basic rpm packages
     yum install --nobest -y glibc-langpack-en hostname openssh openssh-clients sshpass iputils iproute \
       telnet net-tools openssl util-linux vim findutils dos2unix wget rsync jq patch \
-      gettext make cmake gcc gcc-g++ rust cargo postgresql docker sudo unzip nc \
+      gettext make cmake gcc rust cargo postgresql docker sudo unzip nc \
       python3 python3-pip python3-sphinx python3-requests python3-devel \
       sqlite-devel bzip2-devel ncurses-devel gdb gdbm-devel xz-devel boost-devel \
-      tk-devel tcl-devel libuuid-devel yp-tools ypbind readline-devel \
-      libyaml-devel libffi-devel openssl-devel zlib-devel gtest-devel && \
+      tk-devel tcl-devel libuuid-devel yp-tools ypbind readline-devel libnsl2-devel \
+      libyaml-devel libffi-devel openssl-devel zlib-devel gtest-devel gmock-devel && \
+# install C++ compiler (package name differs: gcc-g++ on openEuler 24.03+,
+# gcc-c++ on openEuler 21.10 and other rpm-based distros)
+    yum install -y gcc-g++ || yum install -y gcc-c++ && \
     echo "LANG=C.UTF-8" > /etc/locale.conf && \
     ln -sf /usr/bin/python3 /usr/bin/python \
     && \
@@ -137,15 +140,15 @@ RUN set -e && \
     fi \
     && \
 # install python basic requirements
-    ${PIPBIN} install --no-cache-dir tomlkit==0.15.1 && \
+    ${PIPBIN} install --no-cache-dir tomlkit && \
     if [ "${PIPBIN}" != "/usr/bin/pip3" ]; then \
-      pip3 install --no-cache-dir tomlkit==0.15.1 ; \
+      pip3 install --no-cache-dir tomlkit; \
     fi \
     && \
 # install python requirements
     cd ${BUILD_CONTEXT}/ && \
     ${BUILD_CONTEXT}/requirements/export-requirements.py --extra base --no-deps ./pyproject.toml ./requirements.txt && \
-    pip3 install --no-cache-dir -r ./requirements.txt && \
+    ${PIPBIN} install --no-cache-dir -r ./requirements.txt && \
 # Install isolated venv for drivers that requires extra packages
     ${PYTHONBIN} ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} --default-python3 ${PYTHONBIN} --default-pypy pypy3 && \
 # Create ssh keys
@@ -157,4 +160,3 @@ RUN set -e && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then rm -rf /root/.pip; fi && \
     yum clean all && \
     rm -rf ${BUILD_CONTEXT}
-

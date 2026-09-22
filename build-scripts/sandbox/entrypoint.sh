@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # ----------------------------------------------------------------------
 # Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
@@ -12,30 +12,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
-# build wheel package
 
-set -e
+export PS1="(${QCOS_CONTAINER_NAME})[$(pwd)]$ "
 
-BASE_DIR=$(dirname "$0")
-BASE_DIR=$(readlink -f ${BASE_DIR})
-TOP_DIR=$(readlink -f ${BASE_DIR}/../..)
-SRC_DIR=${BASE_DIR}
-
-source ${BASE_DIR}/setup-env.sh
-
-if [ -n "${PIP_MIRROR}" ]; then
-  poetry source -C ${SRC_DIR} add --priority=primary pip_mirror "${PIP_MIRROR}"
-fi
-
-# clean env
-rm -rf ${TOP_DIR}/build
-rm -rf ${TOP_DIR}/src/wy_qcos_client*.egg-info
-rm -rf ${OUTPUT_DIR}/*-py3-none-any.whl
-
-# build
-poetry build -C ${SRC_DIR} -o ${OUTPUT_DIR}
-if [ -n "${PIP_MIRROR}" ]; then
-  poetry source -C ${SRC_DIR} remove pip_mirror
-fi
-echo "Dist package dir: ${OUTPUT_DIR}"
-
+# run QCOS sandbox
+bash

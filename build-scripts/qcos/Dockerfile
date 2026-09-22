@@ -34,10 +34,11 @@ COPY ./ ${BUILD_CONTEXT}
 
 # Copy command line entrypoints
 RUN set -e && \
-    cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli &&  \
-    cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api &&  \
-    cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler &&  \
-    chmod +x /usr/bin/qcos-cli /usr/bin/qcos-api /usr/bin/qcos-transpiler &&  \
+    export DEFAULT_VENV_PATH=/var/lib/qcos/venv/default && \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-cli.py /usr/bin/qcos-cli && \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-api.py /usr/bin/qcos-api && \
+    cp -rf ${BUILD_CONTEXT}/bin/qcos-transpiler.py /usr/bin/qcos-transpiler && \
+    chmod +x /usr/bin/qcos-cli /usr/bin/qcos-api /usr/bin/qcos-transpiler && \
     # config yum and pip repos
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then mkdir -p /tmp/yum.repos.d/; mv /etc/yum.repos.d/*.repo /tmp/yum.repos.d/; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
@@ -46,9 +47,8 @@ RUN set -e && \
 # Install qcos/qcos-cli packages
     if [ "${DEV,,}" = "false" ]; then \
       # production mode: install qcos/qcos-cli wheel packages, and copy config/samples files only
-      DEFAULT_VENV_PATH=/var/lib/qcos/venv/default ; \
       source ${DEFAULT_VENV_PATH}/bin/activate ; \
-      pip3 install --no-cache-dir ${BUILD_CONTEXT}/pkg/wy_qcos-*.whl ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl;  \
+      pip3 install --no-cache-dir ${BUILD_CONTEXT}/pkg/wy_qcos-*.whl ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl ; \
       deactivate ; \
       cp -rf ${DEFAULT_VENV_PATH}/share/wy_qcos/etc/qcos/* /etc/qcos-template/ ; \
       cp -rf ${DEFAULT_VENV_PATH}/share/wy_qcos_client/samples /root/ ; \
@@ -61,7 +61,7 @@ RUN set -e && \
     fi \
     && \
 # Active venv: qcos
-    echo "source /var/lib/qcos/venv/default/bin/activate" >> /root/.bashrc && \
+    echo "source ${DEFAULT_VENV_PATH}/bin/activate" >> /root/.bashrc && \
     rm -rf ${VENV_PATH}/sandbox && \
 # Write build date/commit-id/version into build-info file
     build_date=`date` && \

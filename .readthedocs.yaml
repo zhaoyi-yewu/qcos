@@ -17,6 +17,13 @@ build:
   jobs:
     post_install:
       - npm install -g @mermaid-js/mermaid-cli plantuml
+    pre_build:
+      # Generate openapi html and copy to sphinx _static before build
+      - python docs/openapi-docs/make-openapi-docs.py
+      - mkdir -p docs/sphinx/source/_static
+      - cp docs/openapi-docs/dist/qcos-api-docs.html docs/sphinx/source/_static/
+      - tar xzvf docs/openapi-docs/js.tar.gz -C docs/openapi-docs/dist
+      - cp -r docs/openapi-docs/dist/js docs/sphinx/source/_static/
 
 sphinx:
   configuration: docs/sphinx/source/conf.py

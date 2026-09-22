@@ -166,7 +166,7 @@ function build_qcos {
   echo -e "\nBuilding wheel package: wy-qcos"
   OUTPUT_PKG_DIR=${BUILD_SCRIPTS_DIR}/output
   WHEEL_PKG_DIST_DIR=${OUTPUT_PKG_DIR}/dist
-  QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-cp311-cp311-linux_x86_64.whl
+  QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-cp311-cp311-manylinux_2_38_x86_64.whl
 
   # build qcos-cli wheel package
   if [ "${build_wheel_in_sandbox,,}" = false ];then
@@ -175,7 +175,9 @@ function build_qcos {
   else
     docker exec ${SANDBOX_CONTAINER_NAME} sh -c "
     cd /root/qcos-project/build-scripts &&
-    ./build-wheel.sh
+    source /var/lib/qcos/venv/sandbox/bin/activate;
+    ./build-wheel.sh;
+    deactivate
     "
   fi
 
@@ -219,7 +221,9 @@ function build_cli {
     export QCOS_CLI_VERSION=${QCOS_CLI_VERSION} &&
     export QCOS_CLI_DIST=${QCOS_CLI_DIST} &&
     cd /root/qcos-project/build-scripts/cli &&
-    ./build-wheel.sh
+    source /var/lib/qcos/venv/sandbox/bin/activate;
+    ./build-wheel.sh;
+    deactivate
     "
   fi
 
@@ -240,6 +244,7 @@ function build_cli_image {
     --build-arg CONTAINER_BASE_IMAGE=${CONTAINER_BASE_IMAGE} \
     --build-arg CONTAINER_NAME=${QCOS_CLI_CONTAINER_NAME} \
     --build-arg QCOS_IMAGE_VERSION=${image_tag} \
+    --build-arg PYTHON_SRC_MIRROR=${PYTHON_SRC_MIRROR} \
     --build-arg DEV=${DEV} \
     -t ${QCOS_CLI_IMAGE_NAME}:${image_tag} .build-context
 

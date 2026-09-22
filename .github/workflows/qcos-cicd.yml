@@ -42,6 +42,7 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i 's@http://repo.openeuler.org/openEuler-24.03-LTS@${{ vars.YUM_MIRROR }}@g' /etc/yum.repos.d/openEuler.repo
             sed -i "s@https://repo.openeuler.org/openEuler-24.03-LTS@${{ vars.YUM_MIRROR }}@g" /etc/yum.repos.d/openEuler.repo
+            sed -i "s/gpgcheck=1/gpgcheck=0/g" /etc/yum.repos.d/openEuler.repo
             yum clean all && yum makecache
           fi
           yum install -y docker docker-compose rsync findutils
@@ -88,6 +89,7 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i 's@http://repo.openeuler.org/openEuler-24.03-LTS@${{ vars.YUM_MIRROR }}@g' /etc/yum.repos.d/openEuler.repo
             sed -i "s@https://repo.openeuler.org/openEuler-24.03-LTS@${{ vars.YUM_MIRROR }}@g" /etc/yum.repos.d/openEuler.repo
+            sed -i "s/gpgcheck=1/gpgcheck=0/g" /etc/yum.repos.d/openEuler.repo
             yum clean all && yum makecache
           fi
           yum install -y docker docker-compose rsync findutils

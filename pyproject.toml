@@ -14,7 +14,8 @@ NMR, etc.) and drive the ecological development of quantum computing. \
 """
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
-license = { file = "LICENSE" }
+license = "MulanPSL-2.0"
+license-files = ["LICENSE"]
 authors = [
     {name = "Zhao Yi", email = "zhaoyi_yewu@cmss.chinamobile.com"},
     {name = "Ji Dalong", email = "jidalong_yewu@cmss.chinamobile.com"},
@@ -67,7 +68,7 @@ dependencies = [
     "h11==0.16.0",
     "httpcore==1.0.9",
     "httpx==0.28.1",
-    "idna==3.18",
+    "idna==3.20",
     "jsonrpcclient==4.0.3",
     "loguru==0.7.3",
     "matplotlib==3.11.0",
@@ -132,20 +133,21 @@ dependencies = [
 [project.optional-dependencies]
 # requirements of cli and base
 base = [
-    "argcomplete==3.7.0",
-    "auditwheel==6.8.2",
-    "cliff==4.15.0",
-    "jsonrpcclient==4.0.3",
-    "memray==1.19.3",
-    "patchelf==0.19.1.0",
-    "poetry==2.4.1",
-    "requests==2.34.2",
-    "rpdb==0.2.0",
-    "schema==0.7.8",
-    "uv==0.9.13",
+    # compatible with oe21.10
+    "argcomplete",
+    "auditwheel",
+    "cliff",
+    "jsonrpcclient",
+    "memray",
+    "patchelf",
+    "poetry",
+    "requests",
+    "rpdb",
+    "schema",
+    "uv",
     # other requirements
-    "PyYAML==6.0.3",
-    "tomlkit==0.15.1",
+    "PyYAML",
+    "tomlkit",
 ]
 
 # requirements of tests
@@ -169,17 +171,26 @@ docs = [
     "doc8==2.0.0",
     "docutils==0.21.2",
     "docxbuilder==1.2.0",
+    "idna==3.20",
     "linkify-it-py==2.1.0",
+    "markupsafe==3.0.3",
     "mdformat==1.0.0",
     "myst-parser==5.1.0",
     "pallets-sphinx-themes==2.5.0",
     "pydantic==2.13.4",
+    "PyYAML==6.0.3",
+    "requests==2.34.2",
+    "rich==15.0.0",
+    "schema==0.7.8",
     "sphinx==8.1.3",
     "sphinx_rtd_theme==3.1.0",
     "sphinxcontrib-jquery==4.1",
     "sphinxcontrib-mermaid==2.0.3",
     "sphinxcontrib-plantuml==0.31",
     "sphinxcontrib-svg2pdfconverter==2.1.0",
+    "sqlalchemy==2.0.51",
+    "toml==0.10.2",
+    "typing_extensions==4.16.0",
     # auto api docs
     "fastapi==0.139.2",
     "fastapi-jsonrpc==3.5.0",
@@ -219,7 +230,7 @@ driver-qiskit = [
 driver-quafu = [
     "certifi==2026.6.17",
     "chardet==5.2.0",
-    "idna==3.18",
+    "idna==3.20",
     "quarkstudio==7.1.8",
     "requests==2.34.2",
     "urllib3==2.7.0",
@@ -384,4 +395,5 @@ ignore-path = [
     "docs/sphinx/source/user-guide/compatibility.rst",
     "docs/sphinx/source/other-docs/code-of-conduct.rst",
     "docs/sphinx/source/other-docs/changelog.rst",
+    "docs/sphinx/source/_static",
 ]
