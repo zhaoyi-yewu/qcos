@@ -53,7 +53,6 @@ class DriverLogicalQubitBase(DriverGateBase):
         self.transpiler = Constant.TRANSPILER_CMSS
         self.tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
         self.supported_basis_gates = [
-            Constant.SINGLE_QUBIT_GATE_I,
             Constant.SINGLE_QUBIT_GATE_H,
             Constant.SINGLE_QUBIT_GATE_S,
             Constant.SINGLE_QUBIT_GATE_SDG,

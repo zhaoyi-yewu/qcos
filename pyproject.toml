@@ -259,7 +259,7 @@ driver-uqc = [
 
 # requirements of driver uqc
 driver-logical-qubit = [
-    "lqcloud==0.4.2",
+    "lqcloud==0.5.0",
 ]
 
 [project.scripts]

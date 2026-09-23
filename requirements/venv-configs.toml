@@ -95,6 +95,10 @@ copy_from = "logical_qubit"
 module_name = "driver_lq_agate100"
 copy_from = "logical_qubit"
 
+[DriverLqMQ02Pulse]
+module_name = "driver_lq_mq02_pulse"
+copy_from = "logical_qubit"
+
 [qiskit]
 deps_pyproject_file = "../pyproject.toml"
 deps_sections = ["driver-qiskit"]

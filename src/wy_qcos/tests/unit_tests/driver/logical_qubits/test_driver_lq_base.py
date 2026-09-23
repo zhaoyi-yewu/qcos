@@ -79,7 +79,6 @@ class TestDriverLogicalQubit:
             == Constant.TECH_TYPE_SUPERCONDUCTING
         )
         assert driver_logical_qubit.supported_basis_gates == [
-            Constant.SINGLE_QUBIT_GATE_I,
             Constant.SINGLE_QUBIT_GATE_H,
             Constant.SINGLE_QUBIT_GATE_S,
             Constant.SINGLE_QUBIT_GATE_SDG,
