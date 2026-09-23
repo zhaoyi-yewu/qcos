@@ -21,8 +21,8 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 from loguru import logger
-from lqcloud import LQCloudProvider, Sequence
-from lqcloud.sequence import gate
+from lqcloud import LQCloudProvider
+from lqcloud.sequence import Sequence, gate
 from schema import And, Optional, Or, Schema
 
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
@@ -56,14 +56,25 @@ class DriverLqMQ02Pulse(DriverPulseBase):
         self.tech_type = Constant.TECH_TYPE_SUPERCONDUCTING
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_H,
+            Constant.SINGLE_QUBIT_GATE_I,
+            Constant.SINGLE_QUBIT_GATE_P,
+            Constant.SINGLE_QUBIT_GATE_R,
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
             Constant.SINGLE_QUBIT_GATE_S,
             Constant.SINGLE_QUBIT_GATE_SDG,
+            Constant.SINGLE_QUBIT_GATE_SX,
+            Constant.SINGLE_QUBIT_GATE_SXDG,
             Constant.SINGLE_QUBIT_GATE_T,
+            Constant.SINGLE_QUBIT_GATE_TDG,
+            Constant.SINGLE_QUBIT_GATE_U,
+            Constant.SINGLE_QUBIT_GATE_U1,
+            Constant.SINGLE_QUBIT_GATE_U2,
+            Constant.SINGLE_QUBIT_GATE_U3,
             Constant.SINGLE_QUBIT_GATE_X,
             Constant.SINGLE_QUBIT_GATE_Y,
             Constant.SINGLE_QUBIT_GATE_Z,
             Constant.SINGLE_QUBIT_GATE_RZ,
-            Constant.TWO_QUBIT_GATE_CZ,
         ]
         self.supported_transpilers = [
             Constant.TRANSPILER_DUMMY,
@@ -210,19 +221,74 @@ class DriverLqMQ02Pulse(DriverPulseBase):
         qasm_code = converter.to_qasm2()
         return qasm_code
 
-    def apply_gate(self, gate_name, seq, qubit, start, theta=0.0):
-        """Convert code.
+    @staticmethod
+    def _gate_parameters(gate_name, parameters, expected):
+        """Validate and return finite numeric gate parameters."""
+        if len(parameters) != expected:
+            raise ValueError(
+                f"gate '{gate_name}' expects {expected} parameter(s), "
+                f"got {len(parameters)}"
+            )
+        values = tuple(float(value) for value in parameters)
+        if not all(np.isfinite(value) for value in values):
+            raise ValueError(f"gate '{gate_name}' parameters must be finite")
+        return values
+
+    @staticmethod
+    def _apply_virtual_z(seq, qubit, phase):
+        """Apply a zero-duration Z rotation in the software frame."""
+        gate.virtual_z(seq, qubit, phase=phase)
+
+    def _apply_u_gate(self, seq, qubit, start, theta, phi, lam):
+        """Apply U(theta, phi, lambda) with one DRAG pulse at most.
+
+        U(theta, phi, lambda) is, up to global phase,
+        RZ(phi) RY(theta) RZ(lambda). The two RZ rotations are virtual,
+        leaving only one calibrated arbitrary-angle XY pulse.
+        """
+        self._apply_virtual_z(seq, qubit, lam)
+        start = gate.phased_x(
+            seq, qubit, start=start, theta=theta, phi=np.pi / 2
+        )
+        self._apply_virtual_z(seq, qubit, phi)
+        return start
+
+    def apply_gate(
+        self, gate_name, seq, qubit, start, theta=0.0, parameters=None
+    ):
+        """Append a supported single-qubit gate to a pulse sequence.
 
         Args:
             gate_name: gate name
             seq: Sequence
             qubit: qubit parms
             start: start time
-            theta: rz gate parms
+            theta: backward-compatible parameter for one-parameter gates
+            parameters: complete gate parameter sequence
 
         Returns:
             end times
         """
+        gate_name = gate_name.lower()
+        parameter_counts = {
+            "p": 1,
+            "r": 2,
+            "rx": 1,
+            "ry": 1,
+            "rz": 1,
+            "u": 3,
+            "u1": 1,
+            "u2": 2,
+            "u3": 3,
+        }
+        if parameters is None:
+            parameters = (theta,) if gate_name in parameter_counts else ()
+        parameters = self._gate_parameters(
+            gate_name, parameters, parameter_counts.get(gate_name, 0)
+        )
+
+        if gate_name in ("id", "i"):
+            return start
         if gate_name == "x":
             return gate.xy_gate(
                 seq, qubit, start=start, phase=0.0, gate_name="pi"
@@ -232,28 +298,64 @@ class DriverLqMQ02Pulse(DriverPulseBase):
                 seq, qubit, start=start, phase=np.pi / 2, gate_name="pi"
             )
         if gate_name == "z":
-            gate.virtual_z(seq, qubit, phase=np.pi)
+            self._apply_virtual_z(seq, qubit, np.pi)
             return start
         if gate_name == "s":
-            gate.virtual_z(seq, qubit, phase=np.pi / 2)
+            self._apply_virtual_z(seq, qubit, np.pi / 2)
             return start
         if gate_name == "sdg":
-            gate.virtual_z(seq, qubit, phase=-np.pi / 2)
+            self._apply_virtual_z(seq, qubit, -np.pi / 2)
             return start
         if gate_name == "t":
-            gate.virtual_z(seq, qubit, phase=np.pi / 4)
+            self._apply_virtual_z(seq, qubit, np.pi / 4)
             return start
-        if gate_name == "rz":
-            gate.virtual_z(seq, qubit, phase=theta)
+        if gate_name == "tdg":
+            self._apply_virtual_z(seq, qubit, -np.pi / 4)
             return start
+        if gate_name in ("p", "rz", "u1"):
+            self._apply_virtual_z(seq, qubit, parameters[0])
+            return start
+        if gate_name in ("sx", "sxdg"):
+            phase = 0.0 if gate_name == "sx" else np.pi
+            return gate.xy_gate(
+                seq, qubit, start=start, phase=phase, gate_name="pih"
+            )
+        if gate_name in ("rx", "ry"):
+            phase = 0.0 if gate_name == "rx" else np.pi / 2
+            return gate.phased_x(
+                seq,
+                qubit,
+                start=start,
+                theta=parameters[0],
+                phi=phase,
+            )
+        if gate_name == "r":
+            return gate.phased_x(
+                seq,
+                qubit,
+                start=start,
+                theta=parameters[0],
+                phi=parameters[1],
+            )
+        if gate_name == "u2":
+            return self._apply_u_gate(
+                seq,
+                qubit,
+                start,
+                np.pi / 2,
+                parameters[0],
+                parameters[1],
+            )
+        if gate_name in ("u", "u3"):
+            return self._apply_u_gate(seq, qubit, start, *parameters)
         if gate_name == "h":
-            gate.virtual_z(seq, qubit, phase=np.pi / 2)
+            self._apply_virtual_z(seq, qubit, np.pi / 2)
             start = gate.xy_gate(
                 seq, qubit, start=start, phase=0.0, gate_name="pih"
             )
-            gate.virtual_z(seq, qubit, phase=np.pi / 2)
+            self._apply_virtual_z(seq, qubit, np.pi / 2)
             return start
-        return None
+        raise ValueError(f"unsupported pulse gate: {gate_name}")
 
     def convert_code(self, transpile_results, phys_to_logical):
         """Convert code.
@@ -267,34 +369,44 @@ class DriverLqMQ02Pulse(DriverPulseBase):
         """
         params = self.backend.get_qpu_params()
         seq = Sequence()
-        t = 0.0
-        measure_list = []
+        qubit_end_times = {}
+        measure_qubits = {}
         for operation in transpile_results:
-            gate_name = operation.name
+            gate_name = operation.name.lower()
+            targets = list(operation.targets)
+            if gate_name == "measure":
+                if len(targets) != 1:
+                    raise ValueError("measure expects exactly one qubit")
+                qubit_id = targets[0]
+                measure_qubits.setdefault(qubit_id, params.qubit(qubit_id))
+                continue
             if (
                 operation.operation_type
                 == OperationType.DOUBLE_QUBIT_OPERATION
                 or operation.operation_type == 2
+                or len(targets) != 1
             ):
-                err_msg = "pulse driver support single gate only."
-                raise ValueError(err_msg)
-            if gate_name == "measure":
-                measure_list.append(params.qubit(operation.targets[0]))
-                continue
-            if operation.arg_value:
-                t = self.apply_gate(
-                    gate_name,
-                    seq,
-                    params.qubit(operation.targets[0]),
-                    t,
-                    theta=operation.arg_value[0],
+                raise ValueError(
+                    f"pulse gate '{gate_name}' on {len(targets)} qubits is "
+                    "not supported by lqcloud.sequence 0.5.0"
                 )
-            else:
-                t = self.apply_gate(
-                    gate_name, seq, params.qubit(operation.targets[0]), t
-                )
-        for qubit in measure_list:
-            t = gate.measure_ring_flattop(seq, qubit, start=t)
+
+            qubit_id = targets[0]
+            start = qubit_end_times.get(qubit_id, 0.0)
+            qubit_end_times[qubit_id] = self.apply_gate(
+                gate_name,
+                seq,
+                params.qubit(qubit_id),
+                start,
+                parameters=tuple(operation.arg_value),
+            )
+
+        # Independent qubits are scheduled in parallel. All readout pulses
+        # start together after the latest drive pulse instead of serialising
+        # one long readout window per qubit.
+        measure_start = max(qubit_end_times.values(), default=0.0)
+        for qubit in measure_qubits.values():
+            gate.measure_ring_flattop(seq, qubit, start=measure_start)
         return seq
 
     def get_device_info(self):
