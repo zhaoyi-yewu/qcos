@@ -63,13 +63,18 @@ def _extract_two_qubit_layer_prefix(
 
 
 def sabre_initial_mapping(
-    gates_list: list[GateOperation], coupling_graph: Graph
+    gates_list: list[GateOperation],
+    coupling_graph: Graph,
+    initial_l2p: list[int] | None = None,
 ):
     """Get the initial mapping.
 
     Args:
         gates_list (list[GateOperation]): a list of gates.
         coupling_graph (Graph): coupling graph of the quantum machine.
+        initial_l2p (list[int] | None): Optional initial
+            logical-to-physical mapping to seed the forward pass.
+            None uses the default identity mapping.
 
     Returns:
         list[int]: the initial mapping.
@@ -80,7 +85,7 @@ def sabre_initial_mapping(
     )
     reverse_gates = list(reversed(prefix_gates))
     # get initial mapping for reverse ir
-    sabre.execute(prefix_gates)
+    sabre.execute(prefix_gates, initial_l2p=initial_l2p)
     reverse_mapping = sabre.logic2phy.copy()
     # get the initial mapping for original ir
     sabre.execute(reverse_gates, initial_l2p=reverse_mapping)
