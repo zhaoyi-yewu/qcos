@@ -219,6 +219,99 @@ def _translate_verifier_message(message: str) -> str:
     return message
 
 
+_PYDANTIC_ERROR_TYPE_MAP: dict[str, str] = {
+    "string_type": "类型错误，应为字符串",
+    "int_type": "类型错误，应为整数",
+    "int_parsing": "无法解析为整数",
+    "int_from_str": "无法解析为整数",
+    "list_type": "类型错误，应为列表",
+    "list_len": "列表长度超过上限",
+    "float_type": "类型错误，应为浮点数",
+    "float_parsing": "无法解析为浮点数",
+    "model_type": "类型错误，应为对象",
+    "model_attributes_type": "类型错误，应为对象",
+    "json_invalid": "JSON格式错误",
+    "json_type": "JSON类型错误",
+    "value_error": "值错误",
+    "bool_type": "类型错误，应为布尔值",
+    "bool_parsing": "无法解析为布尔值",
+}
+
+# Maps raw JSON field names (as they appear in Pydantic error "loc") to
+# Chinese display names, so the translated validation message is fully
+# Chinese. Nested paths (e.g. "topology.bits") are translated segment by
+# segment; a segment not in this map is kept verbatim.
+_FIELD_NAME_MAP: dict[str, str] = {
+    "insLabel": "技术路线",
+    "compiler": "编译器",
+    "qasmType": "任务输入类型",
+    "qasm": "OpenQASM源代码",
+    "extend": "可选参数",
+    "topology": "真机拓扑结构",
+    "targetBits": "目标比特",
+    "bits": "可用量子比特数",
+    "basisGates": "基础门集",
+    "singleParam": "单比特信息",
+    "doubleParam": "双比特信息",
+    "qubit": "量子比特名称",
+    "singleQubitGateFidelity": "单比特门保真度",
+    "linkQubit": "耦合量子比特对",
+    "cz": "CZ门保真度",
+    "compiled": "编译后电路",
+    "code": "状态码",
+    "msg": "响应消息",
+    "data": "响应数据",
+}
+
+
+def _loc_to_raw_field_name(loc: tuple) -> str:
+    parts = [
+        str(p)
+        for p in loc
+        if not isinstance(p, int) and p not in ("body", "query", "path")
+    ]
+    return ".".join(parts)
+
+
+def _translate_pydantic_error(error: dict) -> str:
+    raw_field_name = _loc_to_raw_field_name(error.get("loc", ()))
+    field_name = ".".join(
+        _FIELD_NAME_MAP.get(part, part) for part in raw_field_name.split(".")
+    )
+    error_type = error.get("type", "")
+    ctx = error.get("ctx") or {}
+
+    if error_type == "missing":
+        return f"{field_name}为必填参数"
+    if error_type == "string_too_long":
+        max_length = ctx.get("max_length")
+        if max_length is not None:
+            return f"{field_name}字符串长度超过{max_length}限制"
+        return f"{field_name}字符串长度超过限制"
+    if error_type == "less_than_equal":
+        le = ctx.get("le")
+        if le is not None:
+            return f"{field_name}值超过上限{le}"
+        return f"{field_name}值超过上限"
+    if error_type == "greater_than_equal":
+        ge = ctx.get("ge")
+        if ge is not None:
+            return f"{field_name}值低于下限{ge}"
+        return f"{field_name}值低于下限"
+
+    template = _PYDANTIC_ERROR_TYPE_MAP.get(error_type)
+    if template:
+        return f"{field_name}{template}"
+    return f"{field_name}校验失败"
+
+
+def translate_validation_errors(errors: list[dict]) -> str:
+    if not errors:
+        return MSG_INVALID_PARAM
+    parts = [_translate_pydantic_error(e) for e in errors]
+    return "; ".join(parts)
+
+
 def _encode_msg(message: str) -> str:
     """Base64-encode a Chinese verifier message for the response msg field.
 
@@ -259,11 +352,15 @@ def _truncate_msg(msg: str) -> str:
     encoded = msg.encode("utf-8")
     if len(encoded) <= MSG_MAX_BYTES:
         return msg
+    # Reserve 3 bytes for the "…" suffix so the truncated text + ellipsis
+    # stays within MSG_MAX_BYTES; base64 of that is <= MSG_MAX_LEN chars.
+    ellipsis = "…"
+    max_bytes = MSG_MAX_BYTES - len(ellipsis.encode("utf-8"))
+    truncated = encoded[:max_bytes]
     # walk back to a UTF-8 boundary so no multi-byte char is split
-    truncated = encoded[: MSG_MAX_BYTES - 1]
     while truncated and (truncated[-1] & 0xC0) == 0x80:
         truncated = truncated[:-1]
-    return truncated.decode("utf-8", errors="ignore") + "…"
+    return truncated.decode("utf-8", errors="ignore") + ellipsis
 
 
 def _parse_link_qubit(link_qubit: str) -> tuple[int, int]:
