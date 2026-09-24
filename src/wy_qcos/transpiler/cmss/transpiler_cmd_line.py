@@ -85,6 +85,7 @@ class CMSSTranspilerPerf:
         self.dir_list = []
         self.total_files = []
         self.tmax = 0
+        self.run_count = 1
         self.perf_enabled = False
         self.enable_detail = False
         # whether to enable the C++ all-in-one transpile (single-circuit
@@ -271,6 +272,11 @@ class CMSSTranspilerPerf:
         self.output_log = extra_configs["transpile"].get("output_log", "")
         self.csv_file = extra_configs["transpile"].get("csv_file", "")
         self.tmax = extra_configs["transpile"].get("tmax", 0)
+        run_count = extra_configs["transpile"].get("run_count", 1)
+        if run_count < 1:
+            self.run_count = 1
+        else:
+            self.run_count = run_count
 
         # init input files
         self.file_list = extra_configs["transpile"].get("files", [])
@@ -730,6 +736,43 @@ class CMSSTranspilerPerf:
         # calculate the average runtime
         self.get_transpile_result(csv_file_path)
 
+    def _log_runtime_perf(self, runtime):
+        """Log performance result from a TranspileRuntime object.
+
+        Used when run_count > 1 to print only the best (shortest total
+        time) run's result instead of every run.
+
+        Args:
+            runtime (TranspileRuntime): the runtime statistics to log.
+        """
+        log_perf(logger, "Start performace testing of cmss compiling.")
+        if self.enable_detail:
+            labels = [
+                ("parse time", "parse_time"),
+                ("first optimize time", "opt_time1"),
+                ("decompose 1q2q time", "decompose_1q2q_time"),
+                ("decompose rule time", "decompose_rule_time"),
+                ("mapping time", "mapping_time"),
+                ("decompose apply time", "decompose_apply_time"),
+                ("second optimize time", "opt_time2"),
+                ("cmss transpile time", "transpile_time"),
+            ]
+            for label, attr in labels:
+                log_perf(
+                    logger,
+                    f"{label}: {getattr(runtime, attr):.4f}s\n",
+                )
+        else:
+            log_perf(
+                logger,
+                f"parse time: {runtime.parse_time:.4f}s\n",
+            )
+        log_perf(
+            logger,
+            "total running time of cmss-transpiler:"
+            f" {runtime.total_time:.4f}s\n\n",
+        )
+
     def get_transpile_result(self, csv_file_path=None):
         failed_params = []
         combos_per_file = len(self.params_list) // len(self.total_files)
@@ -791,6 +834,7 @@ class CMSSTranspilerPerf:
             log_perf(
                 logger,
                 "[参数信息]\n"
+                "编译器: QCOS CMSS\n"
                 f"输入QASM文件: {params.file.name}\n"
                 f"量子比特数: {input_num_qubits}\n"
                 f"量子线路深度: {input_depth}\n"
@@ -800,15 +844,33 @@ class CMSSTranspilerPerf:
                 f"拓扑文件: {params.mapping_info[1]}\n"
                 f"{mapping_opt}\n",
             )
+            suppress = self.run_count > 1
             try:
-                runtime = self.cmss_transpiler_perf_exec(
-                    input_file=params.file,
-                    opt_level=params.opt_level,
-                    base_gates=params.tech_gates,
-                    tech_type=params.mapping_info[0],
-                    config_file=params.mapping_info[1],
-                    sc_mapping_options=params.sc_mapping_options,
-                )
+                best_runtime = None
+                run_times = []
+                for run_idx in range(self.run_count):
+                    runtime = self.cmss_transpiler_perf_exec(
+                        input_file=params.file,
+                        opt_level=params.opt_level,
+                        base_gates=params.tech_gates,
+                        tech_type=params.mapping_info[0],
+                        config_file=params.mapping_info[1],
+                        sc_mapping_options=params.sc_mapping_options,
+                        suppress_perf=suppress,
+                    )
+                    run_times.append(runtime.total_time)
+                    if suppress:
+                        log_perf(
+                            logger,
+                            f"run {run_idx + 1}/{self.run_count} total running"
+                            f" time of cmss-transpiler:"
+                            f" {runtime.total_time:.4f}s\n",
+                        )
+                    if (
+                        best_runtime is None
+                        or runtime.total_time < best_runtime.total_time
+                    ):
+                        best_runtime = runtime
             except Exception as e:
                 logger.error(f"Transpile failed for {params.file}: {e}")
                 failed_params.append(params)
@@ -816,19 +878,27 @@ class CMSSTranspilerPerf:
                     self._append_csv_error_row(csv_file_path, params, str(e))
                 continue
 
-            self.transpile_result[params] = runtime
+            if suppress:
+                avg_total_time = sum(run_times) / len(run_times)
+                log_perf(
+                    logger,
+                    f"average total running time of cmss-transpiler"
+                    f" ({self.run_count} runs): {avg_total_time:.4f}s\n\n",
+                )
+
+            self.transpile_result[params] = best_runtime
 
             if csv_file_path:
-                self._append_csv_row(csv_file_path, params, runtime)
+                self._append_csv_row(csv_file_path, params, best_runtime)
 
             if (
                 self.tmax > 0
-                and runtime.total_time > self.tmax
+                and best_runtime.total_time > self.tmax
                 and combo_idx not in skip_combos
             ):
                 skip_combos.add(combo_idx)
                 logger.warning(
-                    f"total_time [{runtime.total_time:.4f}] exceeded "
+                    f"total_time [{best_runtime.total_time:.4f}] exceeded "
                     f"tmax [{self.tmax}s] for combo {combo_idx}, "
                     f"skipping remaining files of this combo"
                 )
@@ -1067,6 +1137,7 @@ class CMSSTranspilerPerf:
         tech_type: str = "",
         config_file: str = "",
         sc_mapping_options: dict = {},
+        suppress_perf: bool = False,
     ):
         """cmss-transpiler performance test for single run.
 
@@ -1077,10 +1148,16 @@ class CMSSTranspilerPerf:
             tech_type (str): technology type
             config_file (str): config file path of technology type
             sc_mapping_options (dict): mapping options
+            suppress_perf (bool): suppress perf-level log output
 
         Returns:
             TranspileRuntime: the runtime of phase of transpile
         """
+
+        def _perf_log(msg, *args, **kwargs):
+            if not suppress_perf:
+                log_perf(logger, msg, *args, **kwargs)
+
         runtime = TranspileRuntime()
         output_file = self.output_log
         # input args check and init logger
@@ -1190,7 +1267,7 @@ class CMSSTranspilerPerf:
         # performace testing
         with Timer() as total_timer:
             # generate basis gates list
-            log_perf(logger, "Start performace testing of cmss compiling.")
+            _perf_log("Start performace testing of cmss compiling.")
 
             # transpiled basis gate list and the QuantumCircuit built from it,
             # kept for post-transpile statistics and qasm output.
@@ -1263,8 +1340,7 @@ class CMSSTranspilerPerf:
                         cpp_perf_labels[7],
                     ]
                 for label, attr in cpp_perf_labels:
-                    log_perf(
-                        logger,
+                    _perf_log(
                         f"cpp {label}: {getattr(runtime, attr):.4f}s\n",
                     )
             else:
@@ -1276,7 +1352,7 @@ class CMSSTranspilerPerf:
                         parse_result.values()
                     )[0]
                 runtime.parse_time = ast_timer.elapsed
-                log_perf(logger, f"parse openqasm: {ast_timer.elapsed:.4f}s\n")
+                _perf_log(f"parse openqasm: {ast_timer.elapsed:.4f}s\n")
 
                 # optimize the transpiled gates
                 if self.enable_transpiler:
@@ -1305,13 +1381,11 @@ class CMSSTranspilerPerf:
                     if not self.enable_detail:
                         py_perf_labels = [py_perf_labels[6]]
                     for label, attr in py_perf_labels:
-                        log_perf(
-                            logger,
+                        _perf_log(
                             f"{label}: {getattr(runtime, attr):.4f}s\n",
                         )
         runtime.total_time = total_timer.elapsed
-        log_perf(
-            logger,
+        _perf_log(
             "total running time of cmss-transpiler:"
             f" {total_timer.elapsed:.4f}s\n\n",
         )

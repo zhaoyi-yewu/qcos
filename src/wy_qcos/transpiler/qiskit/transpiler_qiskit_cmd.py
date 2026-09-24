@@ -171,10 +171,8 @@ class QiskitTranspilerPerf:
             raise ValueError("configs is invalid!")
 
         run_count = extra_configs["transpile"].get("run_count", 1)
-        if run_count <= 0:
+        if run_count < 1:
             self.run_count = 1
-        elif run_count > 5:
-            self.run_count = 5
         else:
             self.run_count = run_count
 
@@ -298,38 +296,113 @@ class QiskitTranspilerPerf:
 
         _ = self.output_csv_file()
 
+    def _ensure_parse_result(self, params):
+        """Pre-parse QASM file to populate parse_results for logging."""
+        if params.file in self.parse_results:
+            return
+        qasm_data = self.read_qasm_from_file(str(params.file))
+        if qasm_data is None:
+            return
+        transpiler = TranspilerQiskit(opt_level=params.opt_level)
+        src_code_info = {"000": qasm_data}
+        try:
+            parse_result = transpiler.parse(src_code_info)
+            self.parse_results[params.file] = (
+                parse_result.num_qubits,
+                parse_result.depth(),
+                len(parse_result.data),
+            )
+        except Exception as e:
+            logger.warning(f"pre-parse failed for {params.file}: {e}")
+
+    def _log_runtime_perf(self, runtime):
+        """Log performance result from a TranspileRuntime object.
+
+        Used when run_count > 1 to print only the best (shortest total
+        time) run's result instead of every run.
+
+        Args:
+            runtime (TranspileRuntime): the runtime statistics to log.
+        """
+        log_perf(logger, "start qiskit performance testing...")
+        log_perf(
+            logger,
+            f"parsing OpenQASM: {runtime.parse_time:.4f}s",
+        )
+        log_perf(
+            logger,
+            f"transpile quantum circuit: {runtime.transpile_time:.4f}s\n",
+        )
+        log_perf(
+            logger,
+            "total running time of qiskit-transpiler:"
+            f" {runtime.total_time:.4f}s\n\n",
+        )
+
     def get_transpile_result(self):
-        transpile_all_result = {}
-        for run_idx in range(self.run_count):
-            for params in self.params_list:
-                log_perf(
-                    logger,
-                    "[parameters]\n"
-                    f"input_file: {params.file}\n"
-                    f"opt_level: {params.opt_level}\n"
-                    f"basis_gates: {params.basis_gates}\n",
-                )
-                try:
+        for params in self.params_list:
+            self._ensure_parse_result(params)
+            if params.file in self.parse_results:
+                input_num_qubits = self.parse_results[params.file][0]
+                input_depth = self.parse_results[params.file][1]
+            else:
+                input_num_qubits = 0
+                input_depth = 0
+            basis_gates_display = ",".join(params.basis_gates)
+            log_perf(
+                logger,
+                "[参数信息]\n"
+                "编译器: IBM Qiskit\n"
+                f"输入QASM文件: {params.file.name}\n"
+                f"量子比特数: {input_num_qubits}\n"
+                f"量子线路深度: {input_depth}\n"
+                f"优化级别: {params.opt_level}\n"
+                f"基础门集: {basis_gates_display}\n"
+                f"芯片类型: {params.tech_type}\n"
+                f"拓扑文件: {self.config_file}\n",
+            )
+            suppress = self.run_count > 1
+            try:
+                best_runtime = None
+                run_times = []
+                for run_idx in range(self.run_count):
                     runtime = self.qiskit_transpiler_perf_exec(
                         input_file=params.file,
                         opt_level=params.opt_level,
                         basis_gates=params.basis_gates,
+                        suppress_perf=suppress,
                     )
-                    if params in transpile_all_result:
-                        transpile_all_result[params].add_runtime(runtime)
-                    else:
-                        transpile_all_result[params] = runtime
-                except Exception as e:
-                    logger.error(
-                        f"transpile failed for {params.file} "
-                        f"(opt_level={params.opt_level}, "
-                        f"basis_gates={params.basis_gates}): {e}"
-                    )
-                    self.transpile_errors[params] = str(e)
-                    continue
+                    run_times.append(runtime.total_time)
+                    if suppress:
+                        log_perf(
+                            logger,
+                            f"run {run_idx + 1}/{self.run_count} total running"
+                            f" time of qiskit-transpiler:"
+                            f" {runtime.total_time:.4f}s\n",
+                        )
+                    if (
+                        best_runtime is None
+                        or runtime.total_time < best_runtime.total_time
+                    ):
+                        best_runtime = runtime
+            except Exception as e:
+                logger.error(
+                    f"transpile failed for {params.file} "
+                    f"(opt_level={params.opt_level}, "
+                    f"basis_gates={params.basis_gates}): {e}"
+                )
+                self.transpile_errors[params] = str(e)
+                continue
 
-        for params, runtime in transpile_all_result.items():
-            self.transpile_result[params] = runtime
+            if suppress:
+                avg_total_time = sum(run_times) / len(run_times)
+                log_perf(
+                    logger,
+                    f"average total running time of qiskit-transpiler"
+                    f" ({self.run_count} runs): {avg_total_time:.4f}s\n\n",
+                )
+
+            self.transpile_result[params] = best_runtime
 
     def output_csv_file(self):
         csv_file_path = None
@@ -458,6 +531,7 @@ class QiskitTranspilerPerf:
         input_file: Path | None = None,
         opt_level: int = Constant.DEFAULT_OPTIMIZATION_LEVEL,
         basis_gates: list = [],
+        suppress_perf: bool = False,
     ):
         """qiskit-transpiler performance test for single run.
 
@@ -465,10 +539,16 @@ class QiskitTranspilerPerf:
             input_file (Path | None): input qasm file path
             opt_level (int): optimization level
             basis_gates (list): basis gates
+            suppress_perf (bool): suppress perf-level log output
 
         Returns:
             TranspileRuntime: the runtime of each phase
         """
+
+        def _perf_log(msg, *args, **kwargs):
+            if not suppress_perf:
+                log_perf(logger, msg, *args, **kwargs)
+
         runtime = TranspileRuntime()
         output_file = self.output_log
         file_path, output_file_path = self.check_file_args(
@@ -514,12 +594,12 @@ class QiskitTranspilerPerf:
             basis_gates,
         )
 
-        log_perf(logger, "start qiskit performance testing...")
+        _perf_log("start qiskit performance testing...")
         with Timer() as total_timer:
             with Timer() as parse_timer:
                 parse_result = transpiler.parse(src_code_info)
             runtime.parse_time = parse_timer.elapsed
-            log_perf(logger, f"parsing OpenQASM: {parse_timer.elapsed:.4f}s")
+            _perf_log(f"parsing OpenQASM: {parse_timer.elapsed:.4f}s")
 
             if input_file not in self.parse_results:
                 self.parse_results[input_file] = (
@@ -533,14 +613,12 @@ class QiskitTranspilerPerf:
                     parse_result, basis_gates
                 )
             runtime.transpile_time = transpile_timer.elapsed
-            log_perf(
-                logger,
+            _perf_log(
                 f"transpile quantum circuit: {transpile_timer.elapsed:.4f}s\n",
             )
 
         runtime.total_time = total_timer.elapsed
-        log_perf(
-            logger,
+        _perf_log(
             "total running time of qiskit-transpiler:"
             f" {total_timer.elapsed:.4f}s\n\n",
         )

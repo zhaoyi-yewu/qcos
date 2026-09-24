@@ -1491,3 +1491,268 @@ class TestTranspilerCmdLine:
         result_path = perf.output_csv_file()
         assert result_path is not None
         assert result_path.exists()
+
+
+# ──────────────────────────────────────────────
+# run_count config tests
+# ──────────────────────────────────────────────
+@pytest.mark.usefixtures("global_configs")
+class TestRunCountConfig:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
+
+    def _base_configs(self, **overrides):
+        cfg = {
+            "transpile": {
+                "files": [f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"],
+                "transpiler": {"base_gates": ["rx, ry, cx"]},
+                "optimize": {"opt_level": [1]},
+                "mapping": {
+                    "config_file": [
+                        f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"
+                    ],
+                },
+            }
+        }
+        cfg["transpile"].update(overrides)
+        return cfg
+
+    def test_run_count_default(self):
+        """run_count 未配置时默认为 1."""
+        perf = CMSSTranspilerPerf()
+        perf.init_transpile_params(self._base_configs())
+        assert perf.run_count == 1
+
+    def test_run_count_below_one_clamped(self):
+        """run_count < 1 时强制为 1."""
+        perf = CMSSTranspilerPerf()
+        perf.init_transpile_params(self._base_configs(run_count=0))
+        assert perf.run_count == 1
+
+    def test_run_count_negative_clamped(self):
+        """run_count 为负数时强制为 1."""
+        perf = CMSSTranspilerPerf()
+        perf.init_transpile_params(self._base_configs(run_count=-3))
+        assert perf.run_count == 1
+
+    def test_run_count_normal(self):
+        """run_count 正常值保留."""
+        perf = CMSSTranspilerPerf()
+        perf.init_transpile_params(self._base_configs(run_count=5))
+        assert perf.run_count == 5
+
+
+# ──────────────────────────────────────────────
+# _log_runtime_perf tests
+# ──────────────────────────────────────────────
+class TestLogRuntimePerfCmss:
+    def test_log_runtime_perf_detail_true(self):
+        """enable_detail=True → outputs all stage labels."""
+        runtime = TranspileRuntime()
+        runtime.parse_time = 0.01
+        runtime.opt_time1 = 0.02
+        runtime.transpile_time = 0.05
+        runtime.total_time = 0.08
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.log_perf"
+        ) as mock_log:
+            perf = CMSSTranspilerPerf()
+            perf.enable_detail = True
+            perf._log_runtime_perf(runtime)
+            assert mock_log.call_count >= 5
+            logged = " ".join(str(c) for c in mock_log.call_args_list)
+            assert "0.0100" in logged
+            assert "0.0800" in logged
+
+    def test_log_runtime_perf_detail_false(self):
+        """enable_detail=False → outputs only parse and total."""
+        runtime = TranspileRuntime()
+        runtime.parse_time = 0.01
+        runtime.total_time = 0.06
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line.log_perf"
+        ) as mock_log:
+            perf = CMSSTranspilerPerf()
+            perf.enable_detail = False
+            perf._log_runtime_perf(runtime)
+            logged = " ".join(str(c) for c in mock_log.call_args_list)
+            assert "0.0100" in logged
+            assert "0.0600" in logged
+            assert "opt_time1" not in logged
+
+
+# ──────────────────────────────────────────────
+# get_transpile_result with run_count tests
+# ──────────────────────────────────────────────
+@pytest.mark.usefixtures("global_configs")
+class TestGetTranspileResultRunCountCmss:
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.cmss_transpiler_perf_exec"
+    )
+    def test_run_count_one_calls_exec_once(self, mock_exec):
+        """run_count=1 → exec called once, suppress_perf=False."""
+        mock_exec.return_value = TranspileRuntime()
+        perf = CMSSTranspilerPerf()
+        perf.run_count = 1
+        perf.na_mapping_type = "default"
+        perf.total_files = [Path("file1.qasm")]
+        params = TranspileParams()
+        params.file = Path("file1.qasm")
+        params.mapping_info = (
+            Constant.TECH_TYPE_SUPERCONDUCTING,
+            "1",
+        )
+        perf.params_list = [params]
+        perf.get_transpile_result()
+        assert mock_exec.call_count == 1
+        _, kwargs = mock_exec.call_args
+        assert kwargs.get("suppress_perf") is False
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.cmss_transpiler_perf_exec"
+    )
+    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.log_perf")
+    def test_run_count_gt_one_picks_shortest(self, mock_log_perf, mock_exec):
+        """run_count>1 picks shortest total_time.
+
+        Each run prints its total time; average is printed at end.
+        exec called run_count times, suppress_perf=True.
+        """
+        r1 = TranspileRuntime()
+        r1.total_time = 5.0
+        r2 = TranspileRuntime()
+        r2.total_time = 2.0
+        r3 = TranspileRuntime()
+        r3.total_time = 8.0
+        mock_exec.side_effect = [r1, r2, r3]
+
+        perf = CMSSTranspilerPerf()
+        perf.run_count = 3
+        perf.na_mapping_type = "default"
+        perf.total_files = [Path("file1.qasm")]
+        params = TranspileParams()
+        params.file = Path("file1.qasm")
+        params.mapping_info = (
+            Constant.TECH_TYPE_SUPERCONDUCTING,
+            "1",
+        )
+        perf.params_list = [params]
+        perf.get_transpile_result()
+
+        assert mock_exec.call_count == 3
+        for call in mock_exec.call_args_list:
+            _, kwargs = call
+            assert kwargs.get("suppress_perf") is True
+        best = perf.transpile_result[params]
+        assert best.total_time == 2.0
+
+        total_msgs = [
+            call.args[1]
+            for call in mock_log_perf.call_args_list
+            if "total running time of cmss-transpiler" in call.args[1]
+        ]
+        assert len(total_msgs) == 4
+        assert "5.0000s" in total_msgs[0]
+        assert "2.0000s" in total_msgs[1]
+        assert "8.0000s" in total_msgs[2]
+        assert "average" in total_msgs[3]
+        assert "5.0000s" in total_msgs[3]
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.cmss_transpiler_perf_exec"
+    )
+    def test_run_count_failure_sets_error(self, mock_exec):
+        """When exec raises, failed_params is populated."""
+        mock_exec.side_effect = Exception("boom")
+        perf = CMSSTranspilerPerf()
+        perf.run_count = 2
+        perf.na_mapping_type = "default"
+        perf.total_files = [Path("file1.qasm")]
+        params = TranspileParams()
+        params.file = Path("file1.qasm")
+        params.mapping_info = (
+            Constant.TECH_TYPE_SUPERCONDUCTING,
+            "1",
+        )
+        perf.params_list = [params]
+        perf.transpile_result[params] = None
+        perf.get_transpile_result()
+        assert perf.transpile_result[params] is None
+
+
+# ──────────────────────────────────────────────
+# suppress_perf tests on cmss_transpiler_perf_exec
+# ──────────────────────────────────────────────
+@pytest.mark.usefixtures("global_configs")
+class TestSuppressPerfCmss:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
+
+    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.log_perf")
+    def test_suppress_perf_skips_log(self, mock_log_perf):
+        """suppress_perf=True → log_perf not called inside exec."""
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+            "TranspilerHighPerformanceCmss"
+        ) as MockTranspiler:
+            mock_transpiler = MagicMock()
+            mock_transpiler.transpiler_options = {}
+            mock_transpiler.parse.return_value = {"000": (1, ["x"])}
+            mock_transpiler.transpile.return_value = (
+                [X([0])],
+                None,
+                None,
+            )
+            MockTranspiler.return_value = mock_transpiler
+
+            perf = CMSSTranspilerPerf()
+            perf.enable_transpile_single = False
+            input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+            perf.cmss_transpiler_perf_exec(
+                input_file=input_file,
+                opt_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+                base_gates=["rx", "ry", "cx"],
+                tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+                config_file=(f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"),
+                sc_mapping_options={"routing_algorithm": "sc"},
+                suppress_perf=True,
+            )
+            mock_log_perf.assert_not_called()
+
+    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.log_perf")
+    def test_no_suppress_emits_log(self, mock_log_perf):
+        """suppress_perf=False (default) → log_perf is called."""
+        with patch(
+            "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+            "TranspilerHighPerformanceCmss"
+        ) as MockTranspiler:
+            mock_transpiler = MagicMock()
+            mock_transpiler.transpiler_options = {}
+            mock_transpiler.parse.return_value = {"000": (1, ["x"])}
+            mock_transpiler.transpile.return_value = (
+                [X([0])],
+                None,
+                None,
+            )
+            MockTranspiler.return_value = mock_transpiler
+
+            perf = CMSSTranspilerPerf()
+            perf.enable_transpile_single = False
+            input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+            perf.cmss_transpiler_perf_exec(
+                input_file=input_file,
+                opt_level=Constant.DEFAULT_OPTIMIZATION_LEVEL,
+                base_gates=["rx", "ry", "cx"],
+                tech_type=Constant.TECH_TYPE_SUPERCONDUCTING,
+                config_file=(f"{self.etc_dir}/qcos/conf.d/spinq_rpc.toml"),
+                sc_mapping_options={"routing_algorithm": "sc"},
+                suppress_perf=False,
+            )
+            assert mock_log_perf.call_count > 0

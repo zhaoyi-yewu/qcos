@@ -201,7 +201,8 @@ class TestQiskitTranspilerPerfInit:
         perf.init_transpile_params(extra_configs)
         assert perf.run_count == 1
 
-    def test_init_transpile_params_run_count_over_five(self):
+    def test_init_transpile_params_run_count_over_one(self):
+        """run_count > 1 keeps the configured value (no upper cap)."""
         perf = QiskitTranspilerPerf()
         extra_configs = {
             "transpile": {
@@ -214,7 +215,7 @@ class TestQiskitTranspilerPerfInit:
             }
         }
         perf.init_transpile_params(extra_configs)
-        assert perf.run_count == 5
+        assert perf.run_count == 10
 
     def test_init_transpile_params_empty_basis_gates(self):
         """When basis_gates.gates is empty, default gate set is used."""
@@ -666,3 +667,239 @@ class TestTranspilerQiskit:
         )
         assert res == Path(input_file).resolve()
         assert output_file_path is None
+
+
+# ──────────────────────────────────────────────
+# _ensure_parse_result tests
+# ──────────────────────────────────────────────
+@pytest.mark.usefixtures("global_configs")
+class TestEnsureParseResult:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+
+    def test_ensure_parse_result_populates_results(self):
+        """Populate parse_results with qubit/depth/gate count."""
+        perf = QiskitTranspilerPerf()
+        params = TranspileParams()
+        params.file = Path(
+            f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        ).resolve()
+        params.opt_level = 1
+        perf._ensure_parse_result(params)
+        assert params.file in perf.parse_results
+        num_qubits, depth, gate_count = perf.parse_results[params.file]
+        assert num_qubits > 0
+        assert depth > 0
+        assert gate_count > 0
+
+    def test_ensure_parse_result_cached(self):
+        """_ensure_parse_result does not re-parse when already cached."""
+        perf = QiskitTranspilerPerf()
+        params = TranspileParams()
+        params.file = Path(
+            f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        ).resolve()
+        params.opt_level = 1
+        perf._ensure_parse_result(params)
+        cached = perf.parse_results[params.file]
+        # Call again; should not re-parse
+        with patch.object(
+            QiskitTranspilerPerf, "read_qasm_from_file"
+        ) as mock_read:
+            perf._ensure_parse_result(params)
+            mock_read.assert_not_called()
+        assert perf.parse_results[params.file] == cached
+
+    def test_ensure_parse_result_invalid_file(self):
+        """Unreadable file leaves parse_results empty."""
+        perf = QiskitTranspilerPerf()
+        params = TranspileParams()
+        params.file = Path("/nonexistent/file.qasm")
+        params.opt_level = 1
+        with patch.object(
+            QiskitTranspilerPerf,
+            "read_qasm_from_file",
+            return_value=None,
+        ):
+            perf._ensure_parse_result(params)
+        assert params.file not in perf.parse_results
+
+
+# ──────────────────────────────────────────────
+# _log_runtime_perf tests
+# ──────────────────────────────────────────────
+class TestLogRuntimePerf:
+    def test_log_runtime_perf_outputs(self):
+        """_log_runtime_perf calls log_perf with runtime values."""
+        runtime = TranspileRuntime()
+        runtime.parse_time = 0.01
+        runtime.transpile_time = 0.05
+        runtime.total_time = 0.06
+        with patch(
+            "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd.log_perf"
+        ) as mock_log:
+            perf = QiskitTranspilerPerf()
+            perf._log_runtime_perf(runtime)
+            assert mock_log.call_count >= 4
+            logged = " ".join(str(call) for call in mock_log.call_args_list)
+            assert "0.0100" in logged
+            assert "0.0500" in logged
+            assert "0.0600" in logged
+
+
+# ──────────────────────────────────────────────
+# get_transpile_result with run_count tests
+# ──────────────────────────────────────────────
+@pytest.mark.usefixtures("global_configs")
+class TestGetTranspileResultRunCount:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+
+    @patch(
+        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd."
+        "QiskitTranspilerPerf.qiskit_transpiler_perf_exec"
+    )
+    @patch(
+        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd."
+        "QiskitTranspilerPerf._ensure_parse_result"
+    )
+    def test_run_count_one_calls_exec_once(self, mock_ensure, mock_exec):
+        """run_count=1 → exec called once, suppress_perf=False."""
+        mock_exec.return_value = TranspileRuntime()
+        perf = QiskitTranspilerPerf()
+        perf.run_count = 1
+        params = TranspileParams()
+        params.file = Path("test.qasm")
+        params.basis_gates = ["rx", "ry", "cx"]
+        params.opt_level = 1
+        perf.params_list = [params]
+        perf.get_transpile_result()
+        assert mock_exec.call_count == 1
+        _, kwargs = mock_exec.call_args
+        assert kwargs.get("suppress_perf") is False
+
+    @patch(
+        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd."
+        "QiskitTranspilerPerf.qiskit_transpiler_perf_exec"
+    )
+    @patch(
+        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd."
+        "QiskitTranspilerPerf._ensure_parse_result"
+    )
+    @patch("wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd.log_perf")
+    def test_run_count_gt_one_picks_shortest(
+        self, mock_log_perf, mock_ensure, mock_exec
+    ):
+        """run_count>1 picks shortest total_time.
+
+        Each run prints its total time; average is printed at end.
+        exec called run_count times, suppress_perf=True.
+        """
+        r1 = TranspileRuntime()
+        r1.total_time = 5.0
+        r2 = TranspileRuntime()
+        r2.total_time = 2.0
+        r3 = TranspileRuntime()
+        r3.total_time = 8.0
+        mock_exec.side_effect = [r1, r2, r3]
+
+        perf = QiskitTranspilerPerf()
+        perf.run_count = 3
+        params = TranspileParams()
+        params.file = Path("test.qasm")
+        params.basis_gates = ["rx", "ry", "cx"]
+        params.opt_level = 1
+        perf.params_list = [params]
+        perf.get_transpile_result()
+
+        assert mock_exec.call_count == 3
+        for call in mock_exec.call_args_list:
+            _, kwargs = call
+            assert kwargs.get("suppress_perf") is True
+        best = perf.transpile_result[params]
+        assert best.total_time == 2.0
+
+        total_msgs = [
+            call.args[1]
+            for call in mock_log_perf.call_args_list
+            if "total running time of qiskit-transpiler" in call.args[1]
+        ]
+        assert len(total_msgs) == 4
+        assert "5.0000s" in total_msgs[0]
+        assert "2.0000s" in total_msgs[1]
+        assert "8.0000s" in total_msgs[2]
+        assert "average" in total_msgs[3]
+        assert "5.0000s" in total_msgs[3]
+
+    @patch(
+        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd."
+        "QiskitTranspilerPerf.qiskit_transpiler_perf_exec"
+    )
+    @patch(
+        "wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd."
+        "QiskitTranspilerPerf._ensure_parse_result"
+    )
+    def test_run_count_failure_sets_error(self, mock_ensure, mock_exec):
+        """When exec raises, transpile_errors is set and result stays None."""
+        mock_exec.side_effect = Exception("boom")
+        perf = QiskitTranspilerPerf()
+        perf.run_count = 2
+        params = TranspileParams()
+        params.file = Path("test.qasm")
+        params.basis_gates = ["rx", "ry", "cx"]
+        params.opt_level = 1
+        perf.params_list = [params]
+        perf.transpile_result[params] = None
+        perf.get_transpile_result()
+        assert params in perf.transpile_errors
+        assert "boom" in perf.transpile_errors[params]
+        assert perf.transpile_result[params] is None
+
+
+# ──────────────────────────────────────────────
+# suppress_perf tests on qiskit_transpiler_perf_exec
+# ──────────────────────────────────────────────
+@pytest.mark.usefixtures("global_configs")
+class TestSuppressPerfQiskit:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
+
+    @patch("wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd.log_perf")
+    def test_suppress_perf_skips_log(self, mock_log_perf):
+        """suppress_perf=True → log_perf not called inside exec."""
+        perf = QiskitTranspilerPerf()
+        perf.config_file = f"{self.etc_dir}/topology/qiskit_marrakesh.toml"
+        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        perf.qiskit_transpiler_perf_exec(
+            input_file=qasm_file,
+            opt_level=1,
+            basis_gates=[
+                Constant.SINGLE_QUBIT_GATE_RX,
+                Constant.SINGLE_QUBIT_GATE_RY,
+                Constant.TWO_QUBIT_GATE_CX,
+            ],
+            suppress_perf=True,
+        )
+        mock_log_perf.assert_not_called()
+
+    @patch("wy_qcos.transpiler.qiskit.transpiler_qiskit_cmd.log_perf")
+    def test_no_suppress_emits_log(self, mock_log_perf):
+        """suppress_perf=False (default) → log_perf is called."""
+        perf = QiskitTranspilerPerf()
+        perf.config_file = f"{self.etc_dir}/topology/qiskit_marrakesh.toml"
+        qasm_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        perf.qiskit_transpiler_perf_exec(
+            input_file=qasm_file,
+            opt_level=1,
+            basis_gates=[
+                Constant.SINGLE_QUBIT_GATE_RX,
+                Constant.SINGLE_QUBIT_GATE_RY,
+                Constant.TWO_QUBIT_GATE_CX,
+            ],
+            suppress_perf=False,
+        )
+        assert mock_log_perf.call_count > 0
