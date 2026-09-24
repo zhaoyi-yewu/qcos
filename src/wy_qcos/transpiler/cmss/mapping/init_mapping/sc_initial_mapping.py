@@ -26,12 +26,6 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.subgraph_isomorphism import (
 from wy_qcos.transpiler.cmss.mapping.init_mapping.simulated_annealing import (
     SimulatedAnnealingMapping,
 )
-from wy_qcos.transpiler.cmss.mapping.init_mapping.sabre_mapping import (
-    sabre_initial_mapping,
-)
-from wy_qcos.transpiler.cmss.mapping.init_mapping.dense_layout import (
-    dense_layout_mapping,
-)
 from wy_qcos.transpiler.cmss.mapping.utils.mapping_utils import (
     validate_mapping_inputs,
 )
@@ -76,9 +70,13 @@ def get_initial_mapping(
     elif method == "topgraph":
         return topgraph_mapping(dependency_graph, coupling_graph)
     elif method == "sabre":
+        from wy_qcos.transpiler.cmss.mapping.init_mapping import (
+            sabre_mapping,
+        )
+
         ir = dependency_graph.origin_ir
         num_qubits = dependency_graph.num_q
-        mapping = sabre_initial_mapping(ir, coupling_graph)
+        mapping = sabre_mapping.sabre_initial_mapping(ir, coupling_graph)
         return mapping[:num_qubits]
     else:
         raise ValueError(f"Unsupported method {method} for initial mapping")
@@ -134,6 +132,10 @@ def fidelity_aware_initial_mapping(
         return mapping
 
     # Stage 2: DenseLayout + SABRE refinement
+    from wy_qcos.transpiler.cmss.mapping.init_mapping.dense_layout import (
+        dense_layout_mapping,
+    )
+
     return dense_layout_mapping(
         gates_list,
         coupling_list,

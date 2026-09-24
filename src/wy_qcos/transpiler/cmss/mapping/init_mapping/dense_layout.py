@@ -76,6 +76,12 @@ def _count_physical_qubits(
 
     Returns ``max(edge endpoints) + 1`` so arrays indexed by
     physical ID are large enough.
+
+    Args:
+        coupling_list: Physical coupling edges as (u, v) pairs.
+
+    Returns:
+        The number of physical qubits.
     """
     max_id = -1
     for u, v in coupling_list:
@@ -93,6 +99,15 @@ def _build_adj_list(
     Converts directed coupling edges into undirected adjacency.
     When *edge_fidelities* is non-empty, edges with fidelity
     <= 0 are excluded (damaged / disabled links).
+
+    Args:
+        coupling_list: Physical coupling edges as (u, v) pairs.
+        edge_fidelities: Per-edge CZ fidelity, same order as
+            coupling_list. Empty to disable fidelity filtering.
+        num_physical: Total number of physical qubits.
+
+    Returns:
+        Bidirectional adjacency list, indexed by physical qubit ID.
     """
     neighbors_set: list[set[int]] = [set() for _ in range(num_physical)]
     has_fidelity = bool(edge_fidelities)
@@ -113,6 +128,15 @@ def _bfs_gather_subgraph(
 
     Returns an empty list if the connected component is too
     small to hold *num_logical* nodes.
+
+    Args:
+        neighbors: Bidirectional adjacency list.
+        start: BFS source node (physical qubit ID).
+        num_logical: Number of nodes to collect.
+
+    Returns:
+        List of physical qubit IDs, or empty list if the
+        connected component is too small.
     """
     result: list[int] = []
     visited: set[int] = {start}
@@ -140,6 +164,16 @@ def _enumerate_subgraph_candidates(
     For each physical node as BFS start, collects *num_logical*
     connected nodes, then counts internal edges and computes
     average fidelity in a single pass.
+
+    Args:
+        neighbors: Bidirectional adjacency list.
+        num_logical: Number of logical qubits to place.
+        edge_fidelity_map: Mapping from (u, v) to fidelity.
+            Empty to disable fidelity scoring.
+        num_physical: Total number of physical qubits.
+
+    Returns:
+        Enumeration result with candidates and max edge count.
     """
     use_fidelity = bool(edge_fidelity_map)
     result = _SubgraphEnumerationResult()
@@ -174,7 +208,14 @@ def _enumerate_subgraph_candidates(
 
 
 def _make_identity_mapping(num_logical: int) -> list[int]:
-    """Generate identity mapping [0, 1, ..., num_logical-1]."""
+    """Generate identity mapping [0, 1, ..., num_logical-1].
+
+    Args:
+        num_logical: Number of logical qubits.
+
+    Returns:
+        Identity mapping list of length *num_logical*.
+    """
     return list(range(num_logical))
 
 
@@ -188,10 +229,10 @@ def dense_layout_mapping(
 ) -> list[int]:
     """Compute initial mapping using DenseLayout algorithm.
 
-    Two-step process:
-    1. Select the most densely connected physical subgraph of
-       size *num_logical* (with optional fidelity weighting).
-    2. Refine the arrangement via SABRE forward-backward routing.
+    Two-step process: (1) select the most densely connected
+    physical subgraph of size *num_logical* (with optional fidelity
+    weighting), then (2) refine the arrangement via SABRE
+    forward-backward routing.
 
     Args:
         gates_list: Logical gate sequence.
