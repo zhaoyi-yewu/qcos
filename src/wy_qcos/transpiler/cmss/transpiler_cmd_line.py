@@ -74,6 +74,7 @@ class TranspileParams:
 
 class CMSSTranspilerPerf:
     def __init__(self):
+        self.basedir = ""
         # list of TranspileParams
         self.params_list = []
         # dict[TranspileParams, TranspileRuntime]
@@ -207,7 +208,7 @@ class CMSSTranspilerPerf:
             with open(file_path, encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
-            logger.error(f"read file error: {e}")
+            logger.warning(f"read file error: {e}")
             return None
 
     # driver 字段值到芯片类型的精确映射。
@@ -223,8 +224,7 @@ class CMSSTranspilerPerf:
         "DriverHanyuan1-100": Constant.TECH_TYPE_NEUTRAL_ATOM,
     }
 
-    @staticmethod
-    def _infer_tech_type_from_config(config_file):
+    def _infer_tech_type_from_config(self, config_file):
         """Infer tech_type from the driver field in the config file.
 
         The driver value is matched exactly against DRIVER_TECH_TYPE_MAP.
@@ -233,11 +233,14 @@ class CMSSTranspilerPerf:
         raises for an unknown driver during validation).
         """
         try:
-            config_path = Path(config_file).resolve()
-            with open(config_path, encoding="utf-8") as f:
+            if self.basedir:
+                config_file = os.path.join(self.basedir, config_file)
+            else:
+                config_file = Path(config_file).resolve()
+            with open(config_file, encoding="utf-8") as f:
                 content = f.read()
         except OSError as e:
-            logger.error(f"read config file error: {e}")
+            logger.warning(f"read config file error: {e}")
             return None
         match = re.search(r'driver\s*=\s*"([^"]*)"', content)
         if not match:
@@ -872,7 +875,7 @@ class CMSSTranspilerPerf:
                     ):
                         best_runtime = runtime
             except Exception as e:
-                logger.error(f"Transpile failed for {params.file}: {e}")
+                logger.warning(f"Transpile failed for {params.file}: {e}")
                 failed_params.append(params)
                 if csv_file_path:
                     self._append_csv_error_row(csv_file_path, params, str(e))

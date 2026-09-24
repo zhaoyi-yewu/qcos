@@ -148,6 +148,10 @@ class TestTranspilerCmdLine:
 
     @patch(
         "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf._sort_files_by_scale"
+    )
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
         "CMSSTranspilerPerf.get_transpile_result"
     )
     @patch(
@@ -155,7 +159,10 @@ class TestTranspilerCmdLine:
         "CMSSTranspilerPerf.parse_file_args"
     )
     def test_main_cmss_transpiler(
-        self, mock_parse_file_args, mock_get_transpile_result
+        self,
+        mock_parse_file_args,
+        mock_get_transpile_result,
+        mock_sort_files,
     ):
         params = TranspileParams()
         assert params is not None
@@ -163,11 +170,14 @@ class TestTranspilerCmdLine:
         mock_parse_file_args.return_value = None
         mock_get_transpile_result.return_value = None
         perf = CMSSTranspilerPerf()
+        perf.basedir = GLOBAL_CONFIGS["base_dir"]
         trans_config_file = (
             GLOBAL_CONFIGS["etc_dir"] + "/perf/transpile_conf.toml"
         )
         perf.total_files = ["0", "1"]
-        perf.main_cmss_transpiler(trans_config_file)
+        perf.main_cmss_transpiler(
+            config_file=trans_config_file,
+        )
         mock_parse_file_args.assert_called_once()
 
     @patch(
@@ -380,7 +390,10 @@ class TestTranspilerCmdLine:
             encoding="utf-8",
         )
         with pytest.raises(TranspilerException) as e:
-            perf.main_cmss_transpiler(str(conf_path))
+            perf.basedir = GLOBAL_CONFIGS["base_dir"]
+            perf.main_cmss_transpiler(
+                config_file=str(conf_path),
+            )
         assert "enable_transpile_single is true" in str(e.value)
         mock_get_transpile_result.assert_not_called()
 
@@ -420,7 +433,8 @@ class TestTranspilerCmdLine:
             'config_file = ["./etc/qcos/conf.d/spinq_rpc.toml"]\n',
             encoding="utf-8",
         )
-        perf.main_cmss_transpiler(str(conf_path))
+        perf.basedir = GLOBAL_CONFIGS["base_dir"]
+        perf.main_cmss_transpiler(config_file=str(conf_path))
         assert perf.enable_transpile_single is False
         assert perf.csv_file == "cmss_perf.csv"
         mock_get_transpile_result.assert_called_once()
@@ -793,6 +807,7 @@ class TestTranspilerCmdLine:
                 },
             }
         }
+        perf.basedir = GLOBAL_CONFIGS["base_dir"]
         perf.init_transpile_params(extra_configs)
         assert perf.tech_type == [Constant.TECH_TYPE_SUPERCONDUCTING]
         assert perf.mapping_config_file == [
@@ -812,6 +827,7 @@ class TestTranspilerCmdLine:
                 },
             }
         }
+        perf.basedir = GLOBAL_CONFIGS["base_dir"]
         perf.init_transpile_params(extra_configs)
         assert perf.tech_type == [Constant.TECH_TYPE_NEUTRAL_ATOM]
         assert perf.mapping_config_file == ["./etc/topology/hanyuan1_100.toml"]
@@ -970,8 +986,10 @@ class TestTranspilerCmdLine:
 
     def test_infer_tech_type_config_read_error(self):
         """config_file 不存在时应返回 None."""
-        result = CMSSTranspilerPerf._infer_tech_type_from_config(
-            "/nonexistent/path/to/config.toml"
+        perf = CMSSTranspilerPerf()
+        perf.basedir = GLOBAL_CONFIGS["base_dir"]
+        result = perf._infer_tech_type_from_config(
+            config_file="/nonexistent/path/to/config.toml"
         )
         assert result is None
 
@@ -982,9 +1000,9 @@ class TestTranspilerCmdLine:
             '[some_chip]\nalias_name = "no driver"\nqubits = 4\n',
             encoding="utf-8",
         )
-        result = CMSSTranspilerPerf._infer_tech_type_from_config(
-            str(conf_path)
-        )
+        perf = CMSSTranspilerPerf()
+        perf.basedir = GLOBAL_CONFIGS["base_dir"]
+        result = perf._infer_tech_type_from_config(config_file=str(conf_path))
         assert result is None
 
     def test_check_file_args_output_exists(self):
