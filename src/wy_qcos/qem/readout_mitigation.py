@@ -34,8 +34,8 @@ from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.common.cmss.measure import Measure
-from wy_qcos.error_mitigation.mitigation_base import MitigationBase
-from wy_qcos.error_mitigation.utils import (
+from wy_qcos.qem.mitigation_base import MitigationBase
+from wy_qcos.qem.utils import (
     counts_to_probabilities,
     closest_positive_distribution,
     expectation_from_probabilities,

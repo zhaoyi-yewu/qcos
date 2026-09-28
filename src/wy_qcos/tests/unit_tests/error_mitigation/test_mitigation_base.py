@@ -19,7 +19,7 @@
 
 import pytest
 
-from wy_qcos.error_mitigation.mitigation_base import MitigationBase
+from wy_qcos.qem.mitigation_base import MitigationBase
 
 
 class _ConcreteMitigation(MitigationBase):

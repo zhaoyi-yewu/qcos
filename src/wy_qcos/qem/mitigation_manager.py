@@ -23,11 +23,11 @@ import logging
 from typing import Any
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
-from wy_qcos.error_mitigation.mitigation_base import MitigationBase
-from wy_qcos.error_mitigation.mitigation_factory import MitigationFactory
-from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
-from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
-from wy_qcos.error_mitigation.dd_mitigation import DDMitigation
+from wy_qcos.qem.mitigation_base import MitigationBase
+from wy_qcos.qem.mitigation_factory import MitigationFactory
+from wy_qcos.qem.readout_mitigation import ReadoutMitigation
+from wy_qcos.qem.zne_mitigation import ZNEMitigation
+from wy_qcos.qem.dd_mitigation import DDMitigation
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class MitigationManager:
         """Configure mitigation techniques from user request.
 
         Args:
-            error_mitigation_config: The "error_mitigation" field from
+            error_mitigation_config: The "qem" field from
                 the job submission request.
         """
         self._techniques.clear()

@@ -17,10 +17,10 @@
 
 import pytest
 
-from wy_qcos.error_mitigation.mitigation_factory import MitigationFactory
-from wy_qcos.error_mitigation.mitigation_base import MitigationBase
-from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
-from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
+from wy_qcos.qem.mitigation_factory import MitigationFactory
+from wy_qcos.qem.mitigation_base import MitigationBase
+from wy_qcos.qem.readout_mitigation import ReadoutMitigation
+from wy_qcos.qem.zne_mitigation import ZNEMitigation
 
 
 class NotAMitigation:

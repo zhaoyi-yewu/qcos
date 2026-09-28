@@ -18,7 +18,7 @@
 import pytest
 import numpy as np
 
-from wy_qcos.error_mitigation.readout_mitigation import (
+from wy_qcos.qem.readout_mitigation import (
     ReadoutMitigation,
     build_local_confusion_matrix,
     mitigate_readout,

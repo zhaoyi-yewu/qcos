@@ -443,7 +443,7 @@ DD脉冲序列
 
 .. code-block:: python
 
-   from wy_qcos.error_mitigation.mitigation_manager import MitigationManager
+   from wy_qcos.qem.mitigation_manager import MitigationManager
 
    mgr = MitigationManager()
    mgr.configure({
@@ -473,7 +473,7 @@ DD脉冲序列
 
 .. code-block:: python
 
-   from wy_qcos.error_mitigation.mitigation_factory import MitigationFactory
+   from wy_qcos.qem.mitigation_factory import MitigationFactory
 
    factory = MitigationFactory()
    rem = factory.create("readout", calibration_shots=4096)

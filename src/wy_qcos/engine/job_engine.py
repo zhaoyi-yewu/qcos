@@ -67,7 +67,7 @@ from wy_qcos.transpiler.common.wirecut.cut_wire import (
 from wy_qcos.transpiler.common.wirecut.result_cache import (
     SubcircuitResultCache,
 )
-from wy_qcos.error_mitigation.mitigation_manager import MitigationManager
+from wy_qcos.qem.mitigation_manager import MitigationManager
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.db.utils import db_utils
 from wy_qcos.db.database import init_database
@@ -455,7 +455,7 @@ def _apply_zne_circuit_transform(transpile_results):
     Returns:
         New gate list with each CZ gate tripled.
     """
-    from wy_qcos.error_mitigation.zne_mitigation import apply_zne_cz_tripling
+    from wy_qcos.qem.zne_mitigation import apply_zne_cz_tripling
     from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
     if transpile_results is None:

@@ -23,7 +23,7 @@ import pytest
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.common.cmss.base_operation import OperationType
-from wy_qcos.error_mitigation.zne_mitigation import (
+from wy_qcos.qem.zne_mitigation import (
     ZNEMitigation,
     apply_zne_cz_scaling,
     apply_zne_cz_tripling,
@@ -33,7 +33,7 @@ from wy_qcos.error_mitigation.zne_mitigation import (
     richardson_coefficients,
     zne_linear_extrapolate,
 )
-from wy_qcos.error_mitigation.zne_mitigation import (
+from wy_qcos.qem.zne_mitigation import (
     _entropy,
     _prune_scale_points,
     _probs_to_counts,
@@ -676,7 +676,7 @@ class TestApplyZneCzFolding:
     """Test apply_zne_cz_folding (arbitrary fractional folding)."""
 
     def test_scale_two_partial_fold(self):
-        from wy_qcos.error_mitigation.zne_mitigation import (
+        from wy_qcos.qem.zne_mitigation import (
             apply_zne_cz_folding,
         )
 
@@ -686,7 +686,7 @@ class TestApplyZneCzFolding:
         assert count_cz_gates(scaled) == 4
 
     def test_scale_below_one_raises(self):
-        from wy_qcos.error_mitigation.zne_mitigation import (
+        from wy_qcos.qem.zne_mitigation import (
             apply_zne_cz_folding,
         )
 
@@ -695,7 +695,7 @@ class TestApplyZneCzFolding:
             apply_zne_cz_folding(qc, 0.5)
 
     def test_scale_one_is_identity(self):
-        from wy_qcos.error_mitigation.zne_mitigation import (
+        from wy_qcos.qem.zne_mitigation import (
             apply_zne_cz_folding,
         )
 
@@ -703,7 +703,7 @@ class TestApplyZneCzFolding:
         assert apply_zne_cz_folding(qc, 1.0) is qc
 
     def test_no_cz_gates_unchanged(self):
-        from wy_qcos.error_mitigation.zne_mitigation import (
+        from wy_qcos.qem.zne_mitigation import (
             apply_zne_cz_folding,
         )
 
