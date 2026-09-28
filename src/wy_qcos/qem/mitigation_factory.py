@@ -20,10 +20,10 @@
 from __future__ import annotations
 
 
-from wy_qcos.error_mitigation.mitigation_base import MitigationBase
-from wy_qcos.error_mitigation.readout_mitigation import ReadoutMitigation
-from wy_qcos.error_mitigation.zne_mitigation import ZNEMitigation
-from wy_qcos.error_mitigation.dd_mitigation import DDMitigation
+from wy_qcos.qem.mitigation_base import MitigationBase
+from wy_qcos.qem.readout_mitigation import ReadoutMitigation
+from wy_qcos.qem.zne_mitigation import ZNEMitigation
+from wy_qcos.qem.dd_mitigation import DDMitigation
 
 
 class MitigationFactory:

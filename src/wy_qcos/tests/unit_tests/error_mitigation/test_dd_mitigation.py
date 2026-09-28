@@ -19,7 +19,7 @@
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.common.cmss.base_operation import OperationType
-from wy_qcos.error_mitigation.dd_mitigation import (
+from wy_qcos.qem.dd_mitigation import (
     DDMitigation,
     detect_idle_windows,
     generate_dd_sequence,
@@ -143,7 +143,7 @@ class TestNewDdSequences:
     """Test the mitiq-aligned sequences (XY8, XXYX, XX, UDD)."""
 
     def test_xy8_pulses(self):
-        from wy_qcos.error_mitigation.dd_mitigation import XY8_PULSES
+        from wy_qcos.qem.dd_mitigation import XY8_PULSES
 
         gate_times = {"x": 0.02, "y": 0.02}
         ops = generate_dd_sequence(2.0, "XY8", gate_times, 0)
@@ -151,7 +151,7 @@ class TestNewDdSequences:
         assert gate_names == XY8_PULSES
 
     def test_xxyx_pulses(self):
-        from wy_qcos.error_mitigation.dd_mitigation import XXYX_PULSES
+        from wy_qcos.qem.dd_mitigation import XXYX_PULSES
 
         gate_times = {"x": 0.02, "y": 0.02}
         ops = generate_dd_sequence(1.0, "XXYX", gate_times, 0)
@@ -159,7 +159,7 @@ class TestNewDdSequences:
         assert gate_names == XXYX_PULSES
 
     def test_xx_pulses(self):
-        from wy_qcos.error_mitigation.dd_mitigation import XX_PULSES
+        from wy_qcos.qem.dd_mitigation import XX_PULSES
 
         gate_times = {"x": 0.02}
         ops = generate_dd_sequence(1.0, "XX", gate_times, 0)
@@ -179,7 +179,7 @@ class TestNewDdSequences:
         # window) are [sin^2(pi/10), sin^2(2pi/10), ...] which are not
         # equal multiples.
         import numpy as np
-        from wy_qcos.error_mitigation.dd_mitigation import udd_pulses
+        from wy_qcos.qem.dd_mitigation import udd_pulses
 
         n = 4
         centres = [
@@ -600,7 +600,7 @@ class TestGenerateDdSequenceEdges:
         assert any(d is not None and d > 1e-9 for d in delay_durations)
 
     def test_pulse_count_for_xy8(self):
-        from wy_qcos.error_mitigation.dd_mitigation import XY8_PULSES
+        from wy_qcos.qem.dd_mitigation import XY8_PULSES
 
         gate_times = {"x": 0.02, "y": 0.02}
         ops = generate_dd_sequence(2.0, "XY8", gate_times, 0)

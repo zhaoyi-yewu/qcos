@@ -32,7 +32,7 @@ from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.common.cmss.base_operation import BaseOperation, OperationType
 from wy_qcos.common.cmss.delay import Delay
-from wy_qcos.error_mitigation.mitigation_base import MitigationBase
+from wy_qcos.qem.mitigation_base import MitigationBase
 
 logger = logging.getLogger(__name__)
 
@@ -394,14 +394,14 @@ class DDMitigation(MitigationBase):
     def validate_device(self, device_config: dict[str, Any]) -> tuple:
         gate_times = device_config.get("gate_times")
         if not gate_times:
-            em_config = device_config.get("error_mitigation", {})
+            em_config = device_config.get("qem", {})
             dd_config = em_config.get("dd", {})
             gate_times = dd_config.get("gate_times")
         if not gate_times:
             return (
                 False,
                 "DD requires gate timing configuration for device. "
-                "Add [error_mitigation.dd] gate_times to device config.",
+                "Add [qem.dd] gate_times to device config.",
             )
         return (True, None)
 

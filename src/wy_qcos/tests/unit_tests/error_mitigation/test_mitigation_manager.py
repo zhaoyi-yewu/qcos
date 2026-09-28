@@ -20,7 +20,7 @@ import numpy as np
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
 from wy_qcos.common.cmss.base_operation import OperationType
-from wy_qcos.error_mitigation.mitigation_manager import MitigationManager
+from wy_qcos.qem.mitigation_manager import MitigationManager
 
 
 def make_test_circuit() -> QuantumCircuit:

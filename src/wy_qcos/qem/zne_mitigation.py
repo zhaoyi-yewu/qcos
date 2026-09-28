@@ -69,8 +69,8 @@ import numpy as np
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.base_operation import BaseOperation
-from wy_qcos.error_mitigation.mitigation_base import MitigationBase
-from wy_qcos.error_mitigation.utils import (
+from wy_qcos.qem.mitigation_base import MitigationBase
+from wy_qcos.qem.utils import (
     counts_to_probabilities,
     clip_and_normalize,
     expectation_from_probabilities,

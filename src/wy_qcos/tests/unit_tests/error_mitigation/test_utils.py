@@ -17,7 +17,7 @@
 
 import numpy as np
 
-from wy_qcos.error_mitigation.utils import (
+from wy_qcos.qem.utils import (
     counts_to_probabilities,
     counts_to_samples,
     samples_to_probabilities,
@@ -281,7 +281,7 @@ class TestClosestPositiveDistributionFallback:
     def test_fallback_to_clip_and_normalize_when_scipy_missing(
         self, monkeypatch
     ):
-        import wy_qcos.error_mitigation.utils as utils_mod
+        import wy_qcos.qem.utils as utils_mod
 
         # Force scipy.optimize import to fail inside the function so the
         # except branch runs and falls back to clip_and_normalize.
@@ -305,7 +305,7 @@ class TestClosestPositiveDistributionFallback:
         np.testing.assert_allclose(np.sum(result), 1.0)
 
     def test_fallback_when_optimizer_does_not_succeed(self, monkeypatch):
-        import wy_qcos.error_mitigation.utils as utils_mod
+        import wy_qcos.qem.utils as utils_mod
 
         class _FakeResult:
             success = False
