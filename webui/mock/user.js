@@ -1,4 +1,3 @@
-
 const tokens = {
   admin: {
     token: 'admin-token'
@@ -23,13 +22,13 @@ const users = {
   }
 }
 
-module.exports = [
+export default [
   // user login
   {
-    url: '/vue-admin-template/user/login',
-    type: 'post',
-    response: config => {
-      const { username } = config.body
+    url: '/dev-api/vue-admin-template/user/login',
+    method: 'post',
+    response: ({ body }) => {
+      const { username } = body
       const token = tokens[username]
 
       // mock error
@@ -49,10 +48,10 @@ module.exports = [
 
   // get user info
   {
-    url: '/vue-admin-template/user/info\.*',
-    type: 'get',
-    response: config => {
-      const { token } = config.query
+    url: '/dev-api/vue-admin-template/user/info',
+    method: 'get',
+    response: ({ query }) => {
+      const { token } = query
       const info = users[token]
 
       // mock error
@@ -72,9 +71,9 @@ module.exports = [
 
   // user logout
   {
-    url: '/vue-admin-template/user/logout',
-    type: 'post',
-    response: _ => {
+    url: '/dev-api/vue-admin-template/user/logout',
+    method: 'post',
+    response: () => {
       return {
         code: 20000,
         data: 'success'
