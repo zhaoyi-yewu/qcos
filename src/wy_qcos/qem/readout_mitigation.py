@@ -15,9 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-"""Readout error mitigation (REM).
+r"""Readout error mitigation (REM).
 
-Calibrates per-qubit 2x2 confusion matrices by preparing |0> and |1>
+Calibrates per-qubit 2x2 confusion matrices by preparing the \|0> and \|1>
 states and measuring, then applies pseudo-inverse correction to
 measurement probabilities.
 """
@@ -262,11 +262,11 @@ class ReadoutMitigation(MitigationBase):
     def build_calibration_circuits(
         self, target_qubits: list[int]
     ) -> list[dict[str, Any]]:
-        """Build per-qubit calibration circuits.
+        r"""Build per-qubit calibration circuits.
 
         For each qubit, generates two circuits:
-        - Prepare |0> (no gate) and measure
-        - Prepare |1> (X gate) and measure
+        - Prepare \|0> (no gate) and measure
+        - Prepare \|1> (X gate) and measure
 
         Args:
             target_qubits: Qubit indices to calibrate.
