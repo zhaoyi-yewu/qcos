@@ -201,6 +201,7 @@ docs = [
 sandbox = [
     "auditwheel==6.8.2",
     "bump-my-version==1.4.1",
+    "patchelf==0.19.1.0",
     "poetry==2.4.1",
     "poetry-plugin-export==1.10.0",
     "semver==3.0.4",
@@ -285,7 +286,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["wy_qcos*"]
-exclude = ["wy_qcos_client*"]
+exclude = ["wy_qcos_client*", "*__pycache__*"]
 
 [tool.isort]
 profile = "black"
