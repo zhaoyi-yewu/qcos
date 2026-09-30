@@ -91,7 +91,7 @@ data_files = get_files(["../../samples"],
 data_files.append(("tests", ["../../src/wy_qcos_client/tests/pytest.ini"]))
 data_files.append(("share/wy_qcos_client/cicd/", ["../../cicd/run-tests.sh"]))
 setup(
-    packages=find_packages(where="../../src"),
+    packages=find_packages(where="../../src", exclude=["*__pycache__*"]),
     include_package_data=True,
     data_files=data_files
 )

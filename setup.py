@@ -196,7 +196,7 @@ class CMakeBuildExt(_build_ext):
 
 
 setup(
-    packages=find_packages(where="src"),
+    packages=find_packages(where="src", exclude=["*__pycache__*"]),
     include_package_data=True,
     ext_modules=[CMakeExtension("wy_qcos.transpiler.high_performance")],
     cmdclass={"build_ext": CMakeBuildExt},

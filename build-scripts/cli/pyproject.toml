@@ -73,7 +73,7 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["../../src"]
 include = ["wy_qcos_client*"]
-exclude = []
+exclude = ["*__pycache__*"]
 
 [tool.isort]
 profile = "black"

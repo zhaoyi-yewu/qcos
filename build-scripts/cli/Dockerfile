@@ -128,7 +128,6 @@ RUN set -e && \
       source ${venv_dir}/bin/activate ; \
       pip3 install --no-cache-dir ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl ; \
       deactivate ; \
-      ls -al ${venv_dir}/share/ ; \
       cp -rf ${venv_dir}/share/wy_qcos_client/samples /root/ ; \
     else \
       # install qcos resource files in dev mode
