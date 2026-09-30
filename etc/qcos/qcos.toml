@@ -42,20 +42,20 @@ ENABLE_AUTO_SCHEDULE = true
 # enabled filter class names; empty list uses all DEFAULT_FILTERS
 # available filters:
 #   CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
-#   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
-#   QueueLimitFilter, DeviceAvailabilityFilter, DeviceNameFilter,
-#   DeviceGroupFilter
+#   TechTypeFilter, GateFidelityFilter, QueueLimitFilter,
+#   DeviceAvailabilityFilter, DeviceNameFilter, DeviceGroupFilter,
+#   QubitCountFilter
 ENABLED_FILTERS = [
     "CodeTypeFilter",
     "InputConstraintsFilter",
     "DeviceStatusFilter",
     "TechTypeFilter",
-    "QubitCountFilter",
     "QueueLimitFilter",
     "GateFidelityFilter",
     "DeviceAvailabilityFilter",
     "DeviceNameFilter",
     "DeviceGroupFilter",
+    "QubitCountFilter",  # must be last for auto wirecut
 ]
 # enabled weigher class names; empty list uses all DEFAULT_WEIGHERS
 # available weighers: DeviceAvailabilityWeigher, DeviceLoadWeigher,
