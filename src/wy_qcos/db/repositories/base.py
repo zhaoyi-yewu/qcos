@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+from wy_qcos.common.constant import Constant
 import uuid as uuid_lib
 from typing import Any
 
@@ -324,7 +325,7 @@ class BaseRepository:
         model_class: type,
         filters: dict | None = None,
         page: int = 1,
-        page_size: int = 20,
+        page_size: int = Constant.PAGE_SIZE,
         sort: list[str] | None = None,
     ):
         """Get paginated records with optional filtering and sorting.

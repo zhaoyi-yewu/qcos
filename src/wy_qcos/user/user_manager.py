@@ -1509,7 +1509,7 @@ class UserManager:
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         page: int = 1,
-        page_size: int = 20,
+        page_size: int = Constant.PAGE_SIZE,
         sort: list[str] | None = None,
     ):
         """Get login logs with pagination, filtering and sorting.

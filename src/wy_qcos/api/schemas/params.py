@@ -25,6 +25,8 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from wy_qcos.common.constant import Constant
+
 
 T = TypeVar("T")
 
@@ -52,7 +54,7 @@ class PageParams(BaseModel):
 
     page: int = Field(default=1, ge=1, description="Page number, 1-based")
     page_size: int = Field(
-        default=20,
+        default=Constant.PAGE_SIZE,
         ge=-1,
         le=1000,
         description="Items per page, -1 for unlimited",

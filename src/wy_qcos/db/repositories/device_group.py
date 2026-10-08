@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+from wy_qcos.common.constant import Constant
 from uuid import UUID
 
 from sqlalchemy import or_, select
@@ -156,7 +157,7 @@ class DeviceGroupRepository(BaseRepository):
         self,
         filters: dict | None = None,
         page: int = 1,
-        page_size: int = 20,
+        page_size: int = Constant.PAGE_SIZE,
         sort: list[str] | None = None,
     ):
         """Get device groups with pagination, filtering and sorting.
