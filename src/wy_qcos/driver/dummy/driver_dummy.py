@@ -62,7 +62,7 @@ class DriverDummy(DriverGateBase):
         # transpiler_option schema for specific driver
         # enable_mapping: only true is allowed
         self.transpiler_options_schema["enable_mapping"] = (
-            Optional("enable_mapping", default=True),
+            Optional("enable_mapping", default=False),
             bool,
         )
 

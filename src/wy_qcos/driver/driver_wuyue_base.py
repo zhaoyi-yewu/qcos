@@ -686,12 +686,10 @@ class DriverWuyueBase(DriverGateBase):
             headers=headers,
             func_name="get_device_info",
         )
-        logger.info(f"status_code: {status_code}")
         if status_code == HttpCode.SUCCESS_OK:
             response = self.decrypt_by_private_key(text)
             err_code = response["code"]
             err_msg = response["msg"]
-            logger.info(f"err_code: {err_code}, msg: {err_msg}")
             if err_code == 1:
                 raw_data = response["data"]
                 if raw_data is None:
@@ -724,11 +722,11 @@ class DriverWuyueBase(DriverGateBase):
         device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
         success, err_msg, device_info = self.get_device_info()
         if not success:
-            logger.debug(f"Failed to get device info: {err_msg}")
+            logger.error(f"Failed to get device info: {err_msg}")
             device_running_info["details"] = {}
             return device_running_info
 
-        logger.info(f"Device info: {device_info}")
+        logger.debug(f"Device info: {device_info}")
         device_status = device_info.get("status", None)
         if device_status is not None:
             device_running_info["status"] = device_status
