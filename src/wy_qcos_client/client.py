@@ -288,7 +288,7 @@ class Client:
         Args:
             filters: filter conditions dict
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
@@ -342,7 +342,7 @@ class Client:
             details: include detailed device information
             filters: filter conditions dict
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
@@ -516,7 +516,7 @@ class Client:
         Args:
             filters: filter conditions dict
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
@@ -648,7 +648,7 @@ class Client:
         Args:
             filters: filter conditions dict
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
@@ -710,6 +710,8 @@ class Client:
         flavor_id=None,
         qem_options=None,
         extra_specs=None,
+        params=None,
+        options=None,
     ):
         """Submit new job.
 
@@ -735,6 +737,9 @@ class Client:
             flavor_id: flavor UUID for auto scheduling
             qem_options: error mitigation options
             extra_specs: extra scheduling specifications
+            params: job params (JSON dict)
+            options: job options (JSON dict), e.g.
+                {"enable_wirecut": True}
 
         Returns:
             submit_job result
@@ -760,6 +765,12 @@ class Client:
             "qec_options": qec_options,
             "qem_options": qem_options,
         }
+
+        # params and options (only set if specified)
+        if params is not None:
+            data["params"] = params
+        if options is not None:
+            data["options"] = options
 
         # backend: only set if specified (None triggers auto scheduling)
         if backend:
@@ -932,7 +943,7 @@ class Client:
             filters: Optional filter conditions dictionary,
                 e.g. {"flavor_name": "g1.all"}
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
@@ -1072,7 +1083,7 @@ class Client:
             filters: Optional filter conditions dictionary,
                 e.g. {"group_name": "my-group"}
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
@@ -1204,7 +1215,7 @@ class Client:
         Args:
             filters: filters
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
@@ -1591,7 +1602,7 @@ class Client:
         Args:
             filters: Optional filter conditions dictionary
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
         """
         return self.call_json_rpc(
@@ -1650,7 +1661,7 @@ class Client:
             filters: Optional dict with filter conditions, e.g.
                 {'role_name': 'admin'}
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
         """
         return self.call_json_rpc(
@@ -1691,7 +1702,7 @@ class Client:
             user_id: User ID (UUID) to filter logs (optional)
             user_name: User name to filter logs (optional)
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-login_time"]
         """
         data = {}
@@ -1756,7 +1767,7 @@ class Client:
             filters: Optional filter conditions dictionary,
                 e.g. {"name": "default"}
             pagination: pagination params dict, e.g.
-                {"page": 1, "page_size": 20}
+                {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
 
         Returns:
