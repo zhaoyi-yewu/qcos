@@ -137,7 +137,6 @@ dependencies = [
 base = [
     # compatible with oe21.10
     "argcomplete",
-    "auditwheel",
     "cliff",
     "jsonrpcclient",
     "memray",
@@ -200,6 +199,7 @@ docs = [
 
 # requirements of sandbox
 sandbox = [
+    "auditwheel==6.8.2",
     "bump-my-version==1.4.1",
     "poetry==2.4.1",
     "poetry-plugin-export==1.10.0",

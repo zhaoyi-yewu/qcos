@@ -76,6 +76,8 @@ spec:
           value: "/var/qcos/storage"
         - name: PREFECT_API_DEFAULT_LIMIT
           value: "200"
+        - name: PREFECT_SERVER_API_MAX_PARAMETER_SIZE
+          value: "0"
         - name: PREFECT_TASKS_DISABLE_CACHING
           value: "true"
         - name: PREFECT_RESULTS_PERSIST_BY_DEFAULT
