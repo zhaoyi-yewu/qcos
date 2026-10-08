@@ -63,6 +63,11 @@ class SubmitJobRequest(UuidMixin):
         "scheduling is triggered (requires flavor_id or "
         "extra_specs)",
     )
+    # Backend type (device or wirecut)
+    backend_type: str = Field(
+        default=Constant.BACKEND_TYPE_DEVICE,
+        description="Backend type: device or wirecut",
+    )
     # Flavor ID for auto scheduling. Only flavor_id (UUID) is
     # accepted at submit time; flavor_name is resolved client-side.
     flavor_id: UUID | None = Field(
@@ -78,6 +83,18 @@ class SubmitJobRequest(UuidMixin):
         description="Extra scheduling specifications. "
         "Dynamic per-job scheduling parameters, overrides flavor specs",
     )
+    # Job params (JSON dict)
+    params: dict | None = Field(
+        default=None, description="Job params (JSON dict)"
+    )
+    # Job options (JSON dict), e.g.
+    # {"enable_wirecut": True}
+    options: dict | None = Field(
+        default=None,
+        description='Job options (JSON dict), e.g. {"enable_wirecut": true}',
+    )
+    # Shots
+    shots: int = Field(default=Constant.DEFAULT_SHOTS, description="Shots")
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
@@ -122,8 +139,6 @@ class SubmitJobRequest(UuidMixin):
     )
     # Profiling
     profiling: list | None = Field(default=None, description="Profiling")
-    # Shots
-    shots: int = Field(default=Constant.DEFAULT_SHOTS, description="Shots")
     # Callbacks
     callbacks: list | None = Field(default=None, description="Callbacks")
     # Dry-run
@@ -186,6 +201,11 @@ class SubmitJobResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Backend type (device or wirecut)
+    backend_type: str = Field(
+        default=Constant.BACKEND_TYPE_DEVICE,
+        description="Backend type: device or wirecut",
+    )
     # Flavor ID for auto scheduling
     flavor_id: UUID | None = Field(
         default=None, description="Flavor ID for auto scheduling"
@@ -193,6 +213,18 @@ class SubmitJobResponse(UuidMixin):
     # Extra scheduling specs
     extra_specs: dict | None = Field(
         default=None, description="Extra scheduling specifications"
+    )
+    # Shots
+    shots: int = Field(description="Shots")
+    # Job params (JSON dict)
+    params: dict | None = Field(
+        default=None, description="Job params (JSON dict)"
+    )
+    # Job options (JSON dict), e.g.
+    # {"enable_wirecut": True}
+    options: dict | None = Field(
+        default=None,
+        description='Job options (JSON dict), e.g. {"enable_wirecut": true}',
     )
     # Driver options
     driver_options: dict | None = Field(
@@ -218,8 +250,6 @@ class SubmitJobResponse(UuidMixin):
     )
     # Profiling
     profiling: list | None = Field(default=None, description="Profiling")
-    # Shots
-    shots: int = Field(description="Shots")
     # Callbacks
     callbacks: list | None = Field(default=None, description="Callbacks")
     # Dry-run flag
@@ -280,9 +310,26 @@ class GetJobStatusResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Backend type (device or wirecut)
+    backend_type: str = Field(
+        default=Constant.BACKEND_TYPE_DEVICE,
+        description="Backend type: device or wirecut",
+    )
     # Flavor ID for auto scheduling
     flavor_id: UUID | None = Field(
         default=None, description="Flavor ID for auto scheduling"
+    )
+    # Shots
+    shots: int = Field(description="Shots")
+    # Job params (JSON dict)
+    params: dict | None = Field(
+        default=None, description="Job params (JSON dict)"
+    )
+    # Job options (JSON dict), e.g.
+    # {"enable_wirecut": True}
+    options: dict | None = Field(
+        default=None,
+        description='Job options (JSON dict), e.g. {"enable_wirecut": true}',
     )
     # Driver options
     driver_options: dict | None = Field(
@@ -306,8 +353,6 @@ class GetJobStatusResponse(UuidMixin):
     qem_options: dict | None = Field(
         default=None, description="Error mitigation options"
     )
-    # Shots
-    shots: int = Field(description="Shots")
     # Dry-run
     dry_run: bool = Field(description="Dry-run flag")
     # Code compression level
@@ -376,6 +421,23 @@ class GetJobResultsResponse(UuidMixin):
     source_code: list = Field(description="Source code list")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Backend type (device or wirecut)
+    backend_type: str = Field(
+        default=Constant.BACKEND_TYPE_DEVICE,
+        description="Backend type: device or wirecut",
+    )
+    # Shots
+    shots: int = Field(description="Shots")
+    # Job params (JSON dict)
+    params: dict | None = Field(
+        default=None, description="Job params (JSON dict)"
+    )
+    # Job options (JSON dict), e.g.
+    # {"enable_wirecut": True}
+    options: dict | None = Field(
+        default=None,
+        description='Job options (JSON dict), e.g. {"enable_wirecut": true}',
+    )
     # Driver options
     driver_options: dict | None = Field(
         default=None, description="Driver options"
@@ -402,8 +464,6 @@ class GetJobResultsResponse(UuidMixin):
     qem_options: dict | None = Field(
         default=None, description="Error mitigation options"
     )
-    # Shots
-    shots: int = Field(description="Shots")
     # Dry-run
     dry_run: bool = Field(description="Dry-run flag")
     # Progress
@@ -587,9 +647,26 @@ class UpdateJobResponse(UuidMixin):
     description: str | None = Field(default=None, description="Description")
     # Backend device name
     backend: str = Field(description="Backend device name")
+    # Backend type (device or wirecut)
+    backend_type: str = Field(
+        default=Constant.BACKEND_TYPE_DEVICE,
+        description="Backend type: device or wirecut",
+    )
     # Flavor ID for auto scheduling
     flavor_id: UUID | None = Field(
         default=None, description="Flavor ID for auto scheduling"
+    )
+    # Shots
+    shots: int = Field(description="Shots")
+    # Job params (JSON dict)
+    params: dict | None = Field(
+        default=None, description="Job params (JSON dict)"
+    )
+    # Job options (JSON dict), e.g.
+    # {"enable_wirecut": True}
+    options: dict | None = Field(
+        default=None,
+        description='Job options (JSON dict), e.g. {"enable_wirecut": true}',
     )
     # Driver options
     driver_options: dict | None = Field(
@@ -613,8 +690,6 @@ class UpdateJobResponse(UuidMixin):
     qem_options: dict | None = Field(
         default=None, description="Error mitigation options"
     )
-    # Shots
-    shots: int = Field(description="Shots")
     # Profiling
     profiling: list | None = Field(default=None, description="Profiling")
     # Dry-run

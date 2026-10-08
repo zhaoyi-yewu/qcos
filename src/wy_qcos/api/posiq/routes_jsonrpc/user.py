@@ -959,7 +959,7 @@ def get_login_logs(
 
     # Use default pagination if not provided
     page = pagination.page if pagination else 1
-    page_size = pagination.page_size if pagination else 20
+    page_size = pagination.page_size if pagination else Constant.PAGE_SIZE
 
     # Get user manager from request state
     user_manager = get_user_manager(request)

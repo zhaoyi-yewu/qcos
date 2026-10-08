@@ -27,7 +27,11 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import job_api_v1
 from wy_qcos.db.models import Job
 from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.db.utils.db_utils import get_db_filters, get_repository
-from wy_qcos.scheduler import AutoScheduler, NoValidDeviceError
+from wy_qcos.scheduler import (
+    AutoScheduler,
+    NoValidDeviceError,
+    DeviceQubitExceededError,
+)
 from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.common import args_schema, errors
 from wy_qcos.common.config import Config
@@ -43,6 +47,28 @@ from .dependencies.authentication import (
 
 logger = logging.getLogger(__name__)
 module_name = "JOB"
+
+
+def build_serialized_filtered_devices(filtered_devices):
+    """Extract serializable core data from a DeviceState list.
+
+    Converts a list of DeviceState objects (which embed non-serializable
+    Device instances) into a list of plain dicts containing only the
+    fields required by the wirecut engine for secondary scheduling.
+
+    Args:
+        filtered_devices: list of DeviceState objects produced by the
+            auto scheduler filter chain.
+
+    Returns:
+        list of dicts, each holding the device scheduling metadata
+        (name, status, enable, qubit counts, tech type, supported
+        code types / basis gates, details).
+    """
+    serialized = []
+    for device_state in filtered_devices:
+        serialized.append(device_state.to_dict())
+    return serialized
 
 
 @job_api_v1.method(
@@ -95,8 +121,10 @@ def submit_job(
     dry_run = body.dry_run
     code_compression_level = body.code_compression_level
     tags = body.tags
-
-    extra_job_data_info = {}
+    options = body.options
+    params = body.params
+    backend_type = Constant.BACKEND_TYPE_DEVICE
+    driver = None
 
     # validate: code_type
     code_type = code_type.lower()
@@ -234,6 +262,27 @@ def submit_job(
         ),
     )
 
+    # Validate: options
+    if options:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(
+                options, args_schema.JOB_OPTIONS_SCHEMA, allow_none=False
+            ),
+        )
+    enable_wirecut = (options or {}).get("enable_wirecut", False)
+
+    # Validate: params
+    if params:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_schema(
+                params, args_schema.JOB_PARAMS_SCHEMA, allow_none=True
+            ),
+        )
+
     # validate: tags
     if tags is not None:
         jsonrpc_errors.handle_error_bad_requests(
@@ -297,6 +346,10 @@ def submit_job(
 
     # auto scheduling: if backend is not specified
     job_scheduling_started_at = time.time()
+    backend_type = Constant.BACKEND_TYPE_DEVICE
+    body.backend_type = backend_type
+    # filtered_devices is populated when falling back to wirecut
+    filtered_devices = None
     if not backend:
         # check whether auto scheduling is enabled via the
         # [SCHEDULER].ENABLE_AUTO_SCHEDULE config flag; when disabled,
@@ -343,7 +396,31 @@ def submit_job(
         # execute auto scheduling
         try:
             backend = auto_scheduler.schedule(request_spec)
-            body.backend = backend
+        except DeviceQubitExceededError as e:
+            # Qubit count exceeded: check if wirecut is enabled
+            if enable_wirecut:
+                # Build filtered_devices from all available devices
+                filtered_devices = auto_scheduler.get_last_filtered_devices()
+                if not filtered_devices:
+                    jsonrpc_errors.handle_error_bad_requests(
+                        module_name,
+                        func_name,
+                        (False, "No available devices for wirecut"),
+                    )
+                # Submit wirecut flow
+                backend_type = Constant.BACKEND_TYPE_WIRECUT
+                logger.info(
+                    f"Auto scheduling failed (qubit exceeded), "
+                    f"falling back to backend: {backend_type} "
+                    f"(options:enable_wirecut=True), "
+                    f"required num_qubits={num_qubits}"
+                )
+            else:
+                jsonrpc_errors.handle_error_bad_requests(
+                    module_name,
+                    func_name,
+                    (False, str(e)),
+                )
         except NoValidDeviceError as e:
             jsonrpc_errors.handle_error_bad_requests(
                 module_name, func_name, (False, str(e))
@@ -351,7 +428,9 @@ def submit_job(
         except Exception as e:
             logger.error(f"Auto scheduling error: {e}")
             jsonrpc_errors.handle_error_internal_server(
-                module_name, func_name, (False, f"Auto scheduling failed: {e}")
+                module_name,
+                func_name,
+                (False, f"Auto scheduling failed: {e}"),
             )
 
     job_scheduling_ended_at = time.time()
@@ -361,6 +440,10 @@ def submit_job(
         "job_schedule_ended_at": job_scheduling_ended_at,
         "job_schedule_duration": job_schedule_duration,
     }
+    if filtered_devices:
+        extra_job_data_info["filtered_devices"] = (
+            build_serialized_filtered_devices(filtered_devices)
+        )
 
     # validate auth of virtual instance
     jsonrpc_errors.handle_error_bad_requests(
@@ -370,33 +453,38 @@ def submit_job(
     )
 
     # validate: backend
-    jsonrpc_errors.handle_error_bad_requests(
-        module_name,
-        func_name,
-        Library.validate_values_enum(backend, "backend", devices),
-    )
-
-    # get driver from backend
-    device = devices.get(backend)
-    driver = device.get_driver()
-    # use effective status (considers manual state override)
-    device_status, _ = device.get_effective_status()
-    enable_device = device.enable
-
-    # check device status
-    if not enable_device:
-        jsonrpc_errors.handle_error_conflict(
-            module_name, func_name, (False, "device is disabled")
-        )
-    elif device_status not in [
-        device.DEVICE_STATUS_ONLINE,
-        device.DEVICE_STATUS_BUSY,
-    ]:
-        jsonrpc_errors.handle_error_conflict(
+    if backend_type == Constant.BACKEND_TYPE_DEVICE:
+        jsonrpc_errors.handle_error_bad_requests(
             module_name,
             func_name,
-            (False, f"device status is {device_status}"),
+            Library.validate_values_enum(backend, "backend", devices),
         )
+
+        # get driver from backend
+        device = devices.get(backend)
+        driver = device.get_driver()
+        # use effective status (considers manual state override)
+        device_status, _ = device.get_effective_status()
+        enable_device = device.enable
+
+        # check device status
+        if not enable_device:
+            jsonrpc_errors.handle_error_conflict(
+                module_name, func_name, (False, "device is disabled")
+            )
+        elif device_status not in [
+            device.DEVICE_STATUS_ONLINE,
+            device.DEVICE_STATUS_BUSY,
+        ]:
+            jsonrpc_errors.handle_error_conflict(
+                module_name,
+                func_name,
+                (False, f"device status is {device_status}"),
+            )
+    elif backend_type == Constant.BACKEND_TYPE_WIRECUT:
+        backend = Constant.VIRT_DEIVCE_WIRECUT
+    body.backend = backend
+    body.backend_type = backend_type
 
     # validate: driver_options
     if driver_options:
@@ -419,7 +507,10 @@ def submit_job(
 
     # if transpiler is not specified, set the default transpiler from driver
     if not transpiler_name:
-        transpiler_name = driver.get_transpiler()
+        if driver:
+            transpiler_name = driver.get_transpiler()
+        else:
+            transpiler_name = Constant.DEFAULT_TRANSPILER
 
     # validate: transpiler_name
     jsonrpc_errors.handle_error_bad_requests(
@@ -434,18 +525,18 @@ def submit_job(
     )
 
     # validate supported_transpilers
-    supported_code_types = []
     transpiler_manager = scheduler.get_transpiler_manager()
-    jsonrpc_errors.handle_error_bad_requests(
-        module_name,
-        func_name,
-        Library.validate_values_enum(
-            transpiler_name,
-            "transpiler",
-            driver.supported_transpilers,
-            allow_none=False,
-        ),
-    )
+    if driver:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_values_enum(
+                transpiler_name,
+                "transpiler",
+                driver.supported_transpilers,
+                allow_none=False,
+            ),
+        )
     body.transpiler = transpiler_name
     transpiler = transpiler_manager.get_transpiler(transpiler_name)
     transpiler_options_schema = transpiler.get_transpiler_options_schema()
@@ -506,13 +597,6 @@ def submit_job(
                 allow_none=True,
             ),
         )
-        if not isinstance(qem_options, dict):
-            jsonrpc_errors.handle_error_bad_request(
-                module_name,
-                func_name,
-                message="qem_options must be a dict",
-                param_name="qem_options",
-            )
 
     # get supported_code_types
     supported_code_types = transpiler.get_supported_code_types()
@@ -529,9 +613,14 @@ def submit_job(
     )
 
     # Validate: circuit_aggregation is supported
-    if not driver.enable_circuit_aggregation and circuit_aggregation in (
-        Constant.AGGREGATION_TYPE_INTERNAL,
-        Constant.AGGREGATION_TYPE_EXTERNAL,
+    if (
+        driver
+        and not driver.enable_circuit_aggregation
+        and circuit_aggregation
+        in (
+            Constant.AGGREGATION_TYPE_INTERNAL,
+            Constant.AGGREGATION_TYPE_EXTERNAL,
+        )
     ):
         jsonrpc_errors.handle_error_bad_requests(
             module_name,
@@ -655,7 +744,9 @@ def submit_job(
     err = None
     try:
         res, err = scheduler.submit(
-            body, extra_job_data_info=extra_job_data_info
+            body,
+            backend_type=backend_type,
+            extra_job_data_info=extra_job_data_info,
         )
         # Extract flow_run_id from scheduler response and update job record
         if res and "flow_run_id" in res:
@@ -729,6 +820,9 @@ def submit_job(
         "source_code": source_code,
         "description": description,
         "backend": backend,
+        "backend_type": backend_type,
+        "params": params,
+        "options": options,
         "flavor_id": flavor_id,
         "extra_specs": extra_specs,
         "driver_options": driver_options,
