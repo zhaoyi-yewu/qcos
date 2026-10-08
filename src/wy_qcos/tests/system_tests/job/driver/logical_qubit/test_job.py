@@ -117,3 +117,48 @@ class TestJob:
         finally:
             # restore device state to auto
             self.admin_client.set_device(job_info["backend"], state="auto")
+
+    @pytest.mark.smoke
+    def test_submit_job_pulse(self):
+        job_info = {
+            "job_id": str(Library.create_uuid(prefix=[0xF0])),
+            "job_name": "test_logical_qubit_pulse_submit_job",
+            "source_code_list": [SAMPLES["simple-qasm.qasm"]],
+            "code_type": Constant.CODE_TYPE_QASM,
+            "job_type": Constant.JOB_TYPE_SAMPLING,
+            "job_priority": Constant.DEFAULT_JOB_PRIORITY,
+            "description": "description: test_logical_qubit_pulse_submit_job",
+            "backend": "lq_mq02_pulse",
+            "shots": 1024,
+            "circuit_aggregation": None,
+            "driver_options": None,
+            "transpiler": Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS,
+            "transpiler_options": None,
+            "profiling": None,
+            "callbacks": None,
+            "dry_run": False,
+        }
+        self.admin_client.set_device(job_info["backend"], state="online")
+        try:
+            StLibrary.submit_job(self.admin_client, job_info)
+            success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+                self.admin_client,
+                job_info,
+                self.timeout,
+                self.interval,
+            )
+            if success:
+                StLibrary.delete_job(self.admin_client, job_info["job_id"])
+                assert (
+                    job_results["result"]["job_status"]
+                    == Constant.JOB_STATUS_COMPLETED
+                )
+            else:
+                logger.warning(
+                    f"Job failed. err_msg: {err_msg}, "
+                    f"job_results: {job_results}"
+                )
+            assert success is True
+        finally:
+            # restore device state to auto
+            self.admin_client.set_device(job_info["backend"], state="auto")

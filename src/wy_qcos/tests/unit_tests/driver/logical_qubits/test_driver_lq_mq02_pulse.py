@@ -63,6 +63,7 @@ class TestDriverLqMQ02Pulse:
             Constant.SINGLE_QUBIT_GATE_X,
             Constant.SINGLE_QUBIT_GATE_Y,
             Constant.SINGLE_QUBIT_GATE_Z,
+            Constant.TWO_QUBIT_GATE_CX,
         }
         assert Constant.TWO_QUBIT_GATE_CZ not in (driver.supported_basis_gates)
 
