@@ -1,37 +1,62 @@
-const Mock = require('mockjs')
+// Mock data generation without mockjs dependency.
+// The random data here is generated at module load time, so
+// restarting the dev server will produce new values.
 
-//表格中的数据是data，是mock出来的，所以一旦重启vue项目，这个data的值就会变
-//items|30中的这个30，是mock出30行数据的意思
-//http://localhost:9528/#/example_k8s_cluster_path/table_k8s_cluster这个链接中的表格中的数据，
-//是请求的http://localhost:9528/dev-api/vue-admin-template/table/list 这个接口，接口返回的数据就是下面mock出来的data
-const data = Mock.mock({
-  'items|2': [{
-    id: '@id',
-    title: 'table_k8s_cluster_@sentence(10, 20)',
-    'status|1': ['published', 'draft', 'deleted'],
-    author: 'name',
-    display_time: '@datetime',
-    pageviews: '@integer(300, 5000)'
-  }]
-})
+function randomId() {
+  return Math.floor(Math.random() * 100000 + 1024).toString()
+}
 
-//新接口所需的数据
-const dataForSimulationTask = Mock.mock({
-  'items|30': [{
-    id: '@id',
-    title: 'table_k8s_simulation_task_@sentence(10, 20)',
-    'status|1': ['published', 'draft', 'deleted'],
-    author: 'name',
-    display_time: '@datetime',
-    pageviews: '@integer(300, 5000)'
-  }]
-})
+function randomSentence(min, max) {
+  const words = 'abcdefghijklmnopqrstuvwxyz'
+  const len = Math.floor(Math.random() * (max - min) + min)
+  let str = ''
+  for (let i = 0; i < len; i++) {
+    str += words.charAt(Math.floor(Math.random() * words.length))
+  }
+  return str
+}
 
-module.exports = [
+function randomItem(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
+function randomDatetime() {
+  const d = new Date(Date.now() - randomInt(0, 30) * 24 * 3600 * 1000)
+  return d.toISOString().replace('T', ' ').substring(0, 19)
+}
+
+function buildItems(count, titlePrefix) {
+  const items = []
+  for (let i = 0; i < count; i++) {
+    items.push({
+      id: randomId(),
+      title: `${titlePrefix}_${randomSentence(10, 20)}`,
+      status: randomItem(['published', 'draft', 'deleted']),
+      author: 'name',
+      display_time: randomDatetime(),
+      pageviews: randomInt(300, 5000)
+    })
+  }
+  return items
+}
+
+const data = {
+  items: buildItems(2, 'table_k8s_cluster')
+}
+
+const dataForSimulationTask = {
+  items: buildItems(30, 'table_k8s_simulation_task')
+}
+
+export default [
   {
-    url: '/vue-admin-template/table/list',
-    type: 'get',
-    response: config => {
+    url: '/dev-api/vue-admin-template/table/list',
+    method: 'get',
+    response: () => {
       const items = data.items
       return {
         code: 20000,
@@ -43,9 +68,9 @@ module.exports = [
     }
   },
   {
-    url: '/vue-admin-template/table_simulation_task/list',
-    type: 'get',
-    response: config => {
+    url: '/dev-api/vue-admin-template/table_simulation_task/list',
+    method: 'get',
+    response: () => {
       const items = dataForSimulationTask.items
       return {
         code: 20000,
@@ -57,22 +82,3 @@ module.exports = [
     }
   }
 ]
-
-
-// module.exports只能赋值一次，赋值多次，则只有最后一次赋值会覆盖前面多次的赋值
-// module.exports = [
-//   {
-//     url: '/vue-admin-template/table_simulation_task/list',
-//     type: 'get',
-//     response: config => {
-//       const items = dataForSimulationTask.items
-//       return {
-//         code: 20000,
-//         data: {
-//           total: items.length,
-//           items: items
-//         }
-//       }
-//     }
-//   }
-// ]
