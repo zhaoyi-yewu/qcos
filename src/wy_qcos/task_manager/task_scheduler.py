@@ -207,12 +207,19 @@ class TaskScheduler:
         """
         return self._device_repo
 
-    def submit(self, job_info, tags=None, extra_job_data_info={}):
+    def submit(
+        self,
+        job_info,
+        tags=None,
+        backend_type=Constant.BACKEND_TYPE_DEVICE,
+        extra_job_data_info={},
+    ):
         """Submit job to scheduler.
 
         Args:
             job_info: job info
             tags: prefect flow tags
+            backend_type: backend type
             extra_job_data_info: extra job data info
 
         Returns:
@@ -246,42 +253,52 @@ class TaskScheduler:
             )
 
         # get driver info
+        deployment_name = None
+        driver_module_name = None
+        driver_class_name = None
+        driver_package_paths = None
+        device = None
         backend = job_info.backend
-        device = self._device_manager.get_device(backend)
-        if not device:
-            err_msg = f"Backend: '{backend}' is not found"
-            logger.error(err_msg)
-            return None, f"Execute work flow failed: {err_msg}"
-        if not device.enable:
-            err_msg = f"Backend driver: {backend} is disabled"
-            logger.error(err_msg)
-            return None, f"Execute work flow failed: {err_msg}"
+        if backend_type == Constant.BACKEND_TYPE_DEVICE:
+            deployment_name = f"{Constant.WORK_POOL_DEV}|{backend}"
+            pool_name = deployment_name
+            device = self._device_manager.get_device(backend)
+            if not device:
+                err_msg = f"Backend: '{backend}' is not found"
+                logger.error(err_msg)
+                return None, f"Execute work flow failed: {err_msg}"
+            if not device.enable:
+                err_msg = f"Backend driver: {backend} is disabled"
+                logger.error(err_msg)
+                return None, f"Execute work flow failed: {err_msg}"
 
-        pool_wait_states_flows_count = len(
-            self._task_manager.get_flow_runs_with_filters(
-                states=wait_states,
-                pool_name=f"{Constant.WORK_POOL_DEVICE_PREFIX}{backend}",
+            pool_wait_states_flows_count = len(
+                self._task_manager.get_flow_runs_with_filters(
+                    states=wait_states,
+                    pool_name=pool_name,
+                )
             )
-        )
-        device_max_queued_jobs = device.get_max_queued_jobs()
+            device_max_queued_jobs = device.get_max_queued_jobs()
 
-        # Check device queue limit (only if max_queued_jobs is set to >= 0)
-        if device_max_queued_jobs == 0:
-            if pool_wait_states_flows_count > 0:
-                return None, "Device does not allow queued jobs"
-        elif (
-            device_max_queued_jobs > 0
-            and pool_wait_states_flows_count >= device_max_queued_jobs
-        ):
-            return None, (
-                f"Current queued job count exceeds "
-                f"max queued job limit: {device_max_queued_jobs}"
-            )
+            # Check device queue limit (only if max_queued_jobs is set to >= 0)
+            if device_max_queued_jobs == 0:
+                if pool_wait_states_flows_count > 0:
+                    return None, "Device does not allow queued jobs"
+            elif (
+                device_max_queued_jobs > 0
+                and pool_wait_states_flows_count >= device_max_queued_jobs
+            ):
+                return None, (
+                    f"Current queued job count exceeds "
+                    f"max queued job limit: {device_max_queued_jobs}"
+                )
 
-        driver = device.get_driver()
-        driver_module_name = driver.get_module_name()
-        driver_class_name = driver.get_class_name()
-        driver_package_paths = driver.get_package_paths()
+            driver = device.get_driver()
+            driver_module_name = driver.get_module_name()
+            driver_class_name = driver.get_class_name()
+            driver_package_paths = driver.get_package_paths()
+        elif backend_type == Constant.BACKEND_TYPE_WIRECUT:
+            deployment_name = f"{Constant.WORK_POOL_VDEV}|{backend}"
 
         # get transpiler options
         transpiler_module_name = None
@@ -294,10 +311,17 @@ class TaskScheduler:
 
         # execute task
         try:
-            deployment_name = backend
             deployment = self._task_manager.get_deployment(deployment_name)
+            if deployment is None:
+                err_msg = (
+                    f"Deployment: '{deployment_name}' is not found, "
+                    f"please check work pool/deployment setup"
+                )
+                logger.error(err_msg)
+                return None, f"Execute work flow failed: {err_msg}"
             job_json_info = {}
             job_json_info["data"] = job_info.model_dump()
+            job_json_info["data"]["results_db_storage"] = "sql"
             job_json_info["data"].update(extra_job_data_info)
             job_json_info["driver"] = {
                 "module_name": driver_module_name,
@@ -308,8 +332,12 @@ class TaskScheduler:
                 "module_name": transpiler_module_name,
                 "class_name": transpiler_class_name,
             }
-            job_json_info["device"] = {"configs": device.get_configs()}
-            job_json_info["global"] = {"configs": Config.get_configs()}
+            if device:
+                job_json_info["device"] = {"configs": device.get_configs()}
+            job_json_info["global"] = {
+                "configs": Config.get_configs(),
+                "deployments": self._task_manager.get_deployments(),
+            }
 
             flow_run_id = self._policy_handler.exec_task(
                 deployment, job_json_info, tags=tags
@@ -374,7 +402,7 @@ class TaskScheduler:
 
         # execute task
         try:
-            deployment_name = f"{Constant.WORK_POOL_MGR_PREFIX}{backend}"
+            deployment_name = f"{Constant.WORK_POOL_MGR}|{backend}"
             deployment = self._task_manager.get_deployment(deployment_name)
             device_mgr_info = {}
             device_mgr_info["device_name"] = job_info.device_name
@@ -637,13 +665,14 @@ class PrioritySchedulingPolicy:
         Returns:
             flow run id
         """
-        priority = job_info["data"]["job_priority"]
-        backend = job_info["data"]["backend"]
-
+        job_data = job_info["data"]
+        priority = job_data["job_priority"]
+        backend = job_data["backend"]
+        backend_type = job_data["backend_type"]
         deployment_id = deployment["deploy_id"]
-        work_queue_name = (
-            f"{Constant.WORK_POOL_DEVICE_PREFIX}{backend}_{priority}"
-        )
+        work_queue_name = "default"
+        if backend_type and backend_type == Constant.BACKEND_TYPE_DEVICE:
+            work_queue_name = f"{Constant.WORK_POOL_DEV}|{backend}_{priority}"
         flow_run_id = self._task_manager.run_flow(
             deployment_id,
             {"job_info": job_info},
