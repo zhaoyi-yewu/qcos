@@ -225,7 +225,7 @@ class TestJob:
             "backend": Constant.DEVICE_DUMMY,
             "shots": Constant.DEFAULT_SHOTS,
             "circuit_aggregation": None,
-            "driver_options": {"enable_wirecut": True, "max_qubits": 6},
+            "driver_options": {"max_qubits": 6},
             "transpiler": Constant.TRANSPILER_CMSS,
             "transpiler_options": {"enable_na_move": True},
             "profiling": None,
@@ -242,7 +242,7 @@ class TestJob:
                 == Constant.JOB_STATUS_FAILED
             )
             assert (
-                "Wirecut batch result count does not match subcircuits"
+                "Device Qubit Limit Exceeded Error"
                 in job_results["result"]["results"][0]["error"]["message"]
             )
             StLibrary.delete_job(self.admin_client, job_info["job_id"])

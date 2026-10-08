@@ -276,6 +276,47 @@ class TestTaskScheduler:
         assert submit_args[1]["transpiler"]["module_name"] == "trans_module"
         assert submit_args[1]["transpiler"]["class_name"] == "TransClass"
 
+    @patch("wy_qcos.task_manager.task_scheduler.logger")
+    def test_submit_deployment_not_found(self, mock_logger):
+        """Test submit returns a clear error when deployment is missing."""
+        scheduler = TaskScheduler()
+        scheduler._task_manager = Mock()
+        scheduler._task_manager.get_flow_runs_with_filters.side_effect = [
+            [],
+            [],
+            [],
+        ]
+        scheduler._task_manager.convert_to_prefect_states.return_value = []
+        # deployment lookup returns None (backend not registered)
+        scheduler._task_manager.get_deployment.return_value = None
+        mock_driver = Mock(
+            get_module_name=Mock(return_value="driver_module"),
+            get_class_name=Mock(return_value="DriverClass"),
+            get_package_paths=Mock(return_value=[]),
+            get_transpiler=Mock(return_value=None),
+        )
+        mock_device = Mock(enable=True)
+        mock_device.get_max_queued_jobs.return_value = -1
+        mock_device.get_driver.return_value = mock_driver
+        mock_device.get_configs.return_value = {}
+        scheduler._device_manager = Mock()
+        scheduler._device_manager.get_device.return_value = mock_device
+        scheduler._transpiler_manager = Mock()
+        scheduler._transpiler_manager.get_transpiler.return_value = None
+        scheduler._policy_handler = Mock()
+        job_info = Mock()
+        job_info.backend = "dummy"
+        job_info.transpiler = None
+        job_info.model_dump.return_value = ConstantForTest.job_info
+
+        result, error = scheduler.submit(job_info, None)
+
+        assert result is None
+        assert "Deployment" in error
+        assert "not found" in error
+        # policy_handler.exec_task must not be called when deployment missing
+        assert not scheduler._policy_handler.exec_task.called
+
     def test_submit_exec_task_exception(self):
         scheduler = TaskScheduler()
         scheduler._task_manager = Mock()
@@ -706,5 +747,5 @@ class TestPrioritySchedulingPolicy:
         mock_run_flow.assert_called_once()
         _, call_kwargs = mock_run_flow.call_args
         assert call_kwargs["work_queue_name"] == (
-            f"{Constant.WORK_POOL_DEVICE_PREFIX}{Constant.DRIVER_DUMMY}_1"
+            f"{Constant.WORK_POOL_DEV}|{Constant.DRIVER_DUMMY}_1"
         )

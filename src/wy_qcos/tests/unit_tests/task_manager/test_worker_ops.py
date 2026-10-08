@@ -68,13 +68,11 @@ class TestListWorkers:
 
     def test_list_with_workers(self, task_manager):
         """List workers across multiple pools."""
-        pool_a = _make_pool("device|dummy")
-        pool_b = _make_pool("monitor|dummy")
+        pool_a = _make_pool("dev|dummy")
+        pool_b = _make_pool("mon|dummy")
 
-        worker1 = _make_worker("process-device|dummy", WorkerStatus.ONLINE)
-        worker2 = _make_worker(
-            "process-device|dummy_monitor", WorkerStatus.OFFLINE
-        )
+        worker1 = _make_worker("proc|dev|dummy", WorkerStatus.ONLINE)
+        worker2 = _make_worker("proc|mon|dummy", WorkerStatus.OFFLINE)
 
         sync_client = mock.Mock()
         sync_client.read_work_pools.return_value = [pool_a, pool_b]
@@ -89,8 +87,8 @@ class TestListWorkers:
             result = task_manager.list_workers()
 
         assert len(result) == 2
-        assert result[0]["worker_name"] == "process-device|dummy"
-        assert result[0]["work_pool"] == "device|dummy"
+        assert result[0]["worker_name"] == "proc|dev|dummy"
+        assert result[0]["work_pool"] == "dev|dummy"
         assert result[0]["device_name"] == "dummy"
         assert result[0]["worker_status"] == (
             WorkerStatus.ONLINE.value.lower()
@@ -104,8 +102,8 @@ class TestListWorkers:
 
     def test_online_without_process_corrected_to_offline(self, task_manager):
         """ONLINE worker with no running process is corrected to OFFLINE."""
-        pool = _make_pool("device|dummy")
-        worker = _make_worker("process-device|dummy", WorkerStatus.ONLINE)
+        pool = _make_pool("dev|dummy")
+        worker = _make_worker("proc|dev|dummy", WorkerStatus.ONLINE)
         sync_client = mock.Mock()
         sync_client.read_work_pools.return_value = [pool]
         sync_client.read_workers_for_work_pool.return_value = [worker]
@@ -125,7 +123,7 @@ class TestListWorkers:
 
     def test_list_empty_pool(self, task_manager):
         """Pool with no workers is reported with no_workers status."""
-        pool = _make_pool("device|dummy")
+        pool = _make_pool("dev|dummy")
         sync_client = mock.Mock()
         sync_client.read_work_pools.return_value = [pool]
         sync_client.read_workers_for_work_pool.return_value = []
@@ -139,8 +137,8 @@ class TestListWorkers:
 
     def test_read_workers_failure_skipped(self, task_manager):
         """Pool whose worker read fails is skipped."""
-        pool_a = _make_pool("device|dummy")
-        pool_b = _make_pool("monitor|dummy")
+        pool_a = _make_pool("dev|dummy")
+        pool_b = _make_pool("mon|dummy")
         worker = _make_worker("w1", WorkerStatus.ONLINE)
 
         sync_client = mock.Mock()
@@ -174,10 +172,10 @@ class TestRestartWorker:
         mock_kill.return_value = ([], [])
         mock_start.return_value = True
 
-        success, msg = task_manager.restart_worker("process-device|dummy")
+        success, msg = task_manager.restart_worker("proc|dev|dummy")
         assert success is True
         assert "restarted successfully" in msg
-        mock_start.assert_called_once_with("dummy", "job")
+        mock_start.assert_called_once_with("dummy", "dev")
 
     @mock.patch.object(TaskFlowManager, "_start_worker_process")
     @mock.patch.object(TaskFlowManager, "_kill_workers_by_regex")
@@ -188,10 +186,10 @@ class TestRestartWorker:
         mock_kill.return_value = ([1234], [])
         mock_start.return_value = True
 
-        success, msg = task_manager.restart_worker("process-device|dummy")
+        success, msg = task_manager.restart_worker("proc|dev|dummy")
         assert success is True
         assert "restarted successfully" in msg
-        mock_start.assert_called_once_with("dummy", "job")
+        mock_start.assert_called_once_with("dummy", "dev")
 
     @mock.patch.object(TaskFlowManager, "_start_worker_process")
     @mock.patch.object(TaskFlowManager, "_kill_workers_by_regex")
@@ -200,7 +198,7 @@ class TestRestartWorker:
         mock_kill.return_value = ([1234], [])
         mock_start.return_value = False
 
-        success, msg = task_manager.restart_worker("process-device|dummy")
+        success, msg = task_manager.restart_worker("proc|dev|dummy")
         assert success is True
         assert "could not be restarted" in msg
 
@@ -212,7 +210,9 @@ class TestRestartWorker:
         """When worker name unrecognized, returns True with warning."""
         mock_kill.return_value = ([1234], [])
 
-        success, msg = task_manager.restart_worker("process-unknown|dummy")
+        # "unknown" lacks the proc| prefix so _parse_worker_name
+        # returns (None, None), hitting the unrecognized-name branch.
+        success, msg = task_manager.restart_worker("unknown")
         assert success is True
         assert "could not be restarted" in msg
         mock_start.assert_not_called()
@@ -227,26 +227,26 @@ class TestWorkerNameToProctitle:
 
     def test_job_worker(self):
         """Job worker proctitle matches worker name directly."""
-        name = "process-device|dummy"
+        name = "proc|dev|dummy"
         assert (
             TaskFlowManager._worker_name_to_proctitle(name)
-            == "[prefect] process-device|dummy"
+            == "[qcos] proc|dev|dummy"
         )
 
     def test_monitor_worker(self):
-        """Monitor worker proctitle uses _device_monitor suffix."""
-        name = "process-device|dummy_monitor"
+        """Monitor worker proctitle matches worker name directly."""
+        name = "proc|mon|dummy"
         assert (
             TaskFlowManager._worker_name_to_proctitle(name)
-            == "[prefect] process-device|dummy_device_monitor"
+            == "[qcos] proc|mon|dummy"
         )
 
     def test_mgr_worker(self):
-        """Mgr worker proctitle uses _device_mgr suffix."""
-        name = "process-device|dummy_mgr"
+        """Mgr worker proctitle matches worker name directly."""
+        name = "proc|mgr|dummy"
         assert (
             TaskFlowManager._worker_name_to_proctitle(name)
-            == "[prefect] process-device|dummy_device_mgr"
+            == "[qcos] proc|mgr|dummy"
         )
 
 
@@ -254,33 +254,33 @@ class TestParseWorkerName:
     """Tests for TaskFlowManager._parse_worker_name."""
 
     def test_invalid_prefix(self):
-        """Worker name without process- prefix returns (None, None)."""
+        """Worker name without proc| prefix returns (None, None)."""
         assert TaskFlowManager._parse_worker_name("dummy") == (None, None)
 
     def test_unknown_pool_prefix(self):
-        """Pool name with unknown prefix returns (None, None)."""
-        result = TaskFlowManager._parse_worker_name("process-unknown|dummy")
-        assert result == (None, None)
+        """Pool prefix is not validated, segments are returned as-is."""
+        result = TaskFlowManager._parse_worker_name("proc|unknown|dummy")
+        assert result == ("dummy", "unknown")
 
     def test_parse_job_worker(self):
         """Job worker name parsed correctly."""
-        name = f"process-{Constant.WORK_POOL_DEVICE_PREFIX}dummy"
+        name = f"{Constant.PROCESS_PREFIX}|{Constant.WORK_POOL_DEV}|dummy"
         assert TaskFlowManager._parse_worker_name(name) == (
             "dummy",
-            "job",
+            "dev",
         )
 
     def test_parse_monitor_worker(self):
         """Monitor worker name parsed correctly."""
-        name = f"process-{Constant.WORK_POOL_DEVICE_PREFIX}dummy_monitor"
+        name = f"{Constant.PROCESS_PREFIX}|{Constant.WORK_POOL_MON}|dummy"
         assert TaskFlowManager._parse_worker_name(name) == (
             "dummy",
-            "monitor",
+            "mon",
         )
 
     def test_parse_mgr_worker(self):
         """Manager worker name parsed correctly."""
-        name = f"process-{Constant.WORK_POOL_DEVICE_PREFIX}dummy_mgr"
+        name = f"{Constant.PROCESS_PREFIX}|{Constant.WORK_POOL_MGR}|dummy"
         assert TaskFlowManager._parse_worker_name(name) == (
             "dummy",
             "mgr",
@@ -296,7 +296,9 @@ class TestStartWorkerProcess:
         device_manager.get_devices.return_value = {}
         task_manager.device_manager = device_manager
 
-        result = task_manager._start_worker_process("nope", "job")
+        result = task_manager._start_worker_process(
+            "nope", Constant.WORK_POOL_DEV
+        )
         assert result is False
 
     @mock.patch("wy_qcos.task_manager.task_manager.multiprocessing")
@@ -311,7 +313,9 @@ class TestStartWorkerProcess:
         mock_process = mock.Mock()
         mock_mp.Process.return_value = mock_process
 
-        result = task_manager._start_worker_process("dummy", "job")
+        result = task_manager._start_worker_process(
+            "dummy", Constant.WORK_POOL_DEV
+        )
         assert result is True
         mock_mp.Process.assert_called_once()
         mock_process.start.assert_called_once()
@@ -326,7 +330,9 @@ class TestStartWorkerProcess:
         task_manager.device_manager = device_manager
 
         # job worker should not start
-        result = task_manager._start_worker_process("dummy", "job")
+        result = task_manager._start_worker_process(
+            "dummy", Constant.WORK_POOL_DEV
+        )
         assert result is False
         mock_mp.Process.assert_not_called()
 
@@ -341,7 +347,9 @@ class TestStartWorkerProcess:
         task_manager.deployments = {}
         task_manager._is_device_monitor_enabled = mock.Mock(return_value=False)
 
-        result = task_manager._start_worker_process("dummy", "monitor")
+        result = task_manager._start_worker_process(
+            "dummy", Constant.WORK_POOL_MON
+        )
         assert result is False
         mock_mp.Process.assert_not_called()
 
@@ -371,17 +379,17 @@ class TestWatchdogRestartDeadWorkers:
         task_manager.device_manager = mock.Mock()
         mock_list.return_value = [
             {
-                "worker_name": "process-device|dummy",
+                "worker_name": "proc|dev|dummy",
                 "device_name": "dummy",
                 "worker_status": "offline",
             },
             {
-                "worker_name": "process-device|dummy_monitor",
+                "worker_name": "proc|mon|dummy",
                 "device_name": "dummy",
                 "worker_status": "online",
             },
             {
-                "worker_name": "process-device|other",
+                "worker_name": "proc|dev|other",
                 "device_name": "other",
                 "worker_status": "offline",
             },
@@ -392,8 +400,8 @@ class TestWatchdogRestartDeadWorkers:
 
         # only offline workers restarted; online worker skipped
         assert mock_start.call_count == 2
-        mock_start.assert_any_call("dummy", "job")
-        mock_start.assert_any_call("other", "job")
+        mock_start.assert_any_call("dummy", "dev")
+        mock_start.assert_any_call("other", "dev")
 
     @mock.patch.object(TaskFlowManager, "_start_worker_process")
     @mock.patch.object(TaskFlowManager, "list_workers")
@@ -423,7 +431,7 @@ class TestWatchdogRestartDeadWorkers:
         task_manager.device_manager = mock.Mock()
         mock_list.return_value = [
             {
-                "worker_name": "process-device|dummy",
+                "worker_name": "proc|dev|dummy",
                 "device_name": "dummy",
                 "worker_status": "online",
             },
@@ -441,7 +449,7 @@ class TestWatchdogRestartDeadWorkers:
         task_manager.device_manager = mock.Mock()
         mock_list.return_value = [
             {
-                "worker_name": "process-device|dummy_monitor",
+                "worker_name": "proc|mon|dummy",
                 "device_name": "dummy",
                 "worker_status": "offline",
             },
@@ -450,4 +458,4 @@ class TestWatchdogRestartDeadWorkers:
 
         task_manager.watchdog_restart_dead_workers()
 
-        mock_start.assert_called_once_with("dummy", "monitor")
+        mock_start.assert_called_once_with("dummy", "mon")
