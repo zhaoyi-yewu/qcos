@@ -35,7 +35,7 @@
 
 | aggregation_type: 聚合类型，取值为None、internal或external
 | src_code_list: 源码组织方式。None模式每个源码单独成字典；internal/external模式多个源码按MAX_AGGREGATION_JOBS限制最大分组
-| sub_flow_list: External模式下追踪的Sub Flow ID列表，用于最后的取消操作
+| sub_flow_list: External模式下追踪的Sub Flow ID列表，用于最后的删除操作
 
 (3)三种聚合模式的实现
 
@@ -101,7 +101,7 @@
      - 其余（Sub）的结果组织为sub_results字典，key为job_id，value为该Sub的job_results副本
      - 返回包含sub_results的merged job_results
 
-   - 发送flow_agg_info到Redis，携带cancel=True和sub_flow_list，通知Task Manager取消Sub Flow
+   - 发送flow_agg_info到Redis，携带delete=True和sub_flow_list，通知Task Manager删除Prefect中的Sub Flow
 
 6. **Sub Job处理（job_engine）：**
 

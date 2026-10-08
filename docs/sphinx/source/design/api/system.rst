@@ -202,7 +202,8 @@
                "params": {
                  "body": {},
                  "query": {
-                   "pagination": {"page": 1, "page_size": 20},
+                   "pagination": {"page": 1, "page_size": 50},
+                    // 分页返回格式: {"items": [...], "total": 53, "page": 3, "page_size": 50, "total_pages": 2}
                    "sort": ["-worker_name"],
                    "filters": {}
                  }

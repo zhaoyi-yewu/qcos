@@ -176,7 +176,8 @@ Flavor可以定义量子比特数范围、技术类型、门保真度等调度�
                      ]
                    },
                    // [可选] 分页，不传返回全部
-                   "pagination": {"page": 1, "page_size": 20},
+                   "pagination": {"page": 1, "page_size": 50},
+                    // 分页返回格式: {"items": [...], "total": 53, "page": 3, "page_size": 50, "total_pages": 2}
                    // [可选] 排序，'-'前缀降序
                    "sort": ["-created_at"]
                  },

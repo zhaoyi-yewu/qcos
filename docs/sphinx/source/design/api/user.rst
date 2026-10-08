@@ -186,7 +186,8 @@
                  "body": null,
                  // [可选] 分页，不传返回全部
                  "query": {
-                   "pagination": {"page": 1, "page_size": 20},
+                   "pagination": {"page": 1, "page_size": 50},
+                    // 分页返回格式: {"items": [...], "total": 53, "page": 3, "page_size": 50, "total_pages": 2}
                    // [可选] 排序，'-'前缀降序
                    "sort": ["-created_at"],
                    // [可选] 过滤条件
@@ -584,11 +585,12 @@
                  },
                  // [可选] 分页、排序参数，与 body 并列在 params 顶层
                  "query": {
-                   // [可选] 分页，不传时默认 page=1, page_size=20
+                   // [可选] 分页，不传时默认 page=1, page_size=50
                    "pagination": {
                      "page": 1,
-                     "page_size": 20
+                     "page_size": 50
                    },
+                   // 分页返回格式: {"items": [...], "total": 53, "page": 3, "page_size": 50, "total_pages": 2}
                    // [可选] 排序，'-'前缀降序
                    "sort": ["-login_time"]
                  },
