@@ -313,27 +313,60 @@ async def update_job_metrics():
 async def check_worker_health(sync_client=None) -> tuple[bool, str]:
     """Check worker health.
 
-    Check if there is at least one online worker in all work pools,
-    execute concurrently with timeout.
+    Check if there is at least one online worker in all relevant work
+    pools (device, monitor, manager, virtual device), execute
+    concurrently with timeout.
     """
-    device_names = list(scheduler.get_device_manager().get_devices().keys())
+    device_manager = scheduler.get_device_manager()
+    devices = device_manager.get_devices()
+    device_names = list(devices.keys())
     if not device_names:
         return False, "No devices configured"
 
-    async def check_single_device(device_name):
-        """Check single device with retry on timeout.
+    # Build the list of pool names to check:
+    #   - dev|{device} for every device (required)
+    #   - mon|{device} when device monitor is enabled
+    #   - mgr|{device} when device manager is enabled
+    #   - vdev|wirecut for the virtual device (always)
+    pool_names_to_check = []
+    for device_name in device_names:
+        device = devices.get(device_name)
+        pool_names_to_check.append(f"{Constant.WORK_POOL_DEV}|{device_name}")
+        if device:
+            # monitor enabled?
+            # device monitor is enabled only when both the config flag
+            # (device.get_enable_device_monitor) and the driver flag
+            # (driver.enable_device_monitor) are True
+            config_enable = device.get_enable_device_monitor()
+            driver_enable = device.get_driver().enable_device_monitor
+            if config_enable is not False and driver_enable:
+                pool_names_to_check.append(
+                    f"{Constant.WORK_POOL_MON}|{device_name}"
+                )
+            # manager enabled?
+            if device.get_driver().enable_device_mgr:
+                pool_names_to_check.append(
+                    f"{Constant.WORK_POOL_MGR}|{device_name}"
+                )
+
+    # virtual device (wirecut) pool
+    pool_names_to_check.append(
+        f"{Constant.WORK_POOL_VDEV}|{Constant.VIRT_DEIVCE_WIRECUT}"
+    )
+
+    async def check_single_pool(pool_name):
+        """Check a single work pool with retry on timeout.
 
         Args:
-            device_name (str): Device name
+            pool_name (str): work pool name
 
         Returns:
-            (device_name, status_str)
+            (pool_name, status_str)
         """
         worker_executor = _get_worker_check_executor()
 
         for attempt in range(2):
             try:
-                pool_name = f"{Constant.WORK_POOL_DEVICE_PREFIX}{device_name}"
                 workers = await call_sync_with_timeout(
                     sync_client.read_workers_for_work_pool,
                     timeout=WORKER_CHECK_TIMEOUT,
@@ -342,41 +375,40 @@ async def check_worker_health(sync_client=None) -> tuple[bool, str]:
                 )
 
                 if not workers:
-                    return device_name, "no_workers"
+                    return pool_name, "no_workers"
                 online_workers = [
                     w for w in workers if w.status == WorkerStatus.ONLINE
                 ]
                 if not online_workers:
-                    return device_name, "no_online"
-                return device_name, "ok"
+                    return pool_name, "no_online"
+                return pool_name, "ok"
             except TimeoutError:
                 if attempt == 0:
                     logger.warning(
-                        f"First timeout checking workers for {device_name}, "
+                        f"First timeout checking workers for "
+                        f"{pool_name}, "
                         f"retrying after {WORKER_CHECK_RETRY_DELAY}s"
                     )
                     await asyncio.sleep(WORKER_CHECK_RETRY_DELAY)
                     continue
 
-                logger.warning(f"All retries timeout for {device_name}")
-                return device_name, "timeout"
+                logger.warning(f"All retries timeout for {pool_name}")
+                return pool_name, "timeout"
             except Exception as e:
-                logger.warning(
-                    f"Error checking workers for {device_name}: {e}"
-                )
-                return device_name, f"error:{str(e)}"
+                logger.warning(f"Error checking workers for {pool_name}: {e}")
+                return pool_name, f"error:{str(e)}"
 
     results = await asyncio.gather(*[
-        check_single_device(d) for d in device_names
+        check_single_pool(p) for p in pool_names_to_check
     ])
 
     all_healthy = True
     errors = []
-    for device, status in results:
+    for pool_name, status in results:
         if status == "ok":
             continue
         all_healthy = False
-        errors.append(f"{device}: {status}")
+        errors.append(f"{pool_name}: {status}")
 
     if all_healthy:
         return True, ""
