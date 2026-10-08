@@ -1042,6 +1042,7 @@ def job_flow(job_info):
     backend = job_data["backend"]
     flow_run_id = flow_run.id
     callbacks = job_data.get("callbacks", None)
+    job_data.get("results_db_storage", "sql")
     job_enqueue_at = job_data["job_enqueue_at"]
     scheduling_started_at = job_data["job_schedule_started_at"]
     scheduling_ended_at = job_data["job_schedule_ended_at"]
@@ -1165,6 +1166,7 @@ def job_flow(job_info):
         # handle sub job which is unexpected
         # should be processed in db_job_callback
         if not aggregation_info.is_parent:
+            logger.info(f"skip aggregation sub job id: {job_id}")
             return None
 
         logger.debug(
@@ -1265,13 +1267,13 @@ def job_flow(job_info):
     # set monitor_info
     monitor_info["running"] = False
 
-    # cancel all agg sub-flows
+    # delete all agg sub-flows
     # results of sub-flows will be handled by _db_update_job
     if src_code_info.aggregation_type == Constant.AGGREGATION_TYPE_EXTERNAL:
         channel_name = f"{Constant.REDIS_CHANNEL_JOB_AGG_PREFIX}/{flow_run_id}"
         flow_agg_info = {
             "flow_run_id": flow_run_id,
-            "cancel": True,
+            "delete": True,
             "sub_flow_list": src_code_info.sub_flow_list,
         }
         redis_instance.publish(channel_name, json.dumps(flow_agg_info))
