@@ -48,6 +48,14 @@ class DeviceState:
     driver_options_schema: dict | None = None
     # transpiler_options schema from the driver
     transpiler_options_schema: dict | None = None
+    # device configs
+    configs: dict | None = None
+
+    # driver info
+    driver_name: str = ""
+    driver_module_name: str = ""
+    driver_class_name: str = ""
+    driver_package_paths: str = ""
 
     # Dynamic load info (from Prefect)
     queued_job_count: int = 0
@@ -101,16 +109,15 @@ class DeviceState:
             supported_basis_gates=driver.get_supported_basis_gates(),
             details=device.details or {},
             max_queued_jobs=device.get_max_queued_jobs(),
-            input_constrains=getattr(driver, "input_constrains", {}) or {},
-            enable_circuit_aggregation=getattr(
-                driver, "enable_circuit_aggregation", False
-            ),
-            driver_options_schema=getattr(
-                driver, "driver_options_schema", None
-            ),
-            transpiler_options_schema=getattr(
-                driver, "transpiler_options_schema", None
-            ),
+            input_constrains=driver.input_constrains,
+            enable_circuit_aggregation=driver.enable_circuit_aggregation,
+            driver_options_schema=driver.driver_options_schema,
+            transpiler_options_schema=driver.transpiler_options_schema,
+            configs=device.get_configs(),
+            driver_name=driver.get_name(),
+            driver_module_name=driver.get_module_name(),
+            driver_class_name=driver.get_class_name(),
+            driver_package_paths=driver.get_package_paths(),
         )
 
     def set_load_info(
@@ -218,10 +225,29 @@ class DeviceState:
             "status": self.status,
             "enable": self.enable,
             "max_qubits": self.max_qubits,
+            "available_qubits": self.available_qubits,
             "tech_type": self.tech_type,
             "supported_code_types": self.supported_code_types,
-            "queued_job_count": self.queued_job_count,
-            "running_job_count": self.running_job_count,
+            "supported_basis_gates": self.supported_basis_gates,
+            "details": self.details,
+            "enable_circuit_aggregation": self.enable_circuit_aggregation,
             "max_queued_jobs": self.max_queued_jobs,
-            "avg_exec_time_per_qubit": self.avg_exec_time_per_qubit,
+            "configs": self.configs,
+            "driver_name": self.driver_name,
+            "driver_module_name": self.driver_module_name,
+            "driver_class_name": self.driver_class_name,
+            "driver_package_paths": self.driver_package_paths,
+            "job_count": {
+                "queued_job_count": self.queued_job_count,
+                "running_job_count": self.running_job_count,
+                "vendor_queued_job_count": self.vendor_queued_job_count,
+                "vendor_running_job_count": self.vendor_running_job_count,
+            },
+            "metrics": {
+                "avg_exec_time_per_qubit": self.avg_exec_time_per_qubit,
+                "availability_total": self.availability_total,
+                "availability_hourly": self.availability_hourly,
+                "avg_1q_fidelity": self.get_avg_1q_fidelity(),
+                "avg_2q_fidelity": self.get_avg_2q_fidelity(),
+            },
         }

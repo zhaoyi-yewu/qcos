@@ -26,11 +26,15 @@ from wy_qcos.db.utils.db_utils import create_db_session
 from wy_qcos.device.device_manager import DeviceManager
 from wy_qcos.flavor.flavor_manager import FlavorManager
 from wy_qcos.scheduler.device_state import DeviceState
-from wy_qcos.scheduler.errors import NoValidDeviceError
+from wy_qcos.scheduler.errors import (
+    NoValidDeviceError,
+    DeviceQubitExceededError,
+)
 from wy_qcos.scheduler.filters import (
     BaseFilter,
     BaseFilterHandler,
     DEFAULT_FILTERS,
+    QubitCountFilter,
 )
 from wy_qcos.scheduler.request_spec import RequestSpec
 from wy_qcos.scheduler.weighers import (
@@ -104,6 +108,7 @@ class AutoScheduler:
         self._device_group_manager = device_group_manager
         self._db_engine = db_engine
         self._transpiler_manager = transpiler_manager
+        self.last_filtered_devices: list[DeviceState] | None = None
 
         # dynamically discover filter/weigher classes by scanning
         # the scheduler/filters and scheduler/weighers directories
@@ -257,19 +262,30 @@ class AutoScheduler:
         )
         return weigher_classes
 
-    def schedule(self, request_spec: RequestSpec) -> str:
+    def schedule(
+        self, request_spec: RequestSpec, run_all_filters: bool = False
+    ) -> str:
         """Execute auto scheduling.
 
         Args:
             request_spec: scheduling request spec
+            run_all_filters: if True, run all filters even when no
+                devices remain, and return filter status info. When
+                the only failing filter is QubitCountFilter, raises
+                DeviceQubitExceededError instead of
+                NoValidDeviceError.
 
         Returns:
             selected device name
 
         Raises:
             NoValidDeviceError: if no device passes filters
+            DeviceQubitExceededError: if the only failing filter is
+                QubitCountFilter (all devices have insufficient
+                qubits)
         """
         # 1. Build device states
+        self.last_filtered_devices = None
         device_states = self._build_device_states()
 
         if not device_states:
@@ -283,11 +299,21 @@ class AutoScheduler:
         )
 
         # 2. Run filters
-        filtered = self._filter_handler.get_filtered_objects(
-            device_states, request_spec
+        filtered, last_failed_filter, self.last_filtered_devices = (
+            self._filter_handler.get_filtered_objects(
+                device_states,
+                request_spec,
+                run_all_filters=run_all_filters,
+            )
         )
 
         if not filtered:
+            # Check if last failing filter is QubitCountFilter
+            if last_failed_filter == QubitCountFilter.__name__:
+                raise DeviceQubitExceededError(
+                    f"No device has sufficient qubits for "
+                    f"num_qubits={request_spec.num_qubits}"
+                )
             raise NoValidDeviceError(
                 "No device matches the scheduling requirements"
             )
@@ -494,3 +520,7 @@ class AutoScheduler:
             flavor_specs=flavor_specs,
             extra_specs=extra_specs or {},
         )
+
+    def get_last_filtered_devices(self):
+        """Get last filtered devices."""
+        return self.last_filtered_devices
