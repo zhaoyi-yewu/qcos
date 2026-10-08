@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from wy_qcos.common.constant import Constant
 from wy_qcos.db.models import Job
 from wy_qcos.db.repositories import BaseRepository
 from wy_qcos.api import schemas
@@ -51,6 +52,31 @@ class JobRepository(BaseRepository):
         """
         try:
             job_create_dict = job_create.model_dump()
+            # Ensure JSON columns have valid defaults when None
+            if job_create_dict.get("params") is None:
+                job_create_dict["params"] = {}
+            if job_create_dict.get("options") is None:
+                job_create_dict["options"] = {}
+            if job_create_dict.get("tags") is None:
+                job_create_dict["tags"] = []
+            if job_create_dict.get("profiling") is None:
+                job_create_dict["profiling"] = []
+            if job_create_dict.get("callbacks") is None:
+                job_create_dict["callbacks"] = []
+            if job_create_dict.get("driver_options") is None:
+                job_create_dict["driver_options"] = {}
+            if job_create_dict.get("transpiler_options") is None:
+                job_create_dict["transpiler_options"] = {}
+            if job_create_dict.get("qec_options") is None:
+                job_create_dict["qec_options"] = {}
+            if job_create_dict.get("qem_options") is None:
+                job_create_dict["qem_options"] = {}
+            if job_create_dict.get("extra_specs") is None:
+                job_create_dict["extra_specs"] = {}
+            if job_create_dict.get("source_code") is None:
+                job_create_dict["source_code"] = []
+            if job_create_dict.get("results") is None:
+                job_create_dict["results"] = []
             if job_create_dict.get("job_id"):
                 job_create_dict["id"] = job_create_dict.get("job_id")
             del job_create_dict["job_id"]
@@ -125,7 +151,7 @@ class JobRepository(BaseRepository):
         self,
         filters: dict | None = None,
         page: int = 1,
-        page_size: int = 20,
+        page_size: int = Constant.PAGE_SIZE,
         sort: list[str] | None = None,
     ):
         """Get jobs with pagination, filtering and sorting.
