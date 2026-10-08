@@ -177,6 +177,11 @@ class Library:
         return new_list
 
     @staticmethod
+    def get_current_pid():
+        """Get current process pid."""
+        return os.getpid()
+
+    @staticmethod
     def kill_pid(pid_file, expected_process_name=None, allow_kill_self=False):
         """Kill existing process from pid file.
 

@@ -72,6 +72,13 @@ CALLBACKS_SCHEMA = [
         Optional("timeout"): int,
     }
 ]
+
+JOB_OPTIONS_SCHEMA = {
+    Optional("enable_wirecut"): bool,
+}
+
+JOB_PARAMS_SCHEMA = [Or(int, float)]
+
 DEVICE_INFO_SCHEMA = {
     "status": str,
     Optional("details"): {
@@ -101,7 +108,7 @@ DEVICE_INFO_SCHEMA = {
             ],
             Optional("coupler_metrics"): [
                 {
-                    "qubits": [int],
+                    "qubits": Or([int], None),
                     Optional("cz_fidelity"): Or(int, float),
                 }
             ],
