@@ -487,7 +487,7 @@ def submit_job(
     body.backend_type = backend_type
 
     # validate: driver_options
-    if driver_options:
+    if driver and driver_options:
         driver_options_schema = driver.get_driver_options_schema()
         jsonrpc_errors.handle_error_bad_requests(
             module_name,

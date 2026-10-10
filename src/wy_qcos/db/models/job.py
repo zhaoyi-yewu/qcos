@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 class Job(BaseTable):
     """Job table."""
 
-    __tablename__ = "job"
+    __tablename__ = "jobs"
     __table__: ClassVar[Table]
 
     # id fields
