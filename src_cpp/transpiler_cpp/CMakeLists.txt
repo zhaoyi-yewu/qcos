@@ -65,8 +65,7 @@ else()
 endif()
 
 if(USE_PYQCOS)
-    find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module
-                 OPTIONAL_COMPONENTS Development.SABIModule)
+    find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development)
     execute_process(
         COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
         OUTPUT_VARIABLE nanobind_DIR

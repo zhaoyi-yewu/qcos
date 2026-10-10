@@ -31,6 +31,8 @@
 #include <vector>
 
 #include "circuit/base_operation.h"
+#include "circuit/qasm_converter.h"
+#include "compiler/qasm_to_ir.hpp"
 #include "optimizer/gate_optimizer.h"
 
 namespace nb = nanobind;
@@ -108,5 +110,41 @@ void bind_optimizer(nb::module_& m) {
         Returns:
             tuple[list[BaseOperation], OptimizeMetrics]:
                 (optimized_ops, metrics)
+     )");
+
+  m.def(
+      "optimize_qasm",
+      [](const std::string& qasm_str, int opt_level,
+         const std::optional<std::set<std::string>>& basis_gates) {
+        nb::gil_scoped_release release;
+        auto [ops, _] = qasm_to_ir(qasm_str);
+        auto optimized =
+            optimize(ops, opt_level, false, basis_gates, 1, false);
+        // Detect QASM version from the version declaration line only.
+        // Match "OPENQASM 3" at the first non-whitespace position, not
+        // anywhere in comments or string literals.
+        size_t pos = qasm_str.find_first_not_of(" \t\n\r");
+        if (pos != std::string::npos &&
+            qasm_str.compare(pos, 10, "OPENQASM 3") == 0) {
+          return to_qasm3(optimized);
+        }
+        return to_qasm2(optimized);
+      },
+      nb::arg("qasm_str"), nb::arg("opt_level") = 1,
+      nb::arg("basis_gates") = std::nullopt,
+      R"(
+        Optimize a QASM circuit string and return the optimized QASM string.
+
+        Parses the input QASM, runs optimization passes, and converts back
+        to the same QASM version as the input — without routing or gate
+        decomposition.
+
+        Args:
+            qasm_str: OpenQASM 2.0/3.0 circuit string.
+            opt_level: Optimization level 0-3, default 1.
+            basis_gates: Gate filter set. None = preserve original gate set.
+
+        Returns:
+            str: Optimized OpenQASM string (2.0 or 3.0).
       )");
 }
