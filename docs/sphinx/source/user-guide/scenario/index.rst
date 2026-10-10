@@ -15,3 +15,4 @@
    :maxdepth: 2
 
    auto-schedule
+   auto-wirecut-multi-devices

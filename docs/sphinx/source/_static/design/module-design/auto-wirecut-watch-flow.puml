@@ -1,0 +1,53 @@
+@startuml
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 20
+
+participant "wirecut_flow" as WC
+participant "Redis" as R
+participant "子电路作业" as SJ
+
+== 1. 建立订阅（先于一切回查） ==
+WC -> R : SUBSCRIBE /qcos/jobs/{job_id}/{flow_run_id}\n(一次性订阅全部子电路 channel)
+R --> WC : subscribe 确认
+
+== 2. 快照回查（消除提交->订阅窗口的竞态） ==
+loop 每个未收集的子电路
+    WC -> R : GET /qcos/jobs/{job_id}/{flow_run_id}
+    R --> WC : 记录 (可能为空)
+    alt 已是终态
+        WC -> WC : 直接收集\n从 pending 移除
+    else 非终态或无记录
+        WC -> WC : 继续经订阅等待
+    end
+end
+note right: 订阅点之前的状态由快照覆盖\n订阅点之后的更新由订阅覆盖\n两者无缝衔接、不重不漏
+
+== 3. 有限超时监听 + 回查兜底 ==
+loop pending 非空
+    WC -> R : get_message(timeout=5s)
+    note right: 有限超时等待通知
+
+    alt 超时无消息 (PUBLISH 可能丢失)
+        WC -> R : GET pending keys\n(回查兜底)
+        R --> WC : 记录 (可能为终态)
+        WC -> WC : 终态则收集\n否则继续等待
+    else 收到消息
+        SJ -> R : SET + PUBLISH\n(每次更新: 进度/终态)
+        R --> WC : message: record JSON
+
+        alt job_status 为终态
+            WC -> WC : 收集结果\n从 pending 移除
+        else 非终态
+            WC -> WC : 记录 progress\n继续等待
+        end
+    end
+end
+note right: 子任务侧 SET 与 PUBLISH 是两次独立调用\n记录可能已落库而通知丢失\n超时回查保证父流程永不因丢消息挂起
+
+== 4. 清理 ==
+WC -> R : DELETE /qcos/jobs/{job_id}/{flow_run_id}
+
+== 5. 返回 ==
+WC -> WC : 返回结果列表\n(顺序与 new_job_list 一致)
+
+@enduml
