@@ -41,10 +41,10 @@ API_SERVER_LISTEN_PORT = 18400
 ENABLE_AUTO_SCHEDULE = true
 # enabled filter class names; empty list uses all DEFAULT_FILTERS
 # available filters:
-#   CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
-#   TechTypeFilter, GateFidelityFilter, QueueLimitFilter,
-#   DeviceAvailabilityFilter, DeviceNameFilter, DeviceGroupFilter,
-#   QubitCountFilter
+# CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
+# TechTypeFilter, QueueLimitFilter, GateFidelityFilter,
+# DeviceAvailabilityFilter, DeviceNameFilter, DeviceGroupFilter,
+# QubitCountFilter
 ENABLED_FILTERS = [
     "CodeTypeFilter",
     "InputConstraintsFilter",

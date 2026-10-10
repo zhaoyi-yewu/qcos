@@ -1,7 +1,7 @@
 # WUYUEQbit量子计算操作系统（QCOS）介绍
 
-[<img alt="qcos" width="100" height="20" src="https://img.shields.io/docker/v/qcos/qcos/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
-[<img alt="qcos-cli" width="115" height="20" src="https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-cli"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
+[<img alt="qcos" width="100" height="20" src="https://img.shields.io/docker/v/qcos/qcos/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos"/>](https://hub.docker.com/r/qcos/qcos)
+[<img alt="qcos-cli" width="115" height="20" src="https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-cli"/>](https://hub.docker.com/r/qcos/qcos-cli)
 [<img alt="qcos-sandbox" width="150" height="20" src="https://img.shields.io/docker/v/qcos/qcos-sandbox/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-sandbox"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
 
 [<img alt="PyPI - Version" width="95" height="20" src="https://img.shields.io/pypi/v/wy-qcos?logo=pypi&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
