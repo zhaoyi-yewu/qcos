@@ -32,11 +32,20 @@ deps_pyproject_file = "../pyproject.toml"
 deps_sections = ["driver-qutip"]
 envs = ["python3"]
 
+[spinq]
+deps_pyproject_file = "../pyproject.toml"
+deps_sections = ["driver-spinq"]
+envs = ["python3"]
+no_deps = true
+post_scripts = ["sed -i 's/^\\(# *\\)*from \\.solver import \\*/# from .solver import */' ./lib/python3.11/site-packages/spinqit/__init__.py"]
+
+[DriverSpinqSqc25]
+module_name = "driver_spinq_sqc_25"
+copy_from = "spinq"
+
 [DriverSpinQRpc]
 module_name = "driver_spinq_rpc"
-deps_pyproject_file = "../pyproject.toml"
-deps_sections = ["driver-spinq-rpc"]
-envs = ["python3"]
+copy_from = "spinq"
 
 [DriverUQCMatrix2]
 module_name = "driver_uqc"
