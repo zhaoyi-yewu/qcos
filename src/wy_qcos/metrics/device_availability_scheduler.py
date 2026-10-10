@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -51,6 +52,7 @@ class DeviceAvailabilityScheduler:
             trigger=trigger,
             id="device_availability_aggregate",
             replace_existing=True,
+            next_run_time=datetime.now(),
             coalesce=True,
             max_instances=1,
         )

@@ -25,6 +25,7 @@ that are not visible to Python's cyclic garbage collector.
 
 import gc
 import logging
+from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -74,6 +75,7 @@ class GcCleaner:
             self._do_gc,
             trigger="interval",
             minutes=interval_minutes,
+            next_run_time=datetime.now(),
             coalesce=True,
             max_instances=1,
             id="gc_clean",

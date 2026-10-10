@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -61,6 +62,7 @@ class MetricsScheduler:
             self._job,
             trigger="interval",
             seconds=self._interval,
+            next_run_time=datetime.now(),
             coalesce=True,
             max_instances=1,
             id="metrics_update",
