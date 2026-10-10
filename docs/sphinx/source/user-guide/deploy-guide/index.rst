@@ -11,3 +11,4 @@
    build-run-wheel
    build-docs
    security
+   network-ports
