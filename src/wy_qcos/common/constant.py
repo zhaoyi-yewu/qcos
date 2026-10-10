@@ -62,6 +62,19 @@ class Constant:
         f"{REDIS_CHANNEL_QCOS_PREFIX}/device_running_info"
     )
     REDIS_CHANNEL_JOB_AGG_PREFIX = f"{REDIS_CHANNEL_QCOS_PREFIX}/job_agg"
+    # Job notification channel prefix for pub/sub and redis key prefix
+    # for job storage. Any job stored in redis publishes its updated
+    # record on "{REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}" so
+    # subscribers (e.g. the wirecut parent flow) can track progress and
+    # terminal status via pub/sub instead of polling. The same prefix
+    # is used as the redis key prefix, so a job record is stored under
+    # "{REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}".
+    REDIS_CHANNEL_JOB_PREFIX = f"{REDIS_CHANNEL_QCOS_PREFIX}/jobs"
+
+    # Job results storage backends
+    RESULTS_DB_STORAGE_SQL = "sql"
+    RESULTS_DB_STORAGE_REDIS = "redis"
+    RESULTS_DB_STORAGE_DEFAULT = RESULTS_DB_STORAGE_SQL
 
     # DATABASE
     DB_DIALECT_POSTGRESQL = "postgresql"
@@ -410,6 +423,9 @@ class Constant:
     DEFAULT_JOB_PRIORITY = 5
     MIN_JOB_PRIORITY = 1
     MAX_JOB_PRIORITY = 10
+    SUB_WIRECUT_PRIORITY = 4  # higher priority than default for sub-wirecut
+
+    # Job params
     MAX_JOB_WORKER = 1
     DEFAULT_AGGREGATION_JOB_INTERVAL = 10
 
@@ -487,6 +503,14 @@ class Constant:
         JOB_STATUS_DELETED,
         JOB_STATUS_UNKNOWN,
     ]
+
+    # Terminal job statuses: a job is considered finished once it
+    # reaches one of these states.
+    JOB_TERMINAL_STATUSES = {
+        JOB_STATUS_COMPLETED,
+        JOB_STATUS_FAILED,
+        JOB_STATUS_CANCELLED,
+    }
 
     # Prefect flow state
     PREFECT_STATE_RUNNING = "RUNNING"
