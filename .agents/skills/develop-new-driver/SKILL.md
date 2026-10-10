@@ -1,13 +1,11 @@
----
-name: develop-new-driver
-description: 在 QCOS 项目中开发新的量子设备驱动，包含驱动基类继承、配置校验、远程API对接、单元测试和系统测试的完整开发流程
-version: 1.0.0
----
+______________________________________________________________________
+
+## name: develop-new-driver description: 在 QCOS 项目中开发新的量子设备驱动，包含驱动基类继承、配置校验、远程API对接、单元测试和系统测试的完整开发流程 version: 1.0.0
 
 ## Preconditions
 
-- 已阅读 `.roo/rules-code/rules.md` 编码规范
-- 已阅读 `.roo/rules-ask/rules.md` 沟通规范
+- 已阅读 [`.agents/rules/core.md`](../../rules/core.md) 核心规则
+- 已阅读 [`.agents/rules/code.md`](../../rules/code.md) 代码模式规则
 - 熟悉 QCOS 项目架构（参见 [`docs/sphinx/source/design/`](docs/sphinx/source/design/)）
 
 ## Instructions
@@ -304,6 +302,7 @@ $ python3 requirements/install-venvs.py --name DriverXXX
 详见 :doc:`../design/module-design/venv`。
 
 要点：
+
 - 每个驱动使用独立 venv 避免依赖冲突
 - Prefect worker 进程在对应 venv 中加载驱动模块
 - 调试时 source 对应 venv 环境
@@ -337,11 +336,14 @@ src/wy_qcos/tests/system_tests/job/driver/<vendor>/
 
 - 编写 mock API server 模拟设备后端（参考
   `system_tests/job/driver/quafu/quafu_api_server.py`）
+
 - **端口选择**：`cls.api_port` 不要和常用端口（如 80/443/8080
   等）或其他 ST 已使用的端口重复，建议使用 18xxx 范围
+
 - **mock API server 启动方式**：在 `setup_class` 中通过
   `multiprocessing.Process` 以 daemon 模式启动，ST 测试完成后
   自动结束进程；也可以独立拉起 mock API server 用于手动调试
+
 - 在 `setup_class` 中：
 
   - `StLibrary.cleanup_test_jobs(client, test_job_names)`
@@ -360,41 +362,43 @@ src/wy_qcos/tests/system_tests/job/driver/<vendor>/
   - 停止 mock API server 进程（`process.terminate()`）
 
 - 测试方法中提交作业后，在 `finally` 块中清理作业和恢复设备状态
+
 - 测试完整流程：提交作业 → 等待结果 → 验证状态
-- 运行：`python -m pytest
-  src/wy_qcos/tests/system_tests/job/driver/<vendor>/ -v`
-  或者 `cicd/run-tests.sh -s
-  src/wy_qcos/tests/system_tests/job/driver/<vendor>/`
+
+- 运行：`python -m pytest src/wy_qcos/tests/system_tests/job/driver/<vendor>/ -v`
+  或者 `cicd/run-tests.sh -s src/wy_qcos/tests/system_tests/job/driver/<vendor>/`
 
 **`setup_class` / `teardown_class` 示例：**
 
 .. code-block:: python
 
-    class TestJob:
-        test_job_names = ["test_xxx_submit_job"]
+```
+class TestJob:
+    test_job_names = ["test_xxx_submit_job"]
 
-        @classmethod
-        def setup_class(cls):
-            cls.admin_client = GLOBAL_CONFIGS["admin_client"]
-            # cleanup jobs from previous test runs
-            StLibrary.cleanup_test_jobs(
-                cls.admin_client, cls.test_job_names
-            )
-            # init device state to online
-            cls.admin_client.set_device(
-                "xxx_device", enable=True, state="online"
-            )
+    @classmethod
+    def setup_class(cls):
+        cls.admin_client = GLOBAL_CONFIGS["admin_client"]
+        # cleanup jobs from previous test runs
+        StLibrary.cleanup_test_jobs(
+            cls.admin_client, cls.test_job_names
+        )
+        # init device state to online
+        cls.admin_client.set_device(
+            "xxx_device", enable=True, state="online"
+        )
 
-        @classmethod
-        def teardown_class(cls):
-            # cleanup jobs created by this test
-            StLibrary.cleanup_test_jobs(
-                cls.admin_client, cls.test_job_names
-            )
-            # restore device state to auto
-            cls.admin_client.set_device(
-                "xxx_device", enable=True, state="auto"
-            )
+    @classmethod
+    def teardown_class(cls):
+        # cleanup jobs created by this test
+        StLibrary.cleanup_test_jobs(
+            cls.admin_client, cls.test_job_names
+        )
+        # restore device state to auto
+        cls.admin_client.set_device(
+            "xxx_device", enable=True, state="auto"
+        )
+```
 
 ### 步骤 9: 文档更新
 
@@ -424,8 +428,8 @@ src/wy_qcos/tests/system_tests/job/driver/<vendor>/
 ## 常见陷阱
 
 1. **venv 依赖冲突**：不同驱动 SDK 可能存在版本冲突，必须使用独立 venv
-2. **远程 API 超时**：`fetch_configs`、`run` 中的远程调用必须加超时保护，避免 worker 进程永久阻塞
-3. **状态未恢复**：`run` 方法中设备状态设为 BUSY 后，无论成功失败都必须恢复为 ONLINE
-4. **schema 校验遗漏**：`validate_driver_configs` 必须校验所有必需字段，使用 `Optional` 标记可选字段
-5. **transpiler_options_schema 未覆盖**：驱动特有的转译器选项必须在 `__init__` 中通过 `self.transpiler_options_schema` 声明
-6. **驱动配置文件名不匹配**：`etc/conf.d/` 下的文件名必须与 `qcos.toml` 中 `DEVICE_LIST` 的设备名一致
+1. **远程 API 超时**：`fetch_configs`、`run` 中的远程调用必须加超时保护，避免 worker 进程永久阻塞
+1. **状态未恢复**：`run` 方法中设备状态设为 BUSY 后，无论成功失败都必须恢复为 ONLINE
+1. **schema 校验遗漏**：`validate_driver_configs` 必须校验所有必需字段，使用 `Optional` 标记可选字段
+1. **transpiler_options_schema 未覆盖**：驱动特有的转译器选项必须在 `__init__` 中通过 `self.transpiler_options_schema` 声明
+1. **驱动配置文件名不匹配**：`etc/conf.d/` 下的文件名必须与 `qcos.toml` 中 `DEVICE_LIST` 的设备名一致

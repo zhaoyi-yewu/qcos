@@ -1,13 +1,11 @@
----
-name: develop-new-module
-description: 在 QCOS 项目中开发新功能模块，包含数据模型、业务逻辑、API 接口和 CLI 命令的完整开发流程
-version: 1.0.0
----
+______________________________________________________________________
+
+## name: develop-new-module description: 在 QCOS 项目中开发新功能模块，包含数据模型、业务逻辑、API 接口和 CLI 命令的完整开发流程 version: 1.0.0
 
 ## Preconditions
 
-- 已阅读 `.roo/rules-code/rules.md` 编码规范
-- 已阅读 `.roo/rules-ask/rules.md` 沟通规范
+- 已阅读 [`.agents/rules/core.md`](../../rules/core.md) 核心规则
+- 已阅读 [`.agents/rules/code.md`](../../rules/code.md) 代码模式规则
 - 熟悉 QCOS 项目架构（参见 [`docs/sphinx/source/design/`](docs/sphinx/source/design/)）
 
 ## Instructions
@@ -216,7 +214,7 @@ src/wy_qcos/tests/system_tests/<module_name>/
 ## 常见陷阱
 
 1. **DeviceState 不可哈希**：dataclass 包含 `list`/`dict` 字段时默认不可哈希，不能作为 dict key，需改用索引方式
-2. **pytest 不收集 `__init__.py`**：测试必须放在 `test_*.py` 文件中
-3. **循环导入**：[`server.py`](src/wy_qcos/server.py) 初始化时使用延迟导入
-4. **Schema 导出**：新增 Schema 必须在 [`api/schemas/__init__.py`](src/wy_qcos/api/schemas/__init__.py) 中导入，否则路由中 `schemas.XxxRequest` 找不到
-5. **路由注册**：新增路由模块必须在 [`routes_jsonrpc/__init__.py`](src/wy_qcos/api/posiq/routes_jsonrpc/__init__.py) 中 `from . import xxx`
+1. **pytest 不收集 `__init__.py`**：测试必须放在 `test_*.py` 文件中
+1. **循环导入**：[`server.py`](src/wy_qcos/server.py) 初始化时使用延迟导入
+1. **Schema 导出**：新增 Schema 必须在 [`api/schemas/__init__.py`](src/wy_qcos/api/schemas/__init__.py) 中导入，否则路由中 `schemas.XxxRequest` 找不到
+1. **路由注册**：新增路由模块必须在 [`routes_jsonrpc/__init__.py`](src/wy_qcos/api/posiq/routes_jsonrpc/__init__.py) 中 `from . import xxx`

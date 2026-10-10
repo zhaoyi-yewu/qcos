@@ -256,7 +256,7 @@
 
 **AI Skill**
 
-:download:`新量子设备驱动开发 SKILL.md <../../../../../.roo/skills/develop-new-driver/SKILL.md>`
+:download:`新量子设备驱动开发 SKILL.md <../../../../../.agents/skills/develop-new-driver/SKILL.md>`
 提供了完整的驱动开发流程指引，包括基类选择、目录结构、
 驱动类实现、配置注册、venv 部署、单元测试和系统测试等步骤。
 开发者可以在AI编程助手中使用 ``/develop-new-driver`` 命令
