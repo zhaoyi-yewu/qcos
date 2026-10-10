@@ -17,6 +17,7 @@
 
 import copy
 import inspect
+import json
 import logging
 
 from contextlib import contextmanager
@@ -26,10 +27,12 @@ from sqlalchemy.orm import Session
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
-from wy_qcos.db.repositories.job import JobRepository
 from wy_qcos.api import schemas
 from wy_qcos.db.database import init_database
 from wy_qcos.db.repositories import BaseRepository
+from wy_qcos.db.utils.job_storage_backend import (
+    get_job_storage_backend,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -187,8 +190,154 @@ def get_db_filters(
     return db_filters
 
 
+def _redis_job_key(job_id, flow_run_id=None):
+    """Build the redis key for a job's results record.
+
+    The key follows the hierarchy
+    ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}`` when
+    ``flow_run_id`` is provided, otherwise
+    ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}``.
+
+    Args:
+        job_id: job id
+        flow_run_id: optional flow run id
+
+    Returns:
+        redis key string
+    """
+    if flow_run_id:
+        return f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}"
+    return f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}"
+
+
+def redis_get_job(job_id):
+    """Get job record from redis.
+
+    Returns the stored job dict or None when the key does not
+    exist or redis is unavailable.
+
+    Args:
+        job_id: job id
+
+    Returns:
+        job dict or None
+    """
+    redis_client = get_redis_client()
+    if redis_client is None:
+        logger.error(
+            f"Redis get job error {job_id}: redis client not initialized"
+        )
+        return None
+    try:
+        raw = redis_client.get(_redis_job_key(job_id))
+        if raw is None:
+            return None
+        return json.loads(raw)
+    except Exception as e:
+        logger.error(f"Redis get job error {job_id}: failed to read: {str(e)}")
+        return None
+
+
+def redis_update_job(
+    job_id,
+    job_status=None,
+    progress=None,
+    job_results=None,
+    started_at=None,
+    ended_at=None,
+    is_callback_success=None,
+    flow_run_id=None,
+    backend=None,
+    callbacks=None,
+):
+    """Update job fields in redis.
+
+    Reads the existing record (if any), merges the provided fields
+    and writes it back. When the key does not exist yet, a new
+    record is created.
+
+    Args:
+        job_id: job id
+        job_status: optional, job status to set
+        progress: optional, job progress
+        job_results: optional, job results to set
+        started_at: optional, job start time in ISO format
+        ended_at: optional, job end time or None
+        is_callback_success: optional, callback success flag
+        flow_run_id: optional, prefect flow run id (for sub-job
+            matching by poll_job_results)
+        backend: optional, backend device name
+        callbacks: optional, callback list
+
+    Returns:
+        True if successful, False otherwise
+    """
+    redis_client = get_redis_client()
+    if redis_client is None:
+        logger.error(
+            f"Redis update job error {job_id}: redis client not initialized"
+        )
+        return False
+
+    key = _redis_job_key(job_id, flow_run_id)
+    record = {}
+    try:
+        raw = redis_client.get(key)
+        if raw is not None:
+            record = json.loads(raw)
+    except Exception as e:
+        logger.error(
+            f"Redis update job error {job_id}: failed to read "
+            f"existing record: {str(e)}"
+        )
+        return False
+
+    if job_status is not None:
+        record["job_status"] = job_status
+    if started_at is not None:
+        record["started_at"] = started_at
+    if progress is not None:
+        record["progress"] = progress
+    if job_results is not None:
+        record["results"] = job_results
+    if ended_at is not None:
+        record["ended_at"] = ended_at
+    if is_callback_success is not None:
+        record["is_callback_success"] = is_callback_success
+    if flow_run_id is not None:
+        record["flow_run_id"] = flow_run_id
+    if backend is not None:
+        record["backend"] = backend
+    if callbacks is not None:
+        record["callbacks"] = callbacks
+
+    try:
+        redis_client.set(key, json.dumps(record))
+        logger.info(
+            f"Successfully updated job in redis {job_id}: "
+            f"job_status={job_status}, progress={progress}, "
+            f"started_at={started_at}, ended_at={ended_at}, "
+            f"is_callback_success={is_callback_success}"
+        )
+        return True
+    except Exception as e:
+        logger.error(
+            f"Redis update job error {job_id}: failed to write: {str(e)}"
+        )
+        return False
+
+
 def run_callbacks(
-    job_id, db_engine, job_status, backend, results, callbacks, user={}
+    job_id,
+    db_engine,
+    job_status,
+    backend,
+    results,
+    callbacks,
+    user={},
+    results_db_storage=Constant.RESULTS_DB_STORAGE_DEFAULT,
+    flow_run_id=None,
+    ttl=None,
 ):
     """Run callbacks.
 
@@ -200,12 +349,22 @@ def run_callbacks(
         results: results
         callbacks: callbacks
         user: user related info
+        results_db_storage: storage backend ("sql" or "redis")
+        flow_run_id: optional, flow run id used as redis key
+        ttl: optional, redis key TTL in seconds
     """
     success = Library.job_callback(
         job_id, job_status, backend, results, callbacks, user=user
     )
     try:
-        db_update_job(job_id, db_engine, is_callback_success=success)
+        db_update_job(
+            job_id,
+            db_engine,
+            is_callback_success=success,
+            results_db_storage=results_db_storage,
+            flow_run_id=flow_run_id,
+            ttl=ttl,
+        )
     except Exception as e:
         logger.error(
             f"Update job is_callback_success error {job_id}: "
@@ -226,6 +385,7 @@ async def db_job_callback(
         is_run_callbacks: whether run callbacks or not
     """
     job_id = flow_run.name
+    flow_run_id = str(flow_run.id)
     parameters = flow_run.parameters
     data = Library.get_nested_dict_value(
         parameters,
@@ -236,6 +396,33 @@ async def db_job_callback(
     profiling_types = data.get("profiling", [])
     callbacks = data.get("callbacks", [])
     backend = data.get("backend", None)
+    db_config = data.get("db_config", {})
+    results_db_storage = db_config.get(
+        "results_db_storage",
+        data.get("results_db_storage", Constant.RESULTS_DB_STORAGE_DEFAULT),
+    )
+    ttl = db_config.get("ttl")
+
+    # Persist minimal sub-job context (flow_run_id/backend/callbacks)
+    # so the parent job can later fetch sub-job info via the storage
+    # backend. For SQL storage this is a no-op (the full job record is
+    # already persisted at submission time).
+    storage_backend = get_job_storage_backend(
+        results_db_storage=results_db_storage,
+        db_engine=get_redis_client()
+        if results_db_storage == Constant.RESULTS_DB_STORAGE_REDIS
+        else None,
+    )
+    try:
+        storage_backend.store_sub_job_context(
+            job_id,
+            flow_run_id,
+            backend=backend,
+            callbacks=callbacks,
+            ttl=ttl,
+        )
+    except Exception as e:
+        logger.error(f"Store sub-job context error {job_id}: {str(e)}")
 
     # Get db_engine from global state
     db_engine = get_db_engine()
@@ -321,11 +508,13 @@ async def db_job_callback(
                     all_results[sub_job_id] = sub_result
             all_results[job_id].append(result)
 
-    job_repo = None
-    # create db session for agg jobs
-    if len(all_results) > 1:
-        with create_db_session(db_engine) as db_session:
-            job_repo = JobRepository(db_session)
+    # build the storage backend once for all sub-jobs
+    storage_backend = get_job_storage_backend(
+        results_db_storage=results_db_storage,
+        db_engine=get_redis_client()
+        if results_db_storage == Constant.RESULTS_DB_STORAGE_REDIS
+        else db_engine,
+    )
 
     for _job_id, _results in all_results.items():
         _profiling_types = []
@@ -343,27 +532,21 @@ async def db_job_callback(
             }
             _profiling_types = profiling_types
         else:
-            # sub agg job
-            # fetch agg job from database
-            if job_repo:
-                # Get the job record
-                success, error, job_record = job_repo.get_job_by_uuid(_job_id)
-                if not success or job_record is None:
-                    logger.error(
-                        f"Fetch agg job error {_job_id}: job not found"
-                    )
-                    continue
-                user = {
-                    "project_id": str(job_record.project_id),
-                    "user_id": str(job_record.user_id),
-                }
-                callbacks_info = {
-                    "is_run_callbacks": is_run_callbacks,
-                    "callbacks": job_record.callbacks,
-                    "backend": job_record.backend,
-                    "user": user,
-                }
-                _profiling_types = job_record.profiling
+            # sub agg job: fetch job record via the storage backend
+            job_record = storage_backend.get_job(_job_id)
+            if job_record is None:
+                continue
+            user = {
+                "project_id": job_record.project_id,
+                "user_id": job_record.user_id,
+            }
+            callbacks_info = {
+                "is_run_callbacks": is_run_callbacks,
+                "callbacks": job_record.callbacks,
+                "backend": job_record.backend or backend,
+                "user": user,
+            }
+            _profiling_types = job_record.profiling
 
         # handle profiling types
         for _result in _results:
@@ -393,12 +576,29 @@ async def db_job_callback(
             _results,
             progress=progress,
             callbacks_info=callbacks_info,
+            results_db_storage=results_db_storage,
+            flow_run_id=flow_run_id,
+            ttl=ttl,
         )
 
 
 def _db_update_job(
-    db_engine, job_id, job_status, results, progress=None, callbacks_info=None
+    db_engine,
+    job_id,
+    job_status,
+    results,
+    progress=None,
+    callbacks_info=None,
+    results_db_storage=Constant.RESULTS_DB_STORAGE_DEFAULT,
+    flow_run_id=None,
+    ttl=None,
 ):
+    """Update job status and results.
+
+    Dispatches to redis or sql backend based on
+    results_db_storage. For redis storage, flow_run_id
+    is used as the redis key.
+    """
     try:
         db_update_job(
             job_id,
@@ -407,6 +607,9 @@ def _db_update_job(
             job_results=results,
             progress=progress,
             ended_at=Library.get_current_datetime().isoformat(),
+            results_db_storage=results_db_storage,
+            flow_run_id=flow_run_id,
+            ttl=ttl,
         )
     except Exception as e:
         logger.error(
@@ -428,6 +631,9 @@ def _db_update_job(
             results,
             callbacks,
             user=user,
+            results_db_storage=results_db_storage,
+            flow_run_id=flow_run_id,
+            ttl=ttl,
         )
 
 
@@ -440,8 +646,16 @@ def db_update_job(
     started_at: str | None = None,
     ended_at=None,
     is_callback_success=None,
+    results_db_storage=Constant.RESULTS_DB_STORAGE_DEFAULT,
+    flow_run_id=None,
+    ttl=None,
 ):
-    """Update job fields in database.
+    """Update job fields in the configured storage backend.
+
+    Dispatches to a SQL or Redis backend based on
+    ``results_db_storage``. For redis storage, ``flow_run_id`` is
+    used as the redis key when provided; otherwise ``job_id`` is
+    used.
 
     Args:
         job_id: job ID
@@ -449,60 +663,30 @@ def db_update_job(
         job_status: optional, job status to set (e.g., RUNNING)
         progress: optional, job progress (-1, 0-100) or None if not set
         job_results: optional, job_results or None if not set
-        started_at: optional, job start time in ISO format or None if not set
+        started_at: optional, job start time in ISO format or None
         ended_at: optional, job end time or None if not set
-        is_callback_success: optional, is_callback_success or None if not set
+        is_callback_success: optional, is_callback_success or None
+        results_db_storage: storage backend ("sql" or "redis")
+        flow_run_id: optional, flow run id used as redis key
+        ttl: optional, redis key TTL in seconds
 
     Returns:
         True if successful, False otherwise
     """
-    if db_engine is None:
-        logger.error(f"Update job error {job_id}: db_engine is None")
-        return False
-
-    try:
-        with create_db_session(db_engine) as db_session:
-            job_repo = JobRepository(db_session)
-
-            # Get the job record
-            success, error, job_record = job_repo.get_job_by_uuid(job_id)
-            if not success or job_record is None:
-                logger.error(f"Update job error {job_id}: job not found")
-                return False
-
-            # Update job fields (only if provided)
-            if job_status is not None:
-                job_record.job_status = job_status
-            if started_at is not None:
-                job_record.started_at = started_at
-            if progress is not None:
-                job_record.progress = progress
-            if job_results is not None:
-                job_record.results = job_results
-            if ended_at is not None:
-                job_record.ended_at = ended_at
-            if is_callback_success is not None:
-                job_record.is_callback_success = is_callback_success
-
-            try:
-                job_repo.commit()
-                job_repo.refresh(job_record)
-                logger.info(
-                    f"Successfully updated job {job_id}: "
-                    f"job_status={job_status}, progress={progress}, "
-                    f"job_results={job_results}, "
-                    f"started_at={started_at}, ended_at={ended_at}, "
-                    f"is_callback_success={is_callback_success}"
-                )
-                return True
-            except Exception as e:
-                job_repo.rollback()
-                logger.error(
-                    f"Update job error {job_id}: failed to commit: {str(e)}"
-                )
-                return False
-    except Exception as e:
-        logger.error(
-            f"Update job error {job_id}: failed to create db session: {str(e)}"
-        )
-        return False
+    storage_backend = get_job_storage_backend(
+        results_db_storage=results_db_storage,
+        db_engine=get_redis_client()
+        if results_db_storage == Constant.RESULTS_DB_STORAGE_REDIS
+        else db_engine,
+    )
+    return storage_backend.update_job(
+        job_id,
+        job_status=job_status,
+        progress=progress,
+        job_results=job_results,
+        started_at=started_at,
+        ended_at=ended_at,
+        is_callback_success=is_callback_success,
+        flow_run_id=flow_run_id,
+        ttl=ttl,
+    )
