@@ -192,3 +192,11 @@ class JobEngineWirecutQubitLimitExceededError(BaseException):
     module_name = "JobEngine"
     error_code = -112
     err_type = "Wirecut Qubit Limit Exceeded Error"
+
+
+class WirecutEngineSubJobError(BaseException):
+    """Wirecut Engine Sub Job Error."""
+
+    module_name = "WirecutEngine"
+    error_code = -200
+    err_type = "Wirecut Engine Sub Job Error"
