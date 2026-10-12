@@ -187,8 +187,51 @@ def run_command(command, check=True, capture_output=True, text=True):
         raise
 
 
+def build_post_scripts_block(driver_venv_dir, post_scripts):
+    """Build shell commands to run post-install scripts in a venv.
+
+    The generated block activates the venv, changes into the venv
+    directory so that relative paths inside ``post_scripts`` resolve
+    against the venv root, then executes each script in order and
+    finally deactivates the venv.
+
+    Args:
+        driver_venv_dir: absolute path to the venv directory
+        post_scripts: list of shell script strings to run in order
+
+    Returns:
+        cmd: shell script string that runs the post scripts, or empty
+             string when ``post_scripts`` is falsy
+    """
+    if not post_scripts:
+        return ""
+    # dedent each script line and join to build the body
+    body_lines = []
+    for index, script in enumerate(post_scripts, start=1):
+        body_lines.append(f"  # post_scripts[{index}]: {script}")
+        body_lines.append(f"  {script}")
+    body = "\n".join(body_lines)
+    cmd = f"""
+        if [ -f "{driver_venv_dir}/bin/activate" ]; then
+          source {driver_venv_dir}/bin/activate
+          cd "{driver_venv_dir}"
+          echo -e "\\nRunning post_scripts in {driver_venv_dir}"
+{body}
+          deactivate
+        else
+          echo -e "\\npost_scripts skipped: venv not found"
+          echo -e "  path: {driver_venv_dir}"
+        fi
+    """
+    return cmd
+
+
 def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
     """Install venv.
+
+    When a config section defines a ``post_scripts`` key (list of shell
+    command strings), each command is executed in order inside the
+    venv directory after the dependencies have been installed.
 
     Args:
         configs: configs
@@ -216,6 +259,8 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
             # dependencies resolved from pyproject.toml sections
             deps_list = driver_info.get("deps", [])
             envs = driver_info.get("envs", [])
+            # post-install scripts to run inside the venv directory
+            post_scripts = driver_info.get("post_scripts", [])
             # write deps to a temporary requirements file inside the
             # venv dir so that poetry can install them via pip
             deps_req_file = f"{driver_venv_dir}/requirements.txt"
@@ -238,6 +283,10 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
                 fi
                 """
                 cmds.append(cmd)
+            # run post_scripts after dependencies are installed
+            post_cmd = build_post_scripts_block(driver_venv_dir, post_scripts)
+            if post_cmd:
+                cmds.append(post_cmd)
     if debug:
         print("\n[Install venv for drivers]")
         print("\n".join(cmds))
