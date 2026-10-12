@@ -771,7 +771,7 @@ class GetDrivers(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -935,7 +935,7 @@ class GetDevices(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -1445,7 +1445,7 @@ class GetTranspilers(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -1839,7 +1839,7 @@ class ListWorkers(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -2036,6 +2036,20 @@ class SubmitJob(Command):
             "--backend",
         )
         parser.add_argument(
+            "--params",
+            dest="params",
+            type=str,
+            default=None,
+            help="Job params (JSON string)",
+        )
+        parser.add_argument(
+            "--options",
+            dest="options",
+            type=str,
+            default=None,
+            help='Job options (JSON string), e.g. {"enable_wirecut": true}',
+        )
+        parser.add_argument(
             "--driver-options",
             dest="driver_options",
             type=str,
@@ -2116,6 +2130,8 @@ class SubmitJob(Command):
         profiling = parsed_args.profiling
         callbacks = parsed_args.callbacks
         qec_options = parsed_args.qec_options
+        params = parsed_args.params
+        options = parsed_args.options
 
         # Validate scheduling params: backend and flavor are
         # mutually exclusive; either one must be specified.
@@ -2145,7 +2161,27 @@ class SubmitJob(Command):
                     "Invalid argument: extra_specs"
                 ) from exc
 
-        # request capabilities
+        # Parse params JSON
+        params_json = None
+        if params:
+            try:
+                params_json = json.loads(params)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: params"
+                ) from exc
+
+        # Parse options JSON
+        options_json = None
+        if options:
+            try:
+                options_json = json.loads(options)
+            except json.decoder.JSONDecodeError as exc:
+                raise errors.InvalidArguments(
+                    "Invalid argument: options"
+                ) from exc
+
+            # request capabilities
         status_code, reason, text, result = self.app.client.version(
             details=True
         )
@@ -2330,6 +2366,8 @@ class SubmitJob(Command):
             qec_options=qec_options,
             flavor_id=flavor_id,
             extra_specs=extra_specs_json,
+            params=params_json,
+            options=options_json,
         )
         results = CommandHelper.check_results(
             resource, "submit_job", status_code, reason, text
@@ -2688,6 +2726,7 @@ class GetJobs(Lister):
             "job_status",
             "progress",
             "backend",
+            "backend_type",
             "flavor_id",
             "job_type",
             "shots",
@@ -2743,7 +2782,7 @@ class GetJobs(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -3527,7 +3566,7 @@ class GetUsers(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -3827,7 +3866,7 @@ class GetRoles(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -3967,7 +4006,7 @@ class GetLoginLogs(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -4301,7 +4340,7 @@ class GetProjects(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -4531,9 +4570,13 @@ class GetSystemHealth(Lister):
             else "offline"
         )
         print(f"\nOverall System Status: {overall_status}")
-        print(
-            f"Last Heartbeat: {json_results.get('heartbeat_timestamp', 'N/A')}"
-        )
+        heartbeat_ts = json_results.get("heartbeat_timestamp")
+        if heartbeat_ts is not None:
+            heartbeat_dt = datetime.fromtimestamp(float(heartbeat_ts))
+            heartbeat_str = heartbeat_dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-2]
+            print(f"Last Heartbeat: {heartbeat_str} ({heartbeat_ts})")
+        else:
+            print("Last Heartbeat: N/A")
         print("\nComponent Details:")
 
         return table_values
@@ -5131,7 +5174,7 @@ class GetFlavors(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]
@@ -5612,7 +5655,7 @@ class GetDeviceGroups(Lister):
         if parsed_args.page:
             pagination = {
                 "page": parsed_args.page,
-                "page_size": parsed_args.page_size or 20,
+                "page_size": parsed_args.page_size or 50,
             }
         sort = (
             [s.strip() for s in parsed_args.sort.split(",")]

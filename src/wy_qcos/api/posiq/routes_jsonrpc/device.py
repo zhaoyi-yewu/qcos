@@ -234,11 +234,11 @@ def _get_device_info(
     device_manager_status = "offline"
     enable_device_manager = device.get_driver().enable_device_mgr
     if workers:
-        monitor_pool = f"{Constant.WORK_POOL_MONITOR_PREFIX}{device.name}"
-        mgr_pool = f"{Constant.WORK_POOL_MGR_PREFIX}{device.name}"
+        mon_pool = f"{Constant.WORK_POOL_MON}|{device.name}"
+        mgr_pool = f"{Constant.WORK_POOL_MGR}|{device.name}"
         for worker in workers:
             pool_name = worker.get("work_pool", "")
-            if pool_name == monitor_pool:
+            if pool_name == mon_pool:
                 device_monitor_status = worker.get("worker_status", "unknown")
             elif pool_name == mgr_pool:
                 device_manager_status = worker.get("worker_status", "unknown")
