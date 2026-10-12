@@ -34,17 +34,21 @@ from wy_qcos.engine.common import init_logger
 from wy_qcos.engine.job_engine import init_driver
 
 
-def validate_device_info(device_info):
+def validate_device_info(device_name, device_info):
     """Validate device info.
 
     Args:
+        device_name: device name
         device_info: device info
     """
     success, err_msgs = Library.validate_schema(
         device_info, args_schema.DEVICE_INFO_SCHEMA, allow_none=True
     )
     if not success:
-        logger.warning(f"Invalid device info. Reason: {'; '.join(err_msgs)}")
+        logger.warning(
+            f"Invalid device info: {device_name}. "
+            f"Reason: {'; '.join(err_msgs)}"
+        )
 
 
 @flow(
@@ -181,7 +185,7 @@ def device_monitor_flow(device_monitor_info):
             device_running_info["available_qubits"] = None
         else:
             # validate device_info schema
-            validate_device_info(device_running_info)
+            validate_device_info(device_name, device_running_info)
 
         # convert device info to json format and publish by redis
         device_info_json = json.dumps(device_running_info)
