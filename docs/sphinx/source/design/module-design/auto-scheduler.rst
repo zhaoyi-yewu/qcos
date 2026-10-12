@@ -211,29 +211,28 @@ Filter 和 Weigher 列表。AutoScheduler 在初始化时会通过
 
    # enabled filter class names; empty list uses all DEFAULT_FILTERS
    # available filters:
-   #   CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
-   #   QubitCountFilter, TechTypeFilter, GateFidelityFilter,
-   #   QueueLimitFilter, InputConstraintsFilter,
-   #   DeviceAvailabilityFilter, DeviceNameFilter, DeviceGroupFilter
+   # CodeTypeFilter, InputConstraintsFilter, DeviceStatusFilter,
+   # TechTypeFilter, QueueLimitFilter, GateFidelityFilter,
+   # DeviceAvailabilityFilter, DeviceNameFilter, DeviceGroupFilter,
+   # QubitCountFilter
    ENABLED_FILTERS = [
        "CodeTypeFilter",
        "InputConstraintsFilter",
        "DeviceStatusFilter",
        "TechTypeFilter",
-       "QubitCountFilter",
        "QueueLimitFilter",
-       "InputConstraintsFilter",
        "GateFidelityFilter",
        "DeviceAvailabilityFilter",
        "DeviceNameFilter",
        "DeviceGroupFilter",
+       "QubitCountFilter",  # must be last for auto wirecut
    ]
 
    # enabled weigher class names; empty list uses DEFAULT_WEIGHERS
    # available weighers: DeviceLoadWeigher, AvgExecTimeWeigher,
    #   DeviceAvailabilityWeigher
    ENABLED_WEIGHERS = [
+       "DeviceAvailabilityWeigher",
        "DeviceLoadWeigher",
        "AvgExecTimeWeigher",
-       "DeviceAvailabilityWeigher",
    ]

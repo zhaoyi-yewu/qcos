@@ -1081,12 +1081,13 @@
      style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16px;font-family:'Microsoft YaHei', sans-serif;-inkscape-font-specification:'Microsoft YaHei, sans-serif Bold';dominant-baseline:middle;text-anchor:middle">量子计算机</text>
   <!-- 测控系统（紫色背景） -->
   <!-- 量子计算机（蓝色背景） -->
-  <!-- 右侧prefect组件（白色背景） -->
+  <!-- 右侧工作流组件（白色背景） -->
   <text
-     x="1046.3463"
+     x="1112"
      y="146.96126"
      class="text_title"
-     id="text53">Prefect工作流</text>
+     id="text53"
+     text-anchor="middle">工作流组件</text>
   <rect
      x="1041.9283"
      y="165"
@@ -1103,7 +1104,7 @@
        sodipodi:role="line"
        id="tspan7"
        x="1112"
-       y="187.5">Prefect Server</tspan></text>
+       y="187.5">API服务</tspan></text>
   <rect
      x="1042"
      y="220"
@@ -1116,7 +1117,7 @@
      x="1112"
      y="242.5"
      class="text_sm"
-     id="text55">Deployments管理</text>
+     id="text55">工作池</text>
   <rect
      x="1042"
      y="275"
@@ -1129,7 +1130,7 @@
      x="1112"
      y="297.5"
      class="text_sm"
-     id="text56">Work Pools管理</text>
+     id="text56">工作器</text>
   <rect
      x="1042"
      y="330"
@@ -1142,7 +1143,7 @@
      x="1112"
      y="352.5"
      class="text_sm"
-     id="text57">Flow管理</text>
+     id="text57">工作队列</text>
   <rect
      x="1042"
      y="385"
@@ -1155,7 +1156,7 @@
      x="1112"
      y="407.5"
      class="text_sm"
-     id="text58">Flow-runs管理</text>
+     id="text58">工作流</text>
   <!-- Redis缓存 -->
   <rect
      x="1024"
