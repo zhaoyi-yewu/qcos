@@ -128,6 +128,9 @@ class Constant:
     MIN_PASSWORD_LENGTH = 6
     MAX_PASSWORD_LENGTH = 32
 
+    # Pagination
+    PAGE_SIZE = 50
+
     # Quantum Gates
     # single-qubit gates
     SINGLE_QUBIT_GATE_X = "x"
@@ -260,22 +263,43 @@ class Constant:
     )
     ALL_GATES = "all"
 
+    # Backends
+    BACKEND_TYPE_DEVICE = "device"
+    BACKEND_TYPE_WIRECUT = "wirecut"
+    ALL_BACKEND_TYPES = [BACKEND_TYPE_DEVICE, BACKEND_TYPE_WIRECUT]
+
     # Drivers
     DRIVER_DUMMY = "dummy"
     DRIVERS = set()  # autofilled during driver registration
 
     # Devices
     DEVICE_DUMMY = "dummy"
-    DEVICE_MONITOR_PREFIX = "device_monitor_"
-    DEVICE_MANAGER_PREFIX = "device_mgr_"
 
     # Device Groups
     DEVICE_GROUP_DN_ALL = "_all"
 
-    # Work pool name prefixes
-    WORK_POOL_DEVICE_PREFIX = "device|"
-    WORK_POOL_MONITOR_PREFIX = "monitor|"
-    WORK_POOL_MGR_PREFIX = "mgr|"
+    # Work pool name
+    WORK_POOL_DEV = "dev"
+    WORK_POOL_MON = "mon"
+    WORK_POOL_MGR = "mgr"
+    WORK_POOL_VDEV = "vdev"
+    WORK_POOL_TYPES = [
+        WORK_POOL_DEV,
+        WORK_POOL_MON,
+        WORK_POOL_MGR,
+        WORK_POOL_VDEV,
+    ]
+    VIRT_DEIVCE_WIRECUT = "wirecut"
+
+    # Process
+    PROCESS_PREFIX = "proc"
+
+    # Worker type names (returned by _parse_worker_name). These map
+    # 1:1 to the work pool prefix constants above.
+    WORKER_TYPE_DEV = "dev"
+    WORKER_TYPE_MON = "mon"
+    WORKER_TYPE_MGR = "mgr"
+    WORKER_TYPE_VDEV = "vdev"
 
     # Transpiler
     TRANSPILER_CMSS = "cmss"
@@ -284,6 +308,7 @@ class Constant:
     TRANSPILER_DUMMY = "dummy"
     TRANSPILER_CMSS_QUBO = "cmss_qubo"
     TRANSPILERS = set()  # autofilled during plugin registration
+    DEFAULT_TRANSPILER = TRANSPILER_CMSS
 
     # Quantum computer tech types
     TECH_TYPE_NONE = "none"
@@ -396,6 +421,7 @@ class Constant:
     # job engine configs
     DEFAULT_JOB_POOL_TYPE = "process"
     DEFAULT_POOL_CONCURRENCY = 1
+    VIRTUAL_DEVICE_POOL_CONCURRENCY = 100
     DEFAULT_JOB_TIMEOUT = 300
     DEFAULT_JOB_INTERVAL = 5
 
