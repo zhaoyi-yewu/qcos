@@ -302,7 +302,7 @@ class Constant:
         WORK_POOL_MGR,
         WORK_POOL_VDEV,
     ]
-    VIRT_DEIVCE_WIRECUT = "wirecut"
+    VIRT_DEVICE_WIRECUT = "wirecut"
     # Prefix of the wirecut sub-job flow run name (see
     # submit_jobs in wirecut_engine). RedisJobStorageBackend strips it
     # from job ids before building the redis storage key, so all paths
