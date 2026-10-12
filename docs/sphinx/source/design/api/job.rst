@@ -332,8 +332,9 @@
                    // [可选] 分页参数，不传时返回全部记录
                    "pagination": {
                      "page": 1,                         // 页码，从1开始
-                     "page_size": 20                    // 每页条数，-1表示不分页
+                     "page_size": 50                    // 每页条数，-1表示不分页
                    },
+                   // 分页返回格式: {"items": [...], "total": 53, "page": 3, "page_size": 50, "total_pages": 2}
                    // [可选] 排序参数，'-'前缀表示降序
                    "sort": ["-created_at", "job_name"]
                  },
