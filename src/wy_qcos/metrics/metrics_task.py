@@ -351,7 +351,7 @@ async def check_worker_health(sync_client=None) -> tuple[bool, str]:
 
     # virtual device (wirecut) pool
     pool_names_to_check.append(
-        f"{Constant.WORK_POOL_VDEV}|{Constant.VIRT_DEIVCE_WIRECUT}"
+        f"{Constant.WORK_POOL_VDEV}|{Constant.VIRT_DEVICE_WIRECUT}"
     )
 
     async def check_single_pool(pool_name):

@@ -482,7 +482,7 @@ def submit_job(
                 (False, f"device status is {device_status}"),
             )
     elif backend_type == Constant.BACKEND_TYPE_WIRECUT:
-        backend = Constant.VIRT_DEIVCE_WIRECUT
+        backend = Constant.VIRT_DEVICE_WIRECUT
     body.backend = backend
     body.backend_type = backend_type
 

@@ -1456,10 +1456,11 @@ class TestTaskFlowManager(unittest.TestCase):
                                         ) as mock_run_monitor:
                                             self.task_manager.start()
 
-        # Verify create_pools for device pool names only (no monitor/mgr pools)
-        mock_create_pools.assert_called_once_with(
-            pool_names=["dev|test_device"]
-        )
+        # Verify create_pools for device pool names only (no monitor/mgr
+        # pools) plus the virtual device (wirecut) pool
+        mock_create_pools.assert_any_call(pool_names=["dev|test_device"])
+        mock_create_pools.assert_any_call(pool_names=["vdev|wirecut"])
+        self.assertEqual(mock_create_pools.call_count, 2)
         mock_create_queues.assert_called_once_with(
             queue_names=["dev|test_device"]
         )

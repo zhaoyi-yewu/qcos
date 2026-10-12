@@ -206,7 +206,7 @@ class TaskFlowManager:
 
         # add virtual device deployments, eg. wirecut
         virtual_device_key = (
-            f"{Constant.WORK_POOL_VDEV}|{Constant.VIRT_DEIVCE_WIRECUT}"
+            f"{Constant.WORK_POOL_VDEV}|{Constant.VIRT_DEVICE_WIRECUT}"
         )
         deployment_configs[virtual_device_key] = {
             "python_bin": default_python_bin,
@@ -251,8 +251,9 @@ class TaskFlowManager:
             # create resources: device work pools (one per device).
             # Monitor and manager pools are created only for devices
             # that have those features enabled. The virtual device
-            # (wirecut) pool is created lazily by generate_deployment_configs
-            # / create_deployments, so it is not included here.
+            # (wirecut) pool must exist before create_deployments
+            # deploys the wirecut flow onto it, so it is created here
+            # as well.
             device_pool_names = [
                 f"{Constant.WORK_POOL_DEV}|{name}" for name in device_names
             ]
@@ -281,10 +282,22 @@ class TaskFlowManager:
                     self.create_pools(pool_names=manager_devices)
                 )
 
+            # create the virtual device (wirecut) work pool explicitly:
+            # prefect rejects flow.deploy() when the target work pool
+            # does not exist, and the wirecut deployment below is
+            # registered against this pool
+            virtual_device_pool = (
+                f"{Constant.WORK_POOL_VDEV}|{Constant.VIRT_DEVICE_WIRECUT}"
+            )
+            self.loop.run_until_complete(
+                self.create_pools(pool_names=[virtual_device_pool])
+            )
+
             if device_pool_names:
                 self.loop.run_until_complete(
                     self.create_queues(queue_names=device_pool_names)
                 )
+
             # delete old monitor flow
             self.delete_task_flow_by_name("device-monitor-flow")
 
@@ -1132,7 +1145,7 @@ class TaskFlowManager:
             # start device manager process if enabled
             self._start_worker_process(device_name, Constant.WORK_POOL_MGR)
         # start virtual devices
-        device_name = Constant.VIRT_DEIVCE_WIRECUT
+        device_name = Constant.VIRT_DEVICE_WIRECUT
         self._start_worker_process(device_name, Constant.WORK_POOL_VDEV)
 
     def run_device_monitor(self):
