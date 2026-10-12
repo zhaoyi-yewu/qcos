@@ -24,8 +24,10 @@ from loguru import logger
 from wy_qcos.common.constant import Constant
 
 
-SUBCIRCUIT_RESULT_CACHE_TTL = 12 * 60 * 60
-SUBCIRCUIT_RESULT_CACHE_PREFIX = "qcos:wirecut:subcircuit-result:v1"
+SUBCIRCUIT_RESULT_CACHE_TTL = 7 * 24 * 60 * 60
+SUBCIRCUIT_RESULT_CACHE_PREFIX = (
+    f"{Constant.REDIS_CHANNEL_QCOS_PREFIX}/wirecut/subcircuit_result/v1"
+)
 SUBCIRCUIT_RESULT_CACHE_VERSION = 1
 
 
@@ -89,7 +91,7 @@ class SubcircuitResultCache:
             default=str,
         )
         digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
-        return f"{SUBCIRCUIT_RESULT_CACHE_PREFIX}:{digest}"
+        return f"{SUBCIRCUIT_RESULT_CACHE_PREFIX}/{digest}"
 
     def get(self, subcircuit, job_info):
         """Get a cached raw execution result, or ``None`` on a miss."""
@@ -120,7 +122,7 @@ class SubcircuitResultCache:
             return None
 
     def set(self, subcircuit, job_info, result):
-        """Cache a successful raw execution result for twelve hours."""
+        """Cache a successful raw execution result for seven days."""
         if self.redis_client is None or not result:
             return
 

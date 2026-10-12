@@ -21,6 +21,7 @@ from unittest.mock import Mock, patch
 import redis
 
 from wy_qcos.transpiler.common.wirecut.result_cache import (
+    SUBCIRCUIT_RESULT_CACHE_PREFIX,
     SUBCIRCUIT_RESULT_CACHE_TTL,
     SubcircuitResultCache,
 )
@@ -59,6 +60,8 @@ class TestSubcircuitResultCache:
         second_key = SubcircuitResultCache.cache_key("OPENQASM;", second_job)
 
         assert first_key == second_key
+        assert first_key.startswith(f"{SUBCIRCUIT_RESULT_CACHE_PREFIX}/")
+        assert SUBCIRCUIT_RESULT_CACHE_PREFIX.startswith("/qcos/")
         assert first_key != SubcircuitResultCache.cache_key(
             "OPENQASM;", _job_info(shots=2048)
         )
@@ -76,7 +79,7 @@ class TestSubcircuitResultCache:
             protocol=2,
         )
 
-    def test_set_uses_twelve_hour_expiry_and_get_restores_result(self):
+    def test_set_uses_seven_day_expiry_and_get_restores_result(self):
         redis_client = Mock()
         cache = SubcircuitResultCache(redis_client)
         result = {"00": 700, "11": 324}
@@ -89,6 +92,7 @@ class TestSubcircuitResultCache:
         assert redis_client.set.call_args.kwargs["ex"] == (
             SUBCIRCUIT_RESULT_CACHE_TTL
         )
+        assert SUBCIRCUIT_RESULT_CACHE_TTL == 7 * 24 * 60 * 60
 
         redis_client.get.return_value = payload
         assert cache.get("OPENQASM;", _job_info()) == result
