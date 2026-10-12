@@ -35,6 +35,23 @@ logger = logging.getLogger(__name__)
 
 
 _db_engine = None
+_redis_client = None
+
+
+def set_redis_client(redis_client):
+    """Set redis client."""
+    global _redis_client
+    _redis_client = redis_client
+
+
+def get_redis_client():
+    """Get redis client.
+
+    Returns:
+        Redis client or None if not initialized
+    """
+    global _redis_client
+    return _redis_client
 
 
 def set_db_engine(engine):

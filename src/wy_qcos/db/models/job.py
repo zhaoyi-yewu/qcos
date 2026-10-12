@@ -52,6 +52,7 @@ class Job(BaseTable):
     job_status = Column(String(32), default="UNKNOWN")
     job_priority = Column(Integer)
     backend = Column(String(32))
+    backend_type = Column(String(32), default="device")
     code_type = Column(String(32))
     source_code = Column(JSON, default=list)
     description = Column(String(256))
@@ -73,6 +74,10 @@ class Job(BaseTable):
     # Auto scheduling fields
     flavor_id = Column(GUID, ForeignKey("flavors.id"), nullable=True)
     extra_specs = Column(JSON, default=dict)
+    # Job params
+    params = Column(JSON, default=dict)
+    # Job options (JSON dict, e.g. {"enable_wirecut": True})
+    options = Column(JSON, default=dict)
     # date fields
     started_at = Column(DateTime)
     updated_at = Column(DateTime)
