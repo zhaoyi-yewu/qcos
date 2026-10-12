@@ -45,6 +45,36 @@ from wy_qcos.db.repositories.job import JobRepository
 logger = logging.getLogger(__name__)
 
 
+def redis_job_key(job_id, flow_run_id=None):
+    """Build the redis key for a job's results record.
+
+    The key follows the hierarchy
+    ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}`` when
+    ``flow_run_id`` is provided, otherwise
+    ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}``.
+
+    Wirecut sub-job flow run names carry the
+    :attr:`Constant.WIRECUT_FLOW_RUN_PREFIX` prefix; it is stripped
+    here so the key matches the parent job id naming used by the
+    wirecut engine. This is the single key builder shared by every
+    redis storage path (db_utils and this module).
+
+    Args:
+        job_id: job id.
+        flow_run_id: optional flow run id.
+
+    Returns:
+        redis key string.
+    """
+    wirecut_prefix = Constant.WIRECUT_FLOW_RUN_PREFIX
+    if wirecut_prefix and wirecut_prefix in job_id:
+        job_id = job_id.replace(wirecut_prefix, "")
+
+    if flow_run_id:
+        return f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}"
+    return f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}"
+
+
 @contextmanager
 def _create_sql_session(db_engine):
     """Create a short-lived SQLAlchemy session.
@@ -248,7 +278,7 @@ class SqlJobStorageBackend(JobStorageBackend):
 
                 success, _error, job_record = job_repo.get_job_by_uuid(job_id)
                 if not success or job_record is None:
-                    logger.error(f"Update job error {job_id}: job not found")
+                    logger.warning(f"Update job error {job_id}: job not found")
                     return False
 
                 if job_status is not None:
@@ -319,10 +349,8 @@ class RedisJobStorageBackend(JobStorageBackend):
     def _redis_job_key(job_id, flow_run_id=None):
         """Build the redis key for a job's results record.
 
-        The key follows the hierarchy
-        ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}`` when
-        ``flow_run_id`` is provided, otherwise
-        ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}``.
+        Delegates to :func:`redis_job_key` so every redis storage
+        path (db_utils and this module) shares one key naming rule.
 
         Args:
             job_id: job id.
@@ -331,14 +359,7 @@ class RedisJobStorageBackend(JobStorageBackend):
         Returns:
             redis key string.
         """
-        if "vdev-wirecut-" in job_id:
-            job_id = job_id.replace("vdev-wirecut-", "")
-
-        if flow_run_id:
-            return (
-                f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}"
-            )
-        return f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}"
+        return redis_job_key(job_id, flow_run_id)
 
     def _client_or_log(self, job_id, action):
         """Return the redis client or log an error and ``None``."""
@@ -357,7 +378,7 @@ class RedisJobStorageBackend(JobStorageBackend):
             if raw is not None:
                 return json.loads(raw)
         except Exception as e:
-            logger.error(
+            logger.warning(
                 f"Redis update job error: failed to read existing "
                 f"record: {str(e)}"
             )
