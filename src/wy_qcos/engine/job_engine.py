@@ -31,8 +31,8 @@ from prefect import flow, task, pause_flow_run
 from prefect.input import RunInput
 from prefect.runtime import flow_run
 
-from wy_qcos.common.constant import Constant
 from wy_qcos.common import errors
+from wy_qcos.common.constant import Constant
 from wy_qcos.common.errors import BaseException
 from wy_qcos.common.library import (
     Library,
@@ -823,12 +823,36 @@ def register_signals(job_id, monitor):
         """
         logger.info(f"Received sigterm, cancelling job: {job_id} ...")
 
+        # Resolve storage backend config from monitor so the status
+        # updates below are persisted to the correct backend (sql or
+        # redis) matching the job's db_config. For redis storage the
+        # flow_run_id/ttl must also be forwarded, otherwise the key
+        # built by the storage backend would not match the one used
+        # at submission time.
+        db_config = monitor.get("db_config", {})
+        results_db_storage = db_config.get(
+            "results_db_storage",
+            monitor.get(
+                "results_db_storage",
+                Constant.RESULTS_DB_STORAGE_DEFAULT,
+            ),
+        )
+        flow_run_id = monitor.get("flow_run_id")
+        ttl = db_config.get("ttl")
+
         # Mark the job as CANCELLING first so monitors / clients can
         # observe the cancel intent.
         try:
             db_engine = monitor.get("db_engine")
             job_status = Constant.JOB_STATUS_CANCELLING
-            db_utils.db_update_job(job_id, db_engine, job_status=job_status)
+            db_utils.db_update_job(
+                job_id,
+                db_engine,
+                job_status=job_status,
+                results_db_storage=results_db_storage,
+                flow_run_id=flow_run_id,
+                ttl=ttl,
+            )
         except Exception as e:
             logger.error(
                 f"Failed to update job status to CANCELLING: {str(e)}"
@@ -848,6 +872,9 @@ def register_signals(job_id, monitor):
                 db_engine,
                 job_status=Constant.JOB_STATUS_CANCELLED,
                 ended_at=Library.get_current_datetime().isoformat(),
+                results_db_storage=results_db_storage,
+                flow_run_id=flow_run_id,
+                ttl=ttl,
             )
         except Exception as e:
             logger.error(f"Failed to update job status to CANCELLED: {str(e)}")
