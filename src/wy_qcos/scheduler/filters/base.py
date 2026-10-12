@@ -115,6 +115,11 @@ class BaseFilterHandler:
                 Defaults to None (no injection).
         """
         self._filters = []
+        # last per-filter status produced by get_filtered_objects,
+        # mapping filter class name -> bool (True if the filter left
+        # at least one device). Consumers (e.g. AutoScheduler) can
+        # inspect this attribute after a filtering run.
+        self.last_filter_status: dict[str, bool] = {}
         for cls in filter_classes:
             if isinstance(cls, BaseFilter):
                 instance = cls
@@ -125,18 +130,46 @@ class BaseFilterHandler:
             self._filters.append(instance)
 
     def get_filtered_objects(
-        self, list_obj: list[DeviceState], spec: RequestSpec
-    ) -> list[DeviceState]:
-        """Run all enabled filters in order.
+        self,
+        list_obj: list[DeviceState],
+        spec: RequestSpec,
+        run_all_filters: bool = False,
+    ) -> tuple[list[DeviceState], str | None, list[DeviceState] | None]:
+        """Run all enabled filters in order and return the survivors.
+
+        When run_all_filters is False (default), the method stops
+        early as soon as no devices remain (backward-compatible
+        behavior with respect to the filtered list).
+
+        When run_all_filters is True, all enabled filters are run
+        regardless of intermediate results so that the per-filter
+        status is complete.
+
+        The per-filter status (class name -> bool) is stored on
+        ``self.last_filter_status`` for callers that need to
+        distinguish failure reasons (e.g. QubitCountFilter).
 
         Args:
             list_obj: list of DeviceState objects
             spec: request spec
+            run_all_filters: if True, run all filters even when no
+                devices remain
 
         Returns:
-            list of DeviceState objects that pass all filters
+            A tuple ``(filtered_devices, last_failed_filter_name,
+            last_filtered_devices_snapshot)``.
+
+            - filtered_devices: list of DeviceState objects that
+              passed all filters.
+            - last_failed_filter_name: name of the filter that
+              emptied the list, or None.
+            - last_filtered_devices: snapshot of devices that
+              passed the last successful filter, or None.
         """
         filtered = list(list_obj)
+        filter_status: dict[str, bool] = {}
+        last_failed_filter = None
+        last_filtered_devices = None
         for filter_instance in self._filters:
             if not filter_instance.is_enabled(spec):
                 continue
@@ -146,6 +179,8 @@ class BaseFilterHandler:
                 f"Running filter: {filter_name}, "
                 f"devices before: {before_count}"
             )
+            if not filtered and not run_all_filters:
+                break
             filtered = filter_instance.filter_all(filtered, spec)
             after_count = len(filtered)
             if after_count < before_count:
@@ -155,9 +190,16 @@ class BaseFilterHandler:
                     f"device(s), {after_count} remaining"
                 )
             if not filtered:
+                filter_status[filter_name] = False
                 logger.info(
                     f"Filter {filter_name} returned no devices, "
                     f"scheduling will fail"
                 )
-                break
-        return filtered
+                last_failed_filter = filter_name
+                if not run_all_filters:
+                    break
+            else:
+                filter_status[filter_name] = True
+                last_filtered_devices = filtered
+        self.last_filter_status = filter_status
+        return filtered, last_failed_filter, last_filtered_devices

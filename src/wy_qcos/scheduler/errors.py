@@ -24,3 +24,18 @@ class NoValidDeviceError(errors.BaseException):
     module_name = "Scheduler"
     error_code = -200
     err_type = "NoValidDeviceError"
+
+
+class DeviceQubitExceededError(NoValidDeviceError):
+    """Device qubit count exceeded error.
+
+    Raised when the only failing filter is QubitCountFilter,
+    meaning all available devices have insufficient qubits for
+    the requested circuit. This is a subclass of NoValidDeviceError
+    so existing handlers continue to work, but allows callers to
+    distinguish qubit-exceeded failures for wirecut fallback.
+    """
+
+    module_name = "Scheduler"
+    error_code = -201
+    err_type = "DeviceQubitExceededError"
