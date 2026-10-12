@@ -23,6 +23,7 @@ from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from prefect.client.schemas.objects import StateType
+from prefect.client.schemas.filters import FlowFilter, FlowFilterName
 from prefect.states import State
 
 from wy_qcos.common.config import Config
@@ -72,6 +73,7 @@ class JobCleaner:
             self._cleanup_job,
             trigger="interval",
             minutes=self._interval,
+            next_run_time=datetime.now(),
             coalesce=True,
             max_instances=1,
             id="job_clean",
@@ -287,6 +289,66 @@ class JobCleaner:
                     f"Failed to cleanup orphaned flow {flow_run.name}: {e}"
                 )
 
+    def get_flow_ids(self, flow_names=None):
+        """Get flow ids for the given flow names.
+
+        Lookup order (first hit wins):
+
+        1. The in-memory flow registry ``task_manager.flows``,
+           populated when deployments are created. When a name is
+           found there its ``flow_id`` (already a str) is used.
+        2. A remote Prefect API ``read_flows`` query by flow name
+           filter, so flows that exist in Prefect but were not
+           registered in this process (e.g. deployments created
+           before restart) are still resolved.
+
+        Args:
+            flow_names (list): optional list of flow names. When
+                None or empty an empty set is returned.
+
+        Returns:
+            set: set of flow id strings (may be smaller than
+            flow_names when some flows cannot be resolved).
+        """
+        if not flow_names:
+            return set()
+
+        flow_ids = set()
+        # Names not present in the local registry need a remote
+        # lookup; collect them while resolving local ones.
+        unresolved_names = []
+        for flow_name in flow_names:
+            flow = (self._task_manager.flows or {}).get(flow_name)
+            flow_id = flow.get("flow_id") if flow else None
+            if flow_id:
+                flow_ids.add(str(flow_id))
+            else:
+                unresolved_names.append(flow_name)
+
+        if not unresolved_names:
+            return flow_ids
+
+        # Fall back to the Prefect API for names missing from the
+        # local registry.
+        try:
+            sync_client = self._get_sync_client()
+            flow_filter = FlowFilter(
+                name=FlowFilterName(any_=list(unresolved_names))
+            )
+            flows = sync_client.read_flows(flow_filter=flow_filter)
+        except Exception as e:
+            logger.error(f"Failed to fetch flows from Prefect API: {e}")
+            return flow_ids
+
+        for flow in flows:
+            flow_ids.add(str(flow.id))
+        for flow_name in unresolved_names:
+            if not any(fl.name == flow_name for fl in flows):
+                logger.warning(
+                    f"Flow not found in registry or Prefect: {flow_name}"
+                )
+        return flow_ids
+
     async def _clean_prefect_flows(self):
         """Clean expired completed Prefect flow-runs.
 
@@ -315,13 +377,10 @@ class JobCleaner:
             seconds=flow_expire_minutes * 60
         )
 
-        expect_job_flow_id = None
-        job_flow = self._task_manager.flows.get("job-flow", None)
-        if job_flow:
-            expect_job_flow_id = job_flow.get("flow_id", None)
-        if not expect_job_flow_id:
-            logger.error("Failed to fetch job-flow")
+        flow_ids = self.get_flow_ids(["job-flow", "wirecut-flow"])
+        if not flow_ids:
             return
+
         try:
             all_job_flow_runs = await self._run_sync(
                 TaskFlowManager.read_all_flow_runs, sync_client
@@ -334,7 +393,7 @@ class JobCleaner:
         for flow_run in all_job_flow_runs:
             # Only process flow-runs belonging to the job-flow
             flow_id = flow_run.flow_id
-            if expect_job_flow_id != str(flow_id):
+            if str(flow_id) not in flow_ids:
                 continue
 
             # Only process completed flow-runs
