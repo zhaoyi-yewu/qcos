@@ -32,6 +32,7 @@ from wy_qcos.db.database import init_database
 from wy_qcos.db.repositories import BaseRepository
 from wy_qcos.db.utils.job_storage_backend import (
     get_job_storage_backend,
+    redis_job_key,
 )
 
 logger = logging.getLogger(__name__)
@@ -190,26 +191,6 @@ def get_db_filters(
     return db_filters
 
 
-def _redis_job_key(job_id, flow_run_id=None):
-    """Build the redis key for a job's results record.
-
-    The key follows the hierarchy
-    ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}`` when
-    ``flow_run_id`` is provided, otherwise
-    ``{REDIS_CHANNEL_JOB_PREFIX}/{job_id}``.
-
-    Args:
-        job_id: job id
-        flow_run_id: optional flow run id
-
-    Returns:
-        redis key string
-    """
-    if flow_run_id:
-        return f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}"
-    return f"{Constant.REDIS_CHANNEL_JOB_PREFIX}/{job_id}"
-
-
 def redis_get_job(job_id):
     """Get job record from redis.
 
@@ -229,7 +210,7 @@ def redis_get_job(job_id):
         )
         return None
     try:
-        raw = redis_client.get(_redis_job_key(job_id))
+        raw = redis_client.get(redis_job_key(job_id))
         if raw is None:
             return None
         return json.loads(raw)
@@ -279,7 +260,7 @@ def redis_update_job(
         )
         return False
 
-    key = _redis_job_key(job_id, flow_run_id)
+    key = redis_job_key(job_id, flow_run_id)
     record = {}
     try:
         raw = redis_client.get(key)
