@@ -42,6 +42,7 @@ from loguru import logger
 from prefect import flow, get_client, task
 from prefect.runtime import flow_run
 
+from wy_qcos.common import errors
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.db.utils import db_utils
@@ -50,6 +51,7 @@ from wy_qcos.db.database import init_database
 from wy_qcos.engine.common import init_logger
 from wy_qcos.engine.job_engine import (
     create_src_code_info,
+    format_error_results,
     get_src_code_cnt,
     register_signals,
     update_progress,
@@ -182,7 +184,6 @@ def wirecut_flow(job_info):
     flow_task_monitor(monitor_info)
     logger.info(f"task_monitor started for job_id: {job_id}")
 
-    job_results_list = []
     transpiler_info = job_info.get("transpiler", {})
     _get_transpiler_instance(transpiler_info)
 
@@ -207,12 +208,13 @@ def wirecut_flow(job_info):
         source_code_count,
         deployments,
     )
-    job_results_list = poll_job_results(
+    _job_results_list = poll_job_results(
         new_job_list,
         job_id=job_id,
         redis_instance=redis_instance,
         monitor_info=monitor_info,
     )
+    job_results_list = merge_job_results(_job_results_list)
 
     monitor_info["running"] = False
     monitor_info["progress"] = 100
@@ -244,6 +246,7 @@ def wirecut_schedule(src_code_info, available_devices):
         ``device_name`` (str), ``source_code_index`` (int),
         ``subcircuit_index`` (int) and ``subcircuit`` (str).
     """
+    # TODO: implement jobs merge
     sample = (
         'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\n'
         "creg c[2];\n"
@@ -349,7 +352,9 @@ def submit_jobs(
 
         # submit sub-flow via prefect client
         try:
-            wirecut_flow_run_name = f"vdev-wirecut-{job_id}"
+            wirecut_flow_run_name = (
+                f"{Constant.WIRECUT_FLOW_RUN_PREFIX}{job_id}"
+            )
             wirecut_work_queue_name = (
                 f"{Constant.WORK_POOL_DEV}|{device_name}_"
                 f"{Constant.SUB_WIRECUT_PRIORITY}"
@@ -662,6 +667,36 @@ def poll_job_results(
         logger.info(f"--- sub-job[{idx}] result: {record}")
 
     return job_results_list
+
+
+def merge_job_results(job_results_list):
+    """Merge job results.
+
+    Args:
+        job_results_list: sub-job results list.
+
+    Returns:
+        merged job results.
+    """
+    merged_job_results = []
+    err_msgs = []
+    for job_results in job_results_list:
+        job_status = job_results.get("job_status")
+        _job_results = job_results.get("results", [])
+        if job_status != Constant.JOB_STATUS_COMPLETED:
+            for _job_result in _job_results:
+                err_info = _job_result.get("error", {})
+                err_msg = err_info.get("message", "")
+                err_msgs.append(err_msg)
+        # TODO: implement jobs merge
+        merged_job_results.append(job_results)
+    if err_msgs:
+        driver = None
+        err_cls = errors.WirecutEngineSubJobError
+        err_msg = "\n".join(err_msgs)
+        merged_job_results = [format_error_results(driver, err_cls, err_msg)]
+
+    return merged_job_results
 
 
 def _get_transpiler_instance(transpiler_info):
