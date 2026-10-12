@@ -26,6 +26,6 @@ eng_code = ""
 user_id = ""
 
 [qudoor_abaqu100.device_monitor]
-enable_device_monitor = false
+enable_device_monitor = true
 monitor_log_file = "/var/log/qcos/device_monitor_abaqu100.log"
 polling_interval = 60
