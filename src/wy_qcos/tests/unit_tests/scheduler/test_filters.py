@@ -393,7 +393,7 @@ class TestBaseFilterHandler:
             make_device_state(name="d2", status="online", enable=True),
         ]
         spec = make_spec(code_type="qasm")
-        result = handler.get_filtered_objects(devices, spec)
+        result, _, _ = handler.get_filtered_objects(devices, spec)
         assert len(result) == 2
 
     def test_filter_chain_some_filtered(self):
@@ -413,7 +413,7 @@ class TestBaseFilterHandler:
             ),
         ]
         spec = make_spec(code_type="qasm")
-        result = handler.get_filtered_objects(devices, spec)
+        result, _, _ = handler.get_filtered_objects(devices, spec)
         assert len(result) == 1
         assert result[0].name == "d1"
 
@@ -423,7 +423,7 @@ class TestBaseFilterHandler:
             make_device_state(name="d1", status="offline"),
         ]
         spec = make_spec(code_type="qasm")
-        result = handler.get_filtered_objects(devices, spec)
+        result, _, _ = handler.get_filtered_objects(devices, spec)
         assert len(result) == 0
 
 

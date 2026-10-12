@@ -27,7 +27,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.task_manager.job_cleaner import JobCleaner
 
 MODULE = "wy_qcos.task_manager.job_cleaner"
-DEV_PREFIX = Constant.WORK_POOL_DEVICE_PREFIX
+DEV_PREFIX = Constant.WORK_POOL_DEV
 
 
 # Default job-flow id used by _make_cleaner and _make_flow_run_for_expire
@@ -425,7 +425,7 @@ class TestCleanOrphanedDeviceFlows:
     @pytest.mark.parametrize(
         "pool_name",
         [
-            "monitor|dev",
+            "mon|dev",
             "mgr|dev",
         ],
     )

@@ -286,7 +286,7 @@ class TestValidateDeviceInfo:
                     "wy_qcos.engine.device_monitor_engine.logger.warning",
                     fake_warn,
                 )
-                validate_device_info(FULL_DEVICE_INFO)
+                validate_device_info("test_device", FULL_DEVICE_INFO)
                 assert called == []
 
     def test_none_device_info_logs_no_warning(self):
@@ -301,7 +301,7 @@ class TestValidateDeviceInfo:
                 "wy_qcos.engine.device_monitor_engine.logger.warning",
                 fake_warn,
             )
-            validate_device_info(None)
+            validate_device_info("test_device", None)
             assert called == []
 
     def test_invalid_device_info_logs_warning(self):
@@ -316,7 +316,7 @@ class TestValidateDeviceInfo:
                 "wy_qcos.engine.device_monitor_engine.logger.warning",
                 fake_warn,
             )
-            validate_device_info({"details": {}})
+            validate_device_info("test_device", {"details": {}})
             assert len(called) == 1
             assert "Invalid device info" in called[0]
 
@@ -331,7 +331,7 @@ class TestValidateDeviceInfo:
                 "wy_qcos.engine.device_monitor_engine.logger.warning",
                 fake_warn,
             )
-            validate_device_info({"status": 123})
+            validate_device_info("test_device", {"status": 123})
             assert len(called) == 1
             assert "Invalid device info" in called[0]
 
@@ -346,5 +346,5 @@ class TestValidateDeviceInfo:
                 "wy_qcos.engine.device_monitor_engine.logger.warning",
                 fake_warn,
             )
-            validate_device_info({"status": "online"})
+            validate_device_info("test_device", {"status": "online"})
             assert called == []

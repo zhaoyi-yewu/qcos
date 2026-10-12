@@ -32,6 +32,7 @@ class ConstantForTest:
                 "job_priority": 1,
                 "description": "description",
                 "backend": Constant.DRIVER_DUMMY,
+                "backend_type": Constant.BACKEND_TYPE_DEVICE,
                 "transpiler": Constant.TRANSPILER_CMSS,
                 "transpiler_info": {},
                 "shots": 10,

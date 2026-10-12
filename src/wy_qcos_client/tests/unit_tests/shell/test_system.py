@@ -248,7 +248,7 @@ class TestListWorkers:
         mock_check.return_value = {
             "workers": [
                 {
-                    "worker_name": "process-device|dummy",
+                    "worker_name": "proc|dev|dummy",
                     "work_pool": "device|dummy",
                     "device_name": "dummy",
                     "worker_status": "ONLINE",
@@ -266,7 +266,7 @@ class TestListWorkers:
             ],
             [
                 [
-                    "process-device|dummy",
+                    "proc|dev|dummy",
                     "device|dummy",
                     "dummy",
                     "ONLINE",
@@ -298,7 +298,7 @@ class TestRestartWorker:
         mock_check.return_value = {
             "success": True,
             "message": "restarted successfully",
-            "worker_name": "process-device|dummy",
+            "worker_name": "proc|dev|dummy",
         }
 
         mock_client = Mock(spec=Namespace)
@@ -306,9 +306,7 @@ class TestRestartWorker:
         mock_client.page = None
         mock_client.page_size = None
         mock_client.sort = None
-        mock_client.worker_name = "process-device|dummy"
+        mock_client.worker_name = "proc|dev|dummy"
         # take_action returns None for a Command
         assert restart_worker.take_action(mock_client) is None
-        mock_restart.assert_called_once_with(
-            worker_name="process-device|dummy"
-        )
+        mock_restart.assert_called_once_with(worker_name="proc|dev|dummy")

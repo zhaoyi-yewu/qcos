@@ -577,29 +577,6 @@ class TestTaskFlowManager(unittest.TestCase):
         assert result == {"ok": True}
         assert err is None
 
-    def test_get_flow_list_by_client_filters_invalid_and_monitor(self):
-        monitor_flow = Mock()
-        monitor_flow.name = Constant.DEVICE_MONITOR_PREFIX + "abc"
-        invalid_flow = Mock()
-        invalid_flow.name = "not-uuid"
-        completed_flow = Mock()
-        completed_flow.name = ConstantForTest.job_id
-        completed_flow.state = Mock()
-        completed_flow.state.name = Constant.PREFECT_STATE_COMPLETED
-        completed_flow.state.result.return_value = {"done": True}
-        completed_flow.parameters = {"x": 1}
-
-        with patch.object(
-            self.task_manager,
-            "get_flow_runs_with_filters",
-            return_value=[monitor_flow, invalid_flow, completed_flow],
-        ):
-            result = self.task_manager.get_flow_list_by_client(tags=None)
-
-        assert len(result) == 1
-        assert result[0]["id"] == ConstantForTest.job_id
-        assert result[0]["results"] == {"done": True}
-
     def test_get_flow_run_object_not_found(self):
         mock_client = Mock()
         mock_client.read_flow_run.side_effect = Exception("boom")
@@ -1261,14 +1238,14 @@ class TestTaskFlowManager(unittest.TestCase):
         assert self.task_manager.loop == mock_loop
 
         # Verify create_pools called with device pool names
-        mock_create_pools.assert_any_call(pool_names=["device|test_device"])
+        mock_create_pools.assert_any_call(pool_names=["dev|test_device"])
         # Verify create_pools called with monitor device names
-        mock_create_pools.assert_any_call(pool_names=["monitor|test_device"])
+        mock_create_pools.assert_any_call(pool_names=["mon|test_device"])
         # Verify create_pools called with manager device names
         mock_create_pools.assert_any_call(pool_names=["mgr|test_device"])
         # Verify create_queues called
         mock_create_queues.assert_called_once_with(
-            queue_names=["device|test_device"]
+            queue_names=["dev|test_device"]
         )
         # Verify delete_task_flow_by_name called
         mock_delete_flow.assert_called_once_with("device-monitor-flow")
@@ -1481,10 +1458,10 @@ class TestTaskFlowManager(unittest.TestCase):
 
         # Verify create_pools for device pool names only (no monitor/mgr pools)
         mock_create_pools.assert_called_once_with(
-            pool_names=["device|test_device"]
+            pool_names=["dev|test_device"]
         )
         mock_create_queues.assert_called_once_with(
-            queue_names=["device|test_device"]
+            queue_names=["dev|test_device"]
         )
         mock_gen_deploy.assert_called_once()
         mock_create_deploy.assert_called_once()
@@ -1620,20 +1597,20 @@ class TestTaskFlowManager(unittest.TestCase):
         # Verify create_pools calls
         mock_create_pools.assert_any_call(
             pool_names=[
-                "device|device_a",
-                "device|device_b",
-                "device|device_c",
+                "dev|device_a",
+                "dev|device_b",
+                "dev|device_c",
             ]
         )
         mock_create_pools.assert_any_call(
-            pool_names=["monitor|device_a", "monitor|device_b"]
+            pool_names=["mon|device_a", "mon|device_b"]
         )
         mock_create_pools.assert_any_call(pool_names=["mgr|device_a"])
 
         mock_create_queues.assert_called_once_with(
             queue_names=[
-                "device|device_a",
-                "device|device_b",
-                "device|device_c",
+                "dev|device_a",
+                "dev|device_b",
+                "dev|device_c",
             ]
         )

@@ -274,8 +274,6 @@ def submit_jobs(
     wirecut_job_list = []
 
     for device_schedule in schedule_results:
-        logger.error("ZHAOYI1")
-        logger.error(device_schedule)
         device_name = device_schedule["device_name"]
         source_codes = device_schedule["source_codes"]
 

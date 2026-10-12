@@ -160,6 +160,8 @@ class TestSubmitJob:
         mock_client.qec_options = None
         mock_client.flavor = None
         mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
 
         assert submit_job.take_action(mock_client) is None
 
