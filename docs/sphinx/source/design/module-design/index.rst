@@ -17,6 +17,7 @@
    transpiler
    instruction-set
    aggregation-cutting
+   auto-wirecut-multi-devices
    qec
    qem
    user
