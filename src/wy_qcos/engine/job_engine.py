@@ -70,6 +70,7 @@ from wy_qcos.transpiler.common.wirecut.result_cache import (
 from wy_qcos.qem.mitigation_manager import MitigationManager
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.db.utils import db_utils
+from wy_qcos.db.utils.db_utils import set_redis_client
 from wy_qcos.db.database import init_database
 
 _import_module = importlib.import_module  # security issue
@@ -257,7 +258,21 @@ def task_monitor(monitor_info):
     last_job_progress = 0
     job_id = monitor_info.get("job_id")
     db_engine = monitor_info.get("db_engine")
+    flow_run_id = monitor_info.get("flow_run_id")
     agg_sub_job_list = monitor_info.get("agg_sub_job_list")
+
+    # resolve storage backend config from monitor_info so that
+    # progress updates are persisted to the correct backend (sql or
+    # redis) matching the job's db_config.
+    db_config = monitor_info.get("db_config", {})
+    results_db_storage = db_config.get(
+        "results_db_storage",
+        monitor_info.get(
+            "results_db_storage",
+            Constant.RESULTS_DB_STORAGE_DEFAULT,
+        ),
+    )
+    ttl = db_config.get("ttl")
 
     if not job_id or not db_engine:
         logger.warning("job_id or db_engine not found in monitor_info")
@@ -275,19 +290,47 @@ def task_monitor(monitor_info):
             )
             if last_job_progress != job_progress:
                 # update job progress to database
-                update_progress(job_id, db_engine, job_progress)
+                update_progress(
+                    job_id,
+                    db_engine,
+                    job_progress,
+                    results_db_storage=results_db_storage,
+                    flow_run_id=flow_run_id,
+                    ttl=ttl,
+                )
                 # update agg sub job progress to database
                 if agg_sub_job_list:
                     for sub_job_id in agg_sub_job_list:
-                        update_progress(sub_job_id, db_engine, job_progress)
+                        update_progress(
+                            sub_job_id,
+                            db_engine,
+                            job_progress,
+                            results_db_storage=results_db_storage,
+                            flow_run_id=flow_run_id,
+                            ttl=ttl,
+                        )
             last_job_progress = job_progress
         time.sleep(1)
     # update job progress to database
-    update_progress(job_id, db_engine, 100)
+    update_progress(
+        job_id,
+        db_engine,
+        100,
+        results_db_storage=results_db_storage,
+        flow_run_id=flow_run_id,
+        ttl=ttl,
+    )
     # update agg sub job progress to database
     if agg_sub_job_list:
         for sub_job_id in agg_sub_job_list:
-            update_progress(sub_job_id, db_engine, 100)
+            update_progress(
+                sub_job_id,
+                db_engine,
+                100,
+                results_db_storage=results_db_storage,
+                flow_run_id=flow_run_id,
+                ttl=ttl,
+            )
 
 
 @task(persist_result=False)
@@ -780,7 +823,8 @@ def register_signals(job_id, monitor):
         """
         logger.info(f"Received sigterm, cancelling job: {job_id} ...")
 
-        # Update job status to CANCELLED in database
+        # Mark the job as CANCELLING first so monitors / clients can
+        # observe the cancel intent.
         try:
             db_engine = monitor.get("db_engine")
             job_status = Constant.JOB_STATUS_CANCELLING
@@ -793,20 +837,54 @@ def register_signals(job_id, monitor):
         driver = monitor["driver"]
         driver_cancel(job_id, driver)
 
+        # os._exit(1) terminates the worker process immediately, which
+        # prevents Prefect from running the on_cancellation hook
+        # (db_job_callback) that would normally transition the job to
+        # CANCELLED. Persist the terminal CANCELLED status here so the
+        # job does not get stuck in CANCELLING.
+        try:
+            db_utils.db_update_job(
+                job_id,
+                db_engine,
+                job_status=Constant.JOB_STATUS_CANCELLED,
+                ended_at=Library.get_current_datetime().isoformat(),
+            )
+        except Exception as e:
+            logger.error(f"Failed to update job status to CANCELLED: {str(e)}")
+        time.sleep(1)
+
         os._exit(1)  # force to exit when user cancelled a job
 
     signal.signal(signal.SIGTERM, handle_sigterm)
 
 
-def update_progress(job_id, db_engine, progress):
-    """Update job progress to database.
+def update_progress(
+    job_id,
+    db_engine,
+    progress,
+    results_db_storage=Constant.RESULTS_DB_STORAGE_DEFAULT,
+    flow_run_id=None,
+    ttl=None,
+):
+    """Update job progress to the configured storage backend.
 
     Args:
         job_id: job ID
         db_engine: database engine instance
         progress: progress value (0-100)
+        results_db_storage: storage backend ("sql" or "redis")
+        flow_run_id: optional flow run id; used as part of the redis
+            key when results are stored in redis.
+        ttl: optional redis key TTL in seconds
     """
-    db_utils.db_update_job(job_id, db_engine, progress=progress)
+    db_utils.db_update_job(
+        job_id,
+        db_engine,
+        progress=progress,
+        results_db_storage=results_db_storage,
+        flow_run_id=flow_run_id,
+        ttl=ttl,
+    )
 
 
 def create_src_code_info(job_data):
@@ -1042,7 +1120,13 @@ def job_flow(job_info):
     backend = job_data["backend"]
     flow_run_id = flow_run.id
     callbacks = job_data.get("callbacks", None)
-    job_data.get("results_db_storage", "sql")
+    db_config = job_data.get("db_config", {})
+    results_db_storage = db_config.get(
+        "results_db_storage",
+        job_data.get(
+            "results_db_storage", Constant.RESULTS_DB_STORAGE_DEFAULT
+        ),
+    )
     job_enqueue_at = job_data["job_enqueue_at"]
     scheduling_started_at = job_data["job_schedule_started_at"]
     scheduling_ended_at = job_data["job_schedule_ended_at"]
@@ -1060,6 +1144,7 @@ def job_flow(job_info):
         "redis": {
             "url": global_configs["REDIS"].get("REDIS_URL", None),
         },
+        "db_config": db_config,
         "running": True,
         "driver": None,
         "source_code_index": 0,
@@ -1093,17 +1178,36 @@ def job_flow(job_info):
     logger.info(f"Processing work flow: job_engine. job_id: {job_id}")
     logger.debug(f"Job details: job_id: {job_id}, job_info: {job_info}")
 
-    # init db engine
-    try:
-        logger.info(f"Initializing database for job_id: {job_id}")
-        db_url = global_configs["DATABASE"]["QCOS_DATABASE_CONNECTION_URL"]
-        db_engine = init_database(db_url)
-        monitor_info["db_engine"] = db_engine
-        db_utils.set_db_engine(db_engine)
-        logger.info(f"Database initialized for job_id: {job_id}")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {str(e)}")
-        db_engine = None
+    # init db engine based on results_db_storage: for the sql backend
+    # a SQLAlchemy engine is created; for the redis backend a redis
+    # client is created instead. Either way the result is stored in
+    # db_engine (and monitor_info["db_engine"]) so that
+    # get_job_storage_backend() can accept a single db_engine param.
+    db_engine = None
+    if results_db_storage == Constant.RESULTS_DB_STORAGE_REDIS:
+        try:
+            logger.info(f"Initializing redis client for job_id: {job_id}")
+            db_engine = redis.Redis.from_url(
+                monitor_info["redis"]["url"],
+                decode_responses=True,
+                protocol=2,
+            )
+            set_redis_client(db_engine)
+            logger.info(f"Redis client initialized for job_id: {job_id}")
+        except Exception as e:
+            logger.error(f"Failed to initialize redis client: {str(e)}")
+            db_engine = None
+    else:
+        try:
+            logger.info(f"Initializing database for job_id: {job_id}")
+            db_url = global_configs["DATABASE"]["QCOS_DATABASE_CONNECTION_URL"]
+            db_engine = init_database(db_url)
+            db_utils.set_db_engine(db_engine)
+            logger.info(f"Database initialized for job_id: {job_id}")
+        except Exception as e:
+            logger.error(f"Failed to initialize database: {str(e)}")
+            db_engine = None
+    monitor_info["db_engine"] = db_engine
 
     # update job status to RUNNING and set started_at
     logger.info(f"Updating job status to RUNNING for job_id: {job_id}")
