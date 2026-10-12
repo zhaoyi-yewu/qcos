@@ -30,6 +30,13 @@ from pathlib import Path
 
 TOP_DIR = Path(__file__).resolve().parent.parent
 
+# Whitelist for config section names that are embedded into generated
+# shell scripts; anything else is rejected at config load time
+SAFE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
+# Command substitution vectors rejected in post_scripts entries: a
+# backtick or "$(" would let a tampered config inject arbitrary commands
+CMD_SUBSTITUTION_PATTERN = re.compile(r"`|\$\(")
+
 
 def load_pyproject_deps(pyproject_file, sections):
     """Load dependencies from a pyproject.toml file by section names.
@@ -115,6 +122,13 @@ def load_driver_env_file(config_file, envs=None, skip_env_list=None):
         sorted_items = non_copy_items + copy_items
         configs = OrderedDict(sorted_items)
         for driver_class, driver_info in configs.items():
+            # reject section names with shell metacharacters early:
+            # they are embedded into generated shell scripts later
+            if not SAFE_NAME_PATTERN.fullmatch(str(driver_class)):
+                raise Exception(
+                    f"Invalid driver name: {driver_class!r}. Only "
+                    "letters, digits, '-' and '_' are allowed."
+                )
             if "copy_from" in driver_info:
                 continue
             if "deps_sections" not in driver_info:
@@ -187,8 +201,45 @@ def run_command(command, check=True, capture_output=True, text=True):
         raise
 
 
+def validate_post_script(script):
+    """Validate a post-install script entry from the driver config.
+
+    Entries are shell command fragments by design, so only command
+    substitution vectors are rejected: backticks and ``$(...)`` would
+    let a tampered configuration file smuggle arbitrary commands into
+    the generated shell script.
+
+    Args:
+        script: post script entry to validate
+
+    Returns:
+        script: the validated script string
+
+    Raises:
+        ValueError: when the entry is not a non-empty string or
+            contains forbidden shell metacharacters
+    """
+    if not isinstance(script, str) or not script.strip():
+        raise ValueError(
+            f"Invalid post_scripts entry: {script!r}. Entries must be "
+            "non-empty strings."
+        )
+    if CMD_SUBSTITUTION_PATTERN.search(script):
+        raise ValueError(
+            f"Invalid post_scripts entry: {script!r}. Command "
+            "substitution (backticks or '$(') is not allowed."
+        )
+    return script
+
+
 def build_post_scripts_block(driver_venv_dir, post_scripts):
     """Build shell commands to run post-install scripts in a venv.
+
+    The venv path is escaped with ``shlex.quote()`` before being
+    interpolated into the shell template, and every ``post_scripts``
+    entry is validated by ``validate_post_script()``, so neither a
+    crafted path nor a tampered config entry can inject arbitrary
+    shell commands.
 
     The generated block activates the venv, changes into the venv
     directory so that relative paths inside ``post_scripts`` resolve
@@ -205,22 +256,26 @@ def build_post_scripts_block(driver_venv_dir, post_scripts):
     """
     if not post_scripts:
         return ""
+    # escape the venv path so shell metacharacters in it cannot
+    # turn the generated script into command injection
+    safe_venv = shlex.quote(driver_venv_dir)
     # dedent each script line and join to build the body
     body_lines = []
     for index, script in enumerate(post_scripts, start=1):
+        validate_post_script(script)
         body_lines.append(f"  # post_scripts[{index}]: {script}")
         body_lines.append(f"  {script}")
     body = "\n".join(body_lines)
     cmd = f"""
-        if [ -f "{driver_venv_dir}/bin/activate" ]; then
-          source {driver_venv_dir}/bin/activate
-          cd "{driver_venv_dir}"
-          echo -e "\\nRunning post_scripts in {driver_venv_dir}"
+        if [ -f {safe_venv}/bin/activate ]; then
+          source {safe_venv}/bin/activate
+          cd {safe_venv}
+          echo -e "\\nRunning post_scripts in" {safe_venv}
 {body}
           deactivate
         else
           echo -e "\\npost_scripts skipped: venv not found"
-          echo -e "  path: {driver_venv_dir}"
+          echo -e "  path:" {safe_venv}
         fi
     """
     return cmd
@@ -231,7 +286,9 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
 
     When a config section defines a ``post_scripts`` key (list of shell
     command strings), each command is executed in order inside the
-    venv directory after the dependencies have been installed.
+    venv directory after the dependencies have been installed. Every
+    path is escaped with ``shlex.quote()`` before it is embedded into
+    the generated shell script.
 
     Args:
         configs: configs
@@ -245,13 +302,16 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
     cmds = []
     for driver_class, driver_info in configs.items():
         driver_venv_dir = f"{venv_base_dir}/{driver_class}"
+        # escape the venv path so metacharacters in it cannot turn
+        # the generated script into command injection
+        safe_venv = shlex.quote(driver_venv_dir)
         copy_from = driver_info.get("copy_from", None)
         if copy_from:
             src_dir = f"{venv_base_dir}/{copy_from}"
-            dst_dir = driver_venv_dir
+            safe_src = shlex.quote(src_dir)
             cmd = f"""
             echo -e "\\nInstalling venv: {driver_class} - link"
-            [ ! -L "{dst_dir}" ] && ln -s {src_dir} {dst_dir}
+            [ ! -L {safe_venv} ] && ln -s {safe_src} {safe_venv}
             """
             cmds.append(cmd)
         else:
@@ -264,22 +324,24 @@ def install_venv(configs, venv_base_dir, debug=True, dry_run=False):
             # write deps to a temporary requirements file inside the
             # venv dir so that poetry can install them via pip
             deps_req_file = f"{driver_venv_dir}/requirements.txt"
+            safe_req_file = shlex.quote(deps_req_file)
             deps_file_content = "\n".join(deps_list)
             for env in envs:
+                safe_env = shlex.quote(env)
                 cmd = f"""
                 set -e
-                if which {env} >/dev/null 2>&1; then
+                if which {safe_env} >/dev/null 2>&1; then
                   echo -e "\\nInstalling venv: {driver_class}"
-                  {env} -m venv {driver_venv_dir}
-                  source {driver_venv_dir}/bin/activate
+                  {safe_env} -m venv {safe_venv}
+                  source {safe_venv}/bin/activate
                   # write resolved dependencies to a requirements file
-                  printf '%s\\n' {shlex.quote(deps_file_content)} > {deps_req_file}
+                  printf '%s\\n' {shlex.quote(deps_file_content)} > {safe_req_file}
                   # install dependencies via poetry-managed pip
-                  pip3 install --no-cache-dir --prefer-binary {"--no-deps" if no_deps_option else ""} -r {deps_req_file}
+                  pip3 install --no-cache-dir --prefer-binary {"--no-deps" if no_deps_option else ""} -r {safe_req_file}
                   deactivate
                 else
                   echo -e "\\nInstalling venv: {driver_class} - skipped"
-                  echo -e "\\nCan't find env: {env}"
+                  echo -e "\\nCan't find env:" {safe_env}
                 fi
                 """
                 cmds.append(cmd)
