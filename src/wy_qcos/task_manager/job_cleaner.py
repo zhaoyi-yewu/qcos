@@ -208,13 +208,13 @@ class JobCleaner:
         for flow_run in all_flow_runs:
             pool_name = getattr(flow_run, "work_pool_name", None)
             if not pool_name or not pool_name.startswith(
-                Constant.WORK_POOL_DEVICE_PREFIX
+                Constant.WORK_POOL_DEV
             ):
                 continue
 
             if pool_name.startswith(
-                Constant.WORK_POOL_MONITOR_PREFIX
-            ) or pool_name.startswith(Constant.WORK_POOL_MGR_PREFIX):
+                Constant.WORK_POOL_MON
+            ) or pool_name.startswith(Constant.WORK_POOL_MGR):
                 continue
 
             name = flow_run.name
