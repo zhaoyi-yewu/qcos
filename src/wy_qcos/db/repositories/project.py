@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 import logging
+from wy_qcos.common.constant import Constant
 import uuid
 
 from sqlalchemy import select
@@ -124,7 +125,7 @@ class ProjectRepository(BaseRepository):
         self,
         filters: dict | None = None,
         page: int = 1,
-        page_size: int = 20,
+        page_size: int = Constant.PAGE_SIZE,
         sort: list[str] | None = None,
     ):
         """Get projects with pagination, filtering and sorting.
