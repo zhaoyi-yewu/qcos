@@ -657,3 +657,272 @@ TEST(QASMToGateOperation, N100D50000Instance) {
 
   ASSERT_TRUE(test_actual);
 }
+
+// -- Gate modifier tests (ctrl / negctrl / inv) -----------------------
+// Verify QASM 3.0 gate modifiers are parsed and converted to the
+// correct operations. Each case checks operation name, targets, and/or
+// parameter values.
+
+/// Helper: parse QASM and return the operation vector.
+static std::vector<std::shared_ptr<qcos::BaseOperation>> parseOps(
+    const std::string& qasm) {
+  return qasm_to_ir(qasm).first;
+}
+
+/// Helper: assert that the first op has the expected name and targets.
+static void expectFirst(
+    const std::vector<std::shared_ptr<qcos::BaseOperation>>& ops,
+    const std::string& expected_name,
+    const std::vector<int>& expected_targets) {
+  ASSERT_FALSE(ops.empty());
+  EXPECT_EQ(ops[0]->name, expected_name);
+  EXPECT_EQ(ops[0]->targets, expected_targets);
+}
+
+TEST(QASMToGateOperation, CtrlModifier) {
+  // ctrl @ maps a base gate to its single-controlled version.
+
+  // 1. ctrl @ x -> CX
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ x q[0], q[1];)");
+    expectFirst(ops, "cx", {0, 1});
+  }
+  // 2. ctrl @ z -> CZ
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ z q[0], q[1];)");
+    expectFirst(ops, "cz", {0, 1});
+  }
+  // 3. ctrl @ h -> CH
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ h q[0], q[1];)");
+    expectFirst(ops, "ch", {0, 1});
+  }
+  // 4. ctrl @ s -> CS
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ s q[0], q[1];)");
+    expectFirst(ops, "cs", {0, 1});
+  }
+  // 5. ctrl @ rz(theta) -> CRZ with same parameter
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ rz(0.5) q[0], q[1];)");
+    expectFirst(ops, "crz", {0, 1});
+    ASSERT_EQ(ops[0]->arg_value.size(), 1u);
+    EXPECT_NEAR(ops[0]->arg_value[0], 0.5, PRECISION);
+  }
+  // 6. ctrl @ u3 -> CU3
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ u3(1, 2, 3) q[0], q[1];)");
+    expectFirst(ops, "cu3", {0, 1});
+  }
+  // 7. ctrl @ swap -> CSWAP
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[3] q;
+ctrl @ swap q[0], q[1], q[2];)");
+    expectFirst(ops, "cswap", {0, 1, 2});
+  }
+  // 8. ctrl(2) @ x -> TOFFOLI (CCX)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[3] q;
+ctrl(2) @ x q[0], q[1], q[2];)");
+    expectFirst(ops, "ccx", {0, 1, 2});
+  }
+  // 9. ctrl(3) @ x -> C3X
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[4] q;
+ctrl(3) @ x q[0], q[1], q[2], q[3];)");
+    expectFirst(ops, "c3x", {0, 1, 2, 3});
+  }
+}
+
+TEST(QASMToGateOperation, NegCtrlModifier) {
+  // negctrl @ wraps negative controls with X gates (before and after).
+
+  // 10. negctrl @ x -> X + CX + X
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+negctrl @ x q[0], q[1];)");
+    ASSERT_EQ(ops.size(), 3u);
+    EXPECT_EQ(ops[0]->name, "x");
+    EXPECT_EQ(ops[0]->targets, std::vector<int>{0});
+    EXPECT_EQ(ops[1]->name, "cx");
+    EXPECT_EQ(ops[1]->targets, (std::vector<int>{0, 1}));
+    EXPECT_EQ(ops[2]->name, "x");
+    EXPECT_EQ(ops[2]->targets, std::vector<int>{0});
+  }
+  // 11. negctrl @ ctrl @ x -> X + CCX + X
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[3] q;
+negctrl @ ctrl @ x q[0], q[1], q[2];)");
+    ASSERT_EQ(ops.size(), 3u);
+    EXPECT_EQ(ops[0]->name, "x");
+    EXPECT_EQ(ops[0]->targets, std::vector<int>{0});
+    EXPECT_EQ(ops[1]->name, "ccx");
+    EXPECT_EQ(ops[1]->targets, (std::vector<int>{0, 1, 2}));
+    EXPECT_EQ(ops[2]->name, "x");
+    EXPECT_EQ(ops[2]->targets, std::vector<int>{0});
+  }
+  // 12. negctrl @ rz(0.5) -> X + CRZ + X
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+negctrl @ rz(0.5) q[0], q[1];)");
+    ASSERT_EQ(ops.size(), 3u);
+    EXPECT_EQ(ops[0]->name, "x");
+    EXPECT_EQ(ops[0]->targets, std::vector<int>{0});
+    EXPECT_EQ(ops[1]->name, "crz");
+    EXPECT_EQ(ops[1]->targets, (std::vector<int>{0, 1}));
+    ASSERT_EQ(ops[1]->arg_value.size(), 1u);
+    EXPECT_NEAR(ops[1]->arg_value[0], 0.5, PRECISION);
+    EXPECT_EQ(ops[2]->name, "x");
+    EXPECT_EQ(ops[2]->targets, std::vector<int>{0});
+  }
+}
+
+TEST(QASMToGateOperation, InvModifier) {
+  // inv @ applies the inverse of a gate.
+
+  // 13. inv @ s -> SDG
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ s q[0];)");
+    expectFirst(ops, "sdg", {0});
+  }
+  // 14. inv @ t -> TDG
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ t q[0];)");
+    expectFirst(ops, "tdg", {0});
+  }
+  // 15. inv @ rx(theta) -> RX(-theta)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ rx(0.5) q[0];)");
+    expectFirst(ops, "rx", {0});
+    ASSERT_EQ(ops[0]->arg_value.size(), 1u);
+    EXPECT_NEAR(ops[0]->arg_value[0], -0.5, PRECISION);
+  }
+  // 16. inv @ rz(theta) -> RZ(-theta)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ rz(1.0) q[0];)");
+    expectFirst(ops, "rz", {0});
+    ASSERT_EQ(ops[0]->arg_value.size(), 1u);
+    EXPECT_NEAR(ops[0]->arg_value[0], -1.0, PRECISION);
+  }
+  // 17. inv @ u3(theta, phi, lambda) -> U3(-theta, -lambda, -phi)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ u3(1, 2, 3) q[0];)");
+    expectFirst(ops, "u3", {0});
+    ASSERT_EQ(ops[0]->arg_value.size(), 3u);
+    EXPECT_NEAR(ops[0]->arg_value[0], -1.0, PRECISION);
+    EXPECT_NEAR(ops[0]->arg_value[1], -3.0, PRECISION);
+    EXPECT_NEAR(ops[0]->arg_value[2], -2.0, PRECISION);
+  }
+  // 18. inv @ u2(phi, lambda) -> U3(-pi/2, -lambda, -phi)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ u2(1, 2) q[0];)");
+    expectFirst(ops, "u3", {0});
+    ASSERT_EQ(ops[0]->arg_value.size(), 3u);
+    EXPECT_NEAR(ops[0]->arg_value[0], -M_PI / 2, PRECISION);
+    EXPECT_NEAR(ops[0]->arg_value[1], -2.0, PRECISION);
+    EXPECT_NEAR(ops[0]->arg_value[2], -1.0, PRECISION);
+  }
+  // 19. inv @ sx -> SXdg
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ sx q[0];)");
+    expectFirst(ops, "sxdg", {0});
+  }
+  // 20. inv @ h -> H (self-inverse, no change)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ h q[0];)");
+    expectFirst(ops, "h", {0});
+  }
+  // 21. inv @ inv @ s -> S (double inv cancels)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ inv @ s q[0];)");
+    expectFirst(ops, "s", {0});
+  }
+  // 22. inv @ p(theta) -> P(-theta)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ p(0.8) q[0];)");
+    expectFirst(ops, "p", {0});
+    ASSERT_EQ(ops[0]->arg_value.size(), 1u);
+    EXPECT_NEAR(ops[0]->arg_value[0], -0.8, PRECISION);
+  }
+  // 23. inv @ ry(theta) -> RY(-theta)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ ry(2.0) q[0];)");
+    expectFirst(ops, "ry", {0});
+    ASSERT_EQ(ops[0]->arg_value.size(), 1u);
+    EXPECT_NEAR(ops[0]->arg_value[0], -2.0, PRECISION);
+  }
+}
+
+TEST(QASMToGateOperation, CombinedModifiers) {
+  // 24. inv @ ctrl @ s -> CSdg (inv inverts S to Sdg, ctrl maps to CSdg)
+  {
+    auto ops = parseOps(R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+inv @ ctrl @ s q[0], q[1];)");
+    expectFirst(ops, "csdg", {0, 1});
+  }
+}

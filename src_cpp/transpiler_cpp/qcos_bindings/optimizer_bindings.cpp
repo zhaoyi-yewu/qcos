@@ -117,18 +117,7 @@ void bind_optimizer(nb::module_& m) {
       [](const std::string& qasm_str, int opt_level,
          const std::optional<std::set<std::string>>& basis_gates) {
         nb::gil_scoped_release release;
-        auto [ops, _] = qasm_to_ir(qasm_str);
-        auto optimized =
-            optimize(ops, opt_level, false, basis_gates, 1, false);
-        // Detect QASM version from the version declaration line only.
-        // Match "OPENQASM 3" at the first non-whitespace position, not
-        // anywhere in comments or string literals.
-        size_t pos = qasm_str.find_first_not_of(" \t\n\r");
-        if (pos != std::string::npos &&
-            qasm_str.compare(pos, 10, "OPENQASM 3") == 0) {
-          return to_qasm3(optimized);
-        }
-        return to_qasm2(optimized);
+        return qcos::optimize_qasm(qasm_str, opt_level, basis_gates);
       },
       nb::arg("qasm_str"), nb::arg("opt_level") = 1,
       nb::arg("basis_gates") = std::nullopt,
@@ -146,5 +135,29 @@ void bind_optimizer(nb::module_& m) {
 
         Returns:
             str: Optimized OpenQASM string (2.0 or 3.0).
+      )");
+
+  m.def(
+      "qasm_stats",
+      [](const std::string& qasm_str) {
+        int depth, size;
+        {
+          nb::gil_scoped_release release;
+          auto result = qcos::qasm_stats(qasm_str);
+          depth = result.first;
+          size = result.second;
+        }
+        return nb::make_tuple(depth, size);
+      },
+      nb::arg("qasm_str"),
+      R"(
+        Compute circuit depth and gate count from a QASM string.
+
+        Args:
+            qasm_str: OpenQASM 2.0/3.0 circuit string.
+
+        Returns:
+            (depth, size) tuple. depth = circuit depth,
+            size = number of quantum gates.
       )");
 }

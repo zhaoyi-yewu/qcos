@@ -68,21 +68,23 @@ def qasm_to_ir(qasm_str: str) -> tuple[list[BaseOperation], int]:
         (operation list, qubit count). Operations are BaseOperation.
     """
 
-def to_qasm2(operations: list[BaseOperation]) -> str:
+def to_qasm2(operations: list[BaseOperation], num_qubits: int = -1) -> str:
     """Convert an IR operation list to an OpenQASM 2.0 string.
 
     Args:
         operations: BaseOperation list (e.g. from qasm_to_ir or optimize).
+        num_qubits: Force qubit count in output QASM. -1 = auto from ops.
 
     Returns:
         OpenQASM 2.0 circuit string.
     """
 
-def to_qasm3(operations: list[BaseOperation]) -> str:
+def to_qasm3(operations: list[BaseOperation], num_qubits: int = -1) -> str:
     """Convert an IR operation list to an OpenQASM 3.0 string.
 
     Args:
         operations: BaseOperation list (e.g. from qasm_to_ir or optimize).
+        num_qubits: Force qubit count in output QASM. -1 = auto from ops.
 
     Returns:
         OpenQASM 3.0 circuit string.
@@ -134,6 +136,18 @@ def optimize_qasm(
 
     Returns:
         Optimized OpenQASM string (2.0 or 3.0).
+    """
+
+def qasm_stats(qasm_str: str) -> tuple[int, int]:
+    """Compute circuit depth and gate count from a QASM string.
+
+    Args:
+        qasm_str: OpenQASM 2.0/3.0 circuit string.
+
+    Returns:
+        (depth, size) tuple. depth = circuit depth,
+        size = number of quantum gates (excludes
+        measure/reset/sync/move/barrier).
     """
 
 def transpile_from_qasm(

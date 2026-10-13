@@ -861,3 +861,158 @@ TEST(OptimizeIdentityTest, IdPreservedAtLevel0) {
   }
   EXPECT_EQ(id_count, 1);
 }
+
+// ======== OpenQASM 3.0 gate modifier 优化测试 ========
+//
+// 解析含 ctrl / negctrl / inv 修饰符的 QASM 3.0 电路，执行 optimize()，
+// 通过门数、门名、targets 和参数值验证正确性。
+
+TEST(OptimizeQasm3ModifierTest, CtrlX_CancelPair) {
+  // 两个相同的 ctrl @ x 相互抵消 (CX * CX = I)
+  std::string qasm = R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ x q[0], q[1];
+ctrl @ x q[0], q[1];)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  ASSERT_EQ(nq, 2);
+  ASSERT_EQ(ops.size(), 2u);
+  EXPECT_EQ(ops[0]->name, "cx");
+  auto result = optimize(ops, 1);
+  EXPECT_EQ(result.size(), 0u);
+}
+
+TEST(OptimizeQasm3ModifierTest, InvS_CancelWithS) {
+  // inv @ s 产出 SDG，SDG + S 抵消
+  std::string qasm = R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ s q[0];
+s q[0];)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  ASSERT_EQ(ops.size(), 2u);
+  EXPECT_EQ(ops[0]->name, "sdg");
+  EXPECT_EQ(ops[1]->name, "s");
+  auto result = optimize(ops, 1);
+  EXPECT_EQ(result.size(), 0u);
+}
+
+TEST(OptimizeQasm3ModifierTest, NegCtrlX_PreservesGates) {
+  // negctrl @ x 展开为 X + CX + X，CX 阻断两个 X 抵消，4 门保留
+  std::string qasm = R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+negctrl @ x q[0], q[1];
+h q[1];)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  ASSERT_EQ(ops.size(), 4u);
+  EXPECT_EQ(ops[0]->name, "x");
+  EXPECT_EQ(ops[1]->name, "cx");
+  EXPECT_EQ(ops[1]->targets, (std::vector<int>{0, 1}));
+  EXPECT_EQ(ops[2]->name, "x");
+  EXPECT_EQ(ops[3]->name, "h");
+  auto result = optimize(ops, 1);
+  EXPECT_EQ(result.size(), 4u);
+}
+
+TEST(OptimizeQasm3ModifierTest, CtrlRz_BasisCompliance) {
+  // ctrl @ rz(0.7) -> CRZ(0.7)，level 3 合成到 {cx,rz,ry} basis
+  std::string qasm = R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+ctrl @ rz(0.7) q[0], q[1];
+h q[0];)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  ASSERT_EQ(ops[0]->name, "crz");
+  std::set<std::string> basis = {"cx", "rz", "ry"};
+  auto result = optimize(ops, 3, false, basis);
+  for (const auto& g : result) {
+    if (!dynamic_cast<const GateOperation*>(g.get())) continue;
+    EXPECT_TRUE(basis.count(g->name) > 0)
+        << "Gate '" << g->name << "' not in basis";
+  }
+}
+
+TEST(OptimizeQasm3ModifierTest, InvU3_PreservesGateAndParams) {
+  // inv @ u3(1, 0.5, 2) -> U3(-1, -2, -0.5)，单门保留
+  std::string qasm = R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[1] q;
+inv @ u3(1, 0.5, 2) q[0];)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  ASSERT_EQ(ops.size(), 1u);
+  EXPECT_EQ(ops[0]->name, "u3");
+  ASSERT_EQ(ops[0]->arg_value.size(), 3u);
+  EXPECT_NEAR(ops[0]->arg_value[0], -1.0, 1e-6);
+  EXPECT_NEAR(ops[0]->arg_value[1], -2.0, 1e-6);
+  EXPECT_NEAR(ops[0]->arg_value[2], -0.5, 1e-6);
+  auto result = optimize(ops, 1);
+  ASSERT_EQ(result.size(), 1u);
+  EXPECT_EQ(result[0]->name, "u3");
+}
+
+TEST(OptimizeQasm3ModifierTest, InvCtrl2Z_PreservesGate) {
+  // inv @ ctrl(2) @ z q[2], q[3], q[0]
+  // CCZ 自逆，inv 无效，单门保留
+  std::string qasm = R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[4] q;
+inv @ ctrl(2) @ z q[2], q[3], q[0];)";
+  auto [ops, nq] = qasm_to_ir(qasm);
+  ASSERT_EQ(nq, 4);
+  EXPECT_EQ(ops[0]->name, "ccz");
+  EXPECT_EQ(ops[0]->targets, (std::vector<int>{2, 3, 0}));
+  auto result = optimize(ops, 1);
+  ASSERT_EQ(result.size(), 1u);
+  EXPECT_EQ(result[0]->name, "ccz");
+  EXPECT_EQ(result[0]->targets, (std::vector<int>{2, 3, 0}));
+}
+
+// ======== optimize_qasm 接口测试 ========
+// 直接调用 qcos::optimize_qasm，验证输出 QASM 版本与输入一致。
+
+TEST(OptimizeQasmInterfaceTest, Qasm2_OutputVersion2) {
+  // QASM 2.0 输入应产出 QASM 2.0 输出
+  std::string qasm = R"(OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+h q[0];
+cx q[0], q[1];)";
+  std::string output = qcos::optimize_qasm(qasm, 1);
+  EXPECT_EQ(output.compare(0, 10, "OPENQASM 2"), 0)
+      << "Output should start with OPENQASM 2, got: " << output.substr(0, 20);
+}
+
+TEST(OptimizeQasmInterfaceTest, Qasm2_CommentNotMisdetected) {
+  // QASM 2.0 注释中包含 "OPENQASM 3" 不应误判为 3.0
+  std::string qasm = R"(OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+// migrated from OPENQASM 3.0
+h q[0];
+cx q[0], q[1];)";
+  std::string output = qcos::optimize_qasm(qasm, 1);
+  EXPECT_EQ(output.compare(0, 10, "OPENQASM 2"), 0)
+      << "Comment should not cause misdetection";
+}
+
+TEST(OptimizeQasmInterfaceTest, Qasm3_RoundTrip) {
+  // QASM 3.0 输入 -> optimize_qasm -> QASM 3.0 输出 -> 重新解析验证门和比特
+  // s + sdg 在优化中抵消，剩余 h[0] + cx[0,1]
+  std::string qasm = R"(OPENQASM 3.0;
+include "stdgates.inc";
+qubit[2] q;
+h q[0];
+ctrl @ x q[0], q[1];
+s q[0];
+sdg q[0];)";
+  std::string output = qcos::optimize_qasm(qasm, 1);
+  EXPECT_EQ(output.compare(0, 10, "OPENQASM 3"), 0);
+  auto [ops2, nq2] = qasm_to_ir(output);
+  EXPECT_EQ(nq2, 2);
+  ASSERT_EQ(ops2.size(), 2u);
+  EXPECT_EQ(ops2[0]->name, "h");
+  EXPECT_EQ(ops2[0]->targets, std::vector<int>{0});
+  EXPECT_EQ(ops2[1]->name, "cx");
+  EXPECT_EQ(ops2[1]->targets, (std::vector<int>{0, 1}));
+}
