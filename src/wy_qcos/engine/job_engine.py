@@ -1236,7 +1236,11 @@ def job_flow(job_info):
             db_engine = None
     monitor_info["db_engine"] = db_engine
 
-    # update job status to RUNNING and set started_at
+    # update job status to RUNNING and set started_at. Forward the
+    # storage backend config and flow_run_id so the record is written
+    # to the correct backend (sql or redis); otherwise redis storage
+    # would fall back to the sql backend and fail with a redis client
+    # passed as the db_engine.
     logger.info(f"Updating job status to RUNNING for job_id: {job_id}")
     db_utils.db_update_job(
         job_id,
@@ -1244,6 +1248,9 @@ def job_flow(job_info):
         job_status=Constant.JOB_STATUS_RUNNING,
         started_at=Library.to_iso(worker_started_at),
         progress=-1,
+        results_db_storage=results_db_storage,
+        flow_run_id=flow_run_id,
+        ttl=db_config.get("ttl"),
     )
 
     # register signals for job cancelling
@@ -1305,7 +1312,9 @@ def job_flow(job_info):
             f"{aggregation_info}"
         )
 
-        # update job_status and worker_started_at for agg sub jobs
+        # update job_status and worker_started_at for agg sub jobs.
+        # The storage backend config and flow_run_id must be forwarded
+        # for the same reason as the parent RUNNING update above.
         for sub_job_id, sub_info_info in aggregation_info.sub_jobs.items():
             db_utils.db_update_job(
                 sub_job_id,
@@ -1313,6 +1322,9 @@ def job_flow(job_info):
                 job_status=Constant.JOB_STATUS_RUNNING,
                 started_at=Library.to_iso(worker_started_at),
                 progress=-1,
+                results_db_storage=results_db_storage,
+                flow_run_id=flow_run_id,
+                ttl=db_config.get("ttl"),
             )
             monitor_info["agg_sub_job_list"].append(sub_job_id)
 

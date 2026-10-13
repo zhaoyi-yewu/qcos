@@ -64,7 +64,7 @@ class SubmitJobRequest(UuidMixin):
         "extra_specs)",
     )
     # Backend type (device or wirecut)
-    backend_type: str = Field(
+    backend_type: str | None = Field(
         default=Constant.BACKEND_TYPE_DEVICE,
         description="Backend type: device or wirecut",
     )
@@ -202,7 +202,7 @@ class SubmitJobResponse(UuidMixin):
     # Backend device name
     backend: str = Field(description="Backend device name")
     # Backend type (device or wirecut)
-    backend_type: str = Field(
+    backend_type: str | None = Field(
         default=Constant.BACKEND_TYPE_DEVICE,
         description="Backend type: device or wirecut",
     )
@@ -311,7 +311,7 @@ class GetJobStatusResponse(UuidMixin):
     # Backend device name
     backend: str = Field(description="Backend device name")
     # Backend type (device or wirecut)
-    backend_type: str = Field(
+    backend_type: str | None = Field(
         default=Constant.BACKEND_TYPE_DEVICE,
         description="Backend type: device or wirecut",
     )
@@ -422,7 +422,7 @@ class GetJobResultsResponse(UuidMixin):
     # Backend device name
     backend: str = Field(description="Backend device name")
     # Backend type (device or wirecut)
-    backend_type: str = Field(
+    backend_type: str | None = Field(
         default=Constant.BACKEND_TYPE_DEVICE,
         description="Backend type: device or wirecut",
     )
@@ -648,7 +648,7 @@ class UpdateJobResponse(UuidMixin):
     # Backend device name
     backend: str = Field(description="Backend device name")
     # Backend type (device or wirecut)
-    backend_type: str = Field(
+    backend_type: str | None = Field(
         default=Constant.BACKEND_TYPE_DEVICE,
         description="Backend type: device or wirecut",
     )
