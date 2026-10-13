@@ -8,9 +8,9 @@
 
    developer-environment
    code-commit
+   developer-guidelines
    develop-new-module
    develop-new-driver
-   developer-guidelines
    debug-guidelines
    run-tests
    release

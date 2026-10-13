@@ -49,11 +49,11 @@ QCOS 提供 Python 客户端库: QCOS-Client（``wy_qcos_client.client.Client``�
         timeout=120,
     )
 
-用户登录
---------
+用户登录 (可选)
+-----------------
 
-所有操作前需要先登录获取 JWT Token（如果开启了用户认证，
-默认关闭时不需要）：
+所有操作前需要先登录获取 JWT Token（该登录认证操作为可选，只有QCOS服务端开启了用户认证功能，
+才需要在客户端配置）：
 
 .. code-block:: python
 
