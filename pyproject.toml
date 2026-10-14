@@ -237,6 +237,7 @@ driver-quafu = [
     "chardet==5.2.0",
     "idna==3.20",
     "quarkstudio==7.1.8",
+    "quafu-sdk==0.2.7",
     "requests==2.34.2",
     "urllib3==2.7.0",
 ]
