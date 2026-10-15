@@ -32,3 +32,4 @@ class DriverQuafuDongling(DriverQuafuBase):
         self.alias_name = "北京量子院-夸父-Dongling 超导驱动"
         self.description = "北京量子院-夸父-Dongling 超导驱动"
         self.max_qubits = 84
+        self.chip_name = "Dongling"

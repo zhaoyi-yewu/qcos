@@ -32,3 +32,4 @@ class DriverQuafuLing(DriverQuafuBase):
         self.alias_name = "北京量子院-夸父-Ling 超导驱动"
         self.description = "北京量子院-夸父-Ling 超导驱动"
         self.max_qubits = 112
+        self.chip_name = "Ling"

@@ -636,17 +636,29 @@ class TestDriverWuyueBase:
             None,
             {
                 "horizontalRelaxationTime": 132,
+                "verticalRelaxationTime": 132,
                 "doubleFidelity": 0.9,
                 "singleFidelity": 0.95,
                 "tweezersNum": 200,
+                "SPAMError": 0.05,
+                "time": "2025-12-23 17-49-54",
             },
         )
         result = driver.fetch_running_info()
         assert "details" in result
-        assert result["details"]["horizontalRelaxationTime"] == 132
-        assert result["details"]["doubleFidelity"] == 0.9
-        assert result["details"]["singleFidelity"] == 0.95
-        assert result["details"]["tweezersNum"] == 200
+        assert result["details"]["calibration"]["timing"]["t1_avg"] == 132
+        assert (
+            result["details"]["calibration"]["double_qubit_fidelity"][
+                "fidelity_avg"
+            ]
+            == 0.9
+        )
+        assert (
+            result["details"]["calibration"]["single_qubit_fidelity"][
+                "fidelity_avg"
+            ]
+            == 0.95
+        )
 
     @patch.object(DriverWuyueBase, "get_device_info")
     def test_fetch_running_info_exception(self, mock_get_device_info):

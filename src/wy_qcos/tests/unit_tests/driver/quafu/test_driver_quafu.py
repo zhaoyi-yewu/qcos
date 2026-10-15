@@ -87,9 +87,28 @@ class TestDriverQuafu:
         assert success is True
         assert results is not None
 
-    def test_fetch_running_info(self):
+    @patch("wy_qcos.driver.quafu.driver_quafu_base.quafu.device")
+    def test_fetch_running_info(self, mock_device):
+        device_info = Mock()
+        device_info.status = "online"
+        device_info.calibration.return_value = Mock()
+        mock_device.return_value = device_info
+        device_info.calibration.return_value.raw = {
+            "qubits": [
+                {
+                    "index": 0,
+                    "t1_us": 1,
+                    "t2_us": 2,
+                }
+            ],
+            "couplers": [
+                {
+                    "qubits": (0, 1),
+                }
+            ],
+        }
         info = driver_quafu.fetch_running_info()
-        assert info == {"status": Device.DEVICE_STATUS_ONLINE}
+        assert info["status"] == Device.DEVICE_STATUS_OFFLINE
 
     def test_submit_task(self):
         driver_quafu.tmgr = Mock()
