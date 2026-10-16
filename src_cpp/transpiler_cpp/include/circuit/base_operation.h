@@ -53,6 +53,9 @@ class BaseOperation {
   std::vector<double> arg_value;
   OperationType operation_type;
 
+  // 线程局部开关：输出参数是否使用符号形式（pi/2 等），false=纯数值
+  static thread_local bool symbolic_output;
+
  public:
   virtual ~BaseOperation() = default;
 
