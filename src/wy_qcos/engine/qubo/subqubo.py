@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -27,7 +27,7 @@ class SubQUBOMultiSolution:
     def __init__(
         self,
         N_I=20,
-        N_E=1,
+        N_E=3,
         N_S=5,
         qubo_matrix: np.ndarray | None = None,
         subqubo_size=100,
@@ -37,9 +37,9 @@ class SubQUBOMultiSolution:
 
         Args:
             N_I (int): Number of solutions in instance pool. Defaults to 20.
-            N_E (int): Number of extractions for subQUBO. Defaults to 5.
+            N_E (int): Number of extractions for subQUBO. Defaults to 3.
             N_S (int): Number of solutions extracted from the instance pool.
-                    Defaults to 2.
+                    Defaults to 5.
             qubo_matrix (np.ndarray): qubo matrix
             subqubo_size (int): Number of qubits in subQUBO. Defaults to 50.
             max_converged_num (int): Convergence after how many consecutive

@@ -56,7 +56,7 @@ class TestSubQUBOMultiSolution:
         # Testing default parameter initialization
         solver_default = SubQUBOMultiSolution()
         assert solver_default.N_I == 20
-        assert solver_default.N_E == 1
+        assert solver_default.N_E == 3
         assert solver_default.N_S == 5
         assert isinstance(solver_default.qubo, np.ndarray)
         assert solver_default.subqubo_size == 100

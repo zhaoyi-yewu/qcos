@@ -41,8 +41,8 @@ user_id = "000000000000001"
 # [Required] sdk code
 password_sdk_code = ""
 
-# [Required] machine name
-machine_name = "CPQC-550"
+# [Required] quota type
+quota_type = "CPQC-550"
 
 # [Optional] max job wait time, default value is 604800 seconds (7 days)
 max_job_wait_time = 604800

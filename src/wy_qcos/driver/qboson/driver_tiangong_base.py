@@ -21,6 +21,7 @@ import os
 import tempfile
 
 from loguru import logger
+from schema import Optional
 
 from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
@@ -56,6 +57,7 @@ class DriverTiangongBase(DriverQuboBase):
         self.description = "玻色量子-天工光量子伊辛机驱动"
         self.max_qubits = 1000
         self.token = None
+        self.quota_type = "CPQC-1000"
         # task stages and percentages
         self.task_stages = {
             self.TASK_STAGE_START: 0,
@@ -90,13 +92,13 @@ class DriverTiangongBase(DriverQuboBase):
             "domain_url_task": str,
             "user_id": str,
             "password_sdk_code": str,
-            "machine_name": str,
+            Optional("quota_type"): str,
         }
         _success, err_msgs = Library.validate_schema(
             configs, driver_config_schema, ignore_extra_keys=True
         )
         if _success:
-            self.machine_name = configs.get("machine_name", "CPQC-1000")
+            self.quota_type = configs.get("quota_type", "CPQC-1000")
 
         else:
             _err_msg = "\n".join(err_msgs)
@@ -256,6 +258,11 @@ class DriverTiangongBase(DriverQuboBase):
             headers=self.default_headers,
             func_name="user_auth",
         )
+        logger.info(
+            f"user_auth response: url={url}, "
+            f"status_code={status_code}, reason={reason}, "
+            f"text={text}"
+        )
         if status_code == HttpCode.SUCCESS_OK:
             response = json.loads(text)
             err_code = response["code"]
@@ -264,10 +271,14 @@ class DriverTiangongBase(DriverQuboBase):
                 token = response["data"]["token"]
             else:
                 success = False
-                err_msgs.append(err_msg)
+                err_msgs.append(
+                    str(err_msg) if err_msg is not None else "Unknown error"
+                )
         else:
             success = False
-            err_msgs.append(reason)
+            err_msgs.append(
+                str(reason) if reason is not None else "Unknown error"
+            )
         return success, "\n".join(err_msgs), token
 
     def submit_tasks(self, job_id, data_index, data):
@@ -304,14 +315,14 @@ class DriverTiangongBase(DriverQuboBase):
             with open(csv_filepath, "rb") as csv_file:
                 filename = os.path.basename(csv_filepath)
                 files = {
-                    "url": (filename, csv_file, "text/csv"),
+                    "file": (filename, csv_file, "text/csv"),
                 }
                 task_name = f"{job_id}_{data_index}"
                 data = {
                     "task_name": task_name,
-                    "name": filename,
                     "is_qubo": True,
-                    "machine_name": self.machine_name,
+                    "quota_type": self.quota_type,
+                    "external_task_id": job_id,
                 }
                 # Submit task
                 url = f"{self.domain_url_task}/{self.task_path}/"
@@ -331,10 +342,16 @@ class DriverTiangongBase(DriverQuboBase):
                         task_id = response["data"]["task_id"]
                     else:
                         success = False
-                        err_msgs.append(err_msg)
+                        err_msgs.append(
+                            str(err_msg)
+                            if err_msg is not None
+                            else "Unknown error"
+                        )
                 else:
                     success = False
-                    err_msgs.append(reason)
+                    err_msgs.append(
+                        str(reason) if reason is not None else "Unknown error"
+                    )
         except Exception as e:
             success = False
             err_msgs.append(
@@ -408,13 +425,16 @@ class DriverTiangongBase(DriverQuboBase):
                     success = False
                     err_msgs.append(f"Task failed: {desc}")
                 else:
+                    data = response["data"]
                     realtime_status = {
-                        "task_status": response["data"]["task_status"],
-                        "qubo_value": response["data"]["qubo_value"],
-                        "qubo_solution_data": response["data"][
-                            "qubo_solution_data"
-                        ],
-                        "visual_data": response["data"]["visual_data"],
+                        "task_status": data["task_status"],
+                        "desc": data.get("desc", ""),
+                        "time_consume": data.get("time_consume"),
+                        "estimated_time": data.get("estimated_time"),
+                        "solution_url": data.get("solution_url"),
+                        "solution_data": data.get("solution_data"),
+                        "solution_values": data.get("solution_values"),
+                        "visual_data": data.get("visual_data"),
                     }
             else:
                 # any other error codes
@@ -423,7 +443,9 @@ class DriverTiangongBase(DriverQuboBase):
                 )
         else:
             success = False
-            err_msgs.append(reason)
+            err_msgs.append(
+                str(reason) if reason is not None else "Unknown error"
+            )
         return success, "\n".join(err_msgs), realtime_status
 
     def get_task_results(self, task_id):
@@ -444,24 +466,26 @@ class DriverTiangongBase(DriverQuboBase):
                 f"Failed to get task results [{task_id}]: {err_msg}"
             )
         out_data = []
-        qubo_value = final_results.get("qubo_value", None)
-        qubo_solution_data = final_results.get("qubo_solution_data", None)
+        solution_values = final_results.get("solution_values", None)
+        solution_data = final_results.get("solution_data", None)
 
-        qubo_value_len = len(qubo_value)
-        qubo_solution_data_len = len(qubo_solution_data)
-        if qubo_value_len != qubo_solution_data_len:
+        solution_values_len = len(solution_values) if solution_values else 0
+        solution_data_len = len(solution_data) if solution_data else 0
+        if solution_values_len != solution_data_len:
             raise ValueError("Invalid result")
 
-        for i in range(qubo_value_len):
+        for i in range(solution_values_len):
             single_result = {}
             single_result["result"] = i + 1
-            single_result["quboValue"] = qubo_value[i]
-            single_result["solutionVector"] = qubo_solution_data[i]
+            single_result["quboValue"] = solution_values[i]
+            single_result["solutionVector"] = solution_data[i]
             out_data.append(single_result)
 
-        visual_data = final_results.get("visual_data", None)
         results = {
             "out_data": out_data,
-            "visual_data": visual_data,
+            "visual_data": final_results.get("visual_data"),
+            "solution_url": final_results.get("solution_url"),
+            "time_consume": final_results.get("time_consume"),
+            "estimated_time": final_results.get("estimated_time"),
         }
-        return success, "\n".join(err_msg), results
+        return success, err_msg, results
