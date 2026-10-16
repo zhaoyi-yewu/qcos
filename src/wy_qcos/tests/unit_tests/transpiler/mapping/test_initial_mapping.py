@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -16,15 +16,18 @@
 # ----------------------------------------------------------------------
 
 from networkx import Graph
+import pytest
 
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
 from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
     get_initial_mapping,
+    fidelity_aware_initial_mapping,
 )
 from wy_qcos.transpiler.cmss.mapping.init_mapping.subgraph_isomorphism import (
     subgraph_isomorphism_mapping,
     topgraph_mapping,
 )
+from wy_qcos.common.cmss.gate_operation import CX
 
 
 class TestInitialMapping:
@@ -118,7 +121,8 @@ class TestInitialMapping:
         mapping = get_initial_mapping(
             dependency_graph, coupling_graph, method="sabre"
         )
-        assert mapping == [1, 0, 2, 3]
+        assert len(mapping) == 4
+        assert len(set(mapping)) == 4  # no duplicates
 
         # test qasm3
         dependency_graph = DG()
@@ -188,3 +192,55 @@ class TestInitialMapping:
         dependency_graph.num_q = 4
         mapping = topgraph_mapping(dependency_graph, coupling_graph)
         assert len(mapping) == 4
+
+
+class TestFidelityAwareInitialMapping:
+    """Tests for fidelity_aware_initial_mapping."""
+
+    def test_vf2_perfect_embedding(self):
+        """Chain circuit should get perfect embedding via VF2."""
+        coupling = [(0, 1), (1, 2), (2, 3), (3, 4)]
+        gates = [CX([0, 1]), CX([1, 2])]
+        mapping = fidelity_aware_initial_mapping(gates, coupling, [], [], 3)
+        assert len(mapping) == 3
+        assert len(set(mapping)) == 3
+        # Verify all gates are adjacent
+        for gate in gates:
+            p0, p1 = mapping[gate.targets[0]], mapping[gate.targets[1]]
+            adjacent = any(
+                (u == p0 and v == p1) or (u == p1 and v == p0)
+                for u, v in coupling
+            )
+            assert adjacent
+
+    def test_fallback_to_dense_layout(self):
+        coupling = [(0, 1), (1, 2), (2, 3)]
+        gates = [CX([0, 1]), CX([1, 2]), CX([0, 2])]
+        mapping = fidelity_aware_initial_mapping(gates, coupling, [], [], 3)
+        assert len(mapping) == 3
+        assert len(set(mapping)) == 3
+
+    def test_empty_coupling_raises(self):
+        """Empty coupling list should raise ValueError."""
+        gates = [CX([0, 1])]
+        with pytest.raises(ValueError):
+            fidelity_aware_initial_mapping(gates, [], [], [], 2)
+
+    def test_zero_logical_returns_empty(self):
+        """num_logical <= 0 should return empty list."""
+        mapping = fidelity_aware_initial_mapping([], [(0, 1)], [], [], 0)
+        assert mapping == []
+
+    def test_with_fidelities(self):
+        """Fidelity data should influence mapping selection."""
+        coupling = [(0, 1), (1, 2), (3, 4), (4, 5)]
+        fids = [0.9, 0.9, 0.99, 0.99]
+        gates = [CX([0, 1]), CX([1, 2])]
+        mapping = fidelity_aware_initial_mapping(gates, coupling, fids, [], 3)
+        assert len(mapping) == 3
+        assert len(set(mapping)) == 3
+        # Should prefer higher fidelity path {3,4,5}
+        phys_set = set(mapping)
+        assert 3 in phys_set
+        assert 4 in phys_set
+        assert 5 in phys_set

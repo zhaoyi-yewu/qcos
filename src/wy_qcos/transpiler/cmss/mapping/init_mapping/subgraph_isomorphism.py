@@ -265,6 +265,12 @@ def _extract_interactions(
     where edges represent two-qubit interactions. Multiple gates
     on the same pair are merged into one edge with a higher
     count.
+
+    Args:
+        gates_list: Logical gate sequence.
+
+    Returns:
+        Interaction data with graph, edge counts, and remap.
     """
     coupled_logical: set[int] = set()
     pair_counts: dict[tuple[int, int], int] = {}
@@ -307,6 +313,14 @@ def _build_coupling_graph(
     their IDs, and builds an undirected graph. When
     edge_fidelities is provided, edges with fidelity <= 0 are
     skipped, and error rates (1 - fidelity) are recorded.
+
+    Args:
+        coupling_list: Physical coupling edges as (u, v) pairs.
+        edge_fidelities: Per-edge CZ fidelity, same order as
+            coupling_list. Empty to disable fidelity scoring.
+
+    Returns:
+        Coupling data with graph, error rates, and remap.
     """
     physical_ids: set[int] = set()
     for u, v in coupling_list:
@@ -351,6 +365,16 @@ def _run_vf2_search(
     mapping.
 
     Returns an empty list when no embedding is found.
+
+    Args:
+        interaction: Logical interaction graph and edge counts.
+        coupling: Physical coupling graph with error rates.
+        num_logical: Total number of logical qubits (including
+            those not in two-qubit gates).
+
+    Returns:
+        Best-scoring logical-to-physical mapping, or empty
+        list if no embedding was found.
     """
     best_score = float("inf")
     best_mapping: list[int] = []
@@ -398,6 +422,14 @@ def _assign_remaining_qubits(
     Logical qubits not involved in two-qubit gates have no
     mapping from VF2. They are assigned to free physical qubits,
     preferring those with higher single-qubit fidelity.
+
+    Args:
+        mapping: Mutable logical-to-physical mapping (modified
+            in place). Unmapped entries are -1.
+        coupling: Physical coupling data with remap.
+        num_logical: Total number of logical qubits.
+        single_qubit_fidelities: Per-physical-qubit 1q fidelity,
+            indexed by physical qubit ID.
     """
     num_physical = coupling.remap.dense_count
 
@@ -431,7 +463,16 @@ def _get_single_fid(
     single_qubit_fidelities: list[float],
     dense_id: int,
 ) -> float:
-    """Look up single-qubit fidelity for a dense physical ID."""
+    """Look up single-qubit fidelity for a dense physical ID.
+
+    Args:
+        coupling: Physical coupling data with remap.
+        single_qubit_fidelities: Per-physical-qubit 1q fidelity.
+        dense_id: Dense physical qubit ID.
+
+    Returns:
+        Fidelity value, or 0.0 if out of range.
+    """
     orig_id = coupling.remap.dense_to_orig[dense_id]
     if 0 <= orig_id < len(single_qubit_fidelities):
         return single_qubit_fidelities[orig_id]

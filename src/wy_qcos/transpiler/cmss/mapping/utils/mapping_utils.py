@@ -37,13 +37,7 @@ FIDELITY_THRESHOLD_LOWER = 0.3
 
 @dataclass
 class IdRemap:
-    """Logical or physical ID densification mapping.
-
-    Attributes:
-        orig_to_dense: mapping from original ID to dense ID.
-        dense_to_orig: sorted list of original IDs in dense order.
-        dense_count: number of dense IDs (== len(dense_to_orig)).
-    """
+    """Logical or physical ID densification mapping."""
 
     orig_to_dense: dict[int, int] = field(default_factory=dict)
     dense_to_orig: list[int] = field(default_factory=list)

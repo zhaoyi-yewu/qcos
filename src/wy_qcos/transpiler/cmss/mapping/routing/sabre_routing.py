@@ -38,6 +38,7 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
     fidelity_aware_initial_mapping,
 )
 
+
 # BFS "infinity" sentinel for unreachable qubit pairs
 _INF = 1000000
 
@@ -544,7 +545,7 @@ class SABRE:
         final_mapping = self.logic2phy
 
         # 8. Append measure with updated physical targets
-        phy_exe_gates = list(routed_gates)
+        phy_exe_gates: list = list(routed_gates)
         for measure in measure_ops:
             logic_q = measure.targets[0]
             physical_q = (
@@ -608,8 +609,10 @@ class SABRE:
         else:
             self.cur_l2p = list(initial_l2p)
             old_size = len(self.cur_l2p)
-            self.cur_l2p.extend([-1] * (logic_qubit_num - old_size))
-            if old_size < logic_qubit_num:
+            if old_size > logic_qubit_num:
+                self.cur_l2p = self.cur_l2p[:logic_qubit_num]
+            elif old_size < logic_qubit_num:
+                self.cur_l2p.extend([-1] * (logic_qubit_num - old_size))
                 self._extend_l2p_with_unused_qubits(old_size)
         self.initial_l2p = list(self.cur_l2p)
 
