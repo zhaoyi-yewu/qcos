@@ -849,8 +849,8 @@ class NAMultiRoute(ABC):
             elif isinstance(atom, dict):
                 r, c = atom.get("row", []), atom.get("col", [])
                 if len(r) == 2 and len(c) == 2:
-                    for i in range(r[0], r[1]):
-                        for j in range(c[0], c[1]):
+                    for i in range(r[0], r[1] + 1):
+                        for j in range(c[0], c[1] + 1):
                             ope.append(i * self.cols + j)
         return ope
 

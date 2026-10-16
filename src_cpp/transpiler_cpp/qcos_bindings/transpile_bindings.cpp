@@ -61,6 +61,77 @@ NAQpuConfig parse_na_qpu_config(const nb::dict& qpu_cfg) {
   return cfg;
 }
 
+/// Parse NAMultiQpuConfig from a Python dict (grid-coordinate format).
+NAMultiQpuConfig parse_na_multi_qpu_config(const nb::dict& qpu_cfg) {
+  NAMultiQpuConfig cfg;
+  cfg.row = nb::cast<int>(qpu_cfg["row"]);
+  cfg.column = nb::cast<int>(qpu_cfg["column"]);
+  int total = cfg.row * cfg.column;
+
+  nb::list operate_area = nb::cast<nb::list>(qpu_cfg["operate_area"]);
+  for (auto atom : operate_area) {
+    bool parsed = false;
+    try {
+      int val = nb::cast<int>(atom);
+      if (val >= 0 && val < total) {
+        cfg.operate_area.push_back(val);
+        parsed = true;
+      }
+    } catch (...) {}
+    if (parsed) continue;
+
+    try {
+      auto lst = nb::cast<nb::list>(atom);
+      if (lst.size() == 2) {
+        int r = nb::cast<int>(lst[0]);
+        int c = nb::cast<int>(lst[1]);
+        if (r >= 0 && r < cfg.row && c >= 0 && c < cfg.column) {
+          cfg.operate_area.push_back(r * cfg.column + c);
+          parsed = true;
+        }
+      }
+    } catch (...) {}
+    if (parsed) continue;
+
+    try {
+      auto d = nb::cast<nb::dict>(atom);
+      auto r_list = nb::cast<nb::list>(d["row"]);
+      auto c_list = nb::cast<nb::list>(d["col"]);
+      if (r_list.size() == 2 && c_list.size() == 2) {
+        int r0 = nb::cast<int>(r_list[0]);
+        int r1 = nb::cast<int>(r_list[1]);
+        int c0 = nb::cast<int>(c_list[0]);
+        int c1 = nb::cast<int>(c_list[1]);
+        for (int i = r0; i < r1; ++i) {
+          for (int j = c0; j < c1; ++j) {
+            cfg.operate_area.push_back(i * cfg.column + j);
+          }
+        }
+        parsed = true;
+      }
+    } catch (...) {}
+  }
+
+  nb::dict coupler_map = nb::cast<nb::dict>(qpu_cfg["coupler_map"]);
+  for (auto item : coupler_map) {
+    auto endpoints = nb::cast<std::vector<int>>(item.second);
+    if (endpoints.size() == 2) {
+      cfg.coupler_map.emplace_back(std::string(""),
+                                   std::make_pair(endpoints[0], endpoints[1]));
+    }
+  }
+
+  nb::dict readout_error = nb::cast<nb::dict>(qpu_cfg["readout_error"]);
+  for (auto item : readout_error) {
+    std::string key = nb::cast<std::string>(item.first);
+    int site = std::stoi(key);
+    double err = nb::cast<double>(item.second);
+    cfg.readout_error[site] = err;
+  }
+
+  return cfg;
+}
+
 }  // namespace
 
 void bind_transpile(nb::module_& m) {
@@ -159,10 +230,16 @@ void bind_transpile(nb::module_& m) {
          const std::vector<std::string>& supp_basis_gates,
          const nb::dict& qpu_cfg, int opt_level,
          const std::string& na_mapping_type) {
+        if (na_mapping_type == "multi") {
+          auto cfg = parse_na_multi_qpu_config(qpu_cfg);
+          nb::gil_scoped_release release;
+          return transpile_na_multi_from_qasm(qasm_string, supp_basis_gates,
+                                              cfg, opt_level);
+        }
         auto cfg = parse_na_qpu_config(qpu_cfg);
         nb::gil_scoped_release release;
         return transpile_na_from_qasm(qasm_string, supp_basis_gates, cfg,
-                                     opt_level, na_mapping_type);
+                                      opt_level, na_mapping_type);
       },
       nb::arg("qasm_string"), nb::arg("supp_basis_gates"), nb::arg("qpu_cfg"),
       nb::arg("opt_level") = 1, nb::arg("na_mapping_type") = "default",
@@ -174,15 +251,22 @@ void bind_transpile(nb::module_& m) {
         inserting MOVE operations between the storage and operate areas so that
         two-qubit gates act on adjacent sites.
 
+        When ``na_mapping_type="multi"``, the grid-coordinate NAMultiRoute is
+        used (expects a QPU config like hanyuan1_100_new.toml with row/column
+        and integer positions).
+
         Args:
             qasm_string (str): QASM circuit string.
             supp_basis_gates (list[str]): Supported basis gate names.
-            qpu_cfg (dict): Neutral-atom QPU configuration with keys
-                ``storage_area``, ``operate_area``, ``coupler_map`` and
-                ``readout_error``.
+            qpu_cfg (dict): Neutral-atom QPU configuration. For "default"/"ZAP"
+                the keys are ``storage_area``, ``operate_area``,
+                ``coupler_map`` and ``readout_error`` (string positions). For
+                "multi" the keys are ``row``, ``column``, ``operate_area``,
+                ``coupler_map`` and ``readout_error`` (integer positions).
             opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-            na_mapping_type (str, optional): NA mapping algorithm type; "default"
-                or "ZAP" are supported by the C++ backend. Defaults to "default".
+            na_mapping_type (str, optional): NA mapping algorithm type; "default",
+                "ZAP", or "multi" are supported by the C++ backend. Defaults to
+                "default".
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.
@@ -196,10 +280,16 @@ void bind_transpile(nb::module_& m) {
          int num_qubits, const std::vector<std::string>& supp_basis_gates,
          const nb::dict& qpu_cfg, int opt_level,
          const std::string& na_mapping_type) {
+        if (na_mapping_type == "multi") {
+          auto cfg = parse_na_multi_qpu_config(qpu_cfg);
+          nb::gil_scoped_release release;
+          return transpile_na_multi_from_ir(ir_ops, num_qubits,
+                                            supp_basis_gates, cfg, opt_level);
+        }
         auto cfg = parse_na_qpu_config(qpu_cfg);
         nb::gil_scoped_release release;
-        return transpile_na_from_ir(ir_ops, num_qubits, supp_basis_gates, cfg,
-                                    opt_level, na_mapping_type);
+        return transpile_na_from_ir(ir_ops, num_qubits, supp_basis_gates,
+                                    cfg, opt_level, na_mapping_type);
       },
       nb::arg("ir_ops"), nb::arg("num_qubits"), nb::arg("supp_basis_gates"),
       nb::arg("qpu_cfg"), nb::arg("opt_level") = 1,
@@ -211,16 +301,23 @@ void bind_transpile(nb::module_& m) {
         The caller supplies the already-parsed operation list and the logical
         qubit count directly.
 
+        When ``na_mapping_type="multi"``, the grid-coordinate NAMultiRoute is
+        used (expects a QPU config like hanyuan1_100_new.toml with row/column
+        and integer positions).
+
         Args:
             ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
             num_qubits (int): Number of logical qubits in the circuit.
             supp_basis_gates (list[str]): Supported basis gate names.
-            qpu_cfg (dict): Neutral-atom QPU configuration with keys
-                ``storage_area``, ``operate_area``, ``coupler_map`` and
-                ``readout_error``.
+            qpu_cfg (dict): Neutral-atom QPU configuration. For "default"/"ZAP"
+                the keys are ``storage_area``, ``operate_area``,
+                ``coupler_map`` and ``readout_error`` (string positions). For
+                "multi" the keys are ``row``, ``column``, ``operate_area``,
+                ``coupler_map`` and ``readout_error`` (integer positions).
             opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-            na_mapping_type (str, optional): NA mapping algorithm type; "default"
-                or "ZAP" are supported by the C++ backend. Defaults to "default".
+            na_mapping_type (str, optional): NA mapping algorithm type; "default",
+                "ZAP", or "multi" are supported by the C++ backend. Defaults to
+                "default".
 
         Returns:
             TranspileResult: Contains basis_gate_list, num_qubits, and timings.

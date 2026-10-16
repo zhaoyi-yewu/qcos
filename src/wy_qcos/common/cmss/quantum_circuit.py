@@ -205,7 +205,7 @@ class QuantumCircuit:
                     levels.append(qubit_ops[q] + 1)
 
             # max depth of every target qubit
-            max_level = max(levels)
+            max_level = max(levels) if levels else 0
             for q in op.targets:
                 qubit_ops[q] = max_level
 

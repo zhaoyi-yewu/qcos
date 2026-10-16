@@ -458,6 +458,189 @@ class NAZAPRoute : public NARoute {
 };
 
 /**
+ * @struct NAMultiQpuConfig
+ * @brief Neutral-atom QPU configuration for the "multi" mapping type.
+ *
+ * Mirrors the grid-coordinate qpu_config used by NAMultiRoute (e.g.
+ * hanyuan1_100_new.toml). Positions are plain integers (p = row * column +
+ * col), not position strings.
+ */
+struct NAMultiQpuConfig {
+  /// Grid row count.
+  int row = 0;
+  /// Grid column count.
+  int column = 0;
+  /// Operate-area position list (already expanded to grid indices).
+  std::vector<int> operate_area;
+  /// Coupler map: gate name -> (endpoint A, endpoint B) as grid indices.
+  std::vector<std::pair<std::string, std::pair<int, int>>> coupler_map;
+  /// Readout error: grid index -> error value.
+  std::unordered_map<int, double> readout_error;
+};
+
+/**
+ * @struct IntGraph
+ * @brief Simple undirected graph keyed by int nodes.
+ *
+ * Replaces rustworkx PyGraph for the multi-route algorithm. Provides adjacency
+ * queries and edge iteration.
+ */
+struct IntGraph {
+  /// Adjacency list: node -> set of adjacent nodes.
+  std::unordered_map<int, std::unordered_set<int>> adj;
+
+  /// Add an undirected edge between a and b.
+  void add_edge(int a, int b);
+
+  /// Return all neighbors of node p; empty set if p has no neighbors.
+  const std::unordered_set<int>& neighbors(int p) const;
+
+  /// Check whether a and b are directly adjacent.
+  bool has_edge(int a, int b) const;
+
+  /// Return all edges as a vector of (a, b) pairs.
+  std::vector<std::pair<int, int>> edge_list() const;
+};
+
+/**
+ * @class NAMultiRoute
+ * @brief Neutral-atom multi-route mapping (single-qubit anywhere, two-qubit on
+ *        operate-area edges, crosstalk-aware dispersal).
+ *
+ * Mirrors the Python-side NAMultiRoute (the "multi" na_mapping_type). Adapted
+ * for row/column grid-coordinate configurations (e.g.
+ * hanyuan1_100_new.toml). Single-qubit gates execute in-place; two-qubit gates
+ * require atoms on an operate-area coupler edge, followed by a global cz pulse
+ * with inactive atoms dispersed to safe sites.
+ */
+class NAMultiRoute {
+ public:
+  NAMultiRoute() = default;
+
+  /**
+   * @brief Configure qpu_config/gates/qbit_num and build the operate-area
+   *        coupling graph (ag) and the physical grid graph (pg).
+   */
+  void prepare_data(int qbit_num,
+                    const std::vector<std::shared_ptr<BaseOperation>>& gates,
+                    const NAMultiQpuConfig& qpu_config);
+
+  /// Build the dependency DAG from the gate list; returns (dag, measure).
+  std::pair<std::vector<NADagNode>,
+            std::vector<std::shared_ptr<BaseOperation>>>
+  get_dg();
+
+  /// Build the initial qubit mapping (subgraph isomorphism + error fallback).
+  void get_init_mapping();
+
+  /// Return the currently executable nodes (in-degree == 0).
+  std::vector<int> get_front_layer() const;
+
+  /// Return the logical->physical mapping table.
+  std::unordered_map<int, int> get_mapping() const;
+
+  /// Check whether a site is safe (no parasitic coupling risk).
+  bool is_site_safe(int site,
+                    const std::vector<int>& exclude_sites = {}) const;
+
+  /// BFS: find the nearest safe empty site; returns path or empty.
+  std::vector<int> find_empty_site(int curr_p,
+                                    const std::vector<int>& exclude_sites = {});
+
+  /// BFS: find a path of empty sites from start_p to end_p.
+  std::vector<int> get_empty_path(int start_p, int end_p,
+                                   const std::vector<int>& exclude_sites = {});
+
+  /// Execute a low-level Move and update mapping tables.
+  void do_move(int q, const std::vector<int>& path);
+
+  /// Move qubit q to target_p (with eviction and pathfinding).
+  void move_qubit(int q, int target_p);
+
+  /// Execute single-qubit gate nodes in-place.
+  void execute_single_nodes(const std::vector<int>& nodes);
+
+  /// Find the lowest-cost operate-area edge for q1, q2.
+  std::pair<int, int> find_best_operate_edge(
+      int q1, int q2, const std::unordered_set<int>& exclude_nodes = {}) const;
+
+  /// Disperse inactive qubits before a global pulse.
+  void disperse_inactive_qubits(
+      const std::vector<std::pair<int, int>>& active_edges);
+
+  /// Execute two-qubit gate nodes (supports parallel, global cz pulse).
+  void execute_multi_nodes(const std::vector<int>& nodes);
+
+  /**
+   * @brief Execute gates in topological order: single-qubit in-place,
+   *        two-qubit moved to operate edges then global cz pulse.
+   * @return (mapped gate list, final_mapping).
+   */
+  std::pair<std::vector<std::shared_ptr<BaseOperation>>,
+            std::unordered_map<int, int>>
+  execute_with_order();
+
+  /// Grid row count.
+  int rows_ = 0;
+  /// Grid column count.
+  int cols_ = 0;
+  /// Operate-area positions (grid indices).
+  std::vector<int> operate_area_;
+  /// All sites (= operate_area_).
+  std::vector<int> all_sites_;
+  /// Initial layout (logical -> physical).
+  std::unordered_map<int, int> initial_layout;
+  /// Final mapping (logical -> physical).
+  std::unordered_map<int, int> final_mapping;
+
+ private:
+  NAMultiQpuConfig qpu_config_;
+  IntGraph ag_;
+  IntGraph pg_;
+  /// Grid index -> ag node index.
+  std::unordered_map<int, int> ag_val_to_idx_;
+  std::vector<std::shared_ptr<BaseOperation>> gates_;
+  int qbit_num_ = 0;
+
+  std::vector<NADagNode> dg_;
+  std::vector<NADagNode> dg_opt_;
+  std::vector<std::shared_ptr<BaseOperation>> measure_;
+  std::vector<std::shared_ptr<BaseOperation>> res_;
+
+  /// Logical qubit -> physical position (-1 = unmapped).
+  std::unordered_map<int, int> q_to_p_;
+  /// Physical position -> logical qubit (-1 = empty).
+  std::unordered_map<int, int> p_to_q_;
+
+  /// Remove a node from dg_opt_: decrements successors' in_degree, marks removed.
+  void remove_dag_opt_node(int idx);
+
+  /// Recursive backtracking subgraph-isomorphism helper (VF2-lite).
+  bool try_subgraph_match(
+      const IntGraph& host, const IntGraph& pattern,
+      const std::vector<int>& pattern_nodes,
+      const std::vector<std::pair<int, int>>& pattern_edges,
+      std::unordered_map<int, int>& mapping,
+      std::unordered_set<int>& used_host) const;
+};
+
+/**
+ * @brief Unified neutral-atom mapping entry point for the "multi" type.
+ *
+ * Creates a NAMultiRoute, runs prepare_data + execute_with_order, and returns
+ * the mapped operation sequence.
+ *
+ * @param gates_list Logical operation sequence (targets are logical qubits).
+ * @param qpu_config Grid-coordinate QPU configuration.
+ * @param qbit_num Number of logical qubits.
+ * @return The mapped operation sequence with MOVE ops and physical qubit
+ *         targets.
+ */
+std::vector<std::shared_ptr<BaseOperation>> na_multi_mapping(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
+    const NAMultiQpuConfig& qpu_config, int qbit_num);
+
+/**
  * @brief Unified neutral-atom mapping entry point (analogous to sabre_routing).
  *
  * Selects a concrete NARoute strategy from the parameters and runs it, so the

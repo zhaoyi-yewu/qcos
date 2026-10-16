@@ -192,6 +192,44 @@ TranspileResult transpile_na_from_ir(
     const std::string& na_mapping_type = "default");
 
 /**
+ * @brief All-in-one transpile for the "multi" NA mapping type (single-circuit).
+ *
+ * Same pipeline as ``transpile_na_from_qasm`` but the routing stage uses
+ * ``na_multi_mapping`` (NAMultiRoute) with a grid-coordinate QPU config
+ * (e.g. hanyuan1_100_new.toml). Positions are plain integers
+ * (p = row * column + col).
+ *
+ * @param qasm_string QASM circuit string.
+ * @param supp_basis_gates Supported basis-gate name list.
+ * @param qpu_config Grid-coordinate QPU topology configuration.
+ * @param opt_level Optimization level (0-3); defaults to 1.
+ * @return TranspileResult containing the final gate list, qubit count, and
+ *         per-stage timings.
+ */
+TranspileResult transpile_na_multi_from_qasm(
+    const std::string& qasm_string,
+    const std::vector<std::string>& supp_basis_gates,
+    const NAMultiQpuConfig& qpu_config, int opt_level = 1);
+
+/**
+ * @brief Transpile a pre-parsed IR with the "multi" NA mapping type.
+ *
+ * Same pipeline as ``transpile_na_multi_from_qasm`` but skips the QASM parse
+ * step.
+ *
+ * @param ir_ops Pre-parsed operation list (IR).
+ * @param num_qubits Number of logical qubits in the circuit.
+ * @param supp_basis_gates Supported basis-gate name list.
+ * @param qpu_config Grid-coordinate QPU topology configuration.
+ * @param opt_level Optimization level (0-3); defaults to 1.
+ * @return TranspileResult. parse_time is always 0.
+ */
+TranspileResult transpile_na_multi_from_ir(
+    const std::vector<std::shared_ptr<BaseOperation>>& ir_ops, int num_qubits,
+    const std::vector<std::string>& supp_basis_gates,
+    const NAMultiQpuConfig& qpu_config, int opt_level = 1);
+
+/**
  * @brief Transpile a pre-parsed IR (no QASM parsing step).
  *
  * Same pipeline as transpile() but skips the QASM parse step.

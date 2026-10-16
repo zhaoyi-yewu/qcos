@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <limits>
 #include <queue>
 #include <stdexcept>
 #include <tuple>
@@ -1686,6 +1687,684 @@ NAZAPRoute::execute_with_order() {
   StageMap mapping = sa_mapping_and_placing();
   routing_asap(mapping);
   return {res_, {}};
+}
+
+// ===================== IntGraph =====================
+
+void IntGraph::add_edge(int a, int b) {
+  adj[a].insert(b);
+  adj[b].insert(a);
+}
+
+const std::unordered_set<int>& IntGraph::neighbors(int p) const {
+  static const std::unordered_set<int> k_empty;
+  auto it = adj.find(p);
+  if (it == adj.end()) return k_empty;
+  return it->second;
+}
+
+bool IntGraph::has_edge(int a, int b) const {
+  auto it = adj.find(a);
+  return it != adj.end() && it->second.count(b) > 0;
+}
+
+std::vector<std::pair<int, int>> IntGraph::edge_list() const {
+  std::vector<std::pair<int, int>> edges;
+  std::unordered_set<long long> seen;
+  for (const auto& [src, nbrs] : adj) {
+    for (int nxt : nbrs) {
+      long long key = static_cast<long long>(std::min(src, nxt)) * 1000000000LL +
+                      std::max(src, nxt);
+      if (seen.insert(key).second) {
+        edges.emplace_back(src, nxt);
+      }
+    }
+  }
+  return edges;
+}
+
+// ===================== NAMultiRoute =====================
+
+void NAMultiRoute::prepare_data(
+    int qbit_num,
+    const std::vector<std::shared_ptr<BaseOperation>>& gates,
+    const NAMultiQpuConfig& qpu_config) {
+  qpu_config_ = qpu_config;
+  rows_ = qpu_config_.row;
+  cols_ = qpu_config_.column;
+  qbit_num_ = qbit_num;
+  gates_ = gates;
+
+  operate_area_ = qpu_config_.operate_area;
+  all_sites_ = operate_area_;
+
+  ag_ = IntGraph{};
+  ag_val_to_idx_.clear();
+  for (const auto& entry : qpu_config_.coupler_map) {
+    int a = entry.second.first;
+    int b = entry.second.second;
+    bool a_in = std::find(operate_area_.begin(), operate_area_.end(), a) !=
+                operate_area_.end();
+    bool b_in = std::find(operate_area_.begin(), operate_area_.end(), b) !=
+                operate_area_.end();
+    if (a_in && b_in) {
+      ag_val_to_idx_[a] = 1;
+      ag_val_to_idx_[b] = 1;
+      ag_.add_edge(a, b);
+    }
+  }
+
+  pg_ = IntGraph{};
+  int total = rows_ * cols_;
+  for (int r = 0; r < rows_; ++r) {
+    for (int c = 0; c < cols_; ++c) {
+      int p = r * cols_ + c;
+      if (c < cols_ - 1) pg_.add_edge(p, p + 1);
+      if (r < rows_ - 1) pg_.add_edge(p, p + cols_);
+    }
+  }
+}
+
+std::pair<std::vector<NADagNode>,
+          std::vector<std::shared_ptr<BaseOperation>>>
+NAMultiRoute::get_dg() {
+  std::vector<NADagNode> dg;
+  std::vector<std::shared_ptr<BaseOperation>> measure;
+  std::unordered_map<int, int> pre_nodes;
+  int pos_num = static_cast<int>(operate_area_.size());
+
+  for (int idx = 0; idx < static_cast<int>(gates_.size()); ++idx) {
+    const auto& gate = gates_[idx];
+    if (gate->name == "sync" || gate->name == "measure") {
+      if (gate->name == "measure") measure.push_back(gate);
+      continue;
+    }
+
+    if (static_cast<int>(gate->targets.size()) > pos_num) {
+      throw std::runtime_error(
+          "operate_area only holds " + std::to_string(pos_num) +
+          " qubits, gate " + gate->name + " needs " +
+          std::to_string(gate->targets.size()));
+    }
+
+    if (gate->targets.size() == 1) {
+      int qubit = gate->targets[0];
+      auto it = pre_nodes.find(qubit);
+      if (it == pre_nodes.end() || it->second == -1) {
+        NADagNode node;
+        node.gate = {gate};
+        node.qubits = gate->targets;
+        node.type = "single";
+        node.in_degree = 0;
+        int node_idx = static_cast<int>(dg.size());
+        dg.push_back(std::move(node));
+        pre_nodes[qubit] = node_idx;
+      } else {
+        int prev_node_idx = it->second;
+        if (dg[prev_node_idx].type == "single") {
+          dg[prev_node_idx].gate.push_back(gate);
+        } else {
+          NADagNode node;
+          node.gate = {gate};
+          node.qubits = gate->targets;
+          node.type = "single";
+          node.in_degree = 1;
+          int node_idx = static_cast<int>(dg.size());
+          dg.push_back(std::move(node));
+          dg[prev_node_idx].successors.push_back(node_idx);
+          pre_nodes[qubit] = node_idx;
+        }
+      }
+    } else {
+      NADagNode node;
+      node.gate = {gate};
+      node.qubits = gate->targets;
+      node.type = "multi";
+      node.in_degree = 0;
+      int node_idx = static_cast<int>(dg.size());
+      dg.push_back(std::move(node));
+
+      for (int qid : gate->targets) {
+        auto it2 = pre_nodes.find(qid);
+        if (it2 != pre_nodes.end() && it2->second != -1) {
+          dg[it2->second].successors.push_back(node_idx);
+          dg[node_idx].in_degree += 1;
+        }
+        pre_nodes[qid] = node_idx;
+      }
+    }
+  }
+
+  return {dg, measure};
+}
+
+bool NAMultiRoute::try_subgraph_match(
+    const IntGraph& host, const IntGraph& pattern,
+    const std::vector<int>& pattern_nodes,
+    const std::vector<std::pair<int, int>>& pattern_edges,
+    std::unordered_map<int, int>& mapping,
+    std::unordered_set<int>& used_host) const {
+  if (mapping.size() == pattern_nodes.size()) {
+    return true;
+  }
+
+  int next_pattern = -1;
+  for (int pn : pattern_nodes) {
+    if (mapping.find(pn) == mapping.end()) {
+      next_pattern = pn;
+      break;
+    }
+  }
+
+  for (const auto& [host_node, _] : host.adj) {
+    if (used_host.count(host_node)) continue;
+
+    bool consistent = true;
+    for (int pn : pattern_nodes) {
+      auto mit = mapping.find(pn);
+      if (mit == mapping.end()) continue;
+      int mapped_host = mit->second;
+      bool pat_has = pattern.has_edge(next_pattern, pn);
+      bool host_has = host.has_edge(host_node, mapped_host);
+      if (pat_has != host_has) {
+        consistent = false;
+        break;
+      }
+    }
+
+    if (consistent) {
+      mapping[next_pattern] = host_node;
+      used_host.insert(host_node);
+      if (try_subgraph_match(host, pattern, pattern_nodes, pattern_edges,
+                             mapping, used_host)) {
+        return true;
+      }
+      mapping.erase(next_pattern);
+      used_host.erase(host_node);
+    }
+  }
+
+  return false;
+}
+
+void NAMultiRoute::get_init_mapping() {
+  auto [dg, measure] = get_dg();
+  dg_ = std::move(dg);
+  measure_ = std::move(measure);
+  dg_opt_ = dg_;
+  res_.clear();
+
+  std::vector<bool> has_multi_ancestor(dg_.size(), false);
+  for (int i = 0; i < static_cast<int>(dg_.size()); ++i) {
+    for (int succ : dg_[i].successors) {
+      if (dg_[i].type == "multi" || has_multi_ancestor[i]) {
+        has_multi_ancestor[succ] = true;
+      }
+    }
+  }
+
+  std::unordered_set<int> first_2q_layer;
+  for (int i = 0; i < static_cast<int>(dg_opt_.size()); ++i) {
+    if (dg_opt_[i].type == "multi" && !has_multi_ancestor[i]) {
+      first_2q_layer.insert(i);
+    }
+  }
+
+  IntGraph ilg;
+  std::unordered_map<int, int> ilg_val_to_idx;
+  for (int node : first_2q_layer) {
+    const auto& qubits = dg_opt_[node].qubits;
+    for (int q : qubits) {
+      if (ilg_val_to_idx.find(q) == ilg_val_to_idx.end()) {
+        ilg_val_to_idx[q] = 1;
+      }
+    }
+    ilg.add_edge(qubits[0], qubits[1]);
+  }
+
+  std::unordered_map<int, int> best_mapping;
+  if (!ilg_val_to_idx.empty()) {
+    std::vector<int> pattern_nodes;
+    for (const auto& [q, _] : ilg_val_to_idx) {
+      pattern_nodes.push_back(q);
+    }
+    std::sort(pattern_nodes.begin(), pattern_nodes.end());
+
+    std::unordered_map<int, int> mapping;
+    std::unordered_set<int> used_host;
+    if (try_subgraph_match(ag_, ilg, pattern_nodes, {}, mapping, used_host)) {
+      for (const auto& [log_q, phy_p] : mapping) {
+        best_mapping[log_q] = phy_p;
+      }
+    }
+  }
+
+  std::vector<std::pair<int, double>> site_errors;
+  for (int site : all_sites_) {
+    auto it = qpu_config_.readout_error.find(site);
+    double err = (it != qpu_config_.readout_error.end()) ? it->second : 5.0;
+    site_errors.emplace_back(site, err);
+  }
+  std::sort(site_errors.begin(), site_errors.end(),
+            [](const auto& lhs, const auto& rhs) {
+              if (lhs.second != rhs.second) return lhs.second < rhs.second;
+              return lhs.first < rhs.first;
+            });
+
+  q_to_p_.clear();
+  p_to_q_.clear();
+
+  for (const auto& [q, p] : best_mapping) {
+    q_to_p_[q] = p;
+    p_to_q_[p] = q;
+  }
+
+  std::vector<int> unmapped_qs;
+  for (int q = 0; q < qbit_num_; ++q) {
+    if (q_to_p_.find(q) == q_to_p_.end() || q_to_p_[q] == -1) {
+      unmapped_qs.push_back(q);
+    }
+  }
+
+  std::vector<int> avail_ps;
+  for (const auto& [p, err] : site_errors) {
+    auto it = p_to_q_.find(p);
+    if (it == p_to_q_.end() || it->second == -1) {
+      avail_ps.push_back(p);
+    }
+  }
+
+  if (static_cast<int>(unmapped_qs.size()) >
+      static_cast<int>(avail_ps.size())) {
+    throw std::runtime_error("not enough sites to place all logical qubits");
+  }
+
+  for (size_t i = 0; i < unmapped_qs.size(); ++i) {
+    q_to_p_[unmapped_qs[i]] = avail_ps[i];
+    p_to_q_[avail_ps[i]] = unmapped_qs[i];
+  }
+
+  initial_layout.clear();
+  for (const auto& [q, p] : q_to_p_) {
+    if (p != -1) initial_layout[q] = p;
+  }
+}
+
+std::vector<int> NAMultiRoute::get_front_layer() const {
+  std::vector<int> front;
+  for (int i = 0; i < static_cast<int>(dg_opt_.size()); ++i) {
+    if (dg_opt_[i].in_degree == 0 && !dg_opt_[i].gate.empty()) {
+      front.push_back(i);
+    }
+  }
+  return front;
+}
+
+std::unordered_map<int, int> NAMultiRoute::get_mapping() const {
+  std::unordered_map<int, int> mapping;
+  for (const auto& [q, p] : q_to_p_) {
+    mapping[q] = p;
+  }
+  return mapping;
+}
+
+bool NAMultiRoute::is_site_safe(int site,
+                                 const std::vector<int>& exclude_sites) const {
+  auto it = ag_.adj.find(site);
+  if (it == ag_.adj.end()) return true;
+  for (int neighbor : it->second) {
+    auto pit = p_to_q_.find(neighbor);
+    int occ = (pit != p_to_q_.end()) ? pit->second : -1;
+    if (occ != -1) {
+      bool excluded = false;
+      for (int ex : exclude_sites) {
+        if (neighbor == ex) {
+          excluded = true;
+          break;
+        }
+      }
+      if (!excluded) return false;
+    }
+  }
+  return true;
+}
+
+std::vector<int> NAMultiRoute::find_empty_site(
+    int curr_p, const std::vector<int>& exclude_sites) {
+  std::queue<int> queue;
+  queue.push(curr_p);
+  std::unordered_map<int, int> pre;
+  std::unordered_set<int> visited;
+  visited.insert(curr_p);
+
+  while (!queue.empty()) {
+    int curr = queue.front();
+    queue.pop();
+    if (curr != curr_p) {
+      auto pit = p_to_q_.find(curr);
+      int occ = (pit != p_to_q_.end()) ? pit->second : -1;
+      bool is_excluded = false;
+      for (int ex : exclude_sites) {
+        if (curr == ex) {
+          is_excluded = true;
+          break;
+        }
+      }
+      if (occ == -1 && !is_excluded) {
+        if (is_site_safe(curr, exclude_sites)) {
+          std::vector<int> path;
+          int c = curr;
+          while (true) {
+            path.push_back(c);
+            if (c == curr_p) break;
+            auto pit2 = pre.find(c);
+            if (pit2 == pre.end()) break;
+            c = pit2->second;
+          }
+          std::reverse(path.begin(), path.end());
+          return path;
+        }
+      }
+    }
+    for (int neighbor : pg_.neighbors(curr)) {
+      if (visited.count(neighbor)) continue;
+      auto pit = p_to_q_.find(neighbor);
+      int occ = (pit != p_to_q_.end()) ? pit->second : -1;
+      bool is_excluded = false;
+      for (int ex : exclude_sites) {
+        if (neighbor == ex) {
+          is_excluded = true;
+          break;
+        }
+      }
+      if (occ != -1 && !is_excluded) continue;
+      visited.insert(neighbor);
+      queue.push(neighbor);
+      pre[neighbor] = curr;
+    }
+  }
+  return {};
+}
+
+std::vector<int> NAMultiRoute::get_empty_path(
+    int start_p, int end_p, const std::vector<int>& exclude_sites) {
+  if (start_p == end_p) return {};
+
+  std::queue<std::vector<int>> queue;
+  queue.push({start_p});
+  std::unordered_set<int> visited;
+  visited.insert(start_p);
+
+  while (!queue.empty()) {
+    std::vector<int> path = queue.front();
+    queue.pop();
+    int curr = path.back();
+    if (curr == end_p) return path;
+    for (int neighbor : pg_.neighbors(curr)) {
+      if (visited.count(neighbor)) continue;
+      bool is_excluded = false;
+      for (int ex : exclude_sites) {
+        if (neighbor == ex) {
+          is_excluded = true;
+          break;
+        }
+      }
+      if (neighbor == end_p ||
+          (!is_excluded && p_to_q_.count(neighbor) &&
+           p_to_q_[neighbor] == -1) ||
+          (!is_excluded && !p_to_q_.count(neighbor))) {
+        visited.insert(neighbor);
+        std::vector<int> new_path = path;
+        new_path.push_back(neighbor);
+        queue.push(std::move(new_path));
+      }
+    }
+  }
+  return {};
+}
+
+void NAMultiRoute::do_move(int q, const std::vector<int>& path) {
+  if (path.size() < 2) return;
+  int frm = path[0];
+  int to = path.back();
+  std::vector<double> arg_val;
+  arg_val.reserve(path.size());
+  for (int p : path) arg_val.push_back(static_cast<double>(p));
+  res_.push_back(std::make_shared<Move>(std::vector<int>{frm}, arg_val,
+                                        OperationType::MOVE));
+  p_to_q_[frm] = -1;
+  p_to_q_[to] = q;
+  q_to_p_[q] = to;
+}
+
+void NAMultiRoute::move_qubit(int q, int target_p) {
+  int curr_p = q_to_p_[q];
+  if (curr_p == target_p) return;
+
+  auto pit = p_to_q_.find(target_p);
+  int target_occ = (pit != p_to_q_.end()) ? pit->second : -1;
+  if (target_occ != -1) {
+    int occupying_q = target_occ;
+    p_to_q_[target_p] = -1;
+    std::vector<int> incoming_path = get_empty_path(curr_p, target_p);
+    p_to_q_[target_p] = occupying_q;
+
+    std::vector<int> exclude_for_eviction = {curr_p, target_p};
+    if (!incoming_path.empty()) {
+      for (size_t i = 0; i + 1 < incoming_path.size(); ++i) {
+        exclude_for_eviction.push_back(incoming_path[i]);
+      }
+    }
+
+    std::vector<int> empty_p =
+        find_empty_site(target_p, exclude_for_eviction);
+    if (empty_p.empty()) {
+      throw std::runtime_error("no empty site to evict qubit " +
+                               std::to_string(occupying_q));
+    }
+    do_move(occupying_q, empty_p);
+  }
+
+  std::vector<int> final_path = get_empty_path(curr_p, target_p);
+  if (!final_path.empty()) {
+    do_move(q, final_path);
+  } else {
+    throw std::runtime_error("deadlock: cannot move qubit " +
+                             std::to_string(q) + " from " +
+                             std::to_string(curr_p) + " to " +
+                             std::to_string(target_p));
+  }
+}
+
+void NAMultiRoute::remove_dag_opt_node(int idx) {
+  if (idx < 0 || idx >= static_cast<int>(dg_opt_.size())) return;
+  NADagNode& node = dg_opt_[idx];
+  for (int succ : node.successors) {
+    if (succ >= 0 && succ < static_cast<int>(dg_opt_.size())) {
+      if (dg_opt_[succ].in_degree > 0) {
+        dg_opt_[succ].in_degree -= 1;
+      }
+    }
+  }
+  node.gate.clear();
+  node.successors.clear();
+  node.qubits.clear();
+  node.in_degree = -1;
+}
+
+void NAMultiRoute::execute_single_nodes(const std::vector<int>& nodes) {
+  for (int node : nodes) {
+    for (const auto& gate : dg_[node].gate) {
+      std::vector<int> new_targets;
+      new_targets.reserve(gate->targets.size());
+      for (int q : gate->targets) {
+        new_targets.push_back(q_to_p_[q]);
+      }
+      gate->targets = std::move(new_targets);
+      res_.push_back(gate);
+    }
+    remove_dag_opt_node(node);
+  }
+}
+
+std::pair<int, int> NAMultiRoute::find_best_operate_edge(
+    int q1, int q2, const std::unordered_set<int>& exclude_nodes) const {
+  auto edges = ag_.edge_list();
+  std::pair<int, int> best_edge;
+  bool found = false;
+  double min_cost = std::numeric_limits<double>::max();
+
+  for (const auto& [a, b] : edges) {
+    if (exclude_nodes.count(a) || exclude_nodes.count(b)) continue;
+    int evictions = 0;
+    for (int p : {a, b}) {
+      auto pit = p_to_q_.find(p);
+      int occ = (pit != p_to_q_.end()) ? pit->second : -1;
+      if (occ != -1 && occ != q1 && occ != q2) evictions++;
+    }
+    int arrivals = 0;
+    int p1 = q_to_p_.at(q1);
+    int p2 = q_to_p_.at(q2);
+    if (p1 != a && p1 != b) arrivals++;
+    if (p2 != a && p2 != b) arrivals++;
+    double cost = evictions + arrivals * 1.5;
+    if (cost < min_cost) {
+      min_cost = cost;
+      best_edge = {a, b};
+      found = true;
+      if (cost == 0) break;
+    }
+  }
+
+  if (!found) {
+    throw std::runtime_error("no operate edge for qubits " +
+                             std::to_string(q1) + ", " + std::to_string(q2));
+  }
+  return best_edge;
+}
+
+void NAMultiRoute::disperse_inactive_qubits(
+    const std::vector<std::pair<int, int>>& active_edges) {
+  std::unordered_set<int> locked_sites;
+  for (const auto& [p1, p2] : active_edges) {
+    locked_sites.insert(p1);
+    locked_sites.insert(p2);
+  }
+
+  for (int q = 0; q < qbit_num_; ++q) {
+    int curr_p = q_to_p_[q];
+    if (locked_sites.count(curr_p)) continue;
+    if (!is_site_safe(curr_p)) {
+      std::vector<int> safe_p = find_empty_site(curr_p, {curr_p});
+      if (safe_p.empty()) {
+        throw std::runtime_error("no empty site to disperse qubit " +
+                                 std::to_string(q));
+      }
+      do_move(q, safe_p);
+    }
+  }
+}
+
+void NAMultiRoute::execute_multi_nodes(const std::vector<int>& nodes) {
+  std::vector<std::pair<int, int>> active_edges;
+  std::unordered_set<int> active_nodes;
+
+  for (int node : nodes) {
+    const auto& qubits = dg_[node].qubits;
+    int q1 = qubits[0];
+    int q2 = qubits[1];
+    int p1 = q_to_p_[q1];
+    int p2 = q_to_p_[q2];
+
+    bool p1_in_op = std::find(operate_area_.begin(), operate_area_.end(),
+                              p1) != operate_area_.end();
+    bool p2_in_op = std::find(operate_area_.begin(), operate_area_.end(),
+                              p2) != operate_area_.end();
+    bool p1_in_ag = ag_val_to_idx_.count(p1) > 0;
+    bool p2_in_ag = ag_val_to_idx_.count(p2) > 0;
+
+    if (p1_in_op && p2_in_op && p1_in_ag && p2_in_ag &&
+        ag_.has_edge(p1, p2)) {
+      active_edges.push_back({p1, p2});
+      active_nodes.insert(p1);
+      active_nodes.insert(p2);
+    } else {
+      auto [tp1, tp2] = find_best_operate_edge(q1, q2, active_nodes);
+      p1 = q_to_p_[q1];
+      p2 = q_to_p_[q2];
+      if (p1 == tp2 || p2 == tp1) {
+        std::swap(tp1, tp2);
+      }
+      move_qubit(q1, tp1);
+      move_qubit(q2, tp2);
+      active_edges.push_back({tp1, tp2});
+      active_nodes.insert(tp1);
+      active_nodes.insert(tp2);
+    }
+  }
+
+  disperse_inactive_qubits(active_edges);
+  res_.push_back(std::make_shared<BaseOperation>(
+      "cz", std::vector<int>{}, std::vector<double>{},
+      OperationType::DOUBLE_QUBIT_OPERATION));
+
+  for (int node : nodes) {
+    remove_dag_opt_node(node);
+  }
+}
+
+std::pair<std::vector<std::shared_ptr<BaseOperation>>,
+          std::unordered_map<int, int>>
+NAMultiRoute::execute_with_order() {
+  get_init_mapping();
+
+  while (true) {
+    std::vector<int> front = get_front_layer();
+    if (front.empty()) break;
+
+    std::vector<int> single_nodes;
+    std::vector<int> multi_nodes;
+    for (int n : front) {
+      if (dg_[n].type == "single") {
+        single_nodes.push_back(n);
+      } else {
+        multi_nodes.push_back(n);
+      }
+    }
+
+    if (!single_nodes.empty()) {
+      execute_single_nodes(single_nodes);
+    } else if (!multi_nodes.empty()) {
+      execute_multi_nodes(multi_nodes);
+    } else {
+      break;
+    }
+  }
+
+  for (auto& gate : measure_) {
+    std::vector<int> new_targets;
+    new_targets.reserve(gate->targets.size());
+    for (int q : gate->targets) {
+      new_targets.push_back(q_to_p_[q]);
+    }
+    gate->targets = std::move(new_targets);
+    res_.push_back(gate);
+  }
+
+  final_mapping = get_mapping();
+  return {res_, final_mapping};
+}
+
+// ===================== na_multi_mapping (unified entry for multi) =====================
+
+std::vector<std::shared_ptr<BaseOperation>> na_multi_mapping(
+    const std::vector<std::shared_ptr<BaseOperation>>& gates_list,
+    const NAMultiQpuConfig& qpu_config, int qbit_num) {
+  NAMultiRoute router;
+  router.prepare_data(qbit_num, gates_list, qpu_config);
+  auto [res, layout] = router.execute_with_order();
+  (void)layout;
+  return res;
 }
 
 // ===================== na_mapping (unified entry) =====================

@@ -976,6 +976,12 @@ class TestTranspilerCmdLine:
         assert CMSSTranspilerPerf._normalize_na_mapping_type("zap") == "ZAP"
         assert CMSSTranspilerPerf._normalize_na_mapping_type("ZAP") == "ZAP"
         assert CMSSTranspilerPerf._normalize_na_mapping_type("zac") == "ZAC"
+        assert (
+            CMSSTranspilerPerf._normalize_na_mapping_type("multi") == "multi"
+        )
+        assert (
+            CMSSTranspilerPerf._normalize_na_mapping_type("MULTI") == "multi"
+        )
         assert CMSSTranspilerPerf._normalize_na_mapping_type(None) == "default"
 
     def test_normalize_na_mapping_type_invalid_raises(self):
