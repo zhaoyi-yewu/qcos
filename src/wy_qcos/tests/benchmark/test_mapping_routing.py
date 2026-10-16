@@ -30,8 +30,9 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
 from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing import SABRE
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
 from wy_qcos.common.cmss.gate_operation import GateOperation
-from wy_qcos.transpiler.cmss.mapping.utils.front_circuit import FrontCircuit
-from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.transpiler.cmss.mapping.utils.routing_verifier import (
+    check_routing,
+)
 
 initial_methods = [
     "naive",
@@ -78,90 +79,6 @@ class TestMappingRouting:
                 num += 1
         return num
 
-    def check_routing(
-        self,
-        ir: list,
-        phy_gates: list[GateOperation],
-        mapping: list[int],
-    ):
-        """Simulate the routing process to verify if the result is feasible.
-
-        Args:
-            ir (list[GateOperation]): gates list of logic gates.
-            phy_gates (list[GateOperation]): gates list of physical gates.
-            mapping (list[int]): dynamic mapping list, will be updated by swap.
-
-        Returns:
-            bool: True if the result is feasible, False otherwise.
-        """
-        coupling_graph = self.coupling_graph
-
-        j = 0
-        dg = DG()
-        circ = QuantumCircuit()
-        circ.append_operations(ir)
-        dg.from_ir(circ, absorb=False)
-        front_circ = FrontCircuit(dg, coupling_graph)
-        front_layer = front_circ.front_layer
-
-        while len(front_layer) > 0 and j < len(phy_gates):
-            # find all front layer cx gates
-            while True:
-                flag = 0
-                for node in front_layer:
-                    targets = dg.nodes[node]["qubits"]
-                    if len(targets) == 1:
-                        front_circ.execute_gate(node)
-                        flag = 1
-                # front layer remain only 2-qubit gates
-                if flag == 0:
-                    break
-
-            # find the next 2-qubit gate in phy_gates
-            while j < len(phy_gates) and len(phy_gates[j].targets) == 1:
-                j += 1
-            if j == len(phy_gates):
-                break
-
-            # update the mapping list
-            while phy_gates[j].name == "swap":
-                u, v = phy_gates[j].targets
-                if u in mapping and v in mapping:
-                    u_idx, v_idx = mapping.index(u), mapping.index(v)
-                    mapping[u_idx], mapping[v_idx] = (
-                        mapping[v_idx],
-                        mapping[u_idx],
-                    )
-                elif u in mapping:
-                    u_idx = mapping.index(u)
-                    mapping[u_idx] = v
-                elif v in mapping:
-                    v_idx = mapping.index(v)
-                    mapping[v_idx] = u
-                else:
-                    raise ValueError("swap error")
-                j += 1
-
-            # the qubits of the physical gate (actual result of the mapping)
-            u_phy2, v_phy2 = phy_gates[j].targets
-            # check having edge between the logic cx gate
-            flag = 0
-            for gate_node in list(front_layer):
-                # the logic qubits of current cx gate
-                u_logic, v_logic = dg.nodes[gate_node]["qubits"]
-                # the physical qubits under current mapping
-                u_phy, v_phy = mapping[u_logic], mapping[v_logic]
-                if u_phy == u_phy2 and v_phy == v_phy2:
-                    assert coupling_graph.has_edge(u_phy, v_phy)
-                    front_circ.execute_gate(gate_node)
-                    flag = 1
-                    j += 1
-                    break
-            # no gate in front layer can be executed
-            if flag == 0:
-                return False
-        return True
-
     def run_test(self, qasm):
         """Run one qasm test case."""
         dg = DG()
@@ -197,9 +114,15 @@ class TestMappingRouting:
             initial_time = time1 - start
             totol_time = time2 - start
             swap_num = self.counts_swaps(sabre.phy_exe_gates)
-            # simulate the routing process
-            res = self.check_routing(ir, sabre.phy_exe_gates, initial_mapping)
-            assert res
+            # verify routing correctness
+            res = check_routing(
+                coulping_graph,
+                ir,
+                sabre.phy_exe_gates,
+                initial_mapping,
+                sabre.logic2phy,
+            )
+            assert res, "Routing verification failed"
             # save results
             all_mapping_time.append(initial_time)
             all_total_time.append(totol_time)
