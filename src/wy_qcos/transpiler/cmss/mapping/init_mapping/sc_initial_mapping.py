@@ -21,12 +21,19 @@ from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
 from wy_qcos.transpiler.cmss.mapping.init_mapping.subgraph_isomorphism import (
     subgraph_isomorphism_mapping,
     topgraph_mapping,
+    vf2_layout_mapping,
 )
 from wy_qcos.transpiler.cmss.mapping.init_mapping.simulated_annealing import (
     SimulatedAnnealingMapping,
 )
 from wy_qcos.transpiler.cmss.mapping.init_mapping.sabre_mapping import (
     sabre_initial_mapping,
+)
+from wy_qcos.transpiler.cmss.mapping.init_mapping.dense_layout import (
+    dense_layout_mapping,
+)
+from wy_qcos.transpiler.cmss.mapping.utils.mapping_utils import (
+    validate_mapping_inputs,
 )
 
 
@@ -75,3 +82,63 @@ def get_initial_mapping(
         return mapping[:num_qubits]
     else:
         raise ValueError(f"Unsupported method {method} for initial mapping")
+
+
+def fidelity_aware_initial_mapping(
+    gates_list: list,
+    coupling_list: list[tuple[int, int]],
+    edge_fidelities: list[float],
+    single_qubit_fidelities: list[float],
+    num_logical: int,
+    fidelity_weight: float = 0.5,
+) -> list[int]:
+    """Compute initial mapping with fidelity-aware strategy.
+
+    Two-stage fallback:
+
+    1. **VF2**: find a perfect embedding of the circuit's
+       interaction graph into the coupling graph.  Success means
+       every two-qubit gate is directly executable.
+    2. **DenseLayout + SABRE**: when VF2 fails, select the
+       densest physical subgraph and refine the qubit
+       arrangement via SABRE forward-backward routing.
+
+    Args:
+        gates_list: Logical gate sequence.
+        coupling_list: Physical coupling edges as ``(u, v)`` pairs.
+        edge_fidelities: Per-edge CZ fidelity, same order as
+            *coupling_list*.  Empty to disable fidelity scoring.
+        single_qubit_fidelities: Per-physical-qubit 1q fidelity,
+            indexed by physical qubit ID.
+        num_logical: Number of logical qubits in the circuit.
+        fidelity_weight: Weight for density vs fidelity scoring
+            in DenseLayout, range [0, 1].
+
+    Returns:
+        Logical-to-physical mapping list.  Empty when both strategies fail.
+    """
+    if num_logical <= 0:
+        return []
+
+    validate_mapping_inputs(coupling_list, edge_fidelities, num_logical)
+
+    # Stage 1: VF2 perfect embedding
+    mapping = vf2_layout_mapping(
+        gates_list,
+        coupling_list,
+        edge_fidelities,
+        single_qubit_fidelities,
+        num_logical,
+    )
+    if mapping:
+        return mapping
+
+    # Stage 2: DenseLayout + SABRE refinement
+    return dense_layout_mapping(
+        gates_list,
+        coupling_list,
+        edge_fidelities,
+        single_qubit_fidelities,
+        num_logical,
+        fidelity_weight=fidelity_weight,
+    )

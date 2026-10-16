@@ -34,6 +34,9 @@ from wy_qcos.transpiler.cmss.mapping.utils.mapping_utils import (
     restore_logical_mapping,
     select_largest_component,
 )
+from wy_qcos.transpiler.cmss.mapping.init_mapping.sc_initial_mapping import (
+    fidelity_aware_initial_mapping,
+)
 
 # BFS "infinity" sentinel for unreachable qubit pairs
 _INF = 1000000
@@ -519,7 +522,18 @@ class SABRE:
                         "target_bits do not form a connected graph"
                     )
 
-        # 6. Dispatch
+        # 6. Compute fidelity-aware initial layout for 2-qubit circuits
+        if has_2q and not initial_l2p:
+            initial_l2p = fidelity_aware_initial_mapping(
+                regular_gates,
+                self.coupling_list,
+                self.edge_fidelities,
+                self.single_qubit_fidelities,
+                logic_qubit_num,
+                self.fidelity_weight,
+            )
+
+        # 7. Dispatch
         if not has_2q:
             routed_gates = self._all_single_qubit_mapping(
                 regular_gates, measure_ops
@@ -529,7 +543,7 @@ class SABRE:
 
         final_mapping = self.logic2phy
 
-        # 7. Append measure with updated physical targets
+        # 8. Append measure with updated physical targets
         phy_exe_gates = list(routed_gates)
         for measure in measure_ops:
             logic_q = measure.targets[0]
@@ -543,7 +557,7 @@ class SABRE:
 
         self.phy_exe_gates = phy_exe_gates
 
-        # 8. Restore logical mapping if densified
+        # 9. Restore logical mapping if densified
         if did_preprocess:
             self.logic2phy = restore_logical_mapping(remap, self.logic2phy)
             if self.initial_l2p:

@@ -18,9 +18,16 @@
 import networkx as nx
 import rustworkx as rx
 
+from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
 from wy_qcos.transpiler.cmss.mapping.init_mapping.simulated_annealing import (
     SimulatedAnnealingMapping,
+)
+from wy_qcos.transpiler.cmss.mapping.utils.mapping_utils import (
+    IdRemap,
+    build_id_remap,
+    restore_physical_ids,
+    validate_mapping_inputs,
 )
 
 
@@ -206,3 +213,283 @@ def nx_to_rx(nx_graph: nx.Graph) -> rx.PyGraph:
         v_idx = all_nodes.index(v)
         rx_graph.add_edge(u_idx, v_idx, None)
     return rx_graph
+
+
+# ===============================================
+# Fidelity-aware VF2 layout mapping
+# ===============================================
+
+# Maximum number of VF2 solutions to explore
+_MAX_TRIALS = 10000
+
+
+class _InteractionData:
+    """Interaction graph extracted from two-qubit gates.
+
+    Attributes:
+        graph: rustworkx graph with dense logical node IDs.
+        edge_counts: Mapping from (dense_a, dense_b) to
+            the number of two-qubit gates on that pair.
+        remap: Logical qubit ID densification mapping.
+    """
+
+    def __init__(self):
+        self.graph = rx.PyGraph(multigraph=False)
+        self.edge_counts: dict[tuple[int, int], int] = {}
+        self.remap = IdRemap()
+
+
+class _CouplingData:
+    """Physical coupling graph with edge error rates.
+
+    Attributes:
+        graph: rustworkx graph with dense physical node IDs.
+        edge_errors: Mapping from (dense_a, dense_b) to
+            error rate (1 - fidelity).
+        remap: Physical qubit ID densification mapping.
+    """
+
+    def __init__(self):
+        self.graph = rx.PyGraph(multigraph=False)
+        self.edge_errors: dict[tuple[int, int], float] = {}
+        self.remap = IdRemap()
+
+
+def _extract_interactions(
+    gates_list: list,
+) -> _InteractionData:
+    """Extract the interaction graph from two-qubit gates.
+
+    Collects all logical qubits participating in two-qubit
+    gates, densifies their IDs, and builds an undirected graph
+    where edges represent two-qubit interactions. Multiple gates
+    on the same pair are merged into one edge with a higher
+    count.
+    """
+    coupled_logical: set[int] = set()
+    pair_counts: dict[tuple[int, int], int] = {}
+
+    for gate in gates_list:
+        if gate.operation_type != OperationType.DOUBLE_QUBIT_OPERATION.value:
+            continue
+        q0 = gate.targets[0]
+        q1 = gate.targets[1]
+        coupled_logical.add(q0)
+        coupled_logical.add(q1)
+        key = (min(q0, q1), max(q0, q1))
+        pair_counts[key] = pair_counts.get(key, 0) + 1
+
+    data = _InteractionData()
+    if not coupled_logical:
+        return data
+
+    data.remap = build_id_remap(coupled_logical)
+    for orig_id in data.remap.dense_to_orig:
+        data.graph.add_node(orig_id)
+
+    for (log_a, log_b), count in pair_counts.items():
+        dense_a = data.remap.orig_to_dense[log_a]
+        dense_b = data.remap.orig_to_dense[log_b]
+        data.graph.add_edge(dense_a, dense_b, count)
+        edge_key = (min(dense_a, dense_b), max(dense_a, dense_b))
+        data.edge_counts[edge_key] = count
+
+    return data
+
+
+def _build_coupling_graph(
+    coupling_list: list[tuple[int, int]],
+    edge_fidelities: list[float],
+) -> _CouplingData:
+    """Build the physical coupling graph with error rates.
+
+    Collects all physical qubits in coupling edges, densifies
+    their IDs, and builds an undirected graph. When
+    edge_fidelities is provided, edges with fidelity <= 0 are
+    skipped, and error rates (1 - fidelity) are recorded.
+    """
+    physical_ids: set[int] = set()
+    for u, v in coupling_list:
+        physical_ids.add(u)
+        physical_ids.add(v)
+
+    data = _CouplingData()
+    data.remap = build_id_remap(physical_ids)
+    for orig_id in data.remap.dense_to_orig:
+        data.graph.add_node(orig_id)
+
+    use_fidelity = bool(edge_fidelities)
+    added_edges: set[tuple[int, int]] = set()
+    for i, (u, v) in enumerate(coupling_list):
+        if use_fidelity and edge_fidelities[i] <= 0.0:
+            continue
+        dense_u = data.remap.orig_to_dense[u]
+        dense_v = data.remap.orig_to_dense[v]
+        edge_key = (
+            min(dense_u, dense_v),
+            max(dense_u, dense_v),
+        )
+        if edge_key not in added_edges:
+            data.graph.add_edge(dense_u, dense_v, None)
+            added_edges.add(edge_key)
+        if use_fidelity and edge_fidelities[i] > 0.0:
+            data.edge_errors[edge_key] = 1.0 - edge_fidelities[i]
+
+    return data
+
+
+def _run_vf2_search(
+    interaction: _InteractionData,
+    coupling: _CouplingData,
+    num_logical: int,
+) -> list[int]:
+    """Run VF2 subgraph monomorphism search with scoring.
+
+    Finds all embeddings of the interaction graph into the
+    coupling graph, scores each by total error contribution
+    (error_rate * gate_count), and returns the lowest-scoring
+    mapping.
+
+    Returns an empty list when no embedding is found.
+    """
+    best_score = float("inf")
+    best_mapping: list[int] = []
+
+    vf2_iter = rx.graph_vf2_mapping(
+        coupling.graph,
+        interaction.graph,
+        subgraph=True,
+        induced=False,
+        call_limit=_MAX_TRIALS,
+    )
+
+    for mapping in vf2_iter:
+        # mapping: {coupling_node -> interaction_node}
+        # reverse to get interaction_node -> coupling_node
+        int_to_coupling = {v: k for k, v in mapping.items()}
+
+        score = 0.0
+        for (int_a, int_b), count in interaction.edge_counts.items():
+            p0 = int_to_coupling[int_a]
+            p1 = int_to_coupling[int_b]
+            edge_key = (min(p0, p1), max(p0, p1))
+            error = coupling.edge_errors.get(edge_key, 0.0)
+            score += error * count
+
+        if score < best_score:
+            best_score = score
+            best_mapping = [-1] * num_logical
+            for int_node in range(interaction.remap.dense_count):
+                orig_logical = interaction.remap.dense_to_orig[int_node]
+                physical = int_to_coupling[int_node]
+                best_mapping[orig_logical] = physical
+
+    return best_mapping
+
+
+def _assign_remaining_qubits(
+    mapping: list[int],
+    coupling: _CouplingData,
+    num_logical: int,
+    single_qubit_fidelities: list[float],
+) -> None:
+    """Assign unmapped logical qubits to free physical qubits.
+
+    Logical qubits not involved in two-qubit gates have no
+    mapping from VF2. They are assigned to free physical qubits,
+    preferring those with higher single-qubit fidelity.
+    """
+    num_physical = coupling.remap.dense_count
+
+    used_physical: set[int] = set()
+    for phy in mapping:
+        if phy >= 0:
+            used_physical.add(phy)
+
+    candidates = [i for i in range(num_physical) if i not in used_physical]
+
+    if single_qubit_fidelities:
+        candidates.sort(
+            key=lambda dense_id: _get_single_fid(
+                coupling, single_qubit_fidelities, dense_id
+            ),
+            reverse=True,
+        )
+
+    candidate_idx = 0
+    for logical_idx in range(num_logical):
+        if mapping[logical_idx] >= 0:
+            continue
+        if candidate_idx >= len(candidates):
+            break
+        mapping[logical_idx] = candidates[candidate_idx]
+        candidate_idx += 1
+
+
+def _get_single_fid(
+    coupling: _CouplingData,
+    single_qubit_fidelities: list[float],
+    dense_id: int,
+) -> float:
+    """Look up single-qubit fidelity for a dense physical ID."""
+    orig_id = coupling.remap.dense_to_orig[dense_id]
+    if 0 <= orig_id < len(single_qubit_fidelities):
+        return single_qubit_fidelities[orig_id]
+    return 0.0
+
+
+def vf2_layout_mapping(
+    gates_list: list,
+    coupling_list: list[tuple[int, int]],
+    edge_fidelities: list[float],
+    single_qubit_fidelities: list[float],
+    num_logical: int,
+) -> list[int]:
+    """Compute initial mapping using VF2 subgraph monomorphism.
+
+    Embeds the circuit's interaction graph into the coupling
+    graph. A perfect embedding means all two-qubit gates can
+    execute without any SWAP. When multiple embeddings exist,
+    selects the one with the lowest total error rate.
+
+    Args:
+        gates_list: Logical gate sequence.
+        coupling_list: Physical coupling edges as (u, v) pairs.
+        edge_fidelities: Per-edge CZ fidelity, same order as
+            coupling_list. Empty to disable fidelity scoring.
+        single_qubit_fidelities: Per-physical-qubit 1q
+            fidelity, indexed by physical qubit ID.
+        num_logical: Number of logical qubits in the circuit.
+
+    Returns:
+        Logical-to-physical mapping list. Empty when no
+        perfect embedding is found or when there are no
+        two-qubit gates.
+    """
+    if num_logical <= 0:
+        return []
+
+    validate_mapping_inputs(coupling_list, edge_fidelities, num_logical)
+
+    interaction = _extract_interactions(gates_list)
+    if interaction.remap.dense_count == 0:
+        return []
+
+    coupling = _build_coupling_graph(coupling_list, edge_fidelities)
+    num_physical = coupling.remap.dense_count
+    if num_logical > num_physical:
+        return []
+
+    mapping = _run_vf2_search(interaction, coupling, num_logical)
+    if not mapping:
+        return []
+
+    _assign_remaining_qubits(
+        mapping,
+        coupling,
+        num_logical,
+        single_qubit_fidelities,
+    )
+    restore_physical_ids(mapping, coupling.remap)
+
+    return mapping

@@ -41,7 +41,7 @@ fi
 
 eval set -- "$opts"
 
-fix=false
+fix=true
 
 while true; do
   case "$1" in

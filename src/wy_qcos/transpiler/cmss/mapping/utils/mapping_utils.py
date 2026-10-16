@@ -245,6 +245,32 @@ def induce_target_subgraph(
     return new_edges, new_fids
 
 
+def build_id_remap(ids: set[int]) -> IdRemap:
+    """Build a dense-ID remapping from a set of IDs.
+
+    Assigns consecutive 0..N-1 dense IDs to sorted original IDs.
+    This is the general-purpose helper used by VF2 layout and
+    internally by :func:`build_logical_remap`.
+
+    Args:
+        ids (set[int]): Original IDs to densify.
+
+    Returns:
+        IdRemap: Bidirectional mapping.  When *ids* is empty,
+            returns an :class:`IdRemap` with
+            dense_count == 0.
+    """
+    if not ids:
+        return IdRemap()
+    sorted_ids = sorted(ids)
+    orig_to_dense = {orig: dense for dense, orig in enumerate(sorted_ids)}
+    return IdRemap(
+        orig_to_dense=orig_to_dense,
+        dense_to_orig=sorted_ids,
+        dense_count=len(sorted_ids),
+    )
+
+
 def build_logical_remap(
     gate_ops: list,
     measure_ops: list,
@@ -281,14 +307,7 @@ def build_logical_remap(
     if len(used) == max_id + 1:
         # no gaps, return empty remap
         return IdRemap()
-    sorted_used = sorted(used)
-    # build orig->dense bidirectional mapping
-    orig_to_dense = {orig: dense for dense, orig in enumerate(sorted_used)}
-    return IdRemap(
-        orig_to_dense=orig_to_dense,
-        dense_to_orig=sorted_used,
-        dense_count=len(sorted_used),
-    )
+    return build_id_remap(used)
 
 
 def apply_logical_remap(
@@ -350,6 +369,24 @@ def restore_logical_mapping(
         if dense_id < len(dense_mapping):
             restored[orig_id] = dense_mapping[dense_id]
     return restored
+
+
+def restore_physical_ids(mapping: list[int], remap: IdRemap) -> None:
+    """Convert dense physical IDs back to original in-place.
+
+    Walks *mapping* and replaces every non-negative value with its
+    original physical ID from *remap*.
+    Negative entries (unmapped) are left untouched.
+
+    Args:
+        mapping (list[int]): Mapping whose values are dense
+            physical IDs.  Modified **in-place**.
+        remap (IdRemap): Dense remapping returned by
+            :func:`build_id_remap`.
+    """
+    for i in range(len(mapping)):
+        if mapping[i] >= 0:
+            mapping[i] = remap.dense_to_orig[mapping[i]]
 
 
 def select_best_single_qubits(
@@ -527,3 +564,50 @@ def find_connected_components(
             component_map[qubit_id] = component_root
 
     return component_map
+
+
+def validate_mapping_inputs(
+    coupling_list: list[tuple[int, int]],
+    edge_fidelities: list[float],
+    num_logical: int,
+) -> None:
+    """Validate common inputs for layout mapping functions.
+
+    Checks that *coupling_list* is non-empty, *edge_fidelities* (when
+    provided) matches *coupling_list* in length, and *num_logical* does
+    not exceed the number of unique physical qubits in *coupling_list*.
+
+    Args:
+        coupling_list (list[tuple[int, int]]): Coupling graph edges as
+            ``(u, v)`` pairs.
+        edge_fidelities (list[float]): Per-edge fidelity, same order as
+            *coupling_list*.  Empty list to skip fidelity checks.
+        num_logical (int): Number of logical qubits in the circuit.
+
+    Raises:
+        ValueError: If *coupling_list* is empty,
+            *edge_fidelities* length mismatches *coupling_list*,
+            or *num_logical* exceeds available physical qubits.
+    """
+    if not coupling_list:
+        raise ValueError("coupling_list is empty")
+
+    if edge_fidelities and len(edge_fidelities) != len(coupling_list):
+        raise ValueError(
+            f"edge_fidelities size ({len(edge_fidelities)})"
+            f" != coupling_list size ({len(coupling_list)})"
+        )
+
+    qubits: set[int] = set()
+    for u, v in coupling_list:
+        qubits.add(u)
+        qubits.add(v)
+    num_unique_physical = len(qubits)
+
+    if num_logical > num_unique_physical:
+        raise ValueError(
+            f"num_logical ({num_logical}) > available"
+            f" physical qubits ({num_unique_physical});"
+            " if fidelity filtering is enabled,"
+            " try lowering fidelity_threshold"
+        )
