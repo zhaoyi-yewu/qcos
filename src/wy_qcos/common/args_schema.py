@@ -75,6 +75,8 @@ CALLBACKS_SCHEMA = [
 
 JOB_OPTIONS_SCHEMA = {
     Optional("enable_wirecut"): bool,
+    Optional("enable_subqubo"): bool,
+    Optional("enable_prec_reduce"): bool,
 }
 
 JOB_PARAMS_SCHEMA = [Or(int, float)]

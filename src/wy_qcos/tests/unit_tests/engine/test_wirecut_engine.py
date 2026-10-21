@@ -17,10 +17,18 @@
 
 import json
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.engine.wirecut_engine import poll_job_results, wirecut_schedule
+from wy_qcos.engine.wirecut_engine import (
+    _build_subqubo_schedule_entries,
+    _extract_subqubo_solution,
+    _get_device_max_qubits,
+    poll_job_results,
+    submit_jobs,
+    wirecut_schedule,
+)
 
 
 def _redis_key(job_id, flow_run_id):
@@ -483,3 +491,249 @@ class TestWirecutSchedule:
 
     def test_no_devices_returns_empty(self):
         assert wirecut_schedule({"source_codes": []}, []) == []
+
+
+class TestGetDeviceMaxQubits:
+    """Unit tests for _get_device_max_qubits."""
+
+    def test_top_level_max_qubits(self):
+        device = {"name": "dev-1", "max_qubits": 100}
+        assert _get_device_max_qubits(device) == 100
+
+    def test_configs_max_qubits(self):
+        device = {
+            "name": "dev-1",
+            "configs": {"max_qubits": 550},
+        }
+        assert _get_device_max_qubits(device) == 550
+
+    def test_available_qubits_fallback(self):
+        device = {"name": "dev-1", "available_qubits": 20}
+        assert _get_device_max_qubits(device) == 20
+
+    def test_returns_zero_when_missing(self):
+        device = {"name": "dev-1"}
+        assert _get_device_max_qubits(device) == 0
+
+    def test_top_level_takes_priority(self):
+        device = {
+            "max_qubits": 100,
+            "configs": {"max_qubits": 550},
+            "available_qubits": 20,
+        }
+        assert _get_device_max_qubits(device) == 100
+
+    def test_configs_takes_priority_over_available(self):
+        device = {
+            "configs": {"max_qubits": 550},
+            "available_qubits": 20,
+        }
+        assert _get_device_max_qubits(device) == 550
+
+    def test_string_value_converted_to_int(self):
+        device = {"max_qubits": "100"}
+        assert _get_device_max_qubits(device) == 100
+
+
+class TestExtractSubquboSolution:
+    """Unit tests for _extract_subqubo_solution."""
+
+    def test_standard_path(self):
+        record = {
+            "results": [
+                {
+                    "results": {
+                        "out_data": [
+                            {"solutionVector": [1, 0, 1, 0]},
+                        ],
+                    },
+                },
+            ],
+        }
+        assert _extract_subqubo_solution(record) == [1, 0, 1, 0]
+
+    def test_flattened_out_data_path(self):
+        record = {
+            "results": [
+                {
+                    "out_data": [
+                        {"solutionVector": [-1, 1, -1]},
+                    ],
+                },
+            ],
+        }
+        assert _extract_subqubo_solution(record) == [-1, 1, -1]
+
+    def test_results_as_dict(self):
+        record = {
+            "results": {
+                "out_data": [
+                    {"solutionVector": [0, 1]},
+                ],
+            },
+        }
+        assert _extract_subqubo_solution(record) == [0, 1]
+
+    def test_empty_record(self):
+        assert _extract_subqubo_solution({}) == []
+
+    def test_none_record(self):
+        assert _extract_subqubo_solution(None) == []
+
+    def test_no_results_key(self):
+        assert _extract_subqubo_solution({"job_status": "FAILED"}) == []
+
+    def test_results_empty_list(self):
+        assert _extract_subqubo_solution({"results": []}) == []
+
+    def test_no_out_data(self):
+        record = {"results": [{"results": {}}]}
+        assert _extract_subqubo_solution(record) == []
+
+    def test_empty_solution_vector(self):
+        record = {
+            "results": [
+                {
+                    "results": {
+                        "out_data": [{"solutionVector": []}],
+                    },
+                },
+            ],
+        }
+        assert _extract_subqubo_solution(record) == []
+
+    def test_non_dict_result_skipped(self):
+        record = {
+            "results": [
+                "not-a-dict",
+                {
+                    "results": {
+                        "out_data": [{"solutionVector": [1]}],
+                    },
+                },
+            ],
+        }
+        assert _extract_subqubo_solution(record) == [1]
+
+
+class TestBuildSubquboScheduleEntries:
+    """Unit tests for _build_subqubo_schedule_entries."""
+
+    @staticmethod
+    def _device(name):
+        return {
+            "name": name,
+            "driver_name": f"Driver{name}",
+            "driver_module_name": f"wy_qcos.driver.{name}",
+            "driver_class_name": f"Driver{name}",
+            "driver_package_paths": ["/path"],
+            "configs": {"key": "val"},
+        }
+
+    @staticmethod
+    def _task(matrix):
+        return {"matrix": matrix}
+
+    def test_round_robin_two_devices_three_tasks(self):
+        devices = [self._device("d1"), self._device("d2")]
+        tasks = [self._task([[1]]), self._task([[2]]), self._task([[3]])]
+        results = _build_subqubo_schedule_entries(tasks, devices)
+        assert len(results) == 3
+        assert results[0]["device_name"] == "d1"
+        assert results[1]["device_name"] == "d2"
+        assert results[2]["device_name"] == "d1"
+        assert results[0]["source_codes"] == [[[1]]]
+        assert results[2]["source_codes"] == [[[3]]]
+
+    def test_one_device_multiple_tasks(self):
+        devices = [self._device("d1")]
+        tasks = [self._task([[1]]), self._task([[2]])]
+        results = _build_subqubo_schedule_entries(tasks, devices)
+        assert len(results) == 2
+        assert all(r["device_name"] == "d1" for r in results)
+
+    def test_entry_shape(self):
+        devices = [self._device("d1")]
+        tasks = [self._task([[1]])]
+        results = _build_subqubo_schedule_entries(tasks, devices)
+        entry = results[0]
+        assert set(entry.keys()) == {
+            "device_name",
+            "driver_name",
+            "driver_module_name",
+            "driver_class_name",
+            "driver_package_paths",
+            "configs",
+            "source_codes",
+        }
+
+    def test_empty_tasks(self):
+        devices = [self._device("d1")]
+        assert _build_subqubo_schedule_entries([], devices) == []
+
+
+class TestSubmitJobsSubJobId:
+    """Unit tests for submit_jobs sub_job_id uniqueness."""
+
+    @staticmethod
+    def _schedule_entry(name):
+        return {
+            "device_name": name,
+            "driver_name": "DriverDummy",
+            "driver_module_name": "wy_qcos.driver.dummy",
+            "driver_class_name": "DriverDummy",
+            "driver_package_paths": [],
+            "configs": {},
+            "source_codes": [[[1]]],
+        }
+
+    def _job_info(self, job_id):
+        return {
+            "data": {
+                "job_id": job_id,
+                "options": {},
+                "source_code": [],
+                "code_type": "qubo",
+            },
+            "global": {"deployments": {}},
+        }
+
+    def test_sub_job_ids_are_unique_per_device(self):
+        entries = [self._schedule_entry("d1"), self._schedule_entry("d2")]
+        deployments = {
+            "dev|d1": {"deploy_id": "id-1"},
+            "dev|d2": {"deploy_id": "id-2"},
+        }
+        job_info = self._job_info("base-job")
+        mock_client = MagicMock()
+        mock_flow_run = MagicMock()
+        mock_flow_run.id = "flow-1"
+        mock_client.create_flow_run_from_deployment.return_value = (
+            mock_flow_run
+        )
+        result = submit_jobs(
+            entries,
+            job_info,
+            monitor_info={"sub_job_progress": {}},
+            sync_client=mock_client,
+            source_code_count=1,
+            deployments=deployments,
+        )
+        job_ids = [job["job_id"] for job in result]
+        assert len(set(job_ids)) == len(job_ids)
+        assert "base-job_0" in job_ids
+        assert "base-job_1" in job_ids
+
+    def test_deployment_not_found_raises(self):
+        entries = [self._schedule_entry("d1")]
+        job_info = self._job_info("base-job")
+        mock_client = MagicMock()
+        with pytest.raises(ValueError, match="not found"):
+            submit_jobs(
+                entries,
+                job_info,
+                monitor_info={"sub_job_progress": {}},
+                sync_client=mock_client,
+                source_code_count=1,
+                deployments={},
+            )
