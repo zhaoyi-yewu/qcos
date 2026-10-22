@@ -15,6 +15,13 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Native Pauli observables for the dependency-free cutting workflow.
+
+An observable is represented by :class:`PauliTerm` or :class:`PauliSum`, not
+by an SDK-specific operator.  Qubit zero is the right-most character of a
+string label, so ``"IZX"`` represents ``X(0) Z(1)``.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
@@ -26,7 +33,7 @@ _PAULI_AXES = frozenset("IXYZ")
 
 @dataclass(frozen=True, order=True)
 class PauliTerm:
-    """A hashable product-Pauli observable with implicit identity support."""
+    """Hashable product-Pauli observable with implicit identity support."""
 
     factors: tuple[tuple[int, str], ...]
 
@@ -76,7 +83,7 @@ class PauliTerm:
         })
 
     def as_dict(self) -> dict[int, str]:
-        """Return the sparse mapping accepted by native circuit workflows."""
+        """Return the sparse mapping used by the native circuit workflow."""
         return dict(self.factors)
 
     def label(self, num_qubits: int) -> str:
@@ -102,7 +109,7 @@ class PauliSum:
         cls,
         terms: Iterable[tuple[complex, PauliTerm | Mapping[int, str] | str]],
     ) -> PauliSum:
-        """Normalize, combine, and order nonzero terms deterministically."""
+        """Normalize and retain nonzero terms in deterministic order."""
         coefficients: dict[PauliTerm, complex] = {}
         for coefficient, observable in terms:
             term = coerce_pauli_term(observable)

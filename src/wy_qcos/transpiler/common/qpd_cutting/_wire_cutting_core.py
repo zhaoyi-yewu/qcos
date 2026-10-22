@@ -15,11 +15,24 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Exact, Qiskit-free reconstruction for a circuit containing one wire cut.
+
+Only :mod:`numpy` is required.  ``Circuit`` deliberately supports a compact
+gate set (H, Rx, Rzz and arbitrary unitary matrices), which is sufficient for
+the QAOA example and makes the reconstruction process easy to reuse.
+
+A ``WireCut(q)`` divides the history of wire ``q`` into an upstream and a
+downstream wire.  The identity channel across the cut is reconstructed with
+the standard eight prepare/measure quasiprobability terms from
+arXiv:1904.00102.  The fragments are simulated independently and their
+expectation values are combined exactly, i.e. without shot noise.
+"""
+
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from math import cos, sin
+from collections.abc import Iterable, Mapping, Sequence
 
 import numpy as np
 
@@ -30,7 +43,7 @@ PauliWord = Mapping[int, str]
 
 @dataclass(frozen=True)
 class WireCut:
-    """Split marker for a logical wire's upstream and downstream parts."""
+    """Marker splitting one logical wire into upstream and downstream parts."""
 
     qubit: int
 
@@ -385,8 +398,7 @@ def _partition_observable(
             up_word[up_local[final_wire]] = pauli
         elif final_wire in down_local:
             down_word[down_local[final_wire]] = pauli
-        else:  # pragma: no cover
-            # All logical wires must belong to one fragment.
+        else:  # pragma: no cover - every wire belongs to one fragment
             raise ValueError(
                 f"Observable qubit {logical_qubit} is not in a fragment."
             )
@@ -458,7 +470,7 @@ def _measured_expectation(
     if measurement is None:
         return _expectation(state, observable)
     if source_qubit is None:
-        raise ValueError("A measured cut term requires a source qubit.")
+        raise ValueError("A measured fragment requires a source qubit.")
     num_qubits = int(np.log2(state.size))
     measured = _apply_unitary(
         state, _PAULIS[measurement], (source_qubit,), num_qubits
