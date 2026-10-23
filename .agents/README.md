@@ -43,6 +43,8 @@ version: <版本号>
 
 技能文件正文包含：Preconditions（前置条件）、Instructions（分步指令）、检查清单、常见陷阱。
 
+> **注意：** YAML frontmatter 必须以 `---` 开头和结尾，`name`/`description`/`version` 各占一行。Zoo Code 依赖标准 YAML frontmatter 来自动发现和加载技能，格式错误会导致技能无法被识别。
+
 ## 与 AGENTS.md 的关系
 
 根目录下的 [`AGENTS.md`](../../AGENTS.md) 是 AI agent 的入口文件，指向本目录。AI agent 读取 AGENTS.md 后，按指引加载 `rules/` 和 `skills/` 中的内容。

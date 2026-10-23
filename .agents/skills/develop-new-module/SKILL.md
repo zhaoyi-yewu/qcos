@@ -1,6 +1,8 @@
-______________________________________________________________________
-
-## name: develop-new-module description: 在 QCOS 项目中开发新功能模块，包含数据模型、业务逻辑、API 接口和 CLI 命令的完整开发流程 version: 1.0.0
+---
+name: develop-new-module
+description: 在 QCOS 项目中开发新功能模块，包含数据模型、业务逻辑、API 接口和 CLI 命令的完整开发流程
+version: 1.0.0
+---
 
 ## Preconditions
 

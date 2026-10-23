@@ -1,6 +1,8 @@
-______________________________________________________________________
-
-## name: develop-new-driver description: 在 QCOS 项目中开发新的量子设备驱动，包含驱动基类继承、配置校验、远程API对接、单元测试和系统测试的完整开发流程 version: 1.0.0
+---
+name: develop-new-driver
+description: 在 QCOS 项目中开发新的量子设备驱动，包含驱动基类继承、配置校验、远程API对接、单元测试和系统测试的完整开发流程
+version: 1.0.0
+---
 
 ## Preconditions
 
