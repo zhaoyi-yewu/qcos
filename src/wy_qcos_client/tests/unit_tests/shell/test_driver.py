@@ -80,6 +80,7 @@ class TestGetDrivers:
         mock_client.page = None
         mock_client.page_size = None
         mock_client.sort = None
+        mock_client.search = None
         mock_get_table_list_data.return_value = None
         mock_check_results.return_value = None
         table_values = get_drivers.take_action(mock_client)

@@ -525,6 +525,7 @@ class TestGetJobs:
         mock_client.page = None
         mock_client.page_size = None
         mock_client.sort = None
+        mock_client.search = None
         mock_client.project_id = None
         mock_client.user_id = None
         mock_client.job_ids = None

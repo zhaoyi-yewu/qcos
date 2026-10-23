@@ -117,4 +117,5 @@ class TestClientRole:
             filters=None,
             pagination=None,
             sort=None,
+            search=None,
         )

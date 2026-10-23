@@ -229,11 +229,11 @@ class TestTimeoutPrecedence:
     def test_default_timeout_when_no_cli_no_env(
         self, mock_client_cls, mock_initialize_app
     ):
-        """Default 60s used when neither cli nor env specified."""
+        """Default 600s used when neither cli nor env specified."""
         mock_initialize_app.return_value = None
         shell.options = self._setup_options(cli_timeout=None)
         with patch.dict("os.environ", {}, clear=True):
             shell.initialize_app([])
         kwargs = mock_client_cls.call_args.kwargs
-        assert kwargs["timeout"] == 60
+        assert kwargs["timeout"] == 600
         assert kwargs["timeout_from_cli"] is False

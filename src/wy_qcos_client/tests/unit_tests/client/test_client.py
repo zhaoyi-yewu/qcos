@@ -102,7 +102,7 @@ class TestTimeoutPrecedence:
 
     def setup_method(self):
         """Reset class-level timeout flags before each test."""
-        Client.timeout = 60
+        Client.timeout = 600
         Client.timeout_from_cli = False
 
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
@@ -126,7 +126,7 @@ class TestTimeoutPrecedence:
         """When timeout_from_cli=False, env var overrides default."""
         mock_call_http_api.return_value = [-1, "reason", "text", "result"]
         mock_print.return_value = [-1, "reason", "text", "result"]
-        Client.timeout = 60
+        Client.timeout = 600
         Client.timeout_from_cli = False
         with patch.dict("os.environ", {"QCOS_CLIENT_TIMEOUT": "45"}):
             client.call_json_rpc("http://127.0.0.1", "get", {})
@@ -139,9 +139,9 @@ class TestTimeoutPrecedence:
         """When no cli and no env, default timeout is used."""
         mock_call_http_api.return_value = [-1, "reason", "text", "result"]
         mock_print.return_value = [-1, "reason", "text", "result"]
-        Client.timeout = 60
+        Client.timeout = 600
         Client.timeout_from_cli = False
         with patch.dict("os.environ", {}, clear=True):
             client.call_json_rpc("http://127.0.0.1", "get", {})
         kwargs = mock_call_http_api.call_args.kwargs
-        assert kwargs["timeout"] == 60
+        assert kwargs["timeout"] == 600

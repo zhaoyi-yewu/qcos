@@ -286,6 +286,7 @@ class TestClientFlavor:
             filters=None,
             pagination=None,
             sort=None,
+            search=None,
         )
 
     @patch.object(Client, "call_json_rpc")

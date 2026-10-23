@@ -47,7 +47,11 @@ class Client:
     """QCOS client api."""
 
     verbose = False
-    timeout = 60
+    # Default request timeout in seconds. Quantum jobs (e.g. large
+    # QASM circuits, QUBO problems) can take several minutes to
+    # transpile and execute, so 600s is a safe default. Users can
+    # override via --timeout flag or QCOS_CLIENT_TIMEOUT env var.
+    timeout = 600
     # When True, the timeout was set via command line --timeout and the
     # QCOS_CLIENT_TIMEOUT env var must be ignored in call_json_rpc.
     timeout_from_cli = False
@@ -60,7 +64,7 @@ class Client:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_cafile=None,
-        timeout=60,
+        timeout=600,
         timeout_from_cli=False,
     ):
         # Config
@@ -144,6 +148,7 @@ class Client:
         sort=None,
         fields=None,
         params=None,
+        search=None,
     ):
         """Call json-rpc.
 
@@ -156,6 +161,7 @@ class Client:
             sort: json-rpc sort
             fields: json-rpc fields
             params: json-rpc params (Default value = None)
+            search: global search keyword (Default value = None)
         """
         status_code = None
         reason = None
@@ -201,9 +207,9 @@ class Client:
 
         # call http api
         data_params = {}
-        if body_data:
+        if body_data is not None:
             data_params["body"] = body_data
-        # Build query object for filters/pagination/sort
+        # Build query object for filters/pagination/sort/search
         query = {}
         if filters:
             query["filters"] = filters
@@ -213,6 +219,8 @@ class Client:
             query["sort"] = sort
         if fields:
             query["fields"] = fields
+        if search:
+            query["search"] = search
         if query:
             data_params["query"] = query
         jsonrpc_data = jsonrpcclient.request(method_name, params=data_params)
@@ -282,7 +290,9 @@ class Client:
         return status_code, reason, text, result
 
     # [Driver]
-    def get_drivers(self, *, filters=None, pagination=None, sort=None):
+    def get_drivers(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get driver list.
 
         Args:
@@ -290,6 +300,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             Driver list message
@@ -304,6 +315,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
         return status_code, reason, text, result
 
@@ -335,6 +347,7 @@ class Client:
         filters=None,
         pagination=None,
         sort=None,
+        search=None,
     ):
         """Get device list.
 
@@ -344,6 +357,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             Device list message
@@ -359,6 +373,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
         return status_code, reason, text, result
 
@@ -510,7 +525,9 @@ class Client:
         return status_code, reason, text, result
 
     # [Transpiler]
-    def get_transpilers(self, *, filters=None, pagination=None, sort=None):
+    def get_transpilers(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get transpiler list.
 
         Args:
@@ -518,6 +535,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             Transpiler list message
@@ -532,6 +550,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
         return status_code, reason, text, result
 
@@ -642,7 +661,9 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def list_workers(self, *, filters=None, pagination=None, sort=None):
+    def list_workers(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """List all prefect workers with name and status.
 
         Args:
@@ -650,6 +671,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             list of workers
@@ -664,6 +686,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
         return status_code, reason, text, result
 
@@ -936,7 +959,9 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def get_flavors(self, *, filters=None, pagination=None, sort=None):
+    def get_flavors(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get all flavors with optional filtering.
 
         Args:
@@ -945,6 +970,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             get_flavors result
@@ -957,6 +983,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
         return status_code, reason, text, result
 
@@ -1076,7 +1103,9 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def get_device_groups(self, *, filters=None, pagination=None, sort=None):
+    def get_device_groups(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get all device groups with optional filtering.
 
         Args:
@@ -1085,6 +1114,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             get_device_groups result
@@ -1097,6 +1127,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
         return status_code, reason, text, result
 
@@ -1209,7 +1240,9 @@ class Client:
         )
         return status_code, reason, text, result
 
-    def get_jobs(self, *, filters=None, pagination=None, sort=None):
+    def get_jobs(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get job status.
 
         Args:
@@ -1217,6 +1250,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             job status
@@ -1231,6 +1265,7 @@ class Client:
             pagination=pagination,
             sort=sort,
             filters=filters,
+            search=search,
         )
         return status_code, reason, text, result
 
@@ -1596,7 +1631,9 @@ class Client:
         data = {"user_id": user_id, "force": force}
         return self.call_json_rpc(self.user_url, "delete_user", data)
 
-    def get_users(self, *, filters=None, pagination=None, sort=None):
+    def get_users(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get users with optional filtering.
 
         Args:
@@ -1604,6 +1641,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
         """
         return self.call_json_rpc(
             self.user_url,
@@ -1612,6 +1650,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
 
     def create_role(self, role_name, permissions, description=None):
@@ -1654,7 +1693,9 @@ class Client:
         data = {"role_id": role_id}
         return self.call_json_rpc(self.user_url, "delete_role", data)
 
-    def get_roles(self, *, filters=None, pagination=None, sort=None):
+    def get_roles(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get roles with optional filtering.
 
         Args:
@@ -1663,6 +1704,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
         """
         return self.call_json_rpc(
             self.user_url,
@@ -1671,6 +1713,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
 
     def change_password(self, user_id, old_password, new_password):
@@ -1760,7 +1803,9 @@ class Client:
         data = {"project_id": project_id}
         return self.call_json_rpc(self.project_url, "get_project", data)
 
-    def get_projects(self, *, filters=None, pagination=None, sort=None):
+    def get_projects(
+        self, *, filters=None, pagination=None, sort=None, search=None
+    ):
         """Get projects with optional filtering.
 
         Args:
@@ -1769,6 +1814,7 @@ class Client:
             pagination: pagination params dict, e.g.
                 {"page": 1, "page_size": 50}
             sort: sort fields list, e.g. ["-created_at", "job_name"]
+            search: global search keyword for OR fuzzy matching
 
         Returns:
             Dictionary of projects keyed by project ID
@@ -1780,6 +1826,7 @@ class Client:
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=search,
         )
 
     def update_project(self, project_id, project_name=None, description=None):

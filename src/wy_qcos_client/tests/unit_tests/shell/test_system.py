@@ -280,6 +280,7 @@ class TestListWorkers:
         mock_client.page = None
         mock_client.page_size = None
         mock_client.sort = None
+        mock_client.search = None
         result = list_workers.take_action(mock_client)
         assert result is not None
         mock_list.assert_called_once()
