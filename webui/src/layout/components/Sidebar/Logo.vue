@@ -1,3 +1,18 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div class="sidebar-logo-container" :class="{'collapse':collapse}">
     <transition name="sidebarLogoFade">
@@ -14,6 +29,8 @@
 </template>
 
 <script>
+import logoImg from '@/assets/icons/wy_qcos_icon.png'
+
 export default {
   name: 'SidebarLogo',
   props: {
@@ -24,8 +41,8 @@ export default {
   },
   data() {
     return {
-      title: 'Vue Admin Template',
-      logo: 'https://wpimg.wallstcn.com/69a1c46c-eb1c-4b46-8bd4-e9e686ef5251.png'
+      title: 'WUYUEQbit',
+      logo: logoImg
     }
   }
 }

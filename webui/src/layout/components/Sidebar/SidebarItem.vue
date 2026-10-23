@@ -1,3 +1,18 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div v-if="!item.hidden">
     <template v-if="hasOneShowingChild(item.children,item) && (!onlyOneChild.children||onlyOneChild.noShowingChildren)&&!item.alwaysShow">
@@ -8,7 +23,7 @@
       </app-link>
     </template>
 
-    <el-submenu v-else ref="subMenu" :index="resolvePath(item.path)" popper-append-to-body>
+    <ElSubMenu v-else ref="subMenu" :index="resolvePath(item.path)" popper-append-to-body>
       <template #title>
         <item v-if="item.meta" :icon="item.meta && item.meta.icon" :title="item.meta.title" />
       </template>
@@ -20,20 +35,29 @@
         :base-path="resolvePath(child.path)"
         class="nest-menu"
       />
-    </el-submenu>
+    </ElSubMenu>
   </div>
 </template>
 
 <script>
-import path from 'path'
+import { ElSubMenu } from 'element-plus'
 import { isExternal } from '@/utils/validate'
 import Item from './Item'
 import AppLink from './Link'
 import FixiOSBug from './FixiOSBug'
 
+// browser-compatible path resolution (replaces Node.js path.resolve)
+function resolvePath(basePath, routePath) {
+  if (!basePath) return routePath
+  if (!routePath) return basePath
+  const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath
+  const route = routePath.startsWith('/') ? routePath : '/' + routePath
+  return base + route
+}
+
 export default {
   name: 'SidebarItem',
-  components: { Item, AppLink },
+  components: { Item, AppLink, ElSubMenu },
   mixins: [FixiOSBug],
   props: {
     // route object
@@ -86,7 +110,7 @@ export default {
       if (isExternal(this.basePath)) {
         return this.basePath
       }
-      return path.resolve(this.basePath, routePath)
+      return resolvePath(this.basePath, routePath)
     }
   }
 }
