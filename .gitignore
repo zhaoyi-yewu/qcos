@@ -35,6 +35,9 @@ pip-log.txt
 latest-commit-id.txt
 *.log
 
+# ai configs
+.github/copilot-instructions.md
+
 # Unit test / coverage reports (QCOS)
 cicd/reports
 
@@ -53,7 +56,6 @@ docs/sphinx/source/_static/js/
 docs/openapi-docs/dist/
 
 # WEBUI
-webui/package-lock.json
 webui/node_modules
 
 # build temp files
