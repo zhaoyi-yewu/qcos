@@ -16,20 +16,51 @@
 # set variables
 export PS1="(${QCOS_WEBUI_CONTAINER_NAME})[$(pwd)]$ "
 
-WEBUI_LISTEN_IP=${WEBUI_LISTEN_IP:-0.0.0.0}
-WEBUI_LISTEN_PORT=${WEBUI_LISTEN_PORT:-18401}
-WEBUI_ACCESS_LOG=${WEBUI_ACCESS_LOG:-/var/log/qcos/qcos-webui.log}
-WEBUI_ERROR_LOG=${WEBUI_ERROR_LOG:-/var/log/qcos/qcos-webui-error.log}
-
 # create dirs
 mkdir -p /etc/qcos/
 mkdir -p /var/log/qcos/
+# dir holding the generated nginx endpoints.conf. Kept outside
+# /etc/nginx/default.d/ so the default.d/*.conf wildcard include in
+# nginx.conf does not load it a second time (which would cause nginx
+# to fail with "duplicate location" errors).
+mkdir -p /etc/nginx/qcos/
+
+# parse qcos-webui.toml and generate runtime artifacts (env, webui-config.json,
+# nginx endpoints.conf); the script is copied into the image at build time
+python3 /usr/local/bin/parse-webui-toml.py \
+  --toml /etc/qcos/qcos-webui.toml \
+  --env-out /tmp/webui.env \
+  --json-out /apps/webui-config.json \
+  --nginx-snippet-out /etc/nginx/qcos/endpoints.conf
+
+source /tmp/webui.env
+
+WEBUI_LISTEN_IP=${WEBUI_LISTEN_IP:-$LISTEN_IP}
+WEBUI_LISTEN_PORT=${WEBUI_LISTEN_PORT:-$LISTEN_PORT}
+WEBUI_ACCESS_LOG=${WEBUI_ACCESS_LOG:-/var/log/qcos/qcos-webui.log}
+WEBUI_ERROR_LOG=${WEBUI_ERROR_LOG:-/var/log/qcos/qcos-webui-error.log}
 
 # run QCOS
 if [ "${DEV,,}" = "true" ]; then
   # run in development env
   cd /root/qcos-webui
-  npm run dev | tee /var/log/qcos/qcos-webui.log
+  # Pick the vite entry script. Prefer the user-installed copy under
+  # ./node_modules (e.g. after bind-mounting a source tree that contains a
+  # full `npm install`); fall back to the image-bundled copy at
+  # /root/node_modules which the Dockerfile installed during build.
+  # We must invoke the absolute path of vite.js directly instead of
+  # `npm run dev`: npm resolves ./node_modules/.bin/vite which internally
+  # uses an absolute path to ./node_modules/vite/bin/vite.js, and that
+  # absolute path is broken when the local node_modules exists but does
+  # not actually contain the vite package. NODE_PATH does not help here
+  # because Node treats the script path itself as a literal file path,
+  # not a module name to resolve.
+  if [ -f ./node_modules/vite/bin/vite.js ]; then
+    VITE_BIN=./node_modules/vite/bin/vite.js
+  else
+    VITE_BIN=/root/node_modules/vite/bin/vite.js
+  fi
+  node "${VITE_BIN}" | tee /var/log/qcos/qcos-webui.log
   sleep infinity
 else
   cd /apps

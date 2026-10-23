@@ -72,15 +72,60 @@ mkdir -p ${BUILD_DIR}
 
 cd ${BUILD_DIR}
 PYTHON_EXE=${Python_EXECUTABLE:-$(which python3 2>/dev/null || echo python3)}
+VENV_PYEXE=""
+
+# If current Python lives in a venv, fall back to its base_prefix python so
+# that sysconfig returns the real include/lib dirs (venv has no Python.h).
+BASE_PREFIX=$(${PYTHON_EXE} -c "import sys; print(getattr(sys, 'base_prefix', sys.prefix))" 2>/dev/null)
+CUR_PREFIX=$(${PYTHON_EXE} -c "import sys; print(sys.prefix)" 2>/dev/null)
+echo "Python probe: PYTHON_EXE=${PYTHON_EXE} prefix=${CUR_PREFIX} base_prefix=${BASE_PREFIX}"
+if [ -n "${BASE_PREFIX}" ] && [ "${BASE_PREFIX}" != "${CUR_PREFIX}" ]; then
+    # In venv. Save venv python for nanobind lookup; use base python for
+    # headers/libs.
+    VENV_PYEXE="${PYTHON_EXE}"
+    BASE_PYEXE=""
+    for CAND in python3 python3.11 python; do
+        if [ -x "${BASE_PREFIX}/bin/${CAND}" ]; then
+            BASE_PYEXE="${BASE_PREFIX}/bin/${CAND}"
+            break
+        fi
+    done
+    if [ -n "${BASE_PYEXE}" ]; then
+        echo "Detected venv (${CUR_PREFIX}); using base Python at ${BASE_PYEXE}"
+        PYTHON_EXE="${BASE_PYEXE}"
+    else
+        echo "Detected venv (${CUR_PREFIX}) but no executable under ${BASE_PREFIX}/bin/, keep venv python"
+        ls -la "${BASE_PREFIX}/bin/" 2>/dev/null || true
+    fi
+fi
+
 PY_LIBDIR=$(${PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')" 2>/dev/null)
 PY_LDLIB=$(${PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_config_var('LDLIBRARY') or '')" 2>/dev/null)
 PY_INCDIR=$(${PYTHON_EXE} -c "import sysconfig; print(sysconfig.get_path('include') or '')" 2>/dev/null)
 PY_LIB=""
 [ -n "${PY_LIBDIR}" ] && [ -n "${PY_LDLIB}" ] && PY_LIB="${PY_LIBDIR}/${PY_LDLIB}"
+
+# Probe nanobind from venv python if available, else from base python.
+NANOBIND_PYEXE="${VENV_PYEXE:-${PYTHON_EXE}}"
+NANOBIND_CMAKE_DIR=$(${NANOBIND_PYEXE} -m nanobind --cmake_dir 2>/dev/null || true)
+
+# Drop stale FindPython cache entries so the new Python_EXECUTABLE takes
+# effect even on incremental builds (cache from a previous failed run can
+# otherwise pin Python_EXECUTABLE to the venv interpreter).
+CMAKE_PY_UNCACHE=""
+for VAR in Python_EXECUTABLE Python_LIBRARY Python_INCLUDE_DIR Python_ROOT_DIR \
+           _Python3_EXECUTABLE _Python3_LIBRARY _Python3_INCLUDE_DIR _Python3_INTERPRETER_PROPERTIES \
+           _Python3_INTERPRETER_SIGNATURE _Python3_development_module_signature; do
+    CMAKE_PY_UNCACHE="${CMAKE_PY_UNCACHE} -U${VAR}"
+done
+
 cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    ${CMAKE_PY_UNCACHE} \
     -DPython_EXECUTABLE="${PYTHON_EXE}" \
+    -DPython_ROOT_DIR="${BASE_PREFIX}" \
     ${PY_LIB:+-DPython_LIBRARY="${PY_LIB}"} \
     ${PY_INCDIR:+-DPython_INCLUDE_DIR="${PY_INCDIR}"} \
+    ${NANOBIND_CMAKE_DIR:+-Dnanobind_DIR="${NANOBIND_CMAKE_DIR}"} \
     ..
 make -j${NPROC} ${BUILD_TARGET:-}
 

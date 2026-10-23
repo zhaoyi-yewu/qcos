@@ -51,7 +51,7 @@ RUN set -e && \
     registry_url="" && \
     npm_cmd_args="" && \
     if [ -n "${NPM_MIRROR}" ]; then registry_url="--registry=${NPM_MIRROR}"; fi && \
-    PUPPETEER_SKIP_DOWNLOAD=true npm install ${npm_cmd_args} ${registry_url} -g @mermaid-js/mermaid-cli plantuml \
+    PUPPETEER_SKIP_DOWNLOAD=true npm install ${npm_cmd_args} ${registry_url} -g @mermaid-js/mermaid-cli plantuml eslint eslint-plugin-headers \
     && \
 # Active venv: sandbox
     echo "source /var/lib/qcos/venv/sandbox/bin/activate" >> /root/.bashrc && \

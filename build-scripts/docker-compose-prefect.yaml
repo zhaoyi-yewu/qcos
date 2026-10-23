@@ -1,0 +1,53 @@
+# ----------------------------------------------------------------------
+# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+version: '3'
+services:
+  prefect-server:
+    container_name: prefect-server
+    image: prefecthq/prefect:3.6.9-python3.13
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    command: /bin/sh -c 'sleep infinity'
+    # prefect server start --host ""
+    network_mode: "host"
+    environment:
+      TZ: Asia/Shanghai
+      PREFECT_SERVER_API_HOST:
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: "postgresql+asyncpg://prefect:123456@127.0.0.1:5432/prefect"
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
+      PREFECT_API_DATABASE_TIMEOUT: "30"
+      PREFECT_API_URL: http://100.78.61.22:4200/api
+      PREFECT_API_DEFAULT_LIMIT: "200"
+      PREFECT_TASKS_DISABLE_CACHING: "true"
+      PREFECT_TASKS_DEFAULT_CACHE_RESULT_IN_MEMORY: "false"
+      PREFECT_RESULTS_PERSIST_BY_DEFAULT: "false"
+      PREFECT_SERVER_EVENTS_BUFFER_SIZE: "1"
+      PREFECT_SERVER_EVENTS_RETENTION_PERIOD: "PT1H"
+      # job cancel signal requires PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED=true
+      PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED: "true"
+      PREFECT_SERVER_EVENTS_MAXIMUM_SIZE_BYTES: "2000000"
+      PREFECT_SERVER_SERVICES_EVENT_PERSISTER_QUEUE_MAX_SIZE: "5000"
+      PREFECT_SERVER_DOCKET_URL: "redis://${REDIS_SERVER_IP}:${REDIS_SERVER_PORT}/1"
+      PYTHONPATH: /root/qcos-project/src
+    volumes:
+      - /etc/hosts:/etc/hosts
+      - /var/log/qcos:/var/log/qcos
+      - /var/qcos:/var/qcos
+      - /etc/qcos/prefect:/root/.prefect
+      - /root/zhaoyi/projects/quantum-os/WuYueOs/temp/prefect-src/prefect:/usr/local/lib/python3.13/site-packages/prefect/
+
