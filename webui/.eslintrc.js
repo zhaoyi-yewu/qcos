@@ -1,3 +1,20 @@
+/**
+ * Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+ *
+ * qcos is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions
+ * of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *         http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
+const CURRENT_YEAR = new Date().getFullYear()
+
 module.exports = {
   root: true,
   parserOptions: {
@@ -13,15 +30,46 @@ module.exports = {
   // 继承其他配置文件, Vue.js官方推荐的ESLint规则和ESLint官方推荐的规则
   extends: ['plugin:vue/vue3-recommended', 'eslint:recommended'],
 
+  plugins: ['headers'],
+
   // add your custom rules here
   //it is base on https://github.com/vuejs/eslint-config-vue
   rules: {
+    // Copyright header check for JS files
+    'headers/header-format': [
+      'error',
+      {
+        source: 'string',
+        style: 'jsdoc',
+        trailingNewlines: 2,
+        content: [
+          'Copyright© {year} China Mobile (SuZhou) Software Technology Co.,Ltd.',
+          '',
+          'qcos is licensed under Mulan PSL v2.',
+          'You can use this software according to the terms and conditions',
+          'of the Mulan PSL v2.',
+          'You may obtain a copy of Mulan PSL v2 at:',
+          '        http://license.coscl.org.cn/MulanPSL2',
+          'THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,',
+          '    WITHOUT WARRANTIES OF ANY KIND,',
+          'EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,',
+          'MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.',
+          'See the Mulan PSL v2 for more details.'
+        ].join('\n'),
+        variables: {
+          year: `2024-${CURRENT_YEAR}`
+        },
+        patterns: {
+          year: {
+            pattern: String.raw`2024-\d{4}`,
+            defaultValue: `2024-${CURRENT_YEAR}`
+          }
+        }
+      }
+    ],
     "vue/max-attributes-per-line": [2, {
       "singleline": 10,
-      "multiline": {
-        "max": 1,
-        "allowFirstLine": false
-      }
+      "multiline": 1
     }],
     "vue/singleline-html-element-content-newline": "off",
     "vue/multiline-html-element-content-newline":"off",
@@ -196,5 +244,16 @@ module.exports = {
       objectsInObjects: false
     }],
     'array-bracket-spacing': [2, 'never']
-  }
+  },
+
+  // NOTE: eslint-plugin-headers has experimental Vue support with known bugs.
+  // For .vue files, copyright headers are enforced by cicd/check-files.sh instead.
+  overrides: [
+    {
+      files: ['*.vue'],
+      rules: {
+        'headers/header-format': 'off'
+      }
+    }
+  ]
 }
