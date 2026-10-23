@@ -92,7 +92,7 @@ fi
 echo ""
 
 # 2. copyright years check
-EXTENSIONS="\.py$|\.sh$"
+EXTENSIONS="\.py$|\.sh$|\.vue$|\.js$"
 CURRENT_YEAR=$(date +%Y)
 CHANGED_FILES=$(echo "${MR_CHANGED_FILES}" | grep -E "${EXTENSIONS}" || true)
 REGEX="Copyright© 2024-${CURRENT_YEAR} China Mobile \(SuZhou\)(?s).*?qcos is licensed under Mulan PSL v2"

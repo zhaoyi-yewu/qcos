@@ -257,6 +257,68 @@ jobs:
           path: ./build-scripts/images/qcos-cli-amd64-dev.tar.xz
           retention-days: 1
 
+  build-qcos-webui-image:
+    name: Build Docker Image (qcos-webui)
+    needs:
+      - build-sandbox-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          android: true
+          dotnet: true
+          haskell: true
+          docker-images: true
+          tool-cache: false
+          swap-storage: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download qcos-sandbox Docker Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-sandbox-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-sandbox Docker Image
+        run: docker load -i ./build-scripts/images/qcos-sandbox-amd64-dev.tar.xz
+
+      - name: Run Integrated Build Script for qcos-webui
+        shell: bash
+        run: |
+          sudo -s <<'EOF'
+          if [ ! -e /usr/bin/docker-compose ]; then
+            ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+          fi
+          cd ./build-scripts
+          source /root/.bashrc
+          source ./version
+          cp ./env.template ./.env
+          if [ -n "${{ vars.YUM_MIRROR }}" ]; then
+            sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
+          fi
+          df -h
+
+          # run sandbox in container sandbox-temp, since another sandbox will be run from ./build-images.sh
+          cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+          sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+          ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+          export BUILD_WHEEL_IN_SANDBOX=false
+          docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -w -t dev"
+          EOF
+
+      - name: Upload qcos-webui Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qcos-webui-image-artifact
+          path: ./build-scripts/images/qcos-webui-amd64-dev.tar.xz
+          retention-days: 1
+
   run-ut-qcos:
     name: Run Unit/Coverage Tests (qcos)
     needs:
@@ -476,6 +538,7 @@ jobs:
       - build-sandbox-image
       - build-qcos-image
       - build-qcos-cli-image
+      - build-qcos-webui-image
       - run-ut-qcos
       - run-ut-qcos-cli
       - run-st-qcos
@@ -502,6 +565,7 @@ jobs:
             ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-sandbox
             ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos
             ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-cli
+            ${{ vars.QCOS_DOCKERHUB_USERNAME }}/qcos-webui
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'schedule' }}
             type=raw,value=nightly,enable=${{ github.event_name == 'schedule' }}
@@ -548,6 +612,7 @@ jobs:
             "qcos-sandbox-image-artifact:qcos-sandbox-amd64-dev.tar.xz"
             "qcos-image-artifact:qcos-amd64-dev.tar.xz"
             "qcos-cli-image-artifact:qcos-cli-amd64-dev.tar.xz"
+            "qcos-webui-image-artifact:qcos-webui-amd64-dev.tar.xz"
           )
           
           for artifact in "${ARTIFACTS[@]}"; do
@@ -600,6 +665,17 @@ jobs:
         if: env.TAGS_EMPTY == 'false'
         run: docker load -i ./build-scripts/images/qcos-cli-amd64-dev.tar.xz
 
+      - name: Download qcos-webui Docker Image Artifact
+        if: env.TAGS_EMPTY == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: qcos-webui-image-artifact
+          path: ./build-scripts/images/
+
+      - name: Load qcos-webui Docker Image
+        if: env.TAGS_EMPTY == 'false'
+        run: docker load -i ./build-scripts/images/qcos-webui-amd64-dev.tar.xz
+
       - name: Tag and Push docker images
         if: env.TAGS_EMPTY == 'false'
         shell: bash
@@ -626,6 +702,7 @@ jobs:
       - build-sandbox-image
       - build-qcos-image
       - build-qcos-cli-image
+      - build-qcos-webui-image
       - run-ut-qcos
       - run-ut-qcos-cli
       - run-st-qcos
@@ -644,7 +721,7 @@ jobs:
 
           # Email configuration
           subject: |
-            [QCOS CI/CD] ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && '❌ FAILED' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && '🚫 CANCELLED' || '✅ SUCCESS' }} — Run #${{ github.run_number }} on ${{ github.ref_name }} (${{ github.sha }})
+            [QCOS CI/CD] ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.build-qcos-webui-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && '❌ FAILED' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.build-qcos-webui-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && '🚫 CANCELLED' || '✅ SUCCESS' }} — Run #${{ github.run_number }} on ${{ github.ref_name }} (${{ github.sha }})
 
           # Recipients (supports multiple comma-separated addresses)
           to: ${{ vars.QCOS_CICD_REPORT_EMAIL_TO }}
@@ -698,8 +775,8 @@ jobs:
                   <p class="subtitle">Workflow Run #${{ github.run_number }} &nbsp;·&nbsp; ${{ github.event_name }} (${{ github.actor }})</p>
                 </div>
 
-                <div class="overall ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && 'failed' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && 'cancelled' || 'success' }}">
-                  Overall Status: ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && '❌ FAILED' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && '🚫 CANCELLED' || '✅ SUCCESS' }}
+                <div class="overall ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.build-qcos-webui-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && 'failed' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.build-qcos-webui-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && 'cancelled' || 'success' }}">
+                  Overall Status: ${{ (needs.build-qcos-base-image.result == 'failure' || needs.build-sandbox-image.result == 'failure' || needs.build-qcos-image.result == 'failure' || needs.build-qcos-cli-image.result == 'failure' || needs.build-qcos-webui-image.result == 'failure' || needs.run-ut-qcos.result == 'failure' || needs.run-ut-qcos-cli.result == 'failure' || needs.run-st-qcos.result == 'failure' || needs.push-docker-images.result == 'failure') && '❌ FAILED' || (needs.build-qcos-base-image.result == 'cancelled' || needs.build-sandbox-image.result == 'cancelled' || needs.build-qcos-image.result == 'cancelled' || needs.build-qcos-cli-image.result == 'cancelled' || needs.build-qcos-webui-image.result == 'cancelled' || needs.run-ut-qcos.result == 'cancelled' || needs.run-ut-qcos-cli.result == 'cancelled' || needs.run-st-qcos.result == 'cancelled' || needs.push-docker-images.result == 'cancelled') && '🚫 CANCELLED' || '✅ SUCCESS' }}
                 </div>
 
                 <div class="section">
@@ -723,6 +800,7 @@ jobs:
                       <tr><td>Build Sandbox Image</td>  <td>${{ needs.build-sandbox-image.result == 'success' && '✅ success' || needs.build-sandbox-image.result == 'failure' && '❌ failure' || needs.build-sandbox-image.result == 'skipped' && '⏭️ skipped' || needs.build-sandbox-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Build QCOS Image</td>     <td>${{ needs.build-qcos-image.result == 'success' && '✅ success' || needs.build-qcos-image.result == 'failure' && '❌ failure' || needs.build-qcos-image.result == 'skipped' && '⏭️ skipped' || needs.build-qcos-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Build QCOS-CLI Image</td> <td>${{ needs.build-qcos-cli-image.result == 'success' && '✅ success' || needs.build-qcos-cli-image.result == 'failure' && '❌ failure' || needs.build-qcos-cli-image.result == 'skipped' && '⏭️ skipped' || needs.build-qcos-cli-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
+                      <tr><td>Build QCOS-WebUI Image</td> <td>${{ needs.build-qcos-webui-image.result == 'success' && '✅ success' || needs.build-qcos-webui-image.result == 'failure' && '❌ failure' || needs.build-qcos-webui-image.result == 'skipped' && '⏭️ skipped' || needs.build-qcos-webui-image.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Unit Tests - QCOS</td>         <td>${{ needs.run-ut-qcos.result == 'success' && '✅ success' || needs.run-ut-qcos.result == 'failure' && '❌ failure' || needs.run-ut-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>Unit Tests - QCOS-CLI</td>     <td>${{ needs.run-ut-qcos-cli.result == 'success' && '✅ success' || needs.run-ut-qcos-cli.result == 'failure' && '❌ failure' || needs.run-ut-qcos-cli.result == 'skipped' && '⏭️ skipped' || needs.run-ut-qcos-cli.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
                       <tr><td>System Tests - QCOS</td>       <td>${{ needs.run-st-qcos.result == 'success' && '✅ success' || needs.run-st-qcos.result == 'failure' && '❌ failure' || needs.run-st-qcos.result == 'skipped' && '⏭️ skipped' || needs.run-st-qcos.result == 'cancelled' && '🚫 cancelled' || '❓ unknown' }}</td></tr>
