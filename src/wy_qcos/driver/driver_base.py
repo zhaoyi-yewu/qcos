@@ -245,6 +245,21 @@ class DriverBase:
         """
         return self.driver_options_schema
 
+    def get_qec_options_schema(self):
+        """Get QEC (quantum error correction) options schema.
+
+        Default implementation returns None, meaning the driver does not
+        impose any QEC-specific schema constraints beyond the generic
+        args_schema.QEC_OPTIONS already applied at the API layer.
+        Drivers that support QEC (e.g. DriverStim) should override this
+        method and return their own schema dict.
+
+        Returns:
+            QEC options schema dict, or None when the driver has no
+            QEC-specific constraints
+        """
+        return None
+
     def update_driver_options(self, driver_options):
         """Update driver options.
 

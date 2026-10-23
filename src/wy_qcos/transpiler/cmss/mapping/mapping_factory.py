@@ -36,6 +36,7 @@ class MappingFactory:
             Constant.TECH_TYPE_NEUTRAL_ATOM: NASingleRoute(),
             Constant.TECH_TYPE_SUPERCONDUCTING: SCRoute(),
             Constant.TECH_TYPE_GENERIC_SIMULATOR: EmptyRoute(),
+            Constant.TECH_TYPE_DEDICATED_SIMULATOR: EmptyRoute(),
             Constant.TECH_TYPE_NMR: SCRoute(),
         }
 

@@ -153,8 +153,10 @@ class JobRepository(BaseRepository):
         page: int = 1,
         page_size: int = Constant.PAGE_SIZE,
         sort: list[str] | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
     ):
-        """Get jobs with pagination, filtering and sorting.
+        """Get jobs with pagination, filtering, searching and sorting.
 
         Args:
             filters: Dictionary with filter conditions (AND logic)
@@ -162,6 +164,9 @@ class JobRepository(BaseRepository):
             page_size: items per page, -1 for unlimited
             sort: list of sort fields, '-' prefix means descending.
                 Defaults to ["-created_at"] if not provided.
+            search: global keyword for OR fuzzy matching (ILIKE %kw%)
+            search_fields: list of column names to apply search on.
+                Required when search is provided.
 
         Returns:
             Tuple[bool, Exception|None, dict|None]:
@@ -174,6 +179,8 @@ class JobRepository(BaseRepository):
             page=page,
             page_size=page_size,
             sort=sort_fields,
+            search=search,
+            search_fields=search_fields,
         )
 
     def get_jobs_count(self, filters: dict | None = None) -> int:

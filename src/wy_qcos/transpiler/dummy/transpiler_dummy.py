@@ -35,7 +35,7 @@ class TranspilerDummy(TranspilerBase):
         super().__init__()
         self.name = Constant.TRANSPILER_DUMMY
         # alias name
-        self.alias_name = "空载转译器(dummy)"
+        self.alias_name = "空载转译器"
         # version
         self.version = "0.1"
 

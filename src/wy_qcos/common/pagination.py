@@ -17,11 +17,13 @@
 
 """In-memory pagination and sorting utilities for list APIs."""
 
+import re
+
 from wy_qcos.api.schemas.params import PageParams
 
 
 def parse_query(query):
-    """Extract filters/pagination/sort from a JSON-RPC query dict.
+    """Extract filters/pagination/sort/search from a JSON-RPC query dict.
 
     The pagination value (a plain dict from the wire) is validated
     into a PageParams object so downstream code can access
@@ -29,26 +31,28 @@ def parse_query(query):
 
     Args:
         query: dict that may contain 'filters', 'pagination',
-               and 'sort' keys, or None/empty.
+               'sort', and 'search' keys, or None/empty.
 
     Returns:
-        Tuple (filters, pagination, sort):
+        Tuple (filters, pagination, sort, search):
         - filters: dict | None
         - pagination: PageParams | None
         - sort: list[str] | None
+        - search: str | None (global keyword for OR fuzzy matching)
     """
     if not query:
-        return None, None, None
+        return None, None, None, None
     filters = query.get("filters")
     raw_pagination = query.get("pagination")
     sort = query.get("sort")
+    search = query.get("search")
     pagination = None
     if raw_pagination is not None:
         if isinstance(raw_pagination, PageParams):
             pagination = raw_pagination
         else:
             pagination = PageParams.model_validate(raw_pagination)
-    return filters, pagination, sort
+    return filters, pagination, sort, search
 
 
 def _get_sort_key(item, field_name):
@@ -210,4 +214,138 @@ def apply_memory_filters(items, filters):
                     break
         if match:
             result.append(item)
+    return result
+
+
+def _sql_like_to_regex(pattern: str) -> str:
+    """Convert SQL LIKE pattern to regex string.
+
+    SQL LIKE wildcards:
+        ``%`` -> matches any sequence of characters (including empty)
+        ``_`` -> matches exactly one character
+
+    All other regex special characters are escaped.
+
+    Args:
+        pattern: SQL LIKE pattern string
+
+    Returns:
+        Regex pattern string
+    """
+    # Escape regex special chars except % and _
+    result = []
+    for ch in pattern:
+        if ch == "%":
+            result.append(".*")
+        elif ch == "_":
+            result.append(".")
+        elif ch in r"\.^$*+?{}[]|()":
+            result.append("\\" + ch)
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
+def _match_fuzzy(keyword: str, value: str) -> bool:
+    """Match keyword against value using SQL LIKE fuzzy rules.
+
+    Rules:
+        - ``%keyword%`` or plain ``keyword`` -> contains
+        - ``keyword%`` -> prefix match
+        - ``%keyword`` -> suffix match
+        - ``key_ord`` -> single-char wildcard
+        - Multiple space-separated keywords default to OR logic;
+          prefix with ``+`` for AND logic (e.g. ``+a +b``).
+
+    Args:
+        keyword: the fuzzy keyword (may contain SQL LIKE wildcards)
+        value: the string value to match against
+
+    Returns:
+        True if matched, False otherwise
+    """
+    if not keyword:
+        return True
+    if not value:
+        return False
+    keyword = keyword.lower()
+    value = value.lower()
+
+    # Split by whitespace for multi-keyword OR/AND logic
+    tokens = keyword.split()
+    if not tokens:
+        return True
+
+    # Check if any token has '+' prefix (AND logic)
+    and_tokens = [t[1:] for t in tokens if t.startswith("+")]
+    or_tokens = [t for t in tokens if not t.startswith("+")]
+
+    def _match_token(token: str) -> bool:
+        """Match a single token against value using SQL LIKE."""
+        if not token:
+            return True
+        # If no wildcard, wrap with '%' for contains semantics
+        if "%" not in token and "_" not in token:
+            token = f"%{token}%"
+        regex = _sql_like_to_regex(token)
+        return re.fullmatch(regex, value) is not None
+
+    # AND tokens: all must match
+    for token in and_tokens:
+        if not _match_token(token):
+            return False
+
+    # OR tokens: at least one must match (if any and no AND tokens)
+    if or_tokens:
+        if and_tokens:
+            # When AND tokens exist, OR tokens are optional (boost)
+            # but if any OR token matches, it's still a match
+            return True
+        return any(_match_token(t) for t in or_tokens)
+
+    # Only AND tokens: all matched
+    return True
+
+
+def apply_memory_search(items, search, fields):
+    """Filter items by fuzzy case-insensitive SQL LIKE pattern match.
+
+    The keyword supports SQL LIKE wildcards and multi-keyword
+    OR/AND logic:
+
+    - ``keyword`` -> contains (auto-wrapped as ``%keyword%``)
+    - ``%keyword%`` -> contains
+    - ``keyword%`` -> prefix match
+    - ``%keyword`` -> suffix match
+    - ``key_ord`` -> single-char wildcard
+    - ``kw1 kw2`` -> OR logic (any keyword matches)
+    - ``+kw1 +kw2`` -> AND logic (all keywords must match)
+    - ``+kw1 kw2`` -> kw1 must match, kw2 optional
+
+    An item is kept when ANY of the given fields matches the
+    keyword pattern (case-insensitive).
+
+    Args:
+        items: list of dicts or pydantic objects to filter
+        search: keyword string. Empty/None returns all items.
+        fields: list of field names to search. Empty list means
+            no filtering is applied (returns all items).
+
+    Returns:
+        A new filtered list.
+    """
+    if not search or not fields:
+        return list(items)
+    keyword = str(search).strip().lower()
+    if not keyword:
+        return list(items)
+    result = []
+    for item in items:
+        for field in fields:
+            value = _get_sort_key(item, field)
+            if value is None:
+                continue
+            if _match_fuzzy(keyword, str(value)):
+                result.append(item)
+                break
     return result
