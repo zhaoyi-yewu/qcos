@@ -45,7 +45,7 @@ QCOS 提供 Python 客户端库: QCOS-Client（``wy_qcos_client.client.Client``�
         api_server_ip="remote.example.com",
         api_server_port=443,
         use_ssl=True,
-        ssl_cafile="/path/to/ca.pem",
+        ssl_cafile="/etc/qcos/ssl/cacert.pem",
         timeout=120,
     )
 

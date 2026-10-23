@@ -151,6 +151,10 @@
                        "5e4337a0-42d1-410b-827f-761ebd6df470"
                      ]
                    },
+                   // [可选] 全局搜索关键字，对可搜索字段做 OR 模糊匹配
+                   // 支持 SQL LIKE 通配符: % (任意字符序列), _ (单个字符)
+                   // 多关键字空格分隔默认 OR 逻辑, 前缀 + 表示 AND 逻辑
+                   "search": "superconducting",
                    // [可选] 分页，不传返回全部
                    "pagination": {"page": 1, "page_size": 50},
                     // 分页返回格式: {"items": [...], "total": 53, "page": 3, "page_size": 50, "total_pages": 2}

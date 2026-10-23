@@ -11,6 +11,7 @@
    developer-guidelines
    develop-new-module
    develop-new-driver
+   develop-new-webui-page
    debug-guidelines
    run-tests
    release

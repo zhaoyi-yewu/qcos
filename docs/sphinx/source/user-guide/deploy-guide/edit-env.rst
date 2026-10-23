@@ -17,6 +17,7 @@
    # NPM_MIRROR地址格式示例: http://mirrors.cmecloud.cn/npm/repository/qcos/
    # PYTHON_SRC_MIRROR地址格式示例: https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tgz
    # PYPY3_BIN_MIRROR地址格式示例: https://downloads.python.org/pypy/pypy3.11-v7.3.20-linux64.tar.bz2
+   # NODE_BIN_MIRROR地址格式示例: https://mirrors.aliyun.com/nodejs-release/v22.14.0/node-v22.14.0-linux-x64.tar.gz
    # 5. DEBUG是内部开发使用的调试开关, 可以配成默认的False
    # 6. LOCAL_CICD是本地CICD的标记开关, 可以配成默认的False
    # 7. REGISTRY为Docker容器私有镜像仓库地址, 如果本机可以访问DockerHub, 则可以留空

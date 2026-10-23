@@ -23,4 +23,5 @@
    job
    system
    metrics
+   mcp
    error

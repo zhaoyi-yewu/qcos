@@ -12,3 +12,4 @@
    cli/index
    scenario/index
    sdk
+   mcp/index
