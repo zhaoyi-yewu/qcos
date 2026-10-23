@@ -1,24 +1,42 @@
+@use './variables.scss' as *;
+
 #app {
 
+  /* layout: app-wrapper is a flex row pinned to 100vh so only the main
+     container scrolls internally; the sidebar is a fixed-height column
+     (height: 100vh) that never moves, regardless of how much the main
+     content overflows. This replaces the older sticky-based approach
+     which broke when the main content scrolled via the window. */
+  .app-wrapper {
+    height: 100vh;
+    overflow: hidden;
+  }
+
   .main-container {
-    min-height: 100%;
-    transition: margin-left .28s;
-    margin-left: $sideBarWidth;
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
   }
 
   .sidebar-container {
+    flex-shrink: 0;
     transition: width 0.28s;
-    width: $sideBarWidth !important;
-    background-color: $menuBg;
-    height: 100%;
-    position: fixed;
+    width: $sideBarWidth;
+    // sidebar background follows the active theme via CSS variable.
+    // defaults to the legacy dark blue; theme.js overrides --qcos-menu-bg
+    // when a primary color preset is selected.
+    background-color: var(--qcos-menu-bg, $menuBg);
+    // sidebar is pinned to the viewport height and never scrolls; the
+    // menu's own el-scrollbar inside handles overflow if the menu items
+    // exceed the available height
+    height: 100vh;
     font-size: 0px;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 1001;
     overflow: hidden;
+    // the sidebar lives in normal document flow as the left column of
+    // the app-wrapper flex row; it does NOT use position:fixed anymore
 
     // reset element-ui css
     .horizontal-collapse-transition {
@@ -33,15 +51,12 @@
       right: 0px;
     }
 
-    .el-scrollbar {
-      height: 100%;
-    }
-
-    &.has-logo {
-      .el-scrollbar {
-        height: calc(100% - 50px);
-      }
-    }
+    /* NOTE: the legacy rules `.el-scrollbar { height: 100% }` and
+       `&.has-logo .el-scrollbar { height: calc(100% - 50px) }` were
+       removed because the sidebar is now a flex column with the menu
+       scrollbar sized by `flex: 1` (see Sidebar/index.vue). Hard-coding
+       heights here would fight the flex layout and push the theme picker
+       out of view. */
 
     .is-horizontal {
       display: none;
@@ -71,8 +86,11 @@
     // menu hover
     .submenu-title-noDropdown,
     .el-submenu__title {
+      font-size: 15px;
+      font-weight: 600;
+
       &:hover {
-        background-color: $menuHover !important;
+        background-color: var(--qcos-menu-hover, $menuHover) !important;
       }
     }
 
@@ -83,21 +101,28 @@
     & .nest-menu .el-submenu>.el-submenu__title,
     & .el-submenu .el-menu-item {
       min-width: $sideBarWidth !important;
-      background-color: $subMenuBg !important;
+      background-color: var(--qcos-sub-menu-bg, $subMenuBg) !important;
+      font-size: 14px;
+      font-weight: 400;
+      padding-left: 56px !important;
 
       &:hover {
-        background-color: $subMenuHover !important;
+        background-color: var(--qcos-sub-menu-hover, $subMenuHover) !important;
       }
     }
   }
 
   .hideSidebar {
     .sidebar-container {
-      width: 54px !important;
-    }
-
-    .main-container {
-      margin-left: 54px;
+      // fully collapse the sidebar so no remnant is visible. Use both
+      // display:none (removes it from the flex layout) and width:0 as a
+      // fallback for older browsers / transition smoothing.
+      display: none !important;
+      width: 0 !important;
+      min-width: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      overflow: hidden !important;
     }
 
     .submenu-title-noDropdown {
@@ -156,13 +181,16 @@
     min-width: $sideBarWidth !important;
   }
 
-  // mobile responsive
+  // mobile responsive: sidebar overlays the main container as a drawer
   .mobile {
-    .main-container {
-      margin-left: 0px;
-    }
-
     .sidebar-container {
+      // on mobile the sidebar becomes an overlay drawer (fixed) so it
+      // can slide in/out without pushing the main container
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1001;
       transition: transform .28s;
       width: $sideBarWidth !important;
     }
@@ -200,8 +228,7 @@
   .nest-menu .el-submenu>.el-submenu__title,
   .el-menu-item {
     &:hover {
-      // you can use $subMenuHover
-      background-color: $menuHover !important;
+      background-color: var(--qcos-menu-hover, $menuHover) !important;
     }
   }
 

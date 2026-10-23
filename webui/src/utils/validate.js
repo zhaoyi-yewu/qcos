@@ -25,11 +25,15 @@ export function isExternal(path) {
   return /^(https?:|mailto:|tel:)/.test(path)
 }
 
-/**
+/** * Validate a username. Any non-empty name with length between 1 and 64
+ * characters is accepted; whitespace-only names are rejected. The backend
+ * is the source of truth for whether the user actually exists.
+ *
  * @param {string} str
  * @returns {Boolean}
  */
 export function validUsername(str) {
-  const valid_map = ['admin', 'editor']
-  return valid_map.indexOf(str.trim()) >= 0
+  if (typeof str !== 'string') return false
+  const trimmed = str.trim()
+  return trimmed.length >= 1 && trimmed.length <= 64
 }

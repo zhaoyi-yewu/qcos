@@ -14,13 +14,16 @@
  */
 
 import axios from 'axios'
-import { MessageBox, Message } from 'element-ui'
-import store from '@/store'
-import { getToken } from '@/utils/auth'
+import { ElMessageBox as MessageBox, ElMessage as Message } from 'element-plus'
+import { useUserStore } from '@/store/modules/user'
+import { useConfigStore } from '@/store/modules/config'
+import { getSession, removeSession } from '@/utils/session'
 
 // create an axios instance
 const service = axios.create({
-  baseURL: process.env.VUE_APP_BASE_API, // url = base url + request url
+  // baseURL is intentionally left empty; the full URL is constructed
+  // by jsonrpc.js / httpRequest using the active endpoint's url.
+  baseURL: '',
   // withCredentials: true, // send cookies when cross-domain requests
   timeout: 5000 // request timeout
 })
@@ -30,11 +33,12 @@ service.interceptors.request.use(
   config => {
     // do something before request is sent
 
-    if (store.getters.token) {
-      // let each request carry token
-      // ['X-Token'] is a custom headers key
-      // please modify it according to the actual situation
-      config.headers['X-Token'] = getToken()
+    const cfg = useConfigStore()
+    const sess = cfg.activeEndpointName ? getSession(cfg.activeEndpointName) : null
+    if (sess && sess.token) {
+      // attach JWT token in Authorization header
+      // (QCOS backend uses Bearer token auth)
+      config.headers['Authorization'] = `Bearer ${sess.token}`
     }
     return config
   },
@@ -65,7 +69,13 @@ service.interceptors.response.use(
     const res = response.data
     // if the custom code is not 20000, it is judged as an error.
     if (res.error) {
-      const err_msg = res.error.message + ': ' + res.error.data.details
+      // build a human-readable error message; JSON-RPC errors may omit
+      // `data` or `data.details` entirely (e.g. validation errors), so
+      // fall back to just the message field instead of throwing
+      // TypeError when accessing a property of undefined
+      const baseMsg = (res.error && res.error.message) || 'Error'
+      const detailMsg = res.error && res.error.data && res.error.data.details
+      const err_msg = detailMsg ? `${baseMsg}: ${detailMsg}` : baseMsg
       Message({
         message: err_msg || 'Error',
         type: 'error',
@@ -80,7 +90,10 @@ service.interceptors.response.use(
           cancelButtonText: 'Cancel',
           type: 'warning'
         }).then(() => {
-          store.dispatch('user/resetToken').then(() => {
+          const cfg = useConfigStore()
+          removeSession(cfg.activeEndpointName)
+          const userStore = useUserStore()
+          userStore.resetToken().then(() => {
             location.reload()
           })
         })
