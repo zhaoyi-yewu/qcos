@@ -7,17 +7,18 @@
  * You may obtain a copy of Mulan PSL v2 at:
  *         http://license.coscl.org.cn/MulanPSL2
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
- *     WARRANTIES OF ANY KIND,
+ *     WITHOUT WARRANTIES OF ANY KIND,
  * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
 
 import SvgIcon from '@/components/SvgIcon' // svg component
+import 'virtual:svg-icons-register' // register svg icons to DOM
 
 // register globally
 export default {
   install(app) {
-    app.component('svg-icon', SvgIcon)
+    app.component('SvgIcon', SvgIcon)
   }
 }

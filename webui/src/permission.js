@@ -7,7 +7,7 @@
  * You may obtain a copy of Mulan PSL v2 at:
  *         http://license.coscl.org.cn/MulanPSL2
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
- *     WARRANTIES OF ANY KIND,
+ *     WITHOUT WARRANTIES OF ANY KIND,
  * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
@@ -15,10 +15,11 @@
 
 import router from './router'
 import { useUserStore } from './store/modules/user'
+import { useConfigStore } from './store/modules/config'
 import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress' // progress bar
 import 'nprogress/nprogress.css' // progress bar style
-import { getToken } from '@/utils/auth' // get token from cookie
+import { getSession } from '@/utils/session'
 import getPageTitle from '@/utils/get-page-title'
 
 NProgress.configure({ showSpinner: false }) // NProgress Configuration
@@ -33,7 +34,9 @@ router.beforeEach(async(to, from, next) => {
   document.title = getPageTitle(to.meta.title)
 
   // determine whether the user has logged in
-  const hasToken = getToken()
+  const cfg = useConfigStore()
+  const sess = cfg.activeEndpointName ? getSession(cfg.activeEndpointName) : null
+  const hasToken = !!(sess && sess.token)
 
   if (hasToken) {
     if (to.path === '/login') {
@@ -42,6 +45,15 @@ router.beforeEach(async(to, from, next) => {
       NProgress.done()
     } else {
       const userStore = useUserStore()
+      // no-auth sessions (authMode === 'no' or token === 'no-auth') carry
+      // a synthetic token that the backend does not recognize on /v1/auth/me,
+      // so we must skip the getInfo round-trip and trust the locally stored
+      // session payload (name/roles are already restored at app startup).
+      const isNoAuthSession = sess.authMode === 'no' || sess.token === 'no-auth'
+      if (isNoAuthSession) {
+        next()
+        return
+      }
       const hasGetUserInfo = userStore.name
       if (hasGetUserInfo) {
         next()

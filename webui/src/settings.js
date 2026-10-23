@@ -13,9 +13,9 @@
  * See the Mulan PSL v2 for more details.
  */
 
-module.exports = {
+export default {
 
-  title: 'QCOS admin portal',
+  title: 'WUYUEQbit量子计算操作系统 (QCOS)',
 
   /**
    * @type {boolean} true | false
