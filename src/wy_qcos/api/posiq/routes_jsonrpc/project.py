@@ -26,6 +26,8 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import project_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.pagination import (
+    apply_memory_search,
+    apply_memory_sort,
     paginate_list,
     parse_query,
 )
@@ -205,8 +207,8 @@ def get_projects(
     func_name = "get_projects"
     logger.info(f"Call {func_name}: body={body}, query={query}")
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     # Get project manager from request state
     project_manager = get_project_manager(request)
@@ -228,13 +230,18 @@ def get_projects(
                 schemas.GetProjectsResponse.model_validate(project_data)
             )
 
+        if search:
+            items = apply_memory_search(items, search, ["name", "description"])
+        if sort:
+            items = apply_memory_sort(items, sort)
         if pagination:
             return paginate_list(items, pagination.page, pagination.page_size)
         else:
             # Backward compatible: return dict keyed by project ID
+            # GetProjectsResponse has field `id`, not `project_id`
             response_info = {}
-            for i, project in enumerate(projects):
-                response_info[str(project.id)] = items[i]
+            for item in items:
+                response_info[str(item.id)] = item
             return response_info
     except Exception as e:
         # Handle unexpected errors

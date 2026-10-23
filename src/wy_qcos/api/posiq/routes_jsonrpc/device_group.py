@@ -34,6 +34,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import device_group_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.pagination import (
+    apply_memory_search,
     apply_memory_sort,
     paginate_list,
     parse_query,
@@ -410,8 +411,8 @@ def get_device_groups(
     func_name = "get_device_groups"
     logger.info(f"Call {func_name}: body={body}, query={query}")
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     device_group_manager = scheduler.get_device_group_manager()
     if device_group_manager is None:
@@ -434,6 +435,8 @@ def get_device_groups(
             project_id=_current_project_id(auth_data),
         )
     items = [schemas.DeviceGroupResponse.model_validate(g) for g in groups]
+    if search:
+        items = apply_memory_search(items, search, ["name", "description"])
     if sort:
         items = apply_memory_sort(items, sort)
     if pagination:
