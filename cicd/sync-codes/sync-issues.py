@@ -250,6 +250,11 @@ def main(argv=None):
         print("\n>>> Step 6: Syncing issues...")
         for jira_id in jira_ids:
             jira_info = jira_dict.get(jira_id)
+            if not jira_info:
+                # fetch failed (404 / 403 / parse error); skip this Jira
+                print(f"    {jira_id}: Jira issue not available, "
+                      f"skipping")
+                continue
             jira_num = jira_info.get("jira_num")
             jira_closed = lib.is_jira_closed(jira_info)
             reporter_name = jira_info["reporter_name"]

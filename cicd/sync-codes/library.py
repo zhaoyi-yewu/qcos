@@ -507,6 +507,9 @@ def gitee_put(owner, repo, path, token, data, timeout=30):
 def get_gitee_issues_with_jira_labels(token, owner=None, repo=None):
     """Fetch Gitee community issues and extract Jira IDs from labels.
 
+    Searches both ``state=open`` and ``state=progressing`` issues; the
+    merged result is the final mapping.
+
     Args:
         token: Gitee access token
         owner: Gitee repo owner (default: gitee_owner)
@@ -521,28 +524,40 @@ def get_gitee_issues_with_jira_labels(token, owner=None, repo=None):
         repo = gitee_repo
 
     gitee_jira_map = {}
-    for page in range(1, 101):
-        params = {"state": "open", "per_page": 100, "page": page}
-        try:
-            issues = gitee_get(owner, repo, "issues", token, params)
-        except SyncException:
-            break
-        if not issues:
-            break
-        for issue in issues:
-            labels = issue.get("labels", [])
-            for label in labels:
-                if isinstance(label, dict):
-                    label_name = label.get("name", "")
-                else:
-                    label_name = str(label)
-                if label_name.startswith("jira-"):
-                    jira_id = label_name
-                    gitee_jira_map[jira_id] = {
-                        "number": issue.get("number"),
-                        "title": issue.get("title", ""),
-                        "state": issue.get("state", "open"),
-                    }
+    # fetch both open and progressing issues; an issue may already be
+    # in progressing state when the developer starts working on it, so
+    # we must not miss it when syncing
+    for state in ("open", "progressing"):
+        for page in range(1, 101):
+            params = {
+                "state": state,
+                "per_page": 100,
+                "page": page,
+            }
+            try:
+                issues = gitee_get(owner, repo, "issues", token, params)
+            except SyncException:
+                break
+            if not issues:
+                break
+            for issue in issues:
+                labels = issue.get("labels", [])
+                for label in labels:
+                    if isinstance(label, dict):
+                        label_name = label.get("name", "")
+                    else:
+                        label_name = str(label)
+                    if label_name.startswith("jira-"):
+                        jira_id = label_name
+                        # later states overwrite earlier entries; since
+                        # 'progressing' is processed after 'open', a
+                        # progressing issue with the same jira label
+                        # will be the one kept
+                        gitee_jira_map[jira_id] = {
+                            "number": issue.get("number"),
+                            "title": issue.get("title", ""),
+                            "state": issue.get("state", state),
+                        }
     return gitee_jira_map
 
 
@@ -735,10 +750,13 @@ def fetch_jira_issue(jira_id, base_url=None, auth=None):
         auth: basic auth "user:pass" (default: jira_auth)
 
     Returns:
-        dict: {key, summary, description, status} or None if 404
+        dict: {key, summary, description, status} or None if 404 or 403
+            (403 typically means the issue is not visible to the current
+            Jira credentials, e.g. restricted/security-level issues; in
+            that case we log a warning and skip instead of aborting)
 
     Raises:
-        SyncException: on request failure
+        SyncException: on request failure (other than 403/404)
     """
     if base_url is None:
         base_url = jira_base_url
@@ -757,6 +775,13 @@ def fetch_jira_issue(jira_id, base_url=None, auth=None):
     try:
         resp = requests.get(api_url, headers=headers, timeout=30)
         if resp.status_code == 404:
+            return None
+        if resp.status_code == 403:
+            # forbidden: the current Jira credentials cannot see this
+            # issue (e.g. restricted security level); skip with a warning
+            # instead of aborting the whole sync
+            print(f"  Warning: Jira issue {jira_id} returned 403 "
+                  f"Forbidden, skipping")
             return None
         resp.raise_for_status()
     except requests.exceptions.RequestException as e:
