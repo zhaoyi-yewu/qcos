@@ -13,8 +13,8 @@
  * See the Mulan PSL v2 for more details.
  */
 
-const backendBaseUrl = 'http://100.78.61.22:18400'
+// This file is intentionally left empty.
+// Backend base URL is now resolved dynamically from /webui-config.json
+// via useConfigStore; see webui/src/store/modules/config.js.
 
-export default {
-  backendBaseUrl
-}
+export default {}

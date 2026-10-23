@@ -1,3 +1,4 @@
+
 /**
  * Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
  *
@@ -57,6 +58,20 @@ export const constantRoutes = [
   },
 
   {
+    path: '/profile',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'Profile',
+        component: () => import('@/views/profile/index'),
+        meta: { title: '用户信息' }
+      }
+    ]
+  },
+
+  {
     path: '/',
     component: Layout,
     redirect: '/dashboard',
@@ -64,109 +79,301 @@ export const constantRoutes = [
       path: 'dashboard',
       name: 'Dashboard',
       component: () => import('@/views/dashboard/index'),
-      meta: { title: '项目概览', icon: 'el-icon-s-home' }
+      meta: { title: '首页', icon: 'el-icon-home-filled' }
     }]
   },
 
   {
-    path: '/',
+    path: '/jobs',
     component: Layout,
-    redirect: '/job_manager',
-    children: [{
-      path: 'job_manager',
-      name: 'JobManager',
-      component: () => import('@/views/job/job_list.vue'),
-      meta: { title: '作业查询', icon: 'el-icon-s-management' }
-    }]
-  },
-
-  {
-    path: 'job_detail',
-    name: 'JobDetail',
-    component: () => import('@/views/job/job_detail.vue'),
-    hidden: true,
-    meta: { title: '作业详情' }
-  },
-
-  {
-    path: '/job_submit',
-    component: Layout,
-    redirect: '/job_submit',
-    name: 'JobSubmit',
-    meta: { title: '作业提交', icon: 'el-icon-upload' },
+    redirect: '/jobs/',
+    name: 'JobManager',
+    meta: { title: '作业管理', icon: 'el-icon-tickets' },
     children: [
       {
-        path: 'qasm',
-        name: 'qasmTree',
-        component: () => import('@/views/job/qasm.vue'),
-        meta: { title: 'OpenQASM作业提交', icon: 'el-icon-s-unfold' }
+        path: '',
+        name: 'JobList',
+        component: () => import('@/views/job/job_list.vue'),
+        meta: { title: '作业列表', icon: 'el-icon-document' }
       },
       {
-        path: 'qubo',
-        name: 'quboTree',
-        component: () => import('@/views/job/qubo.vue'),
-        meta: { title: 'QUBO矩阵作业提交', icon: 'el-icon-s-unfold' }
-      }
-      /*
-      {
-        path: 'sequence',
-        name: 'sequenceTree',
-        component: () => import('@/views/task_submit/sequence'),
-        meta: { title: '序列作业提交', icon: 'el-icon-s-unfold' }
-      }
-      */
-    ]
-  },
-
-  {
-    path: '/device',
-    component: Layout,
-    redirect: '/device',
-    meta: { title: '设备信息', icon: 'el-icon-s-platform' },
-    children: [
-      {
-        path: 'devices',
-        name: 'deviceTree',
-        component: () => import('@/views/device/device_list.vue'),
-        meta: { title: '设备列表', icon: 'el-icon-s-unfold' }
-      },
-      {
-        path: 'drivers',
-        name: 'driverTree',
-        component: () => import('@/views/driver/driver_list.vue'),
-        meta: { title: '驱动列表', icon: 'el-icon-s-unfold' }
+        path: 'submit',
+        name: 'JobSubmit',
+        component: () => import('@/views/job/job_submit.vue'),
+        meta: { title: '作业提交', icon: 'el-icon-upload' }
       },
       {
         path: 'transpilers',
         name: 'transpilerTree',
         component: () => import('@/views/transpiler/transpiler_list.vue'),
-        meta: { title: '转译器列表', icon: 'el-icon-s-unfold' }
+        meta: { title: '转译器列表', icon: 'el-icon-magic-stick' }
       }
     ]
   },
 
   {
-    path: 'device_details',
-    name: 'DeviceDetails',
-    component: () => import('@/views/device/device_details.vue'),
+    path: '/jobs/:jobId',
+    component: Layout,
     hidden: true,
-    meta: { title: '设备详情' }
+    children: [
+      {
+        path: '',
+        name: 'JobDetail',
+        component: () => import('@/views/job/job_details.vue'),
+        meta: { title: '作业详情', activeMenu: '/jobs/' }
+      }
+    ]
   },
 
   {
-    path: 'driver_details',
-    name: 'DriverDetails',
-    component: () => import('@/views/driver/driver_details.vue'),
-    hidden: true,
-    meta: { title: '驱动详情' }
+    path: '/device-mgmt',
+    component: Layout,
+    redirect: '/device-mgmt/devices',
+    name: 'DeviceManager',
+    meta: { title: '设备管理', icon: 'el-icon-cpu' },
+    children: [
+      {
+        path: 'devices',
+        name: 'deviceTree',
+        component: () => import('@/views/device/device_list.vue'),
+        meta: { title: '设备列表', icon: 'el-icon-monitor' }
+      },
+      {
+        path: 'groups',
+        name: 'deviceGroupTree',
+        component: () => import('@/views/device/device_group_list.vue'),
+        meta: { title: '设备组管理', icon: 'el-icon-files' }
+      },
+      {
+        path: 'flavors',
+        name: 'flavorTree',
+        component: () => import('@/views/flavor/flavor_list.vue'),
+        meta: { title: '资源规格列表', icon: 'el-icon-setting' }
+      },
+      {
+        path: 'workers',
+        name: 'workerTree',
+        component: () => import('@/views/device/worker_list.vue'),
+        meta: { title: '工作器列表', icon: 'el-icon-odometer', roles: ['admin'] }
+      },
+      {
+        path: 'drivers',
+        name: 'driverTree',
+        component: () => import('@/views/driver/driver_list.vue'),
+        meta: { title: '驱动列表', icon: 'el-icon-grid' }
+      }
+    ]
   },
 
   {
-    path: 'transpiler_details',
-    name: 'TranspilerDetails',
-    component: () => import('@/views/transpiler/transpiler_details.vue'),
+    path: '/user-settings',
+    component: Layout,
+    redirect: '/user-settings/profile',
+    name: 'UserSettings',
+    alwaysShow: true,
+    meta: { title: '账户设置', icon: 'el-icon-user-filled' },
+    children: [
+      {
+        path: 'profile',
+        name: 'UserProfile',
+        component: () => import('@/views/profile/index'),
+        meta: { title: '用户信息', icon: 'el-icon-info-filled' }
+      }
+    ]
+  },
+
+  {
+    path: '/account',
+    component: Layout,
+    redirect: '/account/projects',
+    name: 'AccountManager',
+    meta: { title: '身份与访问控制', icon: 'el-icon-user', roles: ['admin'] },
+    children: [
+      {
+        path: 'projects',
+        name: 'ProjectList',
+        component: () => import('@/views/account/project_list.vue'),
+        meta: { title: '项目管理', icon: 'el-icon-folder' }
+      },
+      {
+        path: 'roles',
+        name: 'RoleList',
+        component: () => import('@/views/account/role_list.vue'),
+        meta: { title: '角色管理', icon: 'el-icon-circle-check' }
+      },
+      {
+        path: 'users',
+        name: 'UserList',
+        component: () => import('@/views/account/user_list.vue'),
+        meta: { title: '用户管理', icon: 'el-icon-avatar' }
+      },
+      {
+        path: 'login-logs',
+        name: 'LoginLogList',
+        component: () => import('@/views/account/login_log_list.vue'),
+        meta: { title: '登录日志', icon: 'el-icon-clock' }
+      }
+    ]
+  },
+
+  {
+    path: '/system-mgmt',
+    component: Layout,
+    redirect: '/system-mgmt/system-info',
+    name: 'SystemManager',
+    meta: { title: '系统监控', icon: 'el-icon-monitor', roles: ['admin'] },
+    children: [
+      {
+        path: 'system-info',
+        name: 'SystemInfo',
+        component: () => import('@/views/system/system_info.vue'),
+        meta: { title: '系统信息', icon: 'el-icon-info-filled' }
+      },
+      {
+        path: 'component-status',
+        name: 'ComponentStatus',
+        component: () => import('@/views/system/component_status.vue'),
+        meta: { title: '组件状态', icon: 'el-icon-data-line' }
+      },
+      {
+        path: 'job-stats',
+        name: 'JobStats',
+        component: () => import('@/views/system/job_stats.vue'),
+        meta: { title: '作业统计', icon: 'el-icon-histogram' }
+      },
+      {
+        path: 'api-stats',
+        name: 'ApiStats',
+        component: () => import('@/views/system/api_stats.vue'),
+        meta: { title: 'API访问统计', icon: 'el-icon-pie-chart' }
+      }
+    ]
+  },
+
+  {
+    path: '/device-mgmt/devices/:deviceName',
+    component: Layout,
     hidden: true,
-    meta: { title: '转译器详情' }
+    children: [
+      {
+        path: '',
+        name: 'DeviceDetails',
+        component: () => import('@/views/device/device_details.vue'),
+        meta: { title: '设备详情', activeMenu: '/device-mgmt/devices' }
+      }
+    ]
+  },
+
+  {
+    path: '/device-mgmt/drivers/:driverName',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'DriverDetails',
+        component: () => import('@/views/driver/driver_details.vue'),
+        meta: { title: '驱动详情', activeMenu: '/device-mgmt/drivers' }
+      }
+    ]
+  },
+
+  {
+    path: '/device-mgmt/groups/:groupId',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'DeviceGroupDetails',
+        component: () => import('@/views/device/device_group_details.vue'),
+        meta: { title: '设备组详情', activeMenu: '/device-mgmt/groups' }
+      }
+    ]
+  },
+
+  {
+    path: '/device-mgmt/workers/:workerName',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'WorkerDetails',
+        component: () => import('@/views/device/worker_details.vue'),
+        meta: { title: '工作器详情', activeMenu: '/device-mgmt/workers' }
+      }
+    ]
+  },
+
+  {
+    path: '/account/projects/:projectId',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'ProjectDetails',
+        component: () => import('@/views/account/project_details.vue'),
+        meta: { title: '项目详情', activeMenu: '/account/projects' }
+      }
+    ]
+  },
+
+  {
+    path: '/account/roles/:roleId',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'RoleDetails',
+        component: () => import('@/views/account/role_details.vue'),
+        meta: { title: '角色详情', activeMenu: '/account/roles' }
+      }
+    ]
+  },
+
+  {
+    path: '/account/users/:userId',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'UserDetails',
+        component: () => import('@/views/account/user_details.vue'),
+        meta: { title: '用户详情', activeMenu: '/account/users' }
+      }
+    ]
+  },
+
+  {
+    path: '/jobs/transpilers/:transpilerName',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'TranspilerDetails',
+        component: () => import('@/views/transpiler/transpiler_details.vue'),
+        meta: { title: '转译器详情', activeMenu: '/jobs/transpilers' }
+      }
+    ]
+  },
+
+  {
+    path: '/flavors/:flavorId',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        name: 'FlavorDetails',
+        component: () => import('@/views/flavor/flavor_details.vue'),
+        meta: { title: '资源规格详情', activeMenu: '/device-mgmt/flavors' }
+      }
+    ]
   },
 
   /*
@@ -182,31 +389,31 @@ export const constantRoutes = [
         path: 'rabi',
         name: 'rabiTree',
         component: () => import('@/views/calibration/sub_pages/rabi'),
-        meta: { title: 'Rabi振荡扫描', icon: 'el-icon-s-unfold' }
+        meta: { title: 'Rabi振荡扫描', icon: 'el-icon-data-line' }
       },
       {
         path: 'raman_ch1',
         name: 'raman_ch1Tree',
         component: () => import('@/views/calibration/sub_pages/raman_ch1'),
-        meta: { title: '单比特对准阱扫描CH1通道', icon: 'el-icon-s-unfold' }
+        meta: { title: '单比特对准阱扫描CH1通道', icon: 'el-icon-data-line' }
       },
       {
         path: 'raman_ch2',
         name: 'raman_ch2Table',
         component: () => import('@/views/calibration/sub_pages/raman_ch2'),
-        meta: { title: '单比特对准阱扫描CH2通道', icon: 'el-icon-s-unfold' }
+        meta: { title: '单比特对准阱扫描CH2通道', icon: 'el-icon-data-line' }
       },
       {
         path: 'arrange_ch1',
         name: 'arrange_ch1Tree',
         component: () => import('@/views/calibration/sub_pages/arrange_ch1'),
-        meta: { title: '重排CH1频率扫描', icon: 'el-icon-s-unfold' }
+        meta: { title: '重排CH1频率扫描', icon: 'el-icon-data-line' }
       },
       {
         path: 'arrange_ch2',
         name: 'arrange_ch2Tree',
         component: () => import('@/views/calibration/sub_pages/arrange_ch2'),
-        meta: { title: '重排CH2频率扫描', icon: 'el-icon-s-unfold' }
+        meta: { title: '重排CH2频率扫描', icon: 'el-icon-data-line' }
       }
     ]
   },

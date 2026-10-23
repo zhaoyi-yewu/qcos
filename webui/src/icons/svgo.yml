@@ -1,22 +1,13 @@
+# svgo v3/v4 config
 # replace default config
 
 # multipass: true
-# full: true
 
 plugins:
-
-  # - name
-  #
-  # or:
-  # - name: false
-  # - name: true
-  #
-  # or:
-  # - name:
-  #     param1: 1
-  #     param2: 2
-
-- removeAttrs:
-    attrs:
-      - 'fill'
-      - 'fill-rule'
+  # v3+ format: each plugin is an object with `name` and optional `params`.
+  # The v1 style of `- pluginName: { ... }` was removed in svgo 3.
+  - name: removeAttrs
+    params:
+      attrs:
+        - 'fill'
+        - 'fill-rule'

@@ -22,6 +22,7 @@ export function getJobStatus(job_status) {
     'COMPLETED': '已完成',
     'CANCELLING': '取消中',
     'CANCELLED': '已取消',
+    'DELETING': '删除中',
     'DELETED': '已删除'
   }
   return jobMap[job_status] || ''
@@ -29,26 +30,46 @@ export function getJobStatus(job_status) {
 
 export function getJobStatusTag(jobStatus) {
   const statusMap = {
-    'UNKNOWN': 'grey',
-    'QUEUED': 'orange',
-    'RUNNING': 'green',
-    'FAILED': 'red',
-    'COMPLETED': 'blue',
-    'CANCELLING': 'grey',
-    'CANCELLED': 'grey',
-    'DELETED': 'grey'
+    'UNKNOWN': 'info',
+    'QUEUED': 'warning',
+    'RUNNING': 'success',
+    'FAILED': 'danger',
+    'COMPLETED': 'primary',
+    'CANCELLING': 'info',
+    'CANCELLED': 'info',
+    'DELETING': 'info',
+    'DELETED': 'info'
   }
-  return statusMap[jobStatus] || ''
+  return statusMap[jobStatus] || 'info'
 }
 
 export function getStatus(deviceStatus) {
   const statusMap = {
     'online': '在线',
     'offline': '离线',
-    'busy': '忙碌',
+    'busy': '繁忙',
+    'disconnected': '断连',
+    'calibrating': '校准',
+    'maintain': '维护',
     'unknown': '未知'
   }
   return statusMap[deviceStatus] || ''
+}
+
+/**
+ * Get device status display text with manual/auto indicator.
+ *
+ * @param {string} deviceStatus - device status string
+ * @param {boolean} isManual - whether the status is manually set
+ * @returns {string} e.g. "在线 [自动]" or "离线 [手动]"
+ */
+export function getDeviceStatusDisplay(deviceStatus, isManual) {
+  const statusText = getStatus(deviceStatus)
+  if (!statusText) {
+    return ''
+  }
+  const modeText = isManual ? '手动' : '自动'
+  return `${statusText} [${modeText}]`
 }
 
 export function getEnable(enable) {
@@ -74,10 +95,10 @@ export function getResultsFetchMode(resultsFetchMode) {
 
 export function convertDate(dateStr) {
   if (!dateStr) {
-    return dateStr
+    return '-'
   }
   const date = new Date(dateStr)
-  return new Intl.DateTimeFormat('zh-CN', {
+  const base = new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -85,6 +106,12 @@ export function convertDate(dateStr) {
     minute: '2-digit',
     second: '2-digit'
   }).format(date)
+  // append sub-second precision from the original string
+  const match = String(dateStr).match(/\.(\d+)/)
+  if (match) {
+    return `${base}.${match[1]}`
+  }
+  return base
 }
 
 export function customColorMethod(percentage) {
@@ -95,6 +122,33 @@ export function customColorMethod(percentage) {
     return '#e6a23c'
   }
   return '#67c23a'
+}
+
+export function getDeviceStatusTagType(status) {
+  const statusMap = {
+    'online': 'success',
+    'offline': 'info',
+    'busy': 'warning',
+    'disconnected': 'danger',
+    'calibrating': 'warning',
+    'maintain': 'warning',
+    'unknown': 'info'
+  }
+  return statusMap[status] || 'info'
+}
+
+export function getTechTypeName(versionData, techType) {
+  if (!versionData || !versionData.capabilities || !versionData.capabilities.tech_types) {
+    return '-'
+  }
+  if (!techType) {
+    return '-'
+  }
+  const techTypes = versionData.capabilities.tech_types
+  if (!techTypes[techType]) {
+    return '-'
+  }
+  return techTypes[techType].alias_name || '-'
 }
 
 export function isEmptyStr(value) {
@@ -175,9 +229,13 @@ export function quboParser(fileName, fileContent) {
 
 export function filterDevices(versionData, devicesDetails, filter) {
   const devices = {}
-  const transpilers = versionData.capabilities['transpilers']
-  const drivers = versionData.capabilities['drivers']
-  const driverTranspilerMappings = versionData.capabilities['driver_transpiler_mappings']
+  const capabilities = versionData && versionData.capabilities
+  if (!capabilities) {
+    return devices
+  }
+  const transpilers = capabilities['transpilers'] || {}
+  const drivers = capabilities['drivers'] || {}
+  const driverTranspilerMappings = capabilities['driver_transpiler_mappings'] || {}
   for (const deviceName in devicesDetails) {
     let addDevice = false
     const device = devicesDetails[deviceName]
@@ -299,22 +357,20 @@ export function getQuboResultsPrettyPrint(result) {
   return displayCodes
 }
 
-export function getTaskSourceContent(sourceCode, codeType) {
+export function getJobSourceContent(sourceCode, codeType) {
   const codeList = []
   for (let i = 0; i < sourceCode.length; i++) {
-    codeList.push(`<b>代码[${i}]:</b>`)
-    codeList.push('<div class="scrollable-content"><pre>')
+    codeList.push(`代码[${i}]:`)
     if (codeType === 'qubo') {
       codeList.push(getQuboPrettyPrint(sourceCode[i]))
     } else {
       codeList.push(sourceCode[i])
     }
-    codeList.push('</pre></div>')
   }
   return codeList.join('\n')
 }
 
-export function getTaskResultsContent(results, codeType) {
+export function getJobResultsContent(results, codeType) {
   const resultsList = []
   if (results == null) {
     return resultsList
@@ -323,4 +379,34 @@ export function getTaskResultsContent(results, codeType) {
     resultsList.push(getResultsPrettyPrint(results[i], codeType))
   }
   return resultsList
+}
+
+/**
+ * Normalise user-supplied JSON text before passing it to JSON.parse.
+ *
+ * Users frequently copy-paste JSON from chat messages, Office documents
+ * or Chinese IME input, which silently replaces ASCII punctuation with
+ * full-width / smart-quote variants that JSON.parse rejects. This helper
+ * converts the common culprits back to their ASCII form so that inputs
+ * like `{"a": 1}` (with curly quotes) still parse correctly.
+ *
+ * @param {string} text raw user input
+ * @returns {string} normalised text safe for JSON.parse
+ */
+export function normalizeJsonInput(text) {
+  if (typeof text !== 'string') return text
+  return text
+    // strip BOM and zero-width characters that often sneak in via copy-paste
+    // (written as unicode escapes to avoid irregular-whitespace lint errors)
+    .replace(/^\uFEFF/, '')
+    .replace(/\u200B|\u200C|\u200D|\u2060/g, '')
+    // curly/smart double quotes -> plain "
+    .replace(/[“”„‟]/g, '"')
+    // curly/smart single quotes -> plain '
+    .replace(/[‘’‚‛]/g, "'")
+    // full-width ASCII variants (Ｕ＋ＦＦ０１－ＦＦ５Ｅ) -> ASCII
+    .replace(/[！-～]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    // full-width space -> regular space
+    .replace(/\u3000/g, ' ')
+    .trim()
 }
