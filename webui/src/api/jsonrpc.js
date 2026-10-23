@@ -14,7 +14,7 @@
  */
 
 import request from '@/utils/request'
-import config from '@/config'
+import { useConfigStore } from '@/store/modules/config'
 
 /**
  * Send a JSON-RPC 2.0 request to the backend.
@@ -24,9 +24,15 @@ import config from '@/config'
  * @param {object} body - request body params
  * @returns {Promise} axios response promise
  */
-export function jsonrpcRequest(endpoint, method, body = {}) {
+export function jsonrpcRequest(endpoint, method, body = {}, query = null) {
+  const cfg = useConfigStore()
+  const base = cfg.activeEndpoint ? cfg.activeEndpoint.url : ''
+  const params = { body: body }
+  if (query) {
+    params.query = query
+  }
   return request({
-    url: `${config.backendBaseUrl}${endpoint}`,
+    url: `${base}${endpoint}`,
     method: 'post',
     headers: {
       'Content-Type': 'application/json'
@@ -35,7 +41,7 @@ export function jsonrpcRequest(endpoint, method, body = {}) {
       jsonrpc: '2.0',
       id: 1,
       method: method,
-      params: { body: body }
+      params: params
     }
   })
 }
@@ -50,8 +56,10 @@ export function jsonrpcRequest(endpoint, method, body = {}) {
  * @returns {Promise} axios response promise
  */
 export function httpRequest(endpoint, method, data = null, params = null) {
+  const cfg = useConfigStore()
+  const base = cfg.activeEndpoint ? cfg.activeEndpoint.url : ''
   const opts = {
-    url: `${config.backendBaseUrl}${endpoint}`,
+    url: `${base}${endpoint}`,
     method: method,
     headers: {
       'Content-Type': 'application/json'

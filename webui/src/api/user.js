@@ -13,27 +13,19 @@
  * See the Mulan PSL v2 for more details.
  */
 
-import request from '@/utils/request'
+import { jsonrpcRequest } from '@/api/jsonrpc'
 
 export function login(data) {
-  return request({
-    url: '/vue-admin-template/user/login',
-    method: 'post',
-    data
+  return jsonrpcRequest('/v1/auth', 'login', {
+    username: data.username,
+    password: data.password
   })
 }
 
-export function getInfo(token) {
-  return request({
-    url: '/vue-admin-template/user/info',
-    method: 'get',
-    params: { token }
-  })
+export function getInfo() {
+  return jsonrpcRequest('/v1/auth', 'me')
 }
 
 export function logout() {
-  return request({
-    url: '/vue-admin-template/user/logout',
-    method: 'post'
-  })
+  return jsonrpcRequest('/v1/auth', 'logout')
 }
