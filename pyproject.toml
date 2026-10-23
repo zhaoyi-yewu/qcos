@@ -72,6 +72,7 @@ dependencies = [
     "jsonrpcclient==4.0.3",
     "loguru==0.7.3",
     "matplotlib==3.11.0",
+    "mcp==2.3.0",
     "mqt.qcec==3.7.0",
     "networkx==3.6.1",
     "numexpr==2.14.1",
@@ -200,6 +201,7 @@ docs = [
 # requirements of sandbox
 sandbox = [
     "auditwheel==6.8.2",
+    "cmake==4.4.4",
     "bump-my-version==1.4.1",
     "patchelf==0.19.1.0",
     "poetry==2.4.1",
