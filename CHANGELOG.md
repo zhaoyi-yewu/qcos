@@ -10,7 +10,9 @@
   DriverQuafuHongluo, DriverQuafuLing, 国基量子超导驱动: DriverCetcBaihua，
   量旋科技超导驱动: DriverSpinqSqc25, 启科量子离子阱驱动: DriverQudoorAbaQu100,
   逻辑比特超导脉冲驱动: DriverLqMQ02Pulse
-- 新增列表API统一分页、排序和过滤功能
+- 新增列表API统一分页(pagination)、排序(sort)、过滤(filters)和模糊搜索(search)功能
+- 新增MCP服务能力，可通过AI对话来控制
+- 新增WEBUI管理界面
 
 ### 变更功能
 

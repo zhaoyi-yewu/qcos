@@ -2,13 +2,15 @@
 
 [<img alt="qcos" width="100" height="20" src="https://img.shields.io/docker/v/qcos/qcos/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos"/>](https://hub.docker.com/r/qcos/qcos)
 [<img alt="qcos-cli" width="115" height="20" src="https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-cli"/>](https://hub.docker.com/r/qcos/qcos-cli)
+[<img alt="qcos-webui" width="115" height="20" src="https://img.shields.io/docker/v/qcos/qcos-webui/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-webui"/>](https://hub.docker.com/r/qcos/qcos-webui)
 [<img alt="qcos-sandbox" width="150" height="20" src="https://img.shields.io/docker/v/qcos/qcos-sandbox/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-sandbox"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
 
 [<img alt="PyPI - Version" width="95" height="20" src="https://img.shields.io/pypi/v/wy-qcos?logo=pypi&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
 [<img alt="PyPI - Wheel" width="90" height="20" src="https://img.shields.io/pypi/wheel/wy-qcos?logo=python&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
+[<img alt="MCP Server" width="110" height="20" src="https://img.shields.io/badge/MCP-Server-black?logo=modelcontextprotocol"/>](https://qcos.readthedocs.io/zh-cn/latest/user-guide/mcp/mcp.html)
+[<img alt="License" width="150" height="20" src="https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative"/>](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
 [<img alt="Codecov" width="110" height="20" src="https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg"/>](https://codecov.io/github/zhaoyi-yewu/qcos)
 [<img alt="Documentation Status" width="86" height="18" src="https://app.readthedocs.org/projects/qcos/badge/?version=latest&amp;style=plastic"/>](https://qcos.readthedocs.io/zh-cn/latest/)
-[<img alt="License" width="150" height="20" src="https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative"/>](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
 [<img alt="GITHUB CICD" width="130" height="20" src="https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&amp;logoColor=white&amp;labelColor=blue&amp;label=github/cicd"/>](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
 [<img alt="JENKINS CICD" width="140" height="20" src="http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins/cicd"/>](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
 
@@ -21,8 +23,8 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 ## 2. 功能特性
 
 | 类别 | 功能 |
-|:------|:-------------------------------------------------------|
-| 交互方式 | 命令行、API、SDK、GUI（规划） |
+|:------|:------------------------------------------------------------------------------------------------------------------------------|
+| 交互方式 | 命令行、API、SDK、WEBUI、MCP协议 |
 | 用户管理 | 多租户隔离、多用户、RBAC（基于角色的）API 权限控制、JWT登录认证 |
 | 设备管理 | 校准操作（规划）、设备配置/查询、设备可用率统计 |
 | 作业管理 | 作业提交、取消、删除、状态查询、结果查询、自动调度 |
