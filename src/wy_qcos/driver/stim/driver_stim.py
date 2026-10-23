@@ -40,7 +40,7 @@ class DriverStim(DriverGateBase):
         self.version = "0.0.1"
         self.alias_name = "Stim驱动"
         self.description = "Stim驱动"
-        self.tech_type = Constant.TECH_TYPE_GENERIC_SIMULATOR
+        self.tech_type = Constant.TECH_TYPE_DEDICATED_SIMULATOR
         self.transpiler = Constant.TRANSPILER_CMSS
         self.supported_basis_gates = [
             Constant.SINGLE_QUBIT_GATE_X,

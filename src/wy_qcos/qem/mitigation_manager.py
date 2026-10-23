@@ -48,7 +48,7 @@ class MitigationManager:
         6. Clifford (observable correction)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._factory = MitigationFactory()
         self._techniques: dict[str, MitigationBase] = {}
         self._calibration_data: dict[str, Any] = {}
@@ -79,7 +79,9 @@ class MitigationManager:
                     "Failed to create mitigation '%s': %s", name, exc
                 )
 
-    def validate_device(self, device_config: dict[str, Any]) -> tuple:
+    def validate_device(
+        self, device_config: dict[str, Any]
+    ) -> tuple[bool, str | None]:
         """Validate all enabled techniques against device capabilities.
 
         Args:
@@ -88,7 +90,7 @@ class MitigationManager:
         Returns:
             (is_valid, error_messages) tuple.
         """
-        errors = []
+        errors: list[str] = []
         for name, technique in self._techniques.items():
             valid, msg = technique.validate_device(device_config)
             if not valid:

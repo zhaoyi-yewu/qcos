@@ -20,7 +20,7 @@ from wy_qcos.common.constant import Constant
 import uuid as uuid_lib
 from typing import Any
 
-from sqlalchemy import asc, desc, select, delete, func
+from sqlalchemy import asc, desc, or_, select, delete, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
@@ -327,6 +327,8 @@ class BaseRepository:
         page: int = 1,
         page_size: int = Constant.PAGE_SIZE,
         sort: list[str] | None = None,
+        search: str | None = None,
+        search_fields: list[str] | None = None,
     ):
         """Get paginated records with optional filtering and sorting.
 
@@ -339,6 +341,9 @@ class BaseRepository:
             page_size: number of items per page, -1 for unlimited
             sort: list of sort fields, '-' prefix means descending.
                 Example: ["-created_at", "job_name"]
+            search: global keyword for OR fuzzy matching (ILIKE %kw%)
+            search_fields: list of column names to apply search on.
+                Required when search is provided.
 
         Returns:
             Tuple[bool, Exception|None, dict|None]:
@@ -367,7 +372,28 @@ class BaseRepository:
                             f"model {model_class.__name__}"
                         )
 
-            # Build count query with same filters
+            # Apply global search (OR ILIKE across fields)
+            # Convert shell-style wildcards to SQL LIKE wildcards:
+            #   * -> %, ? -> _
+            if search and search_fields:
+                sql_search = search.replace("*", "%").replace("?", "_")
+                # If no wildcard, wrap with '%' for contains semantics
+                if "%" not in sql_search and "_" not in sql_search:
+                    sql_search = f"%{sql_search}%"
+                search_conds = []
+                for field_name in search_fields:
+                    if hasattr(model_class, field_name):
+                        col = getattr(model_class, field_name)
+                        search_conds.append(col.ilike(sql_search))
+                    else:
+                        logger.warning(
+                            f"Search field '{field_name}' does not exist "
+                            f"on model {model_class.__name__}"
+                        )
+                if search_conds:
+                    query = query.where(or_(*search_conds))
+
+            # Build count query with same filters and search
             count_query = select(func.count()).select_from(model_class)
             if filters:
                 for key, value in filters.items():
@@ -382,6 +408,17 @@ class BaseRepository:
                             count_query = count_query.where(
                                 getattr(model_class, key) == value
                             )
+            if search and search_fields:
+                sql_search = search.replace("*", "%").replace("?", "_")
+                if "%" not in sql_search and "_" not in sql_search:
+                    sql_search = f"%{sql_search}%"
+                search_conds = []
+                for field_name in search_fields:
+                    if hasattr(model_class, field_name):
+                        col = getattr(model_class, field_name)
+                        search_conds.append(col.ilike(sql_search))
+                if search_conds:
+                    count_query = count_query.where(or_(*search_conds))
 
             # Execute count query
             count_result = self._db_session.execute(count_query)

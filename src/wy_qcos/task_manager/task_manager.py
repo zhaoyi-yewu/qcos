@@ -1464,6 +1464,12 @@ class TaskFlowManager:
 
         Returns:
             flow run ids: flow run ids
+
+        Raises:
+            RuntimeError: if create_flow_run_from_deployment times out
+                or fails. This can happen when the parameters payload is
+                very large (e.g. big QUBO matrices) and the Prefect
+                PostgreSQL connection pool is exhausted.
         """
         job_id = str(args["job_info"]["data"].get("job_id", "Unknown"))
         prefect_tags = None
@@ -1481,13 +1487,33 @@ class TaskFlowManager:
             else:
                 prefect_tags = tags
         args["job_info"]["data"]["job_enqueue_at"] = time.time()
-        flow_run = await self._client.create_flow_run_from_deployment(
-            name=job_id,
-            deployment_id=deployment_id,
-            work_queue_name=work_queue_name,
-            parameters=args,
-            tags=prefect_tags,
-        )
+
+        # Wrap create_flow_run_from_deployment with a timeout to
+        # prevent indefinite hanging when the Prefect PostgreSQL
+        # connection pool is exhausted (e.g. large QUBO payloads).
+        flow_run_timeout = Config.PREFECT.QCOS_FLOW_RUN_TIMEOUT
+        try:
+            flow_run = await asyncio.wait_for(
+                self._client.create_flow_run_from_deployment(
+                    name=job_id,
+                    deployment_id=deployment_id,
+                    work_queue_name=work_queue_name,
+                    parameters=args,
+                    tags=prefect_tags,
+                ),
+                timeout=flow_run_timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"Timed out creating flow run for job {job_id} after "
+                f"{flow_run_timeout}s. The parameters payload may be "
+                f"too large for inline passing, or the Prefect "
+                f"PostgreSQL connection pool is exhausted."
+            )
+            raise RuntimeError(
+                f"create_flow_run_from_deployment timed out after "
+                f"{flow_run_timeout}s for job {job_id}"
+            )
 
         return flow_run.id
 
@@ -1503,13 +1529,32 @@ class TaskFlowManager:
             deployment_id: deploy uuid
             args: flow function args in dict
             work_queue_name: work queue name
+
+        Raises:
+            RuntimeError: if create_flow_run_from_deployment times out
+                or fails. See run_flow_by_client for details.
         """
         details = None
-        await self._client.create_flow_run_from_deployment(
-            deployment_id=deployment_id,
-            work_queue_name=work_queue_name,
-            parameters=args,
-        )
+        flow_run_timeout = Config.PREFECT.QCOS_FLOW_RUN_TIMEOUT
+        try:
+            await asyncio.wait_for(
+                self._client.create_flow_run_from_deployment(
+                    deployment_id=deployment_id,
+                    work_queue_name=work_queue_name,
+                    parameters=args,
+                ),
+                timeout=flow_run_timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"Timed out creating manage flow run "
+                f"(deployment={deployment_id}) after "
+                f"{flow_run_timeout}s."
+            )
+            raise RuntimeError(
+                f"create_flow_run_from_deployment timed out after "
+                f"{flow_run_timeout}s for manage task"
+            )
         if args["device_mgr_info"]["method"] == "get_device_options":
             # TODO xudong need sleep or not?
             device_name = args["device_mgr_info"]["device_name"]

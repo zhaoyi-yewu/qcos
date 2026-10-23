@@ -336,6 +336,7 @@ class Constant:
     TECH_TYPE_PHOTON = "photon"
     TECH_TYPE_NMR = "nmr"
     TECH_TYPE_GENERIC_SIMULATOR = "generic_simulator"
+    TECH_TYPE_DEDICATED_SIMULATOR = "dedicated_simulator"
     TECH_TYPE_INFO = {
         TECH_TYPE_NEUTRAL_ATOM: {"alias_name": "中性原子"},
         TECH_TYPE_ION_TRAP: {"alias_name": "离子阱"},
@@ -343,6 +344,7 @@ class Constant:
         TECH_TYPE_PHOTON: {"alias_name": "光量子"},
         TECH_TYPE_NMR: {"alias_name": "核磁共振"},
         TECH_TYPE_GENERIC_SIMULATOR: {"alias_name": "通用量子模拟器"},
+        TECH_TYPE_DEDICATED_SIMULATOR: {"alias_name": "专用量子模拟器"},
     }
     TECH_TYPES = list(TECH_TYPE_INFO.keys())
 
