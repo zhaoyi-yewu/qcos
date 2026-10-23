@@ -1,24 +1,51 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div class="navbar">
-    <hamburger :is-active="sidebar.opened" class="hamburger-container" @toggleClick="toggleSideBar" />
+    <hamburger :is-active="sidebar.opened" class="hamburger-container" @toggle-click="toggleSideBar" />
 
     <breadcrumb class="breadcrumb-container" />
 
     <div class="right-menu">
       <el-dropdown class="avatar-container" trigger="click">
         <div class="avatar-wrapper">
-          <img :src="avatar+'?imageView2/1/w/80/h/80'" class="user-avatar">
+          <el-tooltip :content="name || '未登录'" placement="bottom" effect="dark">
+            <!-- use the local default avatar as fallback when the store has
+                 none (e.g. before login info loads); the onerror handler
+                 guards against a broken/missing avatar URL -->
+            <img
+              :src="avatar || defaultAvatar"
+              class="user-avatar"
+              @error="e => e.target.src = defaultAvatar"
+            >
+          </el-tooltip>
           <el-icon><ArrowDown /></el-icon>
         </div>
         <template #dropdown>
           <el-dropdown-menu class="user-dropdown">
             <router-link to="/">
               <el-dropdown-item>
-                Home
+                首页
               </el-dropdown-item>
             </router-link>
+            <el-dropdown-item @click="goToProfile">
+              用户信息
+            </el-dropdown-item>
             <el-dropdown-item divided @click="logout">
-              <span style="display:block;">Log Out</span>
+              <span style="display:block;">退出登录</span>
             </el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -36,20 +63,30 @@ import Hamburger from '@/components/Hamburger'
 import { useAppStore } from '@/store/modules/app'
 import { useUserStore } from '@/store/modules/user'
 
+defineOptions({ name: 'NavbarHeader' })
+import defaultAvatar from '@/assets/avatar/default_avatar.png'
+
 const appStore = useAppStore()
 const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 
 const { sidebar } = storeToRefs(appStore)
-const { avatar } = storeToRefs(userStore)
+const { avatar, name } = storeToRefs(userStore)
 
 function toggleSideBar() {
   appStore.toggleSideBar()
 }
 
+function goToProfile() {
+  router.push('/user-settings/profile')
+}
+
 async function logout() {
-  await userStore.logout()
+  // delegate to userStore.logout which clears token cookie, in-memory state,
+  // localStorage app keys, sessionStorage, and calls backend logout API
+  await userStore.logout().catch(() => {})
+  // redirect to login page after state is cleared
   router.push(`/login?redirect=${route.fullPath}`)
 }
 </script>
