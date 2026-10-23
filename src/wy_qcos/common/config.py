@@ -158,6 +158,15 @@ class PrefectSection(BaseModel):
         description="Prefect logging level"
         " (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
+    QCOS_FLOW_RUN_TIMEOUT: int = Field(
+        default=600,
+        ge=10,
+        description="Timeout in seconds for create_flow_run_from_deployment "
+        "calls. Large parameter payloads (e.g. big QUBO matrices) can "
+        "cause the Prefect API to hang if the PostgreSQL connection "
+        "pool is exhausted. This timeout ensures QCOS fails fast "
+        "instead of hanging indefinitely.",
+    )
 
 
 class TranspilerSection(BaseModel):

@@ -155,8 +155,21 @@ async def app_lifespan(app: jsonrpc.API):
     # Start all background services
     await manager.start_all()
 
+    # Initialize MCP server lifespan (MCP 2.x requires task group init)
+    mcp_lifespan_ctx = None
+    try:
+        from wy_qcos.api.mcp.mcp_server import init_mcp_lifespan
+
+        mcp_lifespan_ctx = await init_mcp_lifespan()
+    except Exception as e:
+        logger.warning(f"Failed to initialize MCP server: {e}")
+
     try:
         yield
     finally:
+        # Cleanup MCP server lifespan
+        from wy_qcos.api.mcp.mcp_server import cleanup_mcp_lifespan
+
+        await cleanup_mcp_lifespan(mcp_lifespan_ctx)
         # Stop all background services
         await manager.stop_all()
