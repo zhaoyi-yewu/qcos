@@ -583,10 +583,161 @@ class TestUserRepositoryEdgeCases:
         result = user_repository.is_blacklisted("nonexistent_token")
         assert result is False
 
+    def test_is_blacklisted_with_token(self, user_repository, in_memory_db):
+        """Test is_blacklisted with token in database."""
+        from wy_qcos.db.models import TokenBlacklist
+
+        token = TokenBlacklist(
+            id=str(uuid.uuid4()),
+            token_jti=_s("test-jti-123"),
+            expires_at=datetime.now() + timedelta(hours=1),
+        )
+        in_memory_db.add(token)
+        in_memory_db.commit()
+        result = user_repository.is_blacklisted("test-jti-123")
+        assert result is True
+
+    def test_is_blacklisted_expired(self, user_repository, in_memory_db):
+        """Test is_blacklisted with expired token."""
+        from wy_qcos.db.models import TokenBlacklist
+
+        token = TokenBlacklist(
+            id=str(uuid.uuid4()),
+            token_jti=_s("expired-jti"),
+            expires_at=datetime.now() - timedelta(hours=1),
+        )
+        in_memory_db.add(token)
+        in_memory_db.commit()
+        result = user_repository.is_blacklisted("expired-jti")
+        assert result is False
+
     def test_cleanup_blacklist_empty(self, user_repository):
         """Test cleanup blacklist when no expired entries."""
         success, count = user_repository.cleanup_blacklist()
         assert success is True
+
+    def test_cleanup_blacklist_with_expired(
+        self, user_repository, in_memory_db
+    ):
+        """Test cleanup blacklist removes expired entries."""
+        from wy_qcos.db.models import TokenBlacklist
+
+        expired = TokenBlacklist(
+            id=str(uuid.uuid4()),
+            token_jti=_s("expired-token"),
+            expires_at=datetime.now() - timedelta(hours=1),
+        )
+        valid = TokenBlacklist(
+            id=str(uuid.uuid4()),
+            token_jti=_s("valid-token"),
+            expires_at=datetime.now() + timedelta(hours=1),
+        )
+        in_memory_db.add(expired)
+        in_memory_db.add(valid)
+        in_memory_db.commit()
+
+        # cleanup_blacklist returns (success, error), not (success, count)
+        success, error = user_repository.cleanup_blacklist()
+        assert success is True
+
+        # Verify expired was removed
+        from sqlalchemy import select
+
+        q = select(TokenBlacklist).where(
+            TokenBlacklist.token_jti == _s("expired-token")
+        )
+        assert in_memory_db.execute(q).scalars().first() is None
+
+        # Verify valid token still exists
+        q = select(TokenBlacklist).where(
+            TokenBlacklist.token_jti == _s("valid-token")
+        )
+        assert in_memory_db.execute(q).scalars().first() is not None
+
+    def test_delete_login_logs_by_user_id(
+        self, user_repository, in_memory_db, sample_user
+    ):
+        """Test delete login logs by user ID."""
+        # Create logs for the sample user
+        for i in range(2):
+            log = LoginLog(
+                id=str(uuid.uuid4()),
+                user_name=sample_user.user_name,
+                ip_address=f"192.168.1.{i}",
+                login_time=datetime.now(),
+                login_status=True,
+            )
+            in_memory_db.add(log)
+        in_memory_db.commit()
+
+        success, error, count = user_repository.delete_login_logs(
+            user_id=sample_user.id
+        )
+        assert success is True
+        assert count >= 0
+
+    def test_delete_login_logs_by_username(
+        self, user_repository, in_memory_db, sample_user
+    ):
+        """Test delete login logs by username."""
+        for i in range(2):
+            log = LoginLog(
+                id=str(uuid.uuid4()),
+                user_name=sample_user.user_name,
+                ip_address=f"192.168.1.{i}",
+                login_time=datetime.now(),
+                login_status=True,
+            )
+            in_memory_db.add(log)
+        in_memory_db.commit()
+
+        success, error, count = user_repository.delete_login_logs(
+            user_name=sample_user.user_name
+        )
+        assert success is True
+        assert count >= 0
+
+    def test_delete_login_logs_user_not_found(self, user_repository):
+        """Test delete login logs for non-existent user."""
+        success, error, count = user_repository.delete_login_logs(
+            user_id=str(uuid.uuid4())
+        )
+        assert success is True
+        assert count == 0
+
+    def test_delete_login_logs_username_not_found(self, user_repository):
+        """Test delete login logs for non-existent username."""
+        success, error, count = user_repository.delete_login_logs(
+            user_name="nonexistent"
+        )
+        assert success is True
+        assert count == 0
+
+    def test_delete_login_logs_error(self, user_repository):
+        """Test delete login logs with database error."""
+        with patch.object(user_repository, "get_by_uuid") as mock_get:
+            mock_get.side_effect = Exception("DB error")
+            success, error, count = user_repository.delete_login_logs(
+                user_id="some-id"
+            )
+            assert success is False
+            assert count == 0
+
+    def test_add_to_blacklist_success(self, user_repository):
+        """Test add_to_blacklist success."""
+        success, error = user_repository.add_to_blacklist(
+            "test-jti-456", datetime.now() + timedelta(hours=1)
+        )
+        assert success is True
+
+    def test_add_to_blacklist_error(self, user_repository):
+        """Test add_to_blacklist with error."""
+        with patch.object(user_repository, "create") as mock_create:
+            mock_create.return_value = (False, Exception("DB error"), None)
+            success, error = user_repository.add_to_blacklist(
+                "test-jti", datetime.now()
+            )
+            assert success is False
 
     def test_update_user_not_found(self, user_repository):
         """Test update non-existent user."""

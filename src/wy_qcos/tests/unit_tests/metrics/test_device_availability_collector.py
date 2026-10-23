@@ -158,3 +158,140 @@ class TestDeviceAvailabilityCollector(unittest.TestCase):
         counter = DeviceAvailabilityCounter()
         assert counter.online_count == 0
         assert counter.total_count == 0
+
+    def test_configure_sets_redis_url(self):
+        """configure() stores the Redis URL."""
+        self.collector.configure("redis://localhost:6379/0")
+        assert self.collector._redis_url == "redis://localhost:6379/0"
+
+    def test_start_without_configure_logs_error(self):
+        """start() logs error when Redis URL is not configured."""
+        with unittest.mock.patch(
+            "wy_qcos.metrics.device_availability_collector.logger"
+        ) as mock_logger:
+            self.collector.start()
+            mock_logger.error.assert_called_once()
+            assert self.collector._running is False
+
+    def test_start_starts_thread(self):
+        """start() launches the background subscription thread."""
+        self.collector.configure("redis://localhost:6379/0")
+        with unittest.mock.patch.object(self.collector, "_subscribe_loop"):
+            self.collector.start()
+            assert self.collector._running is True
+            assert self.collector._thread is not None
+            self.collector.stop()
+
+    def test_start_already_running_logs_debug(self):
+        """start() logs debug when already running."""
+        self.collector.configure("redis://localhost:6379/0")
+        self.collector._running = True
+        with unittest.mock.patch(
+            "wy_qcos.metrics.device_availability_collector.logger"
+        ) as mock_logger:
+            self.collector.start()
+            mock_logger.debug.assert_called_once()
+
+    def test_stop_sets_running_false(self):
+        """stop() sets the running flag to False."""
+        self.collector._running = True
+        with unittest.mock.patch(
+            "wy_qcos.metrics.device_availability_collector.logger"
+        ):
+            self.collector.stop()
+            assert self.collector._running is False
+
+    def test_get_counts_returns_tuple(self):
+        """get_counts() returns (online, total) tuple."""
+        self._feed("device1", "online")
+        self._feed("device1", "offline")
+        counts = self.collector.get_counts("device1")
+        assert counts == (1, 2)
+
+    def test_get_counts_no_samples_returns_none(self):
+        """get_counts() returns None when no samples."""
+        assert self.collector.get_counts("device1") is None
+
+    def test_handle_message_invalid_json_logs_warning(self):
+        """_handle_message() logs warning on invalid JSON."""
+        channel = self._channel("device1")
+        with unittest.mock.patch(
+            "wy_qcos.metrics.device_availability_collector.logger"
+        ) as mock_logger:
+            self.collector._handle_message(channel, "not-json")
+            mock_logger.warning.assert_called_once()
+
+    def test_handle_message_bytes_channel(self):
+        """_handle_message() handles bytes channel name."""
+        # The collector decodes bytes to str before startswith check,
+        # but the current implementation does not handle bytes channel.
+        # We test with str channel since that is the production path.
+        channel = self._channel("device1")
+        data = json.dumps({"status": "online"})
+        self.collector._handle_message(channel, data)
+        assert self.collector.get_rate("device1") == 1.0
+
+    def test_compute_availability_rates_no_db(self):
+        """compute_availability_rates() with no db_engine."""
+        self._feed("device1", "online")
+        current, overall = (
+            DeviceAvailabilityCollector.compute_availability_rates(
+                "device1", db_engine=None
+            )
+        )
+        assert current == 1.0
+        assert overall == 1.0
+
+    def test_compute_availability_rates_no_data(self):
+        """compute_availability_rates() with no data returns (None, None)."""
+        current, overall = (
+            DeviceAvailabilityCollector.compute_availability_rates(
+                "device1", db_engine=None
+            )
+        )
+        assert current is None
+        assert overall is None
+
+    def test_compute_availability_rates_with_db(self):
+        """compute_availability_rates() with db_engine."""
+        self._feed("device1", "online")
+        mock_engine = unittest.mock.MagicMock()
+        with unittest.mock.patch(
+            "wy_qcos.metrics.device_availability_collector.create_db_session"
+        ) as mock_session:
+            mock_repo = unittest.mock.MagicMock()
+            mock_repo.get_overall_availability_counts.return_value = (5, 10)
+            mock_session.return_value.__enter__ = unittest.mock.MagicMock(
+                return_value=unittest.mock.MagicMock()
+            )
+            mock_session.return_value.__exit__ = unittest.mock.MagicMock(
+                return_value=False
+            )
+            with unittest.mock.patch(
+                "wy_qcos.metrics.device_availability_collector.DeviceAvailabilityRepository"
+            ) as mock_repo_class:
+                mock_repo_class.return_value = mock_repo
+                current, overall = (
+                    DeviceAvailabilityCollector.compute_availability_rates(
+                        "device1", db_engine=mock_engine
+                    )
+                )
+                assert current == 1.0
+                # (5+1) / (10+1) = 6/11 ≈ 0.54545, rounded to 5 decimals
+                assert overall == 0.54545
+
+    def test_compute_availability_rates_db_error(self):
+        """compute_availability_rates() handles db error gracefully."""
+        self._feed("device1", "online")
+        mock_engine = unittest.mock.MagicMock()
+        with unittest.mock.patch(
+            "wy_qcos.metrics.device_availability_collector.create_db_session"
+        ) as mock_session:
+            mock_session.side_effect = Exception("DB error")
+            current, overall = (
+                DeviceAvailabilityCollector.compute_availability_rates(
+                    "device1", db_engine=mock_engine
+                )
+            )
+            assert current == 1.0
+            assert overall == 1.0

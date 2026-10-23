@@ -15,16 +15,20 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.system import (
     gc_mem,
+    list_workers,
+    restart_worker,
     trace_mem,
     ping,
     show_mem,
     system_info,
 )
-from wy_qcos.api.schemas import PingRequest
+from wy_qcos.api.schemas import (
+    PingRequest,
+)
 from wy_qcos.tests.unit_tests.task_manager.constant_for_test import (
     ConstantForTest,
 )
@@ -262,3 +266,88 @@ class TestSystem:
         assert response_info.current == 0
         assert response_info.peak == 2048
         assert response_info.top_stats == []
+
+    def test_list_workers(self):
+        """Test list_workers with mocked task manager."""
+        mock_request = MagicMock()
+        mock_task_manager = MagicMock()
+        mock_task_manager.list_workers.return_value = [
+            {
+                "worker_name": "worker1",
+                "work_pool": "pool1",
+                "device_name": "dev1",
+                "worker_status": "online",
+                "pid": 1234,
+            }
+        ]
+        mock_request.app.state._task_manager = mock_task_manager
+
+        response_info = list_workers(mock_request, None, None)
+        assert len(response_info.workers) == 1
+        assert response_info.workers[0].worker_name == "worker1"
+
+    def test_list_workers_no_task_manager(self):
+        """Test list_workers when task manager is not initialized."""
+        mock_request = MagicMock()
+        mock_request.app.state._task_manager = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        try:
+            list_workers(mock_request, None, None)
+            assert False, "Should have raised BadRequestError"
+        except jsonrpc_errors.BadRequestError:
+            pass
+
+    def test_restart_worker(self):
+        """Test restart_worker with mocked task manager."""
+        mock_request = MagicMock()
+        mock_task_manager = MagicMock()
+        mock_task_manager.restart_worker.return_value = (True, "restarted")
+        mock_request.app.state._task_manager = mock_task_manager
+
+        mock_body = MagicMock()
+        mock_body.worker_name = "worker1"
+
+        response_info = restart_worker(mock_request, mock_body, None)
+        assert response_info.success is True
+        assert response_info.worker_name == "worker1"
+
+    def test_restart_worker_empty_name(self):
+        """Test restart_worker with empty worker name."""
+        mock_request = MagicMock()
+        mock_task_manager = MagicMock()
+        mock_request.app.state._task_manager = mock_task_manager
+
+        mock_body = MagicMock()
+        mock_body.worker_name = ""
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        try:
+            restart_worker(mock_request, mock_body, None)
+            assert False, "Should have raised BadRequestError"
+        except jsonrpc_errors.BadRequestError:
+            pass
+
+    def test_restart_worker_no_task_manager(self):
+        """Test restart_worker when task manager is not initialized."""
+        mock_request = MagicMock()
+        mock_request.app.state._task_manager = None
+
+        mock_body = MagicMock()
+        mock_body.worker_name = "worker1"
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        try:
+            restart_worker(mock_request, mock_body, None)
+            assert False, "Should have raised BadRequestError"
+        except jsonrpc_errors.BadRequestError:
+            pass

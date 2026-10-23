@@ -663,3 +663,79 @@ class TestSetDevice:
         assert result.available_qubits == (
             device.get_driver().get_available_qubits()
         )
+
+
+class TestDeviceHelpers:
+    """Test device helper functions."""
+
+    def test_compute_avg_1q_fidelity(self):
+        """Test _compute_avg_1q_fidelity with valid data."""
+        from wy_qcos.api.posiq.routes_jsonrpc.device import (
+            _compute_avg_1q_fidelity,
+        )
+
+        details = {
+            "calibration": {
+                "qubit_metrics": [
+                    {"xeb_fidelity": 0.999},
+                    {"xeb_fidelity": 0.998},
+                ]
+            }
+        }
+        result = _compute_avg_1q_fidelity(details)
+        assert result == 0.9985
+
+    def test_compute_avg_1q_fidelity_invalid(self):
+        """Test _compute_avg_1q_fidelity with invalid data."""
+        from wy_qcos.api.posiq.routes_jsonrpc.device import (
+            _compute_avg_1q_fidelity,
+        )
+
+        assert _compute_avg_1q_fidelity(None) is None
+        assert _compute_avg_1q_fidelity({}) is None
+        assert _compute_avg_1q_fidelity({"calibration": {}}) is None
+        assert (
+            _compute_avg_1q_fidelity({"calibration": {"qubit_metrics": []}})
+            is None
+        )
+
+    def test_compute_avg_2q_fidelity(self):
+        """Test _compute_avg_2q_fidelity with valid data."""
+        from wy_qcos.api.posiq.routes_jsonrpc.device import (
+            _compute_avg_2q_fidelity,
+        )
+
+        details = {
+            "calibration": {
+                "coupler_metrics": [
+                    {"cz_fidelity": 0.95},
+                    {"cz_fidelity": 0.96},
+                ]
+            }
+        }
+        result = _compute_avg_2q_fidelity(details)
+        assert result == 0.955
+
+    def test_compute_avg_2q_fidelity_invalid(self):
+        """Test _compute_avg_2q_fidelity with invalid data."""
+        from wy_qcos.api.posiq.routes_jsonrpc.device import (
+            _compute_avg_2q_fidelity,
+        )
+
+        assert _compute_avg_2q_fidelity(None) is None
+        assert _compute_avg_2q_fidelity({}) is None
+        assert _compute_avg_2q_fidelity({"calibration": {}}) is None
+        assert (
+            _compute_avg_2q_fidelity({"calibration": {"coupler_metrics": []}})
+            is None
+        )
+
+    def test_set_availability_collector(self):
+        """Test set_availability_collector."""
+        from wy_qcos.api.posiq.routes_jsonrpc.device import (
+            set_availability_collector,
+        )
+
+        mock_collector = MagicMock()
+        set_availability_collector(mock_collector)
+        set_availability_collector(None)

@@ -202,6 +202,81 @@ class TestCreateProject:
         with pytest.raises(Exception):
             create_project(body, None, mock_projects_repo)
 
+    def test_create_project_invalid_name(self):
+        """Test create_project with invalid name."""
+        body = project_schemas.CreateProjectRequest(
+            project_name="invalid name with spaces!"
+        )
+        mock_request = Mock()
+        mock_request.app.state._project_manager = Mock()
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            create_project(body, mock_request)
+
+    def test_create_project_value_error(self):
+        """Test create_project when manager raises ValueError."""
+        body = project_schemas.CreateProjectRequest(
+            project_name="test_project"
+        )
+        mock_project_manager = Mock()
+        mock_project_manager.create_project.side_effect = ValueError(
+            "already exists"
+        )
+
+        mock_request = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.ConflictError):
+            create_project(body, mock_request)
+
+    def test_create_project_value_error_other(self):
+        """Test create_project when manager raises other ValueError."""
+        body = project_schemas.CreateProjectRequest(
+            project_name="test_project"
+        )
+        mock_project_manager = Mock()
+        mock_project_manager.create_project.side_effect = ValueError(
+            "some other error"
+        )
+
+        mock_request = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            create_project(body, mock_request)
+
+    def test_create_project_generic_exception(self):
+        """Test create_project when manager raises generic Exception."""
+        body = project_schemas.CreateProjectRequest(
+            project_name="test_project"
+        )
+        mock_project_manager = Mock()
+        mock_project_manager.create_project.side_effect = Exception(
+            "database connection failed"
+        )
+
+        mock_request = Mock()
+        mock_request.app.state._project_manager = mock_project_manager
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            create_project(body, mock_request)
+
 
 class TestGetProject:
     """Test cases for get_project function."""
