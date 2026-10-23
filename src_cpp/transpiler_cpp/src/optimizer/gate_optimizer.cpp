@@ -372,14 +372,21 @@ std::string optimize_qasm(
                              std::to_string(WY_CLOUD_MAX_GATES));
   }
   auto optimized = optimize(ops, opt_level, false, basis_gates, 1, false);
+  // optimize_qasm 输出使用纯数值格式，不使用 pi 符号
+  bool saved = BaseOperation::symbolic_output;
+  BaseOperation::symbolic_output = false;
   // 检测 QASM 版本：仅在版本声明行（第一个非空白位置）匹配
   // "OPENQASM 3"，不匹配注释或字符串字面量中的 "OPENQASM 3"。
   size_t pos = qasm_str.find_first_not_of(" \t\n\r");
+  std::string result;
   if (pos != std::string::npos &&
       qasm_str.compare(pos, 10, "OPENQASM 3") == 0) {
-    return to_qasm3(optimized, num_qubits);
+    result = to_qasm3(optimized, num_qubits);
+  } else {
+    result = to_qasm2(optimized, num_qubits);
   }
-  return to_qasm2(optimized, num_qubits);
+  BaseOperation::symbolic_output = saved;
+  return result;
 }
 
 std::pair<int, int> qasm_stats(const std::string& qasm_str) {

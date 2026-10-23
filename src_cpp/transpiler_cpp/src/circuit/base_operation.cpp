@@ -22,6 +22,8 @@
 
 namespace qcos {
 
+thread_local bool BaseOperation::symbolic_output = true;
+
 BaseOperation::BaseOperation(std::string_view name_, std::vector<int> targets_,
                              std::vector<double> arg_value_,
                              OperationType op_type_)
@@ -49,7 +51,9 @@ std::string BaseOperation::arg_value_to_string() const {
 
     double value = arg_value[i];
 
-    if (std::abs(value - M_PI) < 1e-10) {
+    if (std::abs(value) < 1e-10) {
+      oss << "0";
+    } else if (std::abs(value - M_PI) < 1e-10) {
       oss << "π";
     } else if (std::abs(value + M_PI) < 1e-10) {
       oss << "-π";
@@ -76,7 +80,7 @@ std::string BaseOperation::to_openqasm(const std::string& qubit_prefix) const {
         "targets cannot be empty when generating OpenQASM statement.");
   }
 
-  // Build the argument part (e.g., rx(1.57))
+  // Build the argument part (e.g., rx(pi/2) or rx(1.57079633))
   std::string arg_str = "";
   if (!arg_value.empty()) {
     std::ostringstream arg_oss;
@@ -85,17 +89,19 @@ std::string BaseOperation::to_openqasm(const std::string& qubit_prefix) const {
       if (i > 0) arg_oss << ",";
 
       double value = arg_value[i];
-      if (std::abs(value - M_PI) < 1e-10) {
+      if (std::abs(value) < 1e-10) {
+        arg_oss << "0";
+      } else if (symbolic_output && std::abs(value - M_PI) < 1e-10) {
         arg_oss << "pi";
-      } else if (std::abs(value + M_PI) < 1e-10) {
+      } else if (symbolic_output && std::abs(value + M_PI) < 1e-10) {
         arg_oss << "-pi";
-      } else if (std::abs(value - M_PI / 2) < 1e-10) {
+      } else if (symbolic_output && std::abs(value - M_PI / 2) < 1e-10) {
         arg_oss << "pi/2";
-      } else if (std::abs(value + M_PI / 2) < 1e-10) {
+      } else if (symbolic_output && std::abs(value + M_PI / 2) < 1e-10) {
         arg_oss << "-pi/2";
-      } else if (std::abs(value - M_PI / 4) < 1e-10) {
+      } else if (symbolic_output && std::abs(value - M_PI / 4) < 1e-10) {
         arg_oss << "pi/4";
-      } else if (std::abs(value + M_PI / 4) < 1e-10) {
+      } else if (symbolic_output && std::abs(value + M_PI / 4) < 1e-10) {
         arg_oss << "-pi/4";
       } else {
         arg_oss << std::fixed << std::setprecision(8) << value;
