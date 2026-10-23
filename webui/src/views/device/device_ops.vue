@@ -1,3 +1,18 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div class="monitor-container">
     <div
@@ -290,13 +305,13 @@ export default {
 
 <style scoped>
   .loading-text {
-    color: #909399;
+    color: var(--el-text-color-secondary);
     text-align: center;
     padding: 20px 0;
   }
 
   .indicator-column.loading {
-    background: #f5f7fa;
+    background: var(--el-fill-color-light);
     animation: pulse 1.5s infinite;
   }
 
@@ -322,7 +337,7 @@ export default {
     padding: 20px;
     min-height: 100vh;
     box-sizing: border-box;
-    background: #f5f7fa;
+    background: var(--el-fill-color-light);
   }
 
   .indicator-column {
@@ -334,7 +349,7 @@ export default {
   }
 
   .indicator-card {
-    background: white;
+    background: var(--el-bg-color);
     border-radius: 8px;
     padding: 20px;
     position: relative;
@@ -345,7 +360,7 @@ export default {
   }
 
   .indicator-title {
-    color: #909399;
+    color: var(--el-text-color-secondary);
     font-size: 18px;
     margin-bottom: 8px;
   }
@@ -366,7 +381,7 @@ export default {
   .indicator-value {
     font-size: clamp(18px, 2vw, 24px);
     font-weight: 600;
-    color: #303133;
+    color: var(--el-text-color-primary);
   }
 
   .unit {
@@ -385,7 +400,7 @@ export default {
   .chart-container {
     width: 100%;
     height: 500px;
-    background: white;
+    background: var(--el-bg-color);
     border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
     overflow: auto;

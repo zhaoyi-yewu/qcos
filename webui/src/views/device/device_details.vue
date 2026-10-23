@@ -1,3 +1,18 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div v-if="loaded" class="device-detail-container">
     <div class="header">
@@ -8,10 +23,10 @@
         <div class="device-header">
           <h2>{{ deviceDetails.name || '未命名' }} ({{ deviceDetails.alias_name || '无别名' }})</h2>
           <el-tag
-            :type="deviceDetails.status"
+            :type="getDeviceStatusTagType(deviceDetails.status)"
             class="status-tag"
           >
-            {{ getStatus(deviceDetails.status) }}
+            {{ getDeviceStatusDisplay(deviceDetails.status, deviceDetails.is_manual) }}
           </el-tag>
         </div>
 
@@ -25,7 +40,7 @@
                 class="timeline-item"
               >
                 <div class="timeline-label">{{ item.label }}</div>
-                <div class="timeline-content" v-text="item.value" />
+                <div class="timeline-content">{{ item.value }}</div>
               </el-timeline-item>
             </el-timeline>
           </div>
@@ -38,7 +53,7 @@
                 class="timeline-item"
               >
                 <div class="timeline-label">{{ item.label }}</div>
-                <div class="timeline-content" v-text="item.value" />
+                <div class="timeline-content">{{ item.value }}</div>
               </el-timeline-item>
             </el-timeline>
           </div>
@@ -54,7 +69,9 @@ import { getDriver } from '@/api/driver'
 import {
   getEnable,
   getResultsFetchMode,
-  getStatus
+  getStatus,
+  getDeviceStatusDisplay,
+  getDeviceStatusTagType
 } from '@/common/library'
 import { queryVersion } from '@/api/version'
 
@@ -112,7 +129,8 @@ export default {
   },
   methods: {
     getStatus,
-
+    getDeviceStatusDisplay,
+    getDeviceStatusTagType,
     async queryData() {
       await this.fetchVersion()
       await this.fetchDeviceDetails()
@@ -172,20 +190,26 @@ export default {
         { label: '驱动名称', value: this.deviceDetails.driver_name, color: '#409EFF' },
         { label: '驱动版本', value: this.driverDetails.version, color: '#409EFF' },
         { label: '启用', value: getEnable(this.deviceDetails.enable), color: '#409EFF' },
-        { label: '状态', value: getStatus(this.deviceDetails.status), color: '#409EFF' },
+        { label: '状态', value: getDeviceStatusDisplay(this.deviceDetails.status, this.deviceDetails.is_manual), color: '#409EFF' },
         { label: '技术路线', value: this.versionData.capabilities['tech_types'][this.driverDetails.tech_type]['alias_name'], color: '#409EFF' },
         { label: '量子比特数', value: this.driverDetails.max_qubits, color: '#409EFF' },
         {
           label: '设备描述',
-          value: `<div class="scrollable-content"><pre>${this.deviceDetails.description || '未填写'}</pre></div>`,
+          value: this.deviceDetails.description || '未填写',
           color: '#409EFF'
         }
       ]
 
       // 右列信息
       let transpiler = '-'
-      if (this.driverDetails.enable_transpiler) {
-        transpiler = this.versionData.capabilities['transpilers'][this.driverDetails.transpiler]['alias_name']
+      if (this.driverDetails.transpiler) {
+        const caps = this.versionData && this.versionData.capabilities
+        const transpilers = caps && caps.transpilers
+        if (transpilers && transpilers[this.driverDetails.transpiler]) {
+          transpiler = transpilers[this.driverDetails.transpiler].alias_name || this.driverDetails.transpiler
+        } else {
+          transpiler = this.driverDetails.transpiler
+        }
       }
       this.rightItems = [
         { label: '默认转译器', value: transpiler, color: '#67C23A' },
@@ -196,7 +220,7 @@ export default {
         { label: '支持的基础量子门', value: this.driverDetails.supported_basis_gates, color: '#67C23A' },
         { label: '结果获取模式', value: getResultsFetchMode(this.driverDetails.results_fetch_mode), color: '#67C23A' },
         { label: '设备配置信息',
-          value: `<div class="scrollable-content"><pre>${JSON.stringify(this.deviceDetails.configs, null, 2)}</pre></div>`,
+          value: JSON.stringify(this.deviceDetails.configs, null, 2),
           color: '#67C23A'
         }
       ]
@@ -210,12 +234,10 @@ export default {
   padding: 10px;
 }
 
-.header {
-  margin-bottom: 20px;
-}
+.header { margin: 0; }
 
 .detail-container {
-  background: white;
+  background: var(--el-bg-color);
 }
 
 .device-card {
@@ -251,12 +273,12 @@ export default {
 .timeline-label {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #3b3f48;
+  color: var(--el-text-color-primary);
 }
 
 .timeline-content {
-  white-space: pre-line;
-  color: #665c5c;
+  white-space: pre-wrap;
+  color: var(--el-text-color-regular);
   word-break: break-all;
 }
 
@@ -265,8 +287,8 @@ export default {
   font-size: 16px;
 }
 
-::v-deep .device-content pre {
-  background-color: #f5f7fa;
+:deep(.device-content pre ) {
+  background-color: var(--el-fill-color-light);
   padding: 15px;
   border-radius: 5px;
   font-family: 'Courier New', Courier, monospace;
@@ -275,18 +297,18 @@ export default {
   word-wrap: break-word;
 }
 
-::v-deep .scrollable-content {
+:deep(.scrollable-content ) {
   width: 100%;
   max-height: 600px;
   overflow: auto;
-  background-color: #f5f7fa;
+  background-color: var(--el-fill-color-light);
   padding: 15px;
   border-radius: 5px;
   font-family: 'Courier New', Courier, monospace;
   color: #65676a;
   white-space: pre-wrap;
 }
-::v-deep pre {
+:deep(pre ) {
   margin: 0;
   white-space: pre-wrap;
 }
