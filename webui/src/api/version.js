@@ -16,5 +16,7 @@
 import { jsonrpcRequest } from '@/api/jsonrpc'
 
 export function queryVersion() {
-  return jsonrpcRequest('/version', 'version')
+  return jsonrpcRequest('/version', 'version', {
+    details: true
+  })
 }

@@ -15,15 +15,15 @@
 
 import { jsonrpcRequest } from '@/api/jsonrpc'
 
-export function getTranspilers() {
+export function getTranspilers(query = null) {
   return jsonrpcRequest(
-    '/v1/transpiler/get_transpilers', 'get_transpilers'
+    '/v1/transpiler', 'get_transpilers', {}, query
   )
 }
 
 export function getTranspiler(transpilerName) {
   return jsonrpcRequest(
-    '/v1/transpiler/get_transpiler', 'get_transpiler',
+    '/v1/transpiler', 'get_transpiler',
     { name: transpilerName }
   )
 }

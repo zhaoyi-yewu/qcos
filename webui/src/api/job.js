@@ -16,13 +16,13 @@
 import { jsonrpcRequest, httpRequest } from '@/api/jsonrpc'
 
 export function queryVersion() {
-  return jsonrpcRequest('/version', 'version')
+  return jsonrpcRequest('/version', 'version', { 'details': true })
 }
 
 // --- Job operations ---
 
-export function queryJobs() {
-  return jsonrpcRequest('/v1/job/get_jobs', 'get_jobs')
+export function queryJobs(query = null) {
+  return jsonrpcRequest('/v1/job', 'get_jobs', {}, query)
 }
 
 export function queryJobDetails(jobId) {
@@ -32,8 +32,11 @@ export function queryJobDetails(jobId) {
   )
 }
 
-export function postSubmitJob(reqData) {
-  return httpRequest('/v1/job/submit_job', 'post', reqData)
+export function submitJob(reqData) {
+  // backend submit_job is a fastapi-jsonrpc method on the /v1/job
+  // entrypoint: send the JSON-RPC envelope with the job body in
+  // params.body instead of a raw HTTP POST
+  return jsonrpcRequest('/v1/job/submit_job', 'submit_job', reqData)
 }
 
 export function postSubmitSequence(reqData) {

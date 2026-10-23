@@ -15,12 +15,12 @@
 
 import { jsonrpcRequest } from '@/api/jsonrpc'
 
-export function getDrivers() {
-  return jsonrpcRequest('/v1/driver/get_drivers', 'get_drivers')
+export function getDrivers(query = null) {
+  return jsonrpcRequest('/v1/driver', 'get_drivers', {}, query)
 }
 
 export function getDriver(driverName) {
-  return jsonrpcRequest('/v1/driver/get_driver', 'get_driver', {
+  return jsonrpcRequest('/v1/driver', 'get_driver', {
     name: driverName
   })
 }
