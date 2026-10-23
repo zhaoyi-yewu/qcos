@@ -1,164 +1,197 @@
-<template>
-  <div v-if="loaded" class="device-list-container">
-    <div class="header">
-      <h2>设备查询</h2>
-    </div>
-    <div class="table-container">
-      <el-table
-        ref="tableRef"
-        :data="pageData"
-        style="width: 100%"
-        border
-        :header-cell-style="{ background: '#f5f7fa' }"
-      >
-        <el-table-column
-          prop="name"
-          label="设备名称"
-          fixed="left"
-          class-name="center-column"
-          sortable
-        />
-        <el-table-column
-          prop="alias_name"
-          label="设备别名"
-          fixed="left"
-          class-name="center-column"
-          sortable
-        />
-        <el-table-column
-          prop="driver_name"
-          label="设备驱动"
-          class-name="center-column"
-          sortable
-        >
-          <template #default="scope">
-            <el-button
-              type="text"
-              @click="viewDriverDetails(scope.row.driver_name)"
-            >
-              {{ scope.row.driver_name }}
-            </el-button>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="enable"
-          label="启用"
-          class-name="center-column"
-          sortable
-        >
-          <template #default="scope">
-            {{ getEnable(scope.row.enable) }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="status"
-          label="状态"
-          class-name="center-column"
-          sortable
-        >
-          <template #default="scope">
-            {{ getStatus(scope.row.status) }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="version"
-          label="驱动版本"
-          class-name="center-column"
-          sortable
-        >
-          <template #default="scope">
-            {{ driverDetails[scope.row.driver_name]["version"] }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="tech_type"
-          label="技术路线"
-          class-name="center-column"
-          sortable
-        >
-          <template #default="scope">
-            {{ versionData.capabilities['tech_types'][driverDetails[scope.row.driver_name]["tech_type"]]['alias_name'] || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="max_qubits"
-          label="量子比特数"
-          class-name="center-column"
-          sortable
-        >
-          <template #default="scope">
-            {{ driverDetails[scope.row.driver_name]["max_qubits"] }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="transpiler"
-          label="默认转译器"
-          class-name="center-column"
-          sortable
-        >
-          <template #default="scope">
-            <div v-if="driverDetails[scope.row.driver_name]['transpiler']">
-              <el-button
-                type="text"
-                @click="viewTranspilerDetails(driverDetails[scope.row.driver_name]['transpiler'])"
-              >
-                {{ versionData.capabilities['transpilers'][driverDetails[scope.row.driver_name]["transpiler"]]['alias_name'] || '-' }}
-              </el-button>
-            </div>
-            <div v-else>
-              -
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="description"
-          label="设备描述"
-          class-name="left-column"
-          sortable
-        />
-        <el-table-column
-          prop="details"
-          label="详情"
-          class-name="center-column"
-        >
-          <template #default="scope">
-            <el-button
-              type="text"
-              @click="viewDeviceDetails(scope.row.name)"
-            >
-              查看
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 
-    <div class="pagination-container">
-      <el-pagination
-        background
-        layout="total, prev, pager, next"
-        :total="deviceDetails.length"
-        :page-size="pageSize"
-        :current-page="currentPage"
-        @current-change="handlePageChange"
-      />
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
+<template>
+  <div class="device-list-container">
+    <div class="header">
+      <h2>设备列表</h2>
     </div>
+    <PageTable
+      ref="pageTableRef"
+      :fetch-data="fetchDevices"
+      search-placeholder="全局搜索：设备名称 / 别名 / 驱动 / 状态 …"
+      row-key="name"
+    >
+      <filterable-table-column
+        prop="name"
+        label="设备名称"
+        fixed="left"
+        class-name="center-column"
+        sortable="custom"
+      />
+      <filterable-table-column
+        prop="alias_name"
+        label="设备别名"
+        fixed="left"
+        class-name="center-column"
+        sortable="custom"
+      />
+      <filterable-table-column
+        prop="driver_name"
+        label="设备驱动"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          <el-button
+            link
+            @click="viewDriverDetails(scope.row.driver_name)"
+          >
+            {{ scope.row.driver_name }}
+          </el-button>
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="enable"
+        label="启用"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          {{ getEnable(scope.row.enable) }}
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="status"
+        label="状态"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          <el-tag :type="getDeviceStatusTagType(scope.row.status)" size="small">
+            {{ getDeviceStatusDisplay(scope.row.status, scope.row.is_manual) }}
+          </el-tag>
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="version"
+        label="驱动版本"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          {{ driverDetails[scope.row.driver_name]?.version }}
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="tech_type"
+        label="技术路线"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          {{ getTechTypeName(versionData, driverDetails[scope.row.driver_name]?.tech_type) }}
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="max_qubits"
+        label="量子比特数"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          {{ driverDetails[scope.row.driver_name]?.max_qubits }}
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="transpiler"
+        label="默认转译器"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          <div v-if="getTranspilerName(scope.row)">
+            <el-button
+              link
+              @click="viewTranspilerDetails(driverDetails[scope.row.driver_name]?.transpiler)"
+            >
+              {{ getTranspilerName(scope.row) }}
+            </el-button>
+          </div>
+          <div v-else>
+            -
+          </div>
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="availability"
+        label="可用率"
+        class-name="center-column"
+        sortable="custom"
+      >
+        <template #default="scope">
+          <el-tag
+            v-if="getAvailability(scope.row) !== null"
+            :type="getAvailabilityTagType(getAvailability(scope.row))"
+            size="small"
+          >
+            {{ (getAvailability(scope.row) * 100).toFixed(1) }}%
+          </el-tag>
+          <span v-else>-</span>
+        </template>
+      </filterable-table-column>
+      <filterable-table-column
+        prop="description"
+        label="设备描述"
+        class-name="left-column"
+        sortable="custom"
+      />
+      <el-table-column
+        prop="details"
+        label="操作"
+        class-name="center-column"
+        fixed="right"
+        width="90"
+      >
+        <template #default="scope">
+          <el-tooltip content="查看" placement="top">
+            <el-button
+              link
+              :icon="View"
+              @click="viewDeviceDetails(scope.row.name)"
+            />
+          </el-tooltip>
+        </template>
+      </el-table-column>
+    </PageTable>
   </div>
 </template>
 
 <script>
+import { markRaw } from 'vue'
+import { View } from '@element-plus/icons-vue'
+import PageTable from '@/components/PageTable'
+import FilterableTableColumn from '@/components/PageTable/FilterableTableColumn.vue'
 import { getDrivers } from '@/api/driver'
 import { getDevices } from '@/api/device'
 import {
   getEnable,
-  getStatus
+  getStatus,
+  getDeviceStatusDisplay,
+  getDeviceStatusTagType,
+  getTechTypeName
 } from '@/common/library'
 import { queryVersion } from '@/api/version'
 
 export default {
+  components: {
+    PageTable,
+    FilterableTableColumn
+  },
   data() {
     return {
-      loaded: false,
       versionData: {
         version: '',
         api_version: '',
@@ -167,56 +200,22 @@ export default {
         capabilities: {}
       },
       driverDetails: {},
-      deviceDetails: [],
-      currentPage: 1,
-      pageSize: 10,
-      timer: null,
-      pollingInterval: 10000,
-      selectedRows: []
+      View: markRaw(View)
     }
   },
-
-  selectedIds: [],
-
-  computed: {
-    pageData() {
-      const start = (this.currentPage - 1) * this.pageSize
-      const end = this.currentPage * this.pageSize
-      return this.deviceDetails.slice(start, end)
-    },
-
-    // 判断是否全选
-    isAllSelected() {
-      // 过滤掉不可选的行
-      const selectableCount = this.deviceDetails.filter(item => this.checkSelectable(item)).length
-      return this.selectedRows.length > 0 && this.selectedRows.length === selectableCount
-    }
-  },
-
-  mounted() {
-    this.startPolling()
-  },
-
-  beforeUnmount() {
-    this.stopPolling()
-  },
-
   created() {
-    this.queryData()
+    this.initData()
   },
-
   methods: {
     getEnable,
     getStatus,
+    getDeviceStatusDisplay,
+    getDeviceStatusTagType,
+    getTechTypeName,
 
-    handlePageChange(page) {
-      this.currentPage = page
-    },
-
-    async queryData() {
+    async initData() {
       await this.fetchVersion()
-      await this.fetchDevices()
-      this.loaded = true
+      await this.fetchDrivers()
     },
 
     async fetchVersion() {
@@ -233,7 +232,7 @@ export default {
       }
     },
 
-    async fetchDevices() {
+    async fetchDrivers() {
       try {
         const response = await getDrivers()
         if (!response.error) {
@@ -245,37 +244,59 @@ export default {
         console.error('获取驱动列表失败:', error)
         this.$message.error('获取驱动列表失败，请检查网络连接')
       }
+    },
 
-      try {
-        const response = await getDevices()
-        if (!response.error) {
-          const devices = response.result
-          this.deviceDetails = []
-          for (const deviceName in devices) {
-            const device = devices[deviceName]
-            this.deviceDetails.push(device)
-          }
-        } else {
-          this.$message.error(`获取设备列表失败：${response.message || '未知错误'}`)
+    // PageTable fetchData callback
+    async fetchDevices(params) {
+      // params: {page, page_size, search, filters, sort}
+      const query = {
+        pagination: {
+          page: params.page,
+          page_size: params.page_size
         }
-      } catch (error) {
-        console.error('获取设备列表失败:', error)
-        this.$message.error('获取设备列表失败，请检查网络连接')
       }
+      if (params.search) {
+        query.search = params.search
+      }
+      if (params.filters) {
+        query.filters = params.filters
+      }
+      if (params.sort) {
+        query.sort = params.sort
+      }
+      return await getDevices(query)
     },
 
-    startPolling() {
-      this.fetchDevices()
-      this.timer = setInterval(() => {
-        this.fetchDevices()
-      }, this.pollingInterval)
+    getTranspilerName(row) {
+      const driverName = row.driver_name
+      const driver = this.driverDetails[driverName]
+      const caps = this.versionData && this.versionData.capabilities
+      if (!driver || !driver.transpiler) {
+        return ''
+      }
+      if (!caps || !caps.transpilers) {
+        return ''
+      }
+      const transpilerName = driver.transpiler
+      const transpilers = caps.transpilers
+      if (!transpilers[transpilerName]) {
+        return ''
+      }
+      return transpilers[transpilerName].alias_name || '-'
     },
 
-    stopPolling() {
-      if (this.timer) {
-        clearInterval(this.timer)
-        this.timer = null
+    getAvailability(row) {
+      if (row && row.metrics && row.metrics.availability_total !== null && row.metrics.availability_total !== undefined) {
+        return row.metrics.availability_total
       }
+      return null
+    },
+
+    getAvailabilityTagType(rate) {
+      if (rate === null || rate === undefined) return 'info'
+      if (rate >= 0.9) return 'success'
+      if (rate >= 0.6) return 'warning'
+      return 'danger'
     },
 
     viewDriverDetails(driverName) {
@@ -297,47 +318,10 @@ export default {
 .device-list-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
   padding: 20px;
   box-sizing: border-box;
 }
 
-.header {
-  margin-bottom: 0px;
-}
-
-.table-container {
-  flex: 1;
-  background: white;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-  overflow: auto;
-}
-
-.pagination-container {
-  text-align: center;
-  margin-top: 10px;
-  padding: 0 20px 50px;
-}
-
-::v-deep .el-table {
-  font-size: 15px;
-  --el-table-row-height: 30px;
-}
-
-::v-deep .el-table th {
-  padding: 12px 0;
-  font-size: 16px;
-  text-align: center;
-}
-
-::v-deep .el-pagination {
-  margin-top: 20px;
-}
-
-::v-deep .center-column {
-  text-align: center;
-}
+.header { margin: 0; }
 </style>
