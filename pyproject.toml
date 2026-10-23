@@ -295,7 +295,7 @@ driver-uqc = [
     "uqc_client==0.1.0",
 ]
 
-# requirements of driver uqc
+# requirements of driver logical qubit
 driver-logical-qubit = [
     "lqcloud==0.5.0",
 ]

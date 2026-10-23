@@ -75,6 +75,7 @@ class DriverLqMQ02Pulse(DriverPulseBase):
             Constant.SINGLE_QUBIT_GATE_Y,
             Constant.SINGLE_QUBIT_GATE_Z,
             Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.TWO_QUBIT_GATE_CX,
         ]
         self.supported_transpilers = [
             Constant.TRANSPILER_DUMMY,
@@ -367,7 +368,7 @@ class DriverLqMQ02Pulse(DriverPulseBase):
         Returns:
             converted code
         """
-        params = self.backend.get_qpu_params()
+        params = self.backend.get_qpu_params(refresh=True)
         seq = Sequence()
         qubit_end_times = {}
         measure_qubits = {}
