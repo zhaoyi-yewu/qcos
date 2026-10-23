@@ -574,17 +574,23 @@ def submit_job(
                 allow_none=True,
             ),
         )
+        # driver-level QEC schema validation only applies when the driver
+        # provides its own schema (e.g. DriverStim); the DriverBase
+        # default returns None meaning "no extra constraints", in which
+        # case we skip the second validate_schema call because an empty
+        # schema would be rejected by Library.validate_schema
         qec_options_schema = driver.get_qec_options_schema()
-        jsonrpc_errors.handle_error_bad_requests(
-            module_name,
-            func_name,
-            Library.validate_schema(
-                qec_options,
-                qec_options_schema,
-                allow_none=True,
-            ),
-            param_name="qec_options",
-        )
+        if qec_options_schema:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                Library.validate_schema(
+                    qec_options,
+                    qec_options_schema,
+                    allow_none=True,
+                ),
+                param_name="qec_options",
+            )
 
     # validate: qem_options
     if qem_options:
@@ -963,8 +969,8 @@ def get_jobs(
     func_name = "get_jobs"
     logger.info(f"Call {func_name}: body={body}, query={query}")
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     # Query job record from database with user filters
     db_filters = get_db_filters(auth_data, filters=filters)
@@ -982,6 +988,9 @@ def get_jobs(
         _mapped.append(f"-{name}" if desc else name)
     sort_fields = _mapped
 
+    # Global search fields for job list
+    _search_fields = ["job_name", "description", "backend"]
+
     if pagination:
         # Paginated path
         success, error, result = job_repo.get_jobs_paginated(
@@ -989,6 +998,8 @@ def get_jobs(
             page=pagination.page,
             page_size=pagination.page_size,
             sort=sort_fields,
+            search=search,
+            search_fields=_search_fields if search else None,
         )
         if not success or result is None:
             return schemas.PaginatedResponse(
@@ -1025,6 +1036,8 @@ def get_jobs(
             page=1,
             page_size=-1,
             sort=sort_fields,
+            search=search,
+            search_fields=_search_fields if search else None,
         )
         if not success or result is None:
             return []

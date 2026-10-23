@@ -29,6 +29,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
 from wy_qcos.common.pagination import (
+    apply_memory_search,
     apply_memory_sort,
     paginate_list,
     parse_query,
@@ -337,8 +338,8 @@ def get_users(
         f"Call {func_name}: body={_mask_hidden_fields(body)}, query={query}"
     )
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     # Get user manager from request state
     user_manager = get_user_manager(request)
@@ -374,16 +375,21 @@ def get_users(
         user_data = get_user_response(user)
         items.append(schemas.GetUserResponse.model_validate(user_data))
 
+    if search:
+        items = apply_memory_search(
+            items, search, ["user_name", "description"]
+        )
     if sort:
         items = apply_memory_sort(items, sort)
 
     if pagination:
         return paginate_list(items, pagination.page, pagination.page_size)
     else:
-        # Backward compatible: return dict keyed by user_id
+        # Backward compatible: return dict keyed by user id (UUID)
+        # GetUserResponse has field `id`, not `user_id`
         response_info = {}
-        for i, user in enumerate(users):
-            response_info[str(user.id)] = items[i]
+        for item in items:
+            response_info[str(item.id)] = item
         return response_info
 
 
@@ -674,8 +680,8 @@ def get_roles(
         f"Call {func_name}: body={_mask_hidden_fields(body)}, query={query}"
     )
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     # Get user manager from request state
     user_manager = get_user_manager(request)
@@ -695,16 +701,21 @@ def get_roles(
         role_data = get_role_response(role)
         items.append(schemas.GetRoleResponse.model_validate(role_data))
 
+    if search:
+        items = apply_memory_search(
+            items, search, ["role_name", "description"]
+        )
     if sort:
         items = apply_memory_sort(items, sort)
 
     if pagination:
         return paginate_list(items, pagination.page, pagination.page_size)
     else:
-        # Backward compatible: return dict keyed by role_id
+        # Backward compatible: return dict keyed by role id
+        # GetRoleResponse has field `id`, not `role_id`
         response_info = {}
-        for i, role in enumerate(roles):
-            response_info[str(role.id)] = items[i]
+        for item in items:
+            response_info[str(item.id)] = item
         return response_info
 
 
@@ -938,8 +949,8 @@ def get_login_logs(
         f"Call {func_name}: body={_mask_hidden_fields(body)}, query={query}"
     )
 
-    # Extract pagination/sort from query dict
-    _filters, pagination, sort = parse_query(query)
+    # Extract pagination/sort/search from query dict
+    _filters, pagination, sort, search = parse_query(query)
 
     # Parse parameters from body
     user_id = None
@@ -987,6 +998,10 @@ def get_login_logs(
             return []
         items = result["items"]
         total = result["total"]
+        if search:
+            items = apply_memory_search(
+                items, search, ["user_name", "ip_address", "user_agent"]
+            )
         if pagination:
             ps = page_size
             total_pages = (total + ps - 1) // ps if ps > 0 else 1

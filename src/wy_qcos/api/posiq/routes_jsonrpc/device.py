@@ -26,6 +26,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import device_api_v1
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.pagination import (
     apply_memory_filters,
+    apply_memory_search,
     apply_memory_sort,
     paginate_list,
     parse_query,
@@ -289,7 +290,7 @@ def _get_device_info(
     errors=[],
 )
 def get_devices(
-    body: schemas.GetDevicesRequest,
+    body: schemas.GetDevicesRequest = schemas.GetDevicesRequest(),
     query: dict | None = None,
     auth_data: dict | None = Depends(auth),
     job_repo: JobRepository = Depends(get_repository(JobRepository)),
@@ -313,8 +314,8 @@ def get_devices(
     func_name = "get_devices"
     logger.info(f"Call {func_name}: body={body}, query={query}")
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     details = body.details
     device_manager = scheduler.get_device_manager()
@@ -347,6 +348,11 @@ def get_devices(
     items = list(response_info.values())
     if filters:
         items = apply_memory_filters(items, filters)
+    if search:
+        items = apply_memory_search(
+            items, search, ["name", "alias_name", "description"]
+        )
+    if filters or search:
         # Rebuild dict with only filtered items
         response_info = {getattr(item, "name", ""): item for item in items}
     if sort:

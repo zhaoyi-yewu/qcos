@@ -64,6 +64,8 @@ def version(
         transpiler_manager = scheduler.get_transpiler_manager()
         for driver_name, driver in drivers.items():
             driver_name_mapping[driver_name] = {
+                "transpiler": driver.get_transpiler(),
+                "supported_transpilers": driver.get_supported_transpilers(),
                 "supported_code_types": driver.get_supported_code_types(),
                 "description": driver.get_description(),
                 "driver_options": driver.get_driver_options(),
@@ -89,6 +91,28 @@ def version(
                 driver_transpiler_mappings[driver_name].add(transpiler_name)
 
         _response_info["capabilities"] = {
+            "job_catalogs": {
+                "qc_circuit": {
+                    "alias_name": "量子线路",
+                    "code_types": Constant.CODE_TYPES_ALL_QASM,
+                },
+                "qc_qubo": {
+                    "alias_name": "QUBO矩阵",
+                    "code_types": [Constant.CODE_TYPE_QUBO],
+                },
+                "qc_wave": {
+                    "alias_name": "量子波形",
+                    "code_types": [],
+                },
+                "qc_pulse": {
+                    "alias_name": "量子脉冲",
+                    "code_types": [],
+                },
+                "generic_orchestration": {
+                    "alias_name": "通用编排",
+                    "code_types": [],
+                },
+            },
             "job_types": Constant.JOB_TYPES,
             "drivers": driver_name_mapping,
             "transpilers": transpiler_name_mappings,

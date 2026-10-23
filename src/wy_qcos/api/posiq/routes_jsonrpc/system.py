@@ -30,6 +30,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.pagination import (
     apply_memory_filters,
+    apply_memory_search,
     apply_memory_sort,
     paginate_list,
     parse_query,
@@ -313,8 +314,8 @@ def list_workers(
     func_name = "list_workers"
     logger.info(f"Call {func_name}: body={body}, query={query}")
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     task_manager = getattr(request.app.state, "_task_manager", None)
     if not task_manager:
@@ -327,6 +328,10 @@ def list_workers(
     workers = task_manager.list_workers()
     if filters:
         workers = apply_memory_filters(workers, filters)
+    if search:
+        workers = apply_memory_search(
+            workers, search, ["worker_name", "work_pool", "device_name"]
+        )
     if sort:
         workers = apply_memory_sort(workers, sort)
     if pagination:

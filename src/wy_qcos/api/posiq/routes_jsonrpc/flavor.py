@@ -32,6 +32,7 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.pagination import (
     apply_memory_filters,
+    apply_memory_search,
     apply_memory_sort,
     paginate_list,
     parse_query,
@@ -524,8 +525,8 @@ def get_flavors(
     func_name = "get_flavors"
     logger.info(f"Call {func_name}: body={body}, query={query}")
 
-    # Extract filters/pagination/sort from query dict
-    filters, pagination, sort = parse_query(query)
+    # Extract filters/pagination/sort/search from query dict
+    filters, pagination, sort, search = parse_query(query)
 
     flavor_manager = scheduler.get_flavor_manager()
     if flavor_manager is None:
@@ -563,6 +564,8 @@ def get_flavors(
         }
         if leftover:
             items = apply_memory_filters(items, leftover)
+    if search:
+        items = apply_memory_search(items, search, ["name", "description"])
     if sort:
         items = apply_memory_sort(items, sort)
     if pagination:

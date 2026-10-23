@@ -25,7 +25,9 @@ class GetDevicesRequest(BaseModel):
     """
 
     # need details or not
-    details: bool = Field(description="Details info needed or not")
+    details: bool = Field(
+        default=False, description="Details info needed or not"
+    )
 
 
 class GetDeviceRequest(BaseModel):
@@ -37,7 +39,9 @@ class GetDeviceRequest(BaseModel):
     # device name
     name: str = Field(description="Device name")
     # need details or not
-    details: bool = Field(description="Details info needed or not")
+    details: bool = Field(
+        default=False, description="Details info needed or not"
+    )
 
 
 class GetDeviceResponse(BaseModel):
