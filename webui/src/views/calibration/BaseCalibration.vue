@@ -1,7 +1,22 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div class="config-container">
     <el-card shadow="never">
-      <div #header>
+      <template #header>
         <div class="header-content">
           <div class="header-left">
             <span class="config-title">{{ config.title }}</span>
@@ -34,12 +49,12 @@
             {{ scanStatus === 'running' ? '停止' : '运行' }}
           </el-button>
         </div>
-      </div>
+      </template>
       <!-- 动态渲染参数表单 -->
       <el-form label-position="left" label-width="120px">
         <!-- 基础参数动态生成 -->
-        <template v-for="(field, index) in config.formFields.base">
-          <el-form-item :key="`base-${index}`" :label="field.label">
+        <template v-for="(field, index) in config.formFields.base" :key="`base-${index}`">
+          <el-form-item :label="field.label">
             <el-input-number
               v-model="params[field.key]"
               :min="field.min || 1"
@@ -50,8 +65,8 @@
         </template>
 
         <!-- 科学计数法参数动态生成 -->
-        <template v-for="param in config.formFields.sciParams">
-          <el-form-item :key="param.key" :label="param.label">
+        <template v-for="param in config.formFields.sciParams" :key="param.key">
+          <el-form-item :label="param.label">
             <div class="sci-input-group">
               <el-input-number
                 v-model="params[param.key].coefficient"
@@ -123,7 +138,7 @@
               align="center"
               width="100"
             >
-              <template v-slot="{ row }">
+              <template #default="{ row }">
                 <div class="metric-value">
                   {{ row.values[index] }}
                 </div>
@@ -137,6 +152,7 @@
 </template>
 
 <script>
+import { markRaw } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import {
   postCalibration,
@@ -147,7 +163,6 @@ import {
 } from '@/api/job'
 
 export default {
-  components: { Refresh },
   props: {
     // 差异化配置
     config: {
@@ -164,6 +179,9 @@ export default {
   },
   data() {
     return {
+      // expose the Refresh icon to the template via data (markRaw) instead
+      // of components registration, since it is only used as :icon value
+      Refresh: markRaw(Refresh),
       params: this.generateInitialParams(),
       sciParams: [
         { key: 'init_val', label: '扫描起始值' },
@@ -221,7 +239,7 @@ export default {
   },
 
   // 生命周期钩子
-  /*mounted() {
+  /* mounted() {
     // 初始化获取一次
     this.fetchCalibrationValue()
 
@@ -421,7 +439,7 @@ export default {
     },
 
     // 获取扫描状态和结果
-    /*async fetchScanStatus() {
+    /* async fetchScanStatus() {
       try {
         const res = await getCalibration(this.config.apiType)
         if (res.code === 0) {
@@ -449,7 +467,7 @@ export default {
         if (res.code === 0) {
           this.scanResults = res.data.res || []
           this.scanStatus = res.data.status
-          this.saveToLocalStorage(); // 保存到本地存储
+          this.saveToLocalStorage() // 保存到本地存储
           // 扫描完成或失败时停止轮询
           if (res.data.status === 'complete' || res.data.status === 'fail') {
             if (res.data.status === 'fail') {
@@ -487,7 +505,7 @@ export default {
     },
 
     // 提交校准值
-    /*async handleValueSubmit() {
+    /* async handleValueSubmit() {
       try {
         if (!this.submittedValue) {
           this.$message.warning('请输入要提交的校准值')
@@ -568,7 +586,7 @@ export default {
 .config-title {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 
 .sci-input-group {
@@ -579,7 +597,7 @@ export default {
 
 .sci-symbol {
   padding: 0 5px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 .scan-results {
@@ -596,7 +614,7 @@ export default {
 
 .status-text {
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 /* 横向表格样式 */
@@ -608,26 +626,26 @@ export default {
 .metric-value {
   padding: 8px;
   font-size: 14px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 
 /* 调整表格行样式 */
-::v-deep .el-table__row td {
+:deep(.el-table__row td ) {
   padding: 0 !important;
   border-right: 1px solid #ebeef5;
 }
 
-::v-deep .el-table__row:last-child td {
+:deep(.el-table__row:last-child td ) {
   border-bottom: 1px solid #ebeef5;
 }
 
-::v-deep .el-table th {
-  background-color: #f5f7fa !important;
-  color: #606266;
+:deep(.el-table th ) {
+  background-color: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-regular);
   font-weight: 600;
 }
 
-::v-deep .el-table td {
+:deep(.el-table td ) {
   padding: 12px 0;
 }
 
@@ -651,7 +669,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   font-size: 14px;
 }
 
@@ -660,7 +678,7 @@ export default {
 }
 
 .no-value {
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .refresh-btn {

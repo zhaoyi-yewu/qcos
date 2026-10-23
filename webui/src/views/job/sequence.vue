@@ -1,3 +1,18 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div class="task-submit-container">
     <div class="header">
@@ -24,9 +39,11 @@
               :file-list="taskData.taskFileList"
             >
               <el-button type="primary">选择文件</el-button>
-              <div slot="tip" class="upload-tip">
-                请上传任务文件
-              </div>
+              <template #tip>
+                <div class="upload-tip">
+                  请上传任务文件
+                </div>
+              </template>
             </el-upload>
           </div>
         </el-form-item>
@@ -84,6 +101,7 @@
 import { postSubmitSequence } from '@/api/job'
 
 export default {
+  name: 'SequenceView',
   data() {
     return {
       taskData: {
@@ -234,18 +252,15 @@ export default {
   .task-submit-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    background: #f5f7fa;
+    background: var(--el-fill-color-light);
     padding: 20px;
   }
 
-  .header {
-    margin-bottom: 30px;
-  }
+  .header { margin: 0; }
 
   .form-container {
     flex: 1;
-    background: white;
+    background: var(--el-bg-color);
     border-radius: 8px;
     padding: 30px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
@@ -262,7 +277,7 @@ export default {
   .upload-tip {
     margin-top: 8px;
     font-size: 12px;
-    color: #909399;
+    color: var(--el-text-color-secondary);
   }
 
   .el-form-item {

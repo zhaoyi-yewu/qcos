@@ -1,3 +1,18 @@
+<!--
+  Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+
+  qcos is licensed under Mulan PSL v2.
+  You can use this software according to the terms and conditions
+  of the Mulan PSL v2.
+  You may obtain a copy of Mulan PSL v2 at:
+          http://license.coscl.org.cn/MulanPSL2
+  THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+      WITHOUT WARRANTIES OF ANY KIND,
+  EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+  MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+  See the Mulan PSL v2 for more details.
+-->
+
 <template>
   <div class="transpiler-detail-container">
     <div class="header">
@@ -19,7 +34,7 @@
                 class="timeline-item"
               >
                 <div class="timeline-label">{{ item.label }}</div>
-                <div class="timeline-content" v-text="item.value" />
+                <div class="timeline-content">{{ item.value }}</div>
               </el-timeline-item>
             </el-timeline>
           </div>
@@ -32,7 +47,7 @@
                 class="timeline-item"
               >
                 <div class="timeline-label">{{ item.label }}</div>
-                <div class="timeline-content" v-text="item.value" />
+                <div class="timeline-content">{{ item.value }}</div>
               </el-timeline-item>
             </el-timeline>
           </div>
@@ -116,12 +131,10 @@ export default {
   padding: 10px;
 }
 
-.header {
-  margin-bottom: 20px;
-}
+.header { margin: 0; }
 
 .detail-container {
-  background: white;
+  background: var(--el-bg-color);
 }
 
 .transpiler-card {
@@ -157,12 +170,12 @@ export default {
 .timeline-label {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #3b3f48;
+  color: var(--el-text-color-primary);
 }
 
 .timeline-content {
-  white-space: pre-line;
-  color: #665c5c;
+  white-space: pre-wrap;
+  color: var(--el-text-color-regular);
   word-break: break-all;
 }
 
@@ -171,8 +184,8 @@ export default {
   font-size: 16px;
 }
 
-::v-deep .transpiler-content pre {
-  background-color: #f5f7fa;
+:deep(.transpiler-content pre ) {
+  background-color: var(--el-fill-color-light);
   padding: 15px;
   border-radius: 5px;
   font-family: 'Courier New', Courier, monospace;
@@ -181,18 +194,18 @@ export default {
   word-wrap: break-word;
 }
 
-::v-deep .scrollable-content {
+:deep(.scrollable-content ) {
   width: 100%;
   max-height: 600px;
   overflow: auto;
-  background-color: #f5f7fa;
+  background-color: var(--el-fill-color-light);
   padding: 15px;
   border-radius: 5px;
   font-family: 'Courier New', Courier, monospace;
   color: #65676a;
   white-space: pre-wrap;
 }
-::v-deep pre {
+:deep(pre ) {
   margin: 0;
   white-space: pre-wrap;
 }
