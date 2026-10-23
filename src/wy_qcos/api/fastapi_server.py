@@ -27,10 +27,22 @@ from pydantic import ValidationError
 from uvicorn.main import Server as UvicornServer
 
 from wy_qcos.api.fastapi_coroutine import app_lifespan
-from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
+from wy_qcos.api.mcp.mcp_server import mcp as mcp_server, _MCP_VERSION
+from wy_qcos.api.mcp.mcp_server import get_mcp_http_app
+from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api, BASE_ENDPOINT
+from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
+    decode_jwt_token,
+)
+from wy_qcos.common.config import Config
+from wy_qcos.common.constant import Constant
 from wy_qcos.metrics.metrics_middleware import MetricsMiddleware
 
 logger = logging.getLogger(__name__)
+
+# MCP endpoint path under /v1/ai/mcp like other QCOS API endpoints.
+# Placed under the /v1/ai/ namespace to distinguish AI assistant
+# integration endpoints from regular JSON-RPC API endpoints.
+MCP_ENDPOINT = f"{BASE_ENDPOINT}/ai/mcp"
 
 # Max retries and interval (seconds) when the listen port is still in
 # TIME_WAIT after a rapid restart.
@@ -89,6 +101,153 @@ app.add_middleware(MetricsMiddleware)
 # bind entrypoint
 for api_entrypoint in all_api:
     app.bind_entrypoint(api_entrypoint)
+
+# Mount MCP server for AI assistant integration.
+# This shares the same HTTP port as the JSON-RPC API (no extra port).
+# AI clients connect to: http://<host>:<port>/v1/ai/mcp
+try:
+    mcp_app = None
+    if _MCP_VERSION >= 2:
+        # Use the singleton MCP HTTP app (same instance used by lifespan init)
+        mcp_app = get_mcp_http_app()
+    else:
+        for method_name in ("streamable_http_app", "http_app", "sse_app"):
+            if hasattr(mcp_server, method_name):
+                mcp_app = getattr(mcp_server, method_name)()
+                break
+    if mcp_app is not None:
+        if _MCP_VERSION >= 2:
+            # MCP 2.x: use pure ASGI middleware to intercept /v1/ai/mcp
+            # and forward to MCP app with path rewritten to /mcp
+            _mcp_prefix = MCP_ENDPOINT.rstrip("/")  # "/v1/ai/mcp"
+
+            class McpAsgiMiddleware:
+                """Pure ASGI middleware to route /v1/ai/mcp to MCP app.
+
+                Intercepts HTTP requests to MCP_ENDPOINT and forwards
+                them to the MCP ASGI app with the path rewritten to
+                /mcp (MCP 2.x internal route). Non-matching requests
+                pass through to the main app. JWT auth is enforced
+                when AUTH_MODE == 'jwt' before forwarding.
+                """
+
+                def __init__(self, main_app):
+                    self.app = main_app
+
+                async def __call__(self, scope, receive, send):
+                    if scope["type"] == "http":
+                        path = scope.get("path", "")
+                        if path == _mcp_prefix or path.startswith(
+                            _mcp_prefix + "/"
+                        ):
+                            # Reuse existing JWT auth when user management
+                            # is enabled (AUTH_MODE == "jwt"). Requests
+                            # without a valid Bearer token are rejected
+                            # with HTTP 401 before reaching the MCP app.
+                            # When AUTH_MODE is "no" or "virtual_instance",
+                            # the MCP endpoint is accessible without JWT.
+                            if not self._check_jwt(scope):
+                                await self._send_unauthorized(send)
+                                return
+                            # Rewrite: /v1/ai/mcp -> /mcp,
+                            # /v1/ai/mcp/ -> /mcp/
+                            new_path = "/mcp" + path[len(_mcp_prefix) :]
+                            scope["path"] = new_path
+                            scope["raw_path"] = new_path.encode()
+                            # Rewrite Host to localhost to bypass MCP 2.x
+                            # transport_security Host validation
+                            headers = scope.get("headers", [])
+                            new_headers = [
+                                (k, v)
+                                for k, v in headers
+                                if k.lower() != b"host"
+                            ]
+                            new_headers.append((b"host", b"localhost"))
+                            scope["headers"] = new_headers
+                            # Also rewrite ASGI server tuple (host, port)
+                            # transport_security may check scope["server"]
+                            orig_server = scope.get("server", ("", 0))
+                            scope["server"] = ("localhost", orig_server[1])
+                            await mcp_app(scope, receive, send)
+                            return
+                    await self.app(scope, receive, send)
+
+                @staticmethod
+                def _check_jwt(scope) -> bool:
+                    """Validate JWT token from Authorization header.
+
+                    Returns True when access is allowed (AUTH_MODE is not
+                    'jwt', or a valid Bearer token is present), and False
+                    when the request must be rejected with 401.
+                    """
+                    # Only enforce JWT when user management is enabled
+                    if Config.DEFAULT.AUTH_MODE != Constant.AUTH_MODE_JWT:
+                        return True
+                    # Extract Authorization header from ASGI scope
+                    headers = scope.get("headers", [])
+                    auth_header = None
+                    for key, value in headers:
+                        if key.lower() == b"authorization":
+                            auth_header = value.decode("latin-1")
+                            break
+                    if not auth_header:
+                        logger.warning(
+                            "MCP access denied: missing Authorization header"
+                        )
+                        return False
+                    # Expect "Bearer <token>"
+                    parts = auth_header.split(" ", 1)
+                    if len(parts) != 2 or parts[0].lower() != "bearer":
+                        logger.warning(
+                            "MCP access denied: invalid Authorization scheme"
+                        )
+                        return False
+                    token = parts[1].strip()
+                    payload = decode_jwt_token(token)
+                    if not payload:
+                        logger.warning(
+                            "MCP access denied: invalid or expired JWT token"
+                        )
+                        return False
+                    return True
+
+                @staticmethod
+                async def _send_unauthorized(send) -> None:
+                    """Send an HTTP 401 JSON error response."""
+                    import json
+
+                    body = json.dumps({
+                        "jsonrpc": "2.0",
+                        "error": {
+                            "code": -32001,
+                            "message": "Unauthorized: "
+                            "valid JWT token required",
+                        },
+                        "id": None,
+                    }).encode("utf-8")
+                    await send({
+                        "type": "http.response.start",
+                        "status": 401,
+                        "headers": [
+                            (b"content-type", b"application/json"),
+                            (
+                                b"content-length",
+                                str(len(body)).encode("latin-1"),
+                            ),
+                        ],
+                    })
+                    await send({"type": "http.response.body", "body": body})
+
+            app.add_middleware(McpAsgiMiddleware)
+            logger.info(f"MCP server middleware (v2.x) at {MCP_ENDPOINT}")
+        else:
+            # MCP 1.x: mount at /v1/ai/mcp prefix
+            app.mount(MCP_ENDPOINT, mcp_app)
+            logger.info(f"MCP server mounted (v1.x) at {MCP_ENDPOINT}")
+    else:
+        logger.warning("MCP server: no suitable HTTP app method found")
+except Exception as e:
+    logger.warning(f"Failed to mount MCP server: {e}")
 
 # Monkey Patch uvicorn signal handler to detect the app is shutting down
 app.state.exiting = False
