@@ -153,6 +153,7 @@ class TestClientUser:
             filters=None,
             pagination=None,
             sort=None,
+            search=None,
         )
 
     @patch.object(Client, "call_json_rpc")

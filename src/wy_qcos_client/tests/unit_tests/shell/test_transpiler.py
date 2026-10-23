@@ -57,6 +57,7 @@ class TestGetTranspilers:
         mock_client.page = None
         mock_client.page_size = None
         mock_client.sort = None
+        mock_client.search = None
         mock_get_transpilers.return_value = iter([None, None, None, None])
         mock_get_table_list_data.return_value = None
         mock_check_results.return_value = None

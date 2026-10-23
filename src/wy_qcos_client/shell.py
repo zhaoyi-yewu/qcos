@@ -123,7 +123,7 @@ class QcosShell(App):
         # Resolve client timeout with precedence:
         #   1. command line --timeout (user specified)
         #   2. env var QCOS_CLIENT_TIMEOUT
-        #   3. default 60 seconds
+        #   3. default 600 seconds
         cli_timeout = self.options.timeout
         if cli_timeout is not None:
             timeout = cli_timeout
@@ -138,7 +138,7 @@ class QcosShell(App):
                         f"Invalid QCOS_CLIENT_TIMEOUT: {env_timeout}"
                     )
             else:
-                timeout = 60
+                timeout = 600
             timeout_from_cli = False
 
         self.client = Client(
@@ -281,7 +281,7 @@ class QcosShell(App):
             type=int,
             default=None,
             help="Request timeout in seconds. Overrides "
-            "QCOS_CLIENT_TIMEOUT env var. Default: 60",
+            "QCOS_CLIENT_TIMEOUT env var. Default: 600",
         )
 
         # Help
@@ -745,6 +745,16 @@ class GetDrivers(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter name=hanyuan1 --filter tech_type=sim",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'bell%%' or --search '%%state%%'. "
+            "Searches: name, alias_name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -781,7 +791,10 @@ class GetDrivers(Lister):
         CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_drivers(
-            filters=filters, pagination=pagination, sort=sort
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_drivers", status_code, reason, text
@@ -906,6 +919,16 @@ class GetDevices(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter name=hanyuan1 --filter tech_type=sim",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'bell%%' or --search '%%state%%'. "
+            "Searches: name, alias_name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -949,6 +972,7 @@ class GetDevices(Lister):
             filters=filters,
             pagination=pagination,
             sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_devices", status_code, reason, text
@@ -1421,6 +1445,16 @@ class GetTranspilers(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter name=qiskit --filter enable=true",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'qiskit%%' or --search '%%cmss%%'. "
+            "Searches: name, alias_name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1455,7 +1489,10 @@ class GetTranspilers(Lister):
         CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_transpilers(
-            filters=filters, pagination=pagination, sort=sort
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_transpilers", status_code, reason, text
@@ -1822,6 +1859,16 @@ class ListWorkers(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter worker_name=myworker",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'worker%%' or --search '%%hanyuan%%'. "
+            "Searches: worker_name, work_pool, device_name",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -1849,7 +1896,10 @@ class ListWorkers(Lister):
         CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.list_workers(
-            filters=filters, pagination=pagination, sort=sort
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "list_workers", status_code, reason, text
@@ -2710,6 +2760,16 @@ class GetJobs(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter job_name=myjob --filter job_status=COMPLETED",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'bell%%' or --search '%%hanyuan%%'. "
+            "Searches: job_name, description, backend",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -2792,7 +2852,10 @@ class GetJobs(Lister):
         CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_jobs(
-            filters=filters, pagination=pagination, sort=sort
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_jobs", status_code, reason, text
@@ -3537,6 +3600,16 @@ class GetUsers(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter user_name=admin --filter is_enabled=true",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'admin%%' or --search '%%test%%'. "
+            "Searches: user_name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -3576,7 +3649,10 @@ class GetUsers(Lister):
         CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_users(
-            filters=filters, pagination=pagination, sort=sort
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_users", status_code, reason, text
@@ -3850,6 +3926,16 @@ class GetRoles(Lister):
             "prefix '-' for descending. "
             "e.g. --sort=-created_at,job_name",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'admin%%' or --search '%%user%%'. "
+            "Searches: role_name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -3876,7 +3962,10 @@ class GetRoles(Lister):
         CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_roles(
-            filters=filters, pagination=pagination, sort=sort
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_roles", status_code, reason, text
@@ -4320,6 +4409,16 @@ class GetProjects(Lister):
             metavar="KEY=VALUE",
             help="Server-side filter (repeatable), e.g. --filter name=default",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'default%%' or --search '%%project%%'. "
+            "Searches: name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -4350,7 +4449,10 @@ class GetProjects(Lister):
         CommandHelper.disable_cliff_sort(parsed_args)
 
         status_code, reason, text, result = self.app.client.get_projects(
-            filters=filters, pagination=pagination, sort=sort
+            filters=filters,
+            pagination=pagination,
+            sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_projects", status_code, reason, text
@@ -5137,6 +5239,16 @@ class GetFlavors(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter name=g1.all --filter is_public=true",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'g1%%' or --search '%%all%%'. "
+            "Searches: name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -5187,6 +5299,7 @@ class GetFlavors(Lister):
             filters=filters if filters else None,
             pagination=pagination,
             sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_flavors", status_code, reason, text
@@ -5623,6 +5736,16 @@ class GetDeviceGroups(Lister):
             help="Server-side filter (repeatable), "
             "e.g. --filter name=my-group --filter is_public=true",
         )
+        parser.add_argument(
+            "--search",
+            dest="search",
+            type=str,
+            default=None,
+            help="Global search keyword with SQL LIKE wildcards. "
+            "Use %% for multi-char, _ for single-char. "
+            "e.g. --search 'my%%' or --search '%%group%%'. "
+            "Searches: name, description",
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -5668,6 +5791,7 @@ class GetDeviceGroups(Lister):
             filters=filters if filters else None,
             pagination=pagination,
             sort=sort,
+            search=parsed_args.search,
         )
         json_results = CommandHelper.check_results(
             resource, "get_device_groups", status_code, reason, text

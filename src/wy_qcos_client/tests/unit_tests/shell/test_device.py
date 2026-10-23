@@ -79,6 +79,7 @@ class TestGetDevices:
         mock_client.page = None
         mock_client.page_size = None
         mock_client.sort = None
+        mock_client.search = None
         mock_client.details = False
         mock_get_devices.return_value = iter([None, None, None, None])
         mock_get_table_list_data.return_value = None
