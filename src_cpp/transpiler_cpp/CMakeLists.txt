@@ -72,11 +72,17 @@ if(USE_PYQCOS)
     else()
         find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module)
     endif()
-    execute_process(
-        COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
-        OUTPUT_VARIABLE nanobind_DIR
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+    # Only auto-probe nanobind when caller did not pass -Dnanobind_DIR.
+    # This allows build scripts to point nanobind_DIR at a venv-installed
+    # nanobind (Python_EXECUTABLE may then be the system interpreter that
+    # lacks the nanobind module).
+    if(NOT nanobind_DIR)
+        execute_process(
+            COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+            OUTPUT_VARIABLE nanobind_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    endif()
 endif()
 
 set(CMAKE_CXX_STANDARD 17)

@@ -48,7 +48,7 @@ RUN set -e && \
     if [ "${DEV,,}" = "false" ]; then \
       # production mode: install qcos/qcos-cli wheel packages, and copy config/samples files only
       source ${DEFAULT_VENV_PATH}/bin/activate ; \
-      pip3 install --no-cache-dir ${BUILD_CONTEXT}/pkg/wy_qcos-*.whl ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl ; \
+      pip3 install --no-cache-dir ${BUILD_CONTEXT}/pkg/wy_qcos-*.whl ${BUILD_CONTEXT}/pkg/wy_qcos_client-*.whl && \
       deactivate ; \
       cp -rf ${DEFAULT_VENV_PATH}/share/wy_qcos/etc/qcos/* /etc/qcos-template/ ; \
       cp -rf ${DEFAULT_VENV_PATH}/share/wy_qcos_client/samples /root/ ; \

@@ -166,16 +166,18 @@ function build_qcos {
   echo -e "\nBuilding wheel package: wy-qcos"
   OUTPUT_PKG_DIR=${BUILD_SCRIPTS_DIR}/output
   WHEEL_PKG_DIST_DIR=${OUTPUT_PKG_DIR}/dist
-  QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-cp311-cp311-manylinux_2_38_x86_64.whl
+  QCOS_WHEEL_PATH=${WHEEL_PKG_DIST_DIR}/wy_qcos-${QCOS_VERSION}-cp311-cp311-*_x86_64.whl
 
   # build qcos-cli wheel package
   if [ "${build_wheel_in_sandbox,,}" = false ];then
     cd ${BUILD_SCRIPTS_DIR}
+    export AUDIT_WHEEL=false
     ./build-wheel.sh
   else
     docker exec ${SANDBOX_CONTAINER_NAME} sh -c "
     cd /root/qcos-project/build-scripts &&
     source /var/lib/qcos/venv/sandbox/bin/activate;
+    export AUDIT_WHEEL=false
     ./build-wheel.sh;
     deactivate
     "
@@ -215,6 +217,7 @@ function build_cli {
     export QCOS_CLI_VERSION=${QCOS_CLI_VERSION}
     export QCOS_CLI_DIST=${QCOS_CLI_DIST}
     cd ${BUILD_SCRIPTS_DIR}/cli
+    export AUDIT_WHEEL=false
     ./build-wheel.sh
   else
     docker exec ${SANDBOX_CONTAINER_NAME} sh -c "
@@ -222,6 +225,7 @@ function build_cli {
     export QCOS_CLI_DIST=${QCOS_CLI_DIST} &&
     cd /root/qcos-project/build-scripts/cli &&
     source /var/lib/qcos/venv/sandbox/bin/activate;
+    export AUDIT_WHEEL=false
     ./build-wheel.sh;
     deactivate
     "
@@ -269,6 +273,7 @@ function build_webui_image {
     --build-arg QCOS_WEBUI_IMAGE_VERSION=${image_tag} \
     --build-arg DEV=${DEV} \
     --build-arg NPM_MIRROR=${NPM_MIRROR} \
+    --build-arg NODE_BIN_MIRROR=${NODE_BIN_MIRROR} \
     -t ${QCOS_WEBUI_IMAGE_NAME}:${image_tag} .build-context
 
   # save image

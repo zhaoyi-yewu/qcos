@@ -43,9 +43,11 @@ if [ -n "${PIP_MIRROR}" ]; then
   poetry source -C ${TOP_DIR} remove pip_mirror
 fi
 
-# convert format required by pypi: from linux_x86_64 into manylinux
-auditwheel repair ${OUTPUT_DIR}/*-linux_x86_64.whl -w ${OUTPUT_DIR}
-rm -rf ${OUTPUT_DIR}/*-linux_x86_64.whl
+if [ "${AUDIT_WHEEL,,}" = "true" ]; then
+  # convert format required by pypi: from linux_x86_64 into manylinux
+  auditwheel repair ${OUTPUT_DIR}/*-linux_x86_64.whl -w ${OUTPUT_DIR}
+  rm -rf ${OUTPUT_DIR}/*-linux_x86_64.whl
+fi
 
 # print dist package dir
 echo "Dist package dir: ${OUTPUT_DIR}"

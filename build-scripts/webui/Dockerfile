@@ -21,6 +21,10 @@ ARG QCOS_WEBUI_IMAGE_VERSION
 ARG DEV
 ARG NPM_MIRROR
 ARG DOCKER_USER_QCOS
+# Node.js binary mirror (tar.xz dist) used to install a modern node
+# runtime. The distro npm package ships node 12 which cannot run
+# vite 6 (requires node >= 18, top-level await).
+ARG NODE_BIN_MIRROR
 
 LABEL stage=${CONTAINER_NAME}-builder
 LABEL build=${CONTAINER_NAME}
@@ -46,26 +50,47 @@ RUN set -e && \
     /bin/cp ${BUILD_CONTEXT}/build-scripts/webui/config/nginx.conf /root/ && \
     /bin/cp ${BUILD_CONTEXT}/build-scripts/webui/entrypoint.sh / && \
     chmod +x /entrypoint.sh && \
+    /bin/cp ${BUILD_CONTEXT}/build-scripts/webui/parse-webui-toml.py /usr/local/bin/ && \
+    chmod +x /usr/local/bin/parse-webui-toml.py && \
 # copy yum repos and create dirs
     rm -rf /etc/yum.repos.d/*.repo && \
     cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/ && \
-# install basic rpms
+# install basic rpms (nodejs is installed separately below because
+# the distro npm package is too old for vite 6)
     yum install -y hostname iputils iproute telnet net-tools openssl \
-      util-linux vim sudo npm nginx && \
+      util-linux vim sudo npm nginx xz wget && \
+# install modern nodejs >= 18: vite 6 uses top-level await which the
+# distro node 12 cannot parse. Download the official binary tarball
+# from NODE_BIN_MIRROR and put it ahead of PATH.
+    if [ -n "${NODE_BIN_MIRROR}" ]; then \
+      echo "Installing nodejs: ${NODE_BIN_MIRROR}" ; \
+      node_tar_file=$(basename ${NODE_BIN_MIRROR}) ; \
+      wget -q ${NODE_BIN_MIRROR} -O /tmp/${node_tar_file} && \
+      tar xzf /tmp/${node_tar_file} -C /usr/local --strip-components=1 && \
+      rm -f /tmp/${node_tar_file} && \
+      node --version && \
+      npm --version ; \
+    fi \
+    && \
 # install npm packages
     rm -rf ${app_dir}/dist ${app_dir}/node_modules ${app_dir}/package-lock.json && \
     npm cache clean --force && \
     if [ -n "${NPM_MIRROR}" ]; then npm config set registry ${NPM_MIRROR}; fi && \
     # install packages: dev build needs devDependencies
-    # (e.g. @vue/cli-service for npm run dev)
+    # (e.g. vite/eslint for npm run dev)
     if [ "${DEV,,}" = "true" ]; then \
       npm install --no-audit --verbose; \
+      # dev mode: node_modules should installed in parent dir, not source dir
+      mv ${app_dir}/node_modules ${app_dir}/.. ; \
     else \
       npm install --no-audit && \
       npm run build:prod && \
       cp -rf ${app_dir}/dist/ /apps && \
-      rm -rf ${app_dir}; \
+      rm -rf ${app_dir} && \
+      cd /root; \
     fi && \
+    if [ -n "${NPM_MIRROR}" ]; then npm config delete registry; fi && \
+    npm cache clean --force && \
 # cleanup build-context
     echo -e "QCOS webui build info\nversion: ${QCOS_WEBUI_IMAGE_VERSION}\nBuild time: ${build_date}\n" > /root/build-info.txt && \
     yum clean all && \
