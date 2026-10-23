@@ -1,0 +1,45 @@
+# ----------------------------------------------------------------------
+# QCOS WebUI configuration
+#   - Loaded once by the webui container at startup (production), or by
+#     the vite dev server (development)
+#   - Format mirrors etc/qcos/qcos.toml
+# ----------------------------------------------------------------------
+
+[DEFAULT]
+# Global debug switch; when true the frontend enables verbose console logs
+DEBUG = false
+
+# IP / port the WebUI nginx (production) or vite dev server (development)
+# listens on
+LISTEN_IP   = "0.0.0.0"
+LISTEN_PORT = 18401
+
+# Optional default endpoint name; when set and matches one of the entries
+# in QCOS_API_ENDPOINTS, the login page pre-selects it
+DEFAULT_ENDPOINT = "local"
+
+# Endpoint health check timeout in milliseconds; the /version probe is
+# aborted when no response is received within this window
+ENDPOINT_PROBE_TIMEOUT_MS = 3000
+
+# QCOS API endpoints visible to the user.
+# Each entry is a TOML inline table:
+#   name    - required; unique endpoint identifier (lowercase letters,
+#             digits, dash, underscore), stored in browser localStorage
+#   alias   - optional; human readable label; falls back to `name`
+#   url     - required; base URL of the QCOS API server (http:// or https://)
+#   use_ssl - optional; when true, explicitly require SSL/TLS connection
+#             (mirrors OpenStack Neutron style); when false or omitted,
+#             inferred from url scheme (https = true, http = false)
+#   cacert  - optional; absolute path *inside the webui container* of the
+#             CA certificate used to verify a self-signed https endpoint;
+#             ignored when use_ssl is false
+#
+# Example (multiple endpoints, https with custom CA):
+# QCOS_API_ENDPOINTS = [
+#   { name = "local",      alias = "本地开发环境", url = "http://127.0.0.1:18400" },
+#   { name = "production", alias = "生产环境",     url = "https://127.0.0.1:18400", use_ssl = true, cacert = "/etc/qcos/ssl/cacert.pem" },
+# ]
+QCOS_API_ENDPOINTS = [
+  { name = "local", alias = "本地开发环境", url = "http://127.0.0.1:18400" }
+]

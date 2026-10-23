@@ -112,12 +112,23 @@ PREFECT_API_URL = "http://127.0.0.1:4200/api"
 # eg:
 # pgsql: "postgresql+asyncpg://prefect:${password}@127.0.0.1:5432/qcos"
 # sqlite: "sqlite+aiosqlite:////var/qcos/db/prefect.db?timeout=30&journal_mode=WAL"
-PREFECT_SERVER_DATABASE_CONNECTION_URL = "postgresql+asyncpg://prefect:${PREFECT_DATABASE_PASSWORD}@127.0.0.1:5432/prefect"
+# NOTE: pool_size and max_overflow are appended as query parameters to
+# increase the asyncpg connection pool for Prefect's PostgreSQL backend.
+# Default asyncpg pool is ~5-10 connections; large QUBO payloads (8MB+)
+# can hold connections for extended periods, exhausting the pool and
+# causing TimeoutError on subsequent requests. Increasing pool_size to
+# 20 and max_overflow to 40 provides headroom for concurrent large jobs.
+PREFECT_SERVER_DATABASE_CONNECTION_URL = "postgresql+asyncpg://prefect:${PREFECT_DATABASE_PASSWORD}@127.0.0.1:5432/prefect?pool_size=200&max_overflow=400"
 PREFECT_WORKER_QUERY_SECONDS = 2
 PREFECT_WORKER_PREFETCH_SECONDS = 2
 PREFECT_WORKER_HEARTBEAT_SECONDS = 30
 PREFECT_LOCAL_STORAGE_PATH = "/var/qcos/storage"
 PREFECT_LOGGING_LEVEL = "INFO"
+# Timeout (seconds) for create_flow_run_from_deployment calls.
+# Large parameter payloads (e.g. big QUBO matrices) can cause the
+# Prefect API to hang if the PostgreSQL connection pool is exhausted.
+# This timeout ensures QCOS fails fast instead of hanging indefinitely.
+QCOS_FLOW_RUN_TIMEOUT = 600
 
 [METRICS_SERVER]
 # metrics server listen ip.

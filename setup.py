@@ -154,6 +154,7 @@ class CMakeBuildExt(_build_ext):
                 "-B",
                 str(build_dir),
                 "-DCMAKE_BUILD_TYPE=Release",
+                "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
                 "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
                 "-DUSE_PYQCOS=ON",
                 f"-DPython_EXECUTABLE={sys.executable}",
