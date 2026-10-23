@@ -26,6 +26,7 @@
 - [ ] 密码脱敏处理（调用 `Library._mask_connection_url` 等方法）
 - [ ] shell.py 中可追加参数使用 `nargs="+"`，而非 `action="append"`
 - [ ] 导入（import/from）必须放在文件开始处，不得在代码中间使用延迟导入
+- [ ] **严禁使用 `# noqa` 抑制 lint 错误**：发现 lint 报错必须从根本上修复代码，不得用 `# noqa`、`# ruff: noqa` 或 `# type: ignore` 等方式绕过检查。唯一例外是驱动测试文件中密码 secret 必须用 `# ruff: noqa: S105`（这是项目既有约定，新代码不得效仿）
 
 ## 3. 常见陷阱
 

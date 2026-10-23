@@ -13,11 +13,13 @@
 
 每个技能目录下的 `SKILL.md` 文件遵循以下格式：
 
+> **关键要求：** YAML frontmatter 必须以 `---` 开头和结尾，`name`、`description`、`version` 三个字段各占一行。格式错误（如写成 Markdown 标题、全部挤在一行、缺少 `---` 分隔符）会导致 Zoo Code 无法解析技能元数据，技能不会出现在 "AVAILABLE SKILLS" 列表中。
+
 ```markdown
 ---
-name: <skill-name>          # 技能唯一标识（与目录名一致）
-description: <简短描述>      # 一句话描述技能用途
-version: <版本号>            # 语义化版本号
+name: <skill-name>
+description: <简短描述>
+version: <版本号>
 ---
 
 ## Preconditions             # 前置条件（阅读的规则、文档）
