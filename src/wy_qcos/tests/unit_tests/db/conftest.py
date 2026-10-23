@@ -24,8 +24,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from wy_qcos.common.library import _s
+from sqlalchemy import event
 from wy_qcos.db.models import (
     Base,
+    Job,
     User,
     Role,
     UserRole,
@@ -35,6 +37,16 @@ from wy_qcos.db.models import (
 from wy_qcos.db.repositories.base import BaseRepository
 from wy_qcos.db.repositories.user import UserRepository
 from wy_qcos.db.repositories.role import RoleRepository
+
+
+@event.listens_for(Job, "before_insert")
+def _set_job_timestamps(mapper, connection, target):
+    """Set created_at/updated_at defaults for Job in SQLite tests."""
+    now = datetime.now()
+    if target.created_at is None:
+        target.created_at = now
+    if target.updated_at is None:
+        target.updated_at = now
 
 
 @pytest.fixture

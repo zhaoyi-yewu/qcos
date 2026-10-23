@@ -189,6 +189,770 @@ class TestJob:
         mock_job_repo.create_job.assert_called_once()
         mock_job_repo.commit.assert_called_once()
 
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    @patch.object(TaskScheduler, "submit")
+    def test_submit_job_workflow_error(
+        self,
+        mock_submit,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job when scheduler raises WorkFlowError."""
+        from wy_qcos.common.errors import WorkFlowError
+
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_submit.side_effect = WorkFlowError("Workflow failed")
+
+        mock_job_repo = Mock()
+        job_record_mock = Mock()
+        job_record_mock.id = self.job_id
+        mock_job_repo.create_job.return_value = (
+            True,
+            None,
+            job_record_mock,
+        )
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["OPENQASM 2.0;"]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = "Test Job"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
+        mock_client.description = "Test description"
+        mock_client.shots = Constant.DEFAULT_SHOTS
+        mock_client.backend = "dummy"
+        mock_client.driver_options = {}
+        mock_client.transpiler = Constant.TRANSPILER_CMSS
+        mock_client.transpiler_options = {}
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.InternalServerError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    @patch.object(TaskScheduler, "submit")
+    def test_submit_job_scheduler_error(
+        self,
+        mock_submit,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job when scheduler returns error."""
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_submit.return_value = (None, "Scheduler error")
+
+        mock_job_repo = Mock()
+        job_record_mock = Mock()
+        job_record_mock.id = self.job_id
+        mock_job_repo.create_job.return_value = (
+            True,
+            None,
+            job_record_mock,
+        )
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["OPENQASM 2.0;"]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = "Test Job"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
+        mock_client.description = "Test description"
+        mock_client.shots = Constant.DEFAULT_SHOTS
+        mock_client.backend = "dummy"
+        mock_client.driver_options = {}
+        mock_client.transpiler = Constant.TRANSPILER_CMSS
+        mock_client.transpiler_options = {}
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.InternalServerError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_submit_job_invalid_circuit_aggregation(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job with invalid circuit_aggregation."""
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (False, "Invalid enum")
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        mock_get_devices.return_value = {}
+
+        mock_job_repo = Mock()
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["OPENQASM 2.0;"]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = "invalid"
+        mock_client.job_id = None
+        mock_client.job_name = "Test"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = 5
+        mock_client.description = None
+        mock_client.shots = 10
+        mock_client.backend = "dummy"
+        mock_client.driver_options = None
+        mock_client.transpiler = None
+        mock_client.transpiler_options = None
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_submit_job_qubo(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job with QUBO code type."""
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_job_repo = Mock()
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = [{"qubo": [[1, 2], [3, 4]]}]
+        mock_client.code_type = Constant.CODE_TYPE_QUBO
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = "Test QUBO"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = 5
+        mock_client.description = None
+        mock_client.shots = 10
+        mock_client.backend = "dummy"
+        mock_client.driver_options = None
+        mock_client.transpiler = None
+        mock_client.transpiler_options = None
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_submit_job_internal_aggregation_too_long(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job with internal aggregation and too many jobs."""
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_job_repo = Mock()
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["code"] * 1000
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = Constant.AGGREGATION_TYPE_INTERNAL
+        mock_client.job_id = None
+        mock_client.job_name = "Test"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = 5
+        mock_client.description = None
+        mock_client.shots = 10
+        mock_client.backend = "dummy"
+        mock_client.driver_options = None
+        mock_client.transpiler = None
+        mock_client.transpiler_options = None
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    @patch.object(TaskScheduler, "submit")
+    def test_submit_job_empty_name_and_description(
+        self,
+        mock_submit,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job with empty job_name and description."""
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_submit.return_value = ({"flow_run_id": "flow-run-123"}, None)
+
+        mock_job_repo = Mock()
+        job_record_mock = Mock()
+        job_record_mock.id = self.job_id
+        job_record_mock.flow_run_id = None
+        mock_job_repo.create_job.return_value = (
+            True,
+            None,
+            job_record_mock,
+        )
+        mock_job_repo.commit.return_value = None
+        mock_job_repo.refresh.return_value = None
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["OPENQASM 2.0;"]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = ""
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = Constant.DEFAULT_JOB_PRIORITY
+        mock_client.description = ""
+        mock_client.shots = Constant.DEFAULT_SHOTS
+        mock_client.backend = "dummy"
+        mock_client.driver_options = {}
+        mock_client.transpiler = Constant.TRANSPILER_CMSS
+        mock_client.transpiler_options = {}
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
+
+        response = submit_job(mock_client, None, job_repo=mock_job_repo)
+
+        assert response is not None
+        assert response.job_status == Constant.JOB_STATUS_QUEUED
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_submit_job_invalid_options(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job with invalid options."""
+        # validate_schema is called for:
+        # 1. source_code (SOURCE_CODE_SCHEMA)
+        # 2. source_code (SOURCE_CODE_TEXT_SCHEMA)
+        # 3. options (JOB_OPTIONS_SCHEMA)
+        # Return success for 1-2, failure for 3
+        mock_validate_schema.side_effect = [
+            (True, None),  # source_code schema
+            (True, None),  # source_code text schema
+            (False, "Invalid options"),  # options schema
+        ]
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_job_repo = Mock()
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["OPENQASM 2.0;"]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = "Test"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = 5
+        mock_client.description = None
+        mock_client.shots = 10
+        mock_client.backend = "dummy"
+        mock_client.driver_options = None
+        mock_client.transpiler = None
+        mock_client.transpiler_options = None
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = {"invalid_option": True}
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_submit_job_invalid_params(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job with invalid params."""
+        # validate_schema is called for:
+        # 1. source_code (SOURCE_CODE_SCHEMA)
+        # 2. source_code (SOURCE_CODE_TEXT_SCHEMA)
+        # 3. options (JOB_OPTIONS_SCHEMA)
+        # 4. params (JOB_PARAMS_SCHEMA)
+        # Return success for 1-3, failure for 4
+        mock_validate_schema.side_effect = [
+            (True, None),  # source_code schema
+            (True, None),  # source_code text schema
+            (True, None),  # options schema
+            (False, "Invalid params"),  # params schema
+        ]
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_job_repo = Mock()
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["OPENQASM 2.0;"]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = "Test"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = 5
+        mock_client.description = None
+        mock_client.shots = 10
+        mock_client.backend = "dummy"
+        mock_client.driver_options = None
+        mock_client.transpiler = None
+        mock_client.transpiler_options = None
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = None
+        mock_client.extra_specs = None
+        mock_client.params = {"invalid_param": "value"}
+        mock_client.options = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
+    @patch.object(Library, "validate_values_range")
+    @patch.object(Library, "validate_schema")
+    @patch.object(TranspilerManager, "get_transpiler")
+    @patch.object(TaskScheduler, "get_transpiler_manager")
+    @patch.object(Client, "get_driver")
+    @patch.object(Library, "validate_values_enum")
+    @patch.object(DeviceManager, "get_devices")
+    @patch.object(TaskScheduler, "get_device_manager")
+    @patch.object(Client, "get_drivers")
+    @patch.object(TaskScheduler, "get_driver_manager")
+    def test_submit_job_backend_and_flavor_id(
+        self,
+        mock_get_driver_manager,
+        mock_get_drivers,
+        mock_get_device_manager,
+        mock_get_devices,
+        mock_validate_values_enum,
+        mock_get_driver,
+        mock_get_transpiler_manager,
+        mock_get_transpiler,
+        mock_validate_schema,
+        mock_validate_values_range,
+    ):
+        """Test submit_job with both backend and flavor_id."""
+        mock_validate_schema.return_value = (True, None)
+        mock_validate_values_range.return_value = (True, None)
+        mock_get_transpiler_manager.return_value = TranspilerManager()
+        mock_get_transpiler.return_value = TranspilerBase()
+        mock_get_driver.return_value = DriverDummy()
+        mock_validate_values_enum.return_value = (True, None)
+        mock_get_driver_manager.return_value = DriverManager()
+        mock_get_drivers.return_value = {}
+        mock_get_device_manager.return_value = DeviceManager(
+            Config(), DriverManager()
+        )
+        device = Device("dummy", DriverDummy())
+        device.set_enable(True)
+        device.set_status("online")
+        mock_get_devices.return_value = {"dummy": device}
+
+        mock_job_repo = Mock()
+        mock_job_repo.get_job_by_uuid.return_value = (False, None, None)
+        mock_job_repo.get_jobs_count.return_value = 1
+
+        mock_client = Mock(spec=SubmitJobResponse)
+        mock_client.source_code = ["OPENQASM 2.0;"]
+        mock_client.code_type = Constant.CODE_TYPE_QASM
+        mock_client.circuit_aggregation = None
+        mock_client.job_id = None
+        mock_client.job_name = "Test"
+        mock_client.job_type = Constant.JOB_TYPE_SAMPLING
+        mock_client.job_priority = 5
+        mock_client.description = None
+        mock_client.shots = 10
+        mock_client.backend = "dummy"
+        mock_client.driver_options = None
+        mock_client.transpiler = None
+        mock_client.transpiler_options = None
+        mock_client.profiling = None
+        mock_client.callbacks = None
+        mock_client.dry_run = False
+        mock_client.project_id = None
+        mock_client.user_id = None
+        mock_client.code_compression_level = 0
+        mock_client.tags = None
+        mock_client.qec_options = None
+        mock_client.qem_options = None
+        mock_client.flavor_id = uuid4()
+        mock_client.extra_specs = None
+        mock_client.params = None
+        mock_client.options = None
+
+        from wy_qcos.api.posiq.routes_jsonrpc import (
+            errors as jsonrpc_errors,
+        )
+
+        with pytest.raises(jsonrpc_errors.BadRequestError):
+            submit_job(mock_client, None, job_repo=mock_job_repo)
+
     @pytest.mark.smoke
     @patch.object(Library, "validate_values_range")
     @patch.object(Library, "validate_schema")
@@ -561,6 +1325,54 @@ class TestJob:
         # Verify sorting - should be descending (newest first)
         for i in range(len(result) - 1):
             assert result[i].created_at >= result[i + 1].created_at
+
+    def test_get_jobs_paginated(self):
+        """Test retrieving jobs with pagination."""
+        mock_job_repo = Mock()
+        job_record_mock = Mock()
+        response_with_id = response_info.copy()
+        response_with_id["id"] = response_info["job_id"]
+        job_record_mock.created_at = response_info["created_at"]
+        job_record_mock.asdict.return_value = response_with_id
+        mock_job_repo.get_jobs_paginated.return_value = (
+            True,
+            None,
+            {"items": [job_record_mock], "total": 5},
+        )
+
+        auth_data = {"user_id": "test-user", "roles": ["user"]}
+        query = {"pagination": {"page": 1, "page_size": 2}}
+        result = get_jobs(
+            None,
+            query,
+            auth_data=auth_data,
+            job_repo=mock_job_repo,
+        )
+        assert result.total == 5
+        assert result.page == 1
+        assert result.page_size == 2
+        assert len(result.items) == 1
+        assert result.total_pages == 3
+
+    def test_get_jobs_paginated_empty(self):
+        """Test retrieving jobs with pagination when empty."""
+        mock_job_repo = Mock()
+        mock_job_repo.get_jobs_paginated.return_value = (
+            False,
+            "DB error",
+            None,
+        )
+
+        auth_data = {"user_id": "test-user", "roles": ["user"]}
+        query = {"pagination": {"page": 1, "page_size": 2}}
+        result = get_jobs(
+            None,
+            query,
+            auth_data=auth_data,
+            job_repo=mock_job_repo,
+        )
+        assert result.total == 0
+        assert result.items == []
 
     @patch.object(TaskScheduler, "cancel_flows")
     def test_cancel_jobs(self, mock_cancel_flows):

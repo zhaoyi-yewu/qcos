@@ -17,10 +17,39 @@
 
 import pytest
 from loguru import logger
+from unittest.mock import MagicMock, patch
+
+# Ensure prefect.flow is mocked before importing device_monitor_engine.
+# If the module was previously imported by another test or plugin, the
+# original @flow decorator may have been cached. Re-applying the mock
+# here guarantees that device_monitor_flow is a plain callable.
+import sys
+
+import prefect
+
+
+def _mock_flow(*args, **kwargs):
+    def decorator(fn):
+        return fn
+
+    if len(args) == 1 and callable(args[0]):
+        return args[0]
+    return decorator
+
+
+prefect.flow = _mock_flow
+
+# Remove cached engine module so it is re-imported with the mocked
+# prefect.flow. Do NOT pop task_manager here, because that would break
+# other tests that rely on the already-imported task_manager module.
+sys.modules.pop("wy_qcos.engine.device_monitor_engine", None)
 
 from wy_qcos.common.args_schema import DEVICE_INFO_SCHEMA
 from wy_qcos.common.library import Library
-from wy_qcos.engine.device_monitor_engine import validate_device_info
+from wy_qcos.engine.device_monitor_engine import (
+    device_monitor_flow,
+    validate_device_info,
+)
 
 
 # A fully populated device_info dict that matches DEVICE_INFO_SCHEMA.
@@ -269,6 +298,120 @@ class TestDeviceInfoSchema:
         }
         success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)
         assert success is True
+
+
+class TestDeviceMonitorFlow:
+    """Tests for device_monitor_flow function."""
+
+    @patch("wy_qcos.engine.device_monitor_engine.init_logger")
+    @patch("wy_qcos.engine.device_monitor_engine.init_driver")
+    @patch("wy_qcos.engine.device_monitor_engine.redis.Redis.from_url")
+    @patch("wy_qcos.engine.device_monitor_engine.time.sleep")
+    def test_flow_single_iteration_success(
+        self,
+        mock_sleep,
+        mock_redis_from_url,
+        mock_init_driver,
+        mock_init_logger,
+    ):
+        """Test single iteration of monitor loop with successful fetch."""
+        # Setup mocks
+        mock_driver = MagicMock()
+        mock_driver.fetch_running_info.return_value = {
+            "status": "online",
+            "available_qubits": 5,
+        }
+        mock_future = MagicMock()
+        mock_future.result.return_value = {"driver": mock_driver}
+        mock_init_driver.submit.return_value = mock_future
+
+        mock_redis = MagicMock()
+        mock_redis_from_url.return_value = mock_redis
+
+        # Break infinite loop after 1 iteration via KeyboardInterrupt
+        mock_sleep.side_effect = KeyboardInterrupt()
+
+        device_monitor_info = {
+            "name": "test_device",
+            "device": {
+                "configs": {
+                    "device_monitor": {
+                        "polling_interval": 0.01,
+                    }
+                }
+            },
+            "global": {"configs": {"DEBUG": False}},
+            "driver": {"class": "TestDriver"},
+            "redis": {"url": "redis://localhost:6379/0"},
+        }
+
+        with pytest.raises(KeyboardInterrupt):
+            device_monitor_flow(device_monitor_info)
+
+        # Verify redis publish was called
+        assert mock_redis.publish.called
+
+    @patch("wy_qcos.engine.device_monitor_engine.init_logger")
+    @patch("wy_qcos.engine.device_monitor_engine.init_driver")
+    @patch("wy_qcos.engine.device_monitor_engine.redis.Redis.from_url")
+    @patch("wy_qcos.engine.device_monitor_engine.time.sleep")
+    def test_flow_fetch_timeout(
+        self,
+        mock_sleep,
+        mock_redis_from_url,
+        mock_init_driver,
+        mock_init_logger,
+    ):
+        """Test monitor loop handles fetch timeout."""
+        mock_driver = MagicMock()
+        mock_driver.fetch_running_info.side_effect = Exception("timeout")
+        mock_future = MagicMock()
+        mock_future.result.return_value = {"driver": mock_driver}
+        mock_init_driver.submit.return_value = mock_future
+
+        mock_redis = MagicMock()
+        mock_redis_from_url.return_value = mock_redis
+
+        mock_sleep.side_effect = KeyboardInterrupt()
+
+        device_monitor_info = {
+            "name": "test_device",
+            "device": {"configs": {}},
+            "global": {"configs": {}},
+            "driver": {"class": "TestDriver"},
+            "redis": {"url": "redis://localhost:6379/0"},
+        }
+
+        with pytest.raises(KeyboardInterrupt):
+            device_monitor_flow(device_monitor_info)
+
+        # Verify publish was called with disconnected status
+        assert mock_redis.publish.called
+        # Get the last published message
+        call_args = mock_redis.publish.call_args_list[-1]
+        import json
+
+        published_data = json.loads(call_args[0][1])
+        assert published_data["status"] == "disconnected"
+
+    @patch("wy_qcos.engine.device_monitor_engine.init_logger")
+    @patch("wy_qcos.engine.device_monitor_engine.init_driver")
+    def test_flow_driver_init_error(self, mock_init_driver, mock_init_logger):
+        """Test flow raises ValueError when driver init fails."""
+        mock_future = MagicMock()
+        mock_future.result.return_value = {"error": "init failed"}
+        mock_init_driver.submit.return_value = mock_future
+
+        device_monitor_info = {
+            "name": "test_device",
+            "device": {"configs": {}},
+            "global": {"configs": {}},
+            "driver": {"class": "TestDriver"},
+            "redis": {"url": "redis://localhost:6379/0"},
+        }
+
+        with pytest.raises(ValueError, match="init failed"):
+            device_monitor_flow(device_monitor_info)
 
 
 class TestValidateDeviceInfo:

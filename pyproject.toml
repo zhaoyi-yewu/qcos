@@ -396,6 +396,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/wy_qcos/tests/**/*.py" = ["S101"]
+# Tests below must mock prefect.flow before importing the engine module,
+# so the engine import intentionally appears after executable statements.
+"src/wy_qcos/tests/unit_tests/engine/test_device_mgr_engine.py" = ["E402"]
+"src/wy_qcos/tests/unit_tests/engine/test_device_monitor_engine.py" = ["E402"]
 "src/wy_qcos_client/tests/**/*.py" = ["S101"]
 "src/**/__init__.py" = ["F401"]
 "src/wy_qcos/transpiler/cmss/compiler/parser.py" = ["ALL"]
