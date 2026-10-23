@@ -24,11 +24,14 @@
 #include <stdexcept>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "circuit/dag_circuit.h"
 #include "circuit/dag_node.h"
 #include "circuit/gate_operation.h"
+#include "circuit/qasm_converter.h"
+#include "compiler/qasm_to_ir.hpp"
 #include "optimizer/adjacent_optimization.h"
 #include "optimizer/cx_commute_optimization.h"
 #include "optimizer/hadamard_gate_reduction.h"
@@ -352,6 +355,74 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
   // 追加 measure 到末尾
   optimized.insert(optimized.end(), measures.begin(), measures.end());
   return optimized;
+}
+
+std::string optimize_qasm(
+    const std::string& qasm_str, int opt_level,
+    const std::optional<std::set<std::string>>& basis_gates) {
+  auto [ops, num_qubits] = qasm_to_ir(qasm_str);
+  if (num_qubits > WY_CLOUD_MAX_QUBITS) {
+    throw std::runtime_error("optimize_qasm: qubit count " +
+                             std::to_string(num_qubits) + " exceeds maximum " +
+                             std::to_string(WY_CLOUD_MAX_QUBITS));
+  }
+  if (ops.size() > WY_CLOUD_MAX_GATES) {
+    throw std::runtime_error("optimize_qasm: gate count " +
+                             std::to_string(ops.size()) + " exceeds maximum " +
+                             std::to_string(WY_CLOUD_MAX_GATES));
+  }
+  auto optimized = optimize(ops, opt_level, false, basis_gates, 1, false);
+  // 检测 QASM 版本：仅在版本声明行（第一个非空白位置）匹配
+  // "OPENQASM 3"，不匹配注释或字符串字面量中的 "OPENQASM 3"。
+  size_t pos = qasm_str.find_first_not_of(" \t\n\r");
+  if (pos != std::string::npos &&
+      qasm_str.compare(pos, 10, "OPENQASM 3") == 0) {
+    return to_qasm3(optimized, num_qubits);
+  }
+  return to_qasm2(optimized, num_qubits);
+}
+
+std::pair<int, int> qasm_stats(const std::string& qasm_str) {
+  auto [ops, num_qubits] = qasm_to_ir(qasm_str);
+
+  // 计算电路深度
+  // 跳过 measure/reset/sync/move/barrier，它们不影响量子门深度，
+  // 且 measure 的 targets 可能包含经典比特索引，会导致越界。
+  std::vector<int> qubit_depth(num_qubits, 0);
+  static const std::unordered_set<std::string> skip_depth = {
+      "measure", "reset", "sync", "move", "barrier"};
+  for (const auto& op : ops) {
+    if (skip_depth.count(op->name)) {
+      continue;
+    }
+    int max_level = 0;
+    for (int qubit : op->targets) {
+      if (qubit >= 0 && qubit < static_cast<int>(qubit_depth.size())) {
+        max_level = std::max(max_level, qubit_depth[qubit] + 1);
+      }
+    }
+    for (int qubit : op->targets) {
+      if (qubit >= 0 && qubit < static_cast<int>(qubit_depth.size())) {
+        qubit_depth[qubit] = max_level;
+      }
+    }
+  }
+  int depth = 0;
+  for (int d : qubit_depth) {
+    depth = std::max(depth, d);
+  }
+
+  // 计算量子门数量（排除 measure/reset/sync/move/barrier）
+  static const std::unordered_set<std::string> non_gates = {
+      "measure", "reset", "sync", "move", "barrier"};
+  int size = 0;
+  for (const auto& op : ops) {
+    if (!non_gates.count(op->name)) {
+      ++size;
+    }
+  }
+
+  return {depth, size};
 }
 
 }  // namespace qcos

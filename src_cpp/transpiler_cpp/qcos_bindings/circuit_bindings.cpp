@@ -576,27 +576,30 @@ void bind_circuits(nb::module_& m) {
   m.def(
        "to_qasm2",
        [](const QuantumCircuit& circuit) {
-         return qcos::to_qasm2(circuit.get_operations());
+         return qcos::to_qasm2(circuit.get_operations(), circuit.num_qubits());
        },
        nb::arg("circuit"))
       .def(
           "to_qasm2",
-          [](const std::vector<std::shared_ptr<BaseOperation>>& operations) {
-            return qcos::to_qasm2(operations);
+          [](const std::vector<std::shared_ptr<BaseOperation>>& operations,
+             int num_qubits) {
+            return qcos::to_qasm2(operations, num_qubits);
           },
-          nb::arg("operations"))
+          nb::arg("operations"), nb::arg("num_qubits") = -1)
       .def(
           "to_qasm3",
           [](const QuantumCircuit& circuit) {
-            return qcos::to_qasm3(circuit.get_operations());
+            return qcos::to_qasm3(circuit.get_operations(),
+                                  circuit.num_qubits());
           },
           nb::arg("circuit"))
       .def(
           "to_qasm3",
-          [](const std::vector<std::shared_ptr<BaseOperation>>& operations) {
-            return qcos::to_qasm3(operations);
+          [](const std::vector<std::shared_ptr<BaseOperation>>& operations,
+             int num_qubits) {
+            return qcos::to_qasm3(operations, num_qubits);
           },
-          nb::arg("operations"))
+          nb::arg("operations"), nb::arg("num_qubits") = -1)
       .def(
           "save_qasm",
           [](const std::string& path, const QuantumCircuit& circuit,

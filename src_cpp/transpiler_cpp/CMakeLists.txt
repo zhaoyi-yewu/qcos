@@ -65,7 +65,13 @@ else()
 endif()
 
 if(USE_PYQCOS)
-    find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development)
+    # Development.Module (CMake 3.18+) 在 macOS python.org framework 下
+    # 更可靠；旧版 CMake (3.16, 容器) 只支持完整的 Development 组件。
+    if(CMAKE_VERSION VERSION_LESS 3.18)
+        find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development)
+    else()
+        find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module)
+    endif()
     execute_process(
         COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
         OUTPUT_VARIABLE nanobind_DIR

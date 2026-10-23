@@ -983,19 +983,204 @@ class OpenQasmParser final : public InstVisitor {
     if (gate->gateKind == GateKind::Standard) {
       auto* standardGate = static_cast<StandardGate*>(gate.get());
 
-      // Handle invert operation
+      qc::OpType op_type = standardGate->info.type;
+
+      // ── inv @ modifier: swap gate type and negate parameters ─────
+      // Self-inverse gates (H, X, Y, Z, I, CX, CZ, CY, CH, SWAP,
+      // CCX, CCZ) need no change. Non-self-inverse gates swap to their
+      // inverse type, and rotation gates get negated parameters.
+      auto params = evaluatedParameters;
       if (invertOperation) {
-        // TODO: we need to define the inverse of each gate
+        switch (op_type) {
+          case qc::otS:
+            op_type = qc::otSdg;
+            break;
+          case qc::otSdg:
+            op_type = qc::otS;
+            break;
+          case qc::otT:
+            op_type = qc::otTdg;
+            break;
+          case qc::otTdg:
+            op_type = qc::otT;
+            break;
+          case qc::otSX:
+            op_type = qc::otSXdg;
+            break;
+          case qc::otSXdg:
+            op_type = qc::otSX;
+            break;
+          default:
+            break;
+        }
+        if (op_type == qc::otRX || op_type == qc::otRY ||
+            op_type == qc::otRZ || op_type == qc::otP) {
+          for (auto& p : params) p = -p;
+        }
+        // U3(theta, phi, lambda)^-1 = U3(-theta, -lambda, -phi)
+        // Per OpenQASM 3.0 spec: inv @ U(theta,phi,lambda) =
+        // U(-theta,-lambda,-phi)
+        if (op_type == qc::otU3 && params.size() == 3) {
+          auto theta = params[0], phi = params[1], lambda = params[2];
+          params[0] = -theta;
+          params[1] = -lambda;
+          params[2] = -phi;
+        }
+        // U2(phi, lambda)^-1 = U3(-pi/2, -lambda, -phi)
+        // U2 is U3(pi/2, phi, lambda); its inverse requires theta = -pi/2,
+        // so it cannot be expressed as U2 — promote to U3 instead.
+        if (op_type == qc::otU2 && params.size() == 2) {
+          auto phi = params[0], lambda = params[1];
+          op_type = qc::otU3;
+          params = std::vector<double>{-static_cast<double>(qc::PI_2), -lambda,
+                                       -phi};
+        }
       }
 
-      qc::OpType op_type = standardGate->info.type;
+      // ── negctrl @ modifier: wrap negative controls with X gates ──
+      // negctrl @ cx q[0], q[1]  ->  x q[0]; cx q[0], q[1]; x q[0]
+      auto effectiveControls = controlBits;
+      bool hasNegCtrl = false;
+      for (const auto& c : controlBits) {
+        if (c.type == qc::Control::Type::Neg) {
+          hasNegCtrl = true;
+          break;
+        }
+      }
+      if (hasNegCtrl) {
+        for (auto& c : effectiveControls) {
+          c.type = qc::Control::Type::Pos;
+        }
+        // Emit X gates on negative-control qubits before the operation
+        for (const auto& c : controlBits) {
+          if (c.type == qc::Control::Type::Neg) {
+            ops.push_back(std::make_shared<qcos::X>(
+                std::vector<int>{static_cast<int>(c.qubit)},
+                std::vector<double>{}));
+          }
+        }
+      }
+      auto emitNegCtrlPostGates = [&]() {
+        if (hasNegCtrl) {
+          for (const auto& c : controlBits) {
+            if (c.type == qc::Control::Type::Neg) {
+              ops.push_back(std::make_shared<qcos::X>(
+                  std::vector<int>{static_cast<int>(c.qubit)},
+                  std::vector<double>{}));
+            }
+          }
+        }
+      };
+
+      // ── ctrl @ modifier: remap base gates to controlled versions ──
+      // ctrl @ x -> CX, ctrl @ rz(0.5) -> CRZ(0.5), etc.
+      // This lets the existing fast-path and general-path switches
+      // handle controlled gates without adding new cases.
+      if (!effectiveControls.empty()) {
+        if (effectiveControls.size() == 1) {
+          switch (op_type) {
+            case qc::otX:
+              op_type = qc::otCNOT;
+              break;
+            case qc::otZ:
+              op_type = qc::otCZ;
+              break;
+            case qc::otH:
+              op_type = qc::otCH;
+              break;
+            case qc::otY:
+              op_type = qc::otCY;
+              break;
+            case qc::otS:
+              op_type = qc::otCS;
+              break;
+            case qc::otSdg:
+              op_type = qc::otCSdg;
+              break;
+            case qc::otSX:
+              op_type = qc::otCSX;
+              break;
+            case qc::otRX:
+              op_type = qc::otCRX;
+              break;
+            case qc::otRY:
+              op_type = qc::otCRY;
+              break;
+            case qc::otRZ:
+              op_type = qc::otCRZ;
+              break;
+            case qc::otP:
+              op_type = qc::otCP;
+              break;
+            case qc::otU3:
+              op_type = qc::otCU3;
+              break;
+            case qc::otSWAP:
+              op_type = qc::otCSWAP;
+              break;
+            // Already-controlled types — pass through without remapping
+            case qc::otCNOT:
+            case qc::otCZ:
+            case qc::otCH:
+            case qc::otCY:
+            case qc::otCS:
+            case qc::otCSdg:
+            case qc::otCSX:
+            case qc::otCRX:
+            case qc::otCRY:
+            case qc::otCRZ:
+            case qc::otCP:
+            case qc::otCU:
+            case qc::otCU3:
+            case qc::otCSWAP:
+            case qc::otC4X:
+            case qc::otC3SQRTX:
+              break;
+            default:
+              error("ctrl @ " + qc::toString(op_type) +
+                        " is not supported as a single-controlled gate.",
+                    debugInfo);
+          }
+        } else if (effectiveControls.size() == 2) {
+          switch (op_type) {
+            case qc::otX:
+              op_type = qc::otTOFFOLI;
+              break;
+            case qc::otZ:
+              op_type = qc::otCCZ;
+              break;
+            // Already-controlled types — pass through without remapping
+            case qc::otTOFFOLI:
+            case qc::otCCZ:
+              break;
+            default:
+              error("ctrl(2) @ " + qc::toString(op_type) +
+                        " is not supported as a double-controlled gate.",
+                    debugInfo);
+          }
+        } else if (effectiveControls.size() == 3) {
+          if (op_type == qc::otX) {
+            op_type = qc::otC3X;
+          } else {
+            error("ctrl(3) @ " + qc::toString(op_type) + " is not supported.",
+                  debugInfo);
+          }
+        } else if (effectiveControls.size() >= 4) {
+          if (op_type == qc::otX) {
+            op_type = qc::otC4X;
+          } else {
+            error("ctrl(4+) @ " + qc::toString(op_type) + " is not supported.",
+                  debugInfo);
+          }
+        }
+      }
 
       // ── Fast path: single-qubit, no-control, no-parameter gates ────
       // For Clifford benchmarks (h, s, sdg, t, tdg, x, y, z), this covers
       // the vast majority of gate calls. Avoids two vector allocations
       // (all_qubits + arg_values) and the reserve/push_back overhead.
-      if (controlBits.empty() && targetBits.size() == 1 &&
-          evaluatedParameters.empty()) {
+      if (effectiveControls.empty() && targetBits.size() == 1 &&
+          params.empty()) {
         std::vector<int> all_qubits{static_cast<int>(targetBits[0])};
         std::vector<double> no_args;
         std::shared_ptr<qcos::BaseOperation> operation;
@@ -1051,15 +1236,17 @@ class OpenQasmParser final : public InstVisitor {
         if (operation != nullptr) {
           ops.push_back(std::move(operation));
         }
+        emitNegCtrlPostGates();
         return ops;
       }
 
       // ── Fast path: two-qubit (1 control + 1 target), no-parameter gates ──
       // For cx, cz — the most common two-qubit gates in Clifford benchmarks.
-      if (controlBits.size() == 1 && targetBits.size() == 1 &&
-          evaluatedParameters.empty()) {
-        std::vector<int> all_qubits{static_cast<int>(controlBits[0].qubit),
-                                    static_cast<int>(targetBits[0])};
+      if (effectiveControls.size() == 1 && targetBits.size() == 1 &&
+          params.empty()) {
+        std::vector<int> all_qubits{
+            static_cast<int>(effectiveControls[0].qubit),
+            static_cast<int>(targetBits[0])};
         std::vector<double> no_args;
         std::shared_ptr<qcos::BaseOperation> operation;
         switch (op_type) {
@@ -1097,15 +1284,16 @@ class OpenQasmParser final : public InstVisitor {
         if (operation != nullptr) {
           ops.push_back(std::move(operation));
         }
+        emitNegCtrlPostGates();
         return ops;
       }
 
     general_path:
       // All_qubits: control in front, target in back
       std::vector<int> all_qubits;
-      all_qubits.reserve(controlBits.size() + targetBits.size());
+      all_qubits.reserve(effectiveControls.size() + targetBits.size());
       // Add control bits first
-      for (const auto& control : controlBits) {
+      for (const auto& control : effectiveControls) {
         all_qubits.push_back(static_cast<int>(control.qubit));
       }
       // Add target bits next
@@ -1115,9 +1303,9 @@ class OpenQasmParser final : public InstVisitor {
       // Convert parameter types — qc::fp is double, so a simple move suffices.
       // No intermediate vector allocation needed.
       std::vector<double> arg_values;
-      if (!evaluatedParameters.empty()) {
-        arg_values.reserve(evaluatedParameters.size());
-        for (const auto& param : evaluatedParameters) {
+      if (!params.empty()) {
+        arg_values.reserve(params.size());
+        for (const auto& param : params) {
           arg_values.push_back(static_cast<double>(param));
         }
       }
@@ -1334,6 +1522,7 @@ class OpenQasmParser final : public InstVisitor {
       if (operation != nullptr) {
         ops.push_back(std::move(operation));
       }
+      emitNegCtrlPostGates();
       return ops;
     }
     if (gate->gateKind == GateKind::Compound) {

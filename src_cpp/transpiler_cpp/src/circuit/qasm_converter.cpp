@@ -17,13 +17,13 @@
 
 #include "circuit/qasm_converter.h"
 
-#include "circuit/gate_operation.h"
-
 #include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+
+#include "circuit/gate_operation.h"
 
 namespace qcos {
 
@@ -69,7 +69,8 @@ std::string convert_op_to_qasm3(const BaseOperation& op) {
 }  // namespace detail
 
 std::string to_qasm2(
-    const std::vector<std::shared_ptr<BaseOperation>>& operations) {
+    const std::vector<std::shared_ptr<BaseOperation>>& operations,
+    int num_qubits) {
   std::ostringstream body;
   int max_idx = -1;
   for (const auto& op : operations) {
@@ -80,7 +81,9 @@ std::string to_qasm2(
     }
     body << detail::convert_op_to_qasm2(*op) << "\n";
   }
-  int qubit_num = max_idx >= 0 ? max_idx + 1 : 0;
+  int computed = max_idx >= 0 ? max_idx + 1 : 0;
+  int qubit_num =
+      (num_qubits >= 0) ? std::max(computed, num_qubits) : computed;
 
   std::ostringstream oss;
   oss << "OPENQASM 2.0;\n";
@@ -94,7 +97,8 @@ std::string to_qasm2(
 }
 
 std::string to_qasm3(
-    const std::vector<std::shared_ptr<BaseOperation>>& operations) {
+    const std::vector<std::shared_ptr<BaseOperation>>& operations,
+    int num_qubits) {
   std::ostringstream body;
   int max_idx = -1;
   for (const auto& op : operations) {
@@ -105,7 +109,9 @@ std::string to_qasm3(
     }
     body << detail::convert_op_to_qasm3(*op) << "\n";
   }
-  int qubit_num = max_idx >= 0 ? max_idx + 1 : 0;
+  int computed = max_idx >= 0 ? max_idx + 1 : 0;
+  int qubit_num =
+      (num_qubits >= 0) ? std::max(computed, num_qubits) : computed;
 
   std::ostringstream oss;
   oss << "OPENQASM 3.0;\n";

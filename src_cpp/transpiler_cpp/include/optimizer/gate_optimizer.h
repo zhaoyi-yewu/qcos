@@ -22,11 +22,18 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "circuit/base_operation.h"
 
 namespace qcos {
+
+/// 暴露给云平台的接口参数限制，避免卡死
+/// 最大比特数限制（300）
+constexpr int WY_CLOUD_MAX_QUBITS = 300;
+/// 最大门数量限制（30万）
+constexpr size_t WY_CLOUD_MAX_GATES = 300000;
 
 /**
  * @brief 从 IR 直接计算每个操作的拓扑层号，无需构建 DAG
@@ -98,5 +105,28 @@ std::vector<std::shared_ptr<BaseOperation>> optimize(
     const std::optional<std::set<std::string>>& basis_gates = std::nullopt,
     size_t num_threads = 1, bool fast_mode = false,
     OptimizeMetrics* stats = nullptr, bool analysis = false);
+
+/**
+ * @brief 优化 QASM 电路字符串，返回优化后的 QASM 字符串
+ *
+ * 解析输入 QASM，执行优化 pass，再转换回与输入相同的 QASM 版本
+ * （从版本声明行自动检测）。不执行路由和门分解。
+ *
+ * @param qasm_str OpenQASM 2.0/3.0 电路字符串
+ * @param opt_level 优化级别 0-3，默认 1
+ * @param basis_gates 门过滤集合，nullopt 表示保留原始门集
+ * @return 优化后的 OpenQASM 字符串（2.0 或 3.0）
+ */
+std::string optimize_qasm(
+    const std::string& qasm_str, int opt_level = 1,
+    const std::optional<std::set<std::string>>& basis_gates = std::nullopt);
+
+/**
+ * @brief 计算 QASM 电路的深度和门数量
+ * @param qasm_str OpenQASM 2.0/3.0 电路字符串
+ * @return (depth, size) — depth 为电路深度，size 为量子门数量（不含
+ * measure/reset/sync/move/barrier）
+ */
+std::pair<int, int> qasm_stats(const std::string& qasm_str);
 
 }  // namespace qcos

@@ -27,10 +27,12 @@
 namespace qcos {
 
 std::string to_qasm2(
-    const std::vector<std::shared_ptr<BaseOperation>>& operations);
+    const std::vector<std::shared_ptr<BaseOperation>>& operations,
+    int num_qubits = -1);
 
 std::string to_qasm3(
-    const std::vector<std::shared_ptr<BaseOperation>>& operations);
+    const std::vector<std::shared_ptr<BaseOperation>>& operations,
+    int num_qubits = -1);
 
 void save_qasm(const std::string& path,
                const std::vector<std::shared_ptr<BaseOperation>>& operations,
