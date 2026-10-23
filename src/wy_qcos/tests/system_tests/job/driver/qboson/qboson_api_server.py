@@ -66,8 +66,8 @@ async def get_status_handler(request):
         "msg": "",
         "data": {
             "task_status": 2,
-            "qubo_value": [-109],
-            "qubo_solution_data": [-109],
+            "solution_values": [-109],
+            "solution_data": [[1, -1]],
             "visual_data": [80],
         },
     }

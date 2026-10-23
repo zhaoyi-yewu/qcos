@@ -45,7 +45,7 @@ class TestDriverTiangongBase:
             "domain_url_task": "https://new-open-pre.qboson.com/",
             "user_id": "000000000000001",
             "password_sdk_code": "",
-            "machine_name": "CPQC-1000",
+            "quota_type": "CPQC-1000",
         }
         success, err_msg = driver_tiangong_base.validate_driver_configs(
             configs
@@ -196,8 +196,8 @@ class TestDriverTiangongBase:
             "msg": "",
             "data": {
                 "task_status": 1,
-                "qubo_value": [-109],
-                "qubo_solution_data": [-109],
+                "solution_values": [-109],
+                "solution_data": [-109],
                 "visual_data": [80],
             },
         }
@@ -212,8 +212,8 @@ class TestDriverTiangongBase:
         )
         assert success is True
         assert realtime_status["task_status"] == 1
-        assert realtime_status["qubo_value"] == [-109]
-        assert realtime_status["qubo_solution_data"] == [-109]
+        assert realtime_status["solution_values"] == [-109]
+        assert realtime_status["solution_data"] == [-109]
         assert realtime_status["visual_data"] == [80]
 
     @patch.object(DriverTiangongBase, "get_task_realtime_result")
@@ -243,7 +243,72 @@ class TestDriverTiangongBase:
     def test_get_task_results(self, mock_get_task_realtime_result):
         mock_get_task_realtime_result.return_value = (
             True,
-            "None",
-            {"qubo_value": "1", "qubo_solution_data": "1"},
+            "",
+            {
+                "solution_values": [-109, -200, -300],
+                "solution_data": [
+                    [1, -1, 0],
+                    [0, 1, -1],
+                    [-1, 0, 1],
+                ],
+                "visual_data": [80, 70, 60],
+                "solution_url": "https://example.com/result.csv",
+                "time_consume": "100000.0",
+                "estimated_time": "2025-09-19 17:38:35",
+            },
         )
-        driver_tiangong_base.get_task_results("1")
+        success, err_msg, results = driver_tiangong_base.get_task_results("1")
+        assert success is True
+        assert results["visual_data"] == [80, 70, 60]
+        assert results["solution_url"] == "https://example.com/result.csv"
+        assert results["time_consume"] == "100000.0"
+        assert results["estimated_time"] == "2025-09-19 17:38:35"
+        out_data = results["out_data"]
+        assert len(out_data) == 3
+        assert out_data[0]["result"] == 1
+        assert out_data[0]["quboValue"] == -109
+        assert out_data[0]["solutionVector"] == [1, -1, 0]
+        assert out_data[1]["result"] == 2
+        assert out_data[1]["quboValue"] == -200
+        assert out_data[1]["solutionVector"] == [0, 1, -1]
+        assert out_data[2]["result"] == 3
+        assert out_data[2]["quboValue"] == -300
+        assert out_data[2]["solutionVector"] == [-1, 0, 1]
+
+    @patch.object(DriverTiangongBase, "get_task_realtime_result")
+    def test_get_task_results_empty(self, mock_get_task_realtime_result):
+        mock_get_task_realtime_result.return_value = (
+            True,
+            "",
+            {},
+        )
+        success, err_msg, results = driver_tiangong_base.get_task_results("1")
+        assert success is True
+        assert results["out_data"] == []
+        assert results["visual_data"] is None
+        assert results["solution_url"] is None
+
+    @patch.object(DriverTiangongBase, "get_task_realtime_result")
+    def test_get_task_results_length_mismatch(
+        self, mock_get_task_realtime_result
+    ):
+        mock_get_task_realtime_result.return_value = (
+            True,
+            "",
+            {
+                "solution_values": [-109, -200],
+                "solution_data": [[1, -1, 0]],
+            },
+        )
+        with pytest.raises(ValueError, match="Invalid result"):
+            driver_tiangong_base.get_task_results("1")
+
+    @patch.object(DriverTiangongBase, "get_task_realtime_result")
+    def test_get_task_results_failed(self, mock_get_task_realtime_result):
+        mock_get_task_realtime_result.return_value = (
+            False,
+            "Task failed",
+            None,
+        )
+        with pytest.raises(ValueError, match="Failed to get task results"):
+            driver_tiangong_base.get_task_results("1")
