@@ -1,8 +1,8 @@
-@import './variables.scss';
-@import './mixin.scss';
-@import './transition.scss';
-@import './element-ui.scss';
-@import './sidebar.scss';
+@use './variables.scss' as *;
+@use './mixin.scss' as *;
+@use './transition.scss' as *;
+@use './element-ui.scss' as *;
+@use './sidebar.scss' as *;
 
 body {
   height: 100%;
@@ -62,4 +62,83 @@ div:focus {
 // main-container global css
 .app-container {
   padding: 20px;
+}
+
+// page-level h2 headers -- slightly smaller than the browser default and
+// with a touch of vertical padding so the header block breathes a little
+.header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  padding: 6px 0;
+}
+
+// ---------------------------------------------------------------------------
+// dark-mode adaptations
+//
+// element-plus's dark/css-vars.css remaps all `--el-*` variables under
+// `html.dark`, but project-specific containers (page background, table
+// wrapper, sidebar, navbar) use hard-coded light colors. The rules below
+// re-skin them using element-plus dark variables so the entire app looks
+// consistent in dark mode.
+// ---------------------------------------------------------------------------
+
+html.dark {
+  // base page background / foreground
+  body {
+    background-color: var(--el-bg-color-page);
+    color: var(--el-text-color-primary);
+  }
+
+  #app {
+    background-color: var(--el-bg-color-page);
+    color: var(--el-text-color-primary);
+  }
+// sidebar background is driven by --qcos-menu-bg (set by theme.js based
+// on the active primary color); element-plus dark mode does not touch
+// these variables, so we leave them alone here. The default fallback in
+// sidebar.scss still uses the legacy dark blue.
+
+
+  // navbar / fixed header
+  .navbar {
+    background-color: var(--el-bg-color);
+    border-bottom-color: var(--el-border-color);
+  }
+
+  // PageTable container
+  .page-table-container {
+    background-color: var(--el-bg-color-page);
+
+    .table-container {
+      background-color: var(--el-bg-color);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  // table header background
+  .el-table th.el-table__cell {
+    background-color: var(--el-fill-color-light) !important;
+    color: var(--el-text-color-primary);
+  }
+
+  // cards / dialogs / panels default to el-bg-color which dark mode already
+  // handles; nothing extra needed here unless a page hard-codes white.
+
+  // login page (full-screen gradient)
+  .login-container {
+    background-color: var(--el-bg-color-page);
+  }
+
+  // dashboard
+  .dashboard-container,
+  .dashboard-editor-container {
+    background-color: var(--el-bg-color-page);
+  }
+
+  // h2 page headers
+  .header h2,
+  h2 {
+    color: var(--el-text-color-primary);
+  }
 }

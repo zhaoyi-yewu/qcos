@@ -15,16 +15,30 @@
 
 import Cookies from 'js-cookie'
 
-const TokenKey = 'vue_admin_template_token'
+const ActiveEndpointKey = 'qcos_active_endpoint'
 
-export function getToken() {
-  return Cookies.get(TokenKey)
+/**
+ * Get the currently active endpoint name from cookie.
+ *
+ * @returns {string|undefined} endpoint name or undefined
+ */
+export function getActiveEndpoint() {
+  return Cookies.get(ActiveEndpointKey)
 }
 
-export function setToken(token) {
-  return Cookies.set(TokenKey, token)
+/**
+ * Set the currently active endpoint name in cookie.
+ *
+ * @param {string} name - endpoint name
+ * @returns {string} the stored value
+ */
+export function setActiveEndpoint(name) {
+  return Cookies.set(ActiveEndpointKey, name)
 }
 
-export function removeToken() {
-  return Cookies.remove(TokenKey)
+/**
+ * Remove the active endpoint cookie.
+ */
+export function removeActiveEndpoint() {
+  return Cookies.remove(ActiveEndpointKey)
 }
