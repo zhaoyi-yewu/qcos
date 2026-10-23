@@ -36,6 +36,33 @@
 
 - 北向API规范：基于JSON-RPC 2.0格式、请求/响应字段要求、错误码定义
 
+列表 API 查询参数规范
+~~~~~~~~~~~~~~~~~~~~~
+
+所有列表 API（如 ``get_devices``、``get_flavors``、``get_jobs`` 等）支持通过
+``query`` 字典传入以下四个可选参数：
+
+- ``filters``: 精确过滤条件字典，多个条件为 AND 逻辑。
+- ``pagination``: 分页参数字典，包含 ``page`` 和 ``page_size``。
+- ``sort``: 排序字段列表，字段前缀 ``-`` 表示降序。
+- ``search``: 全局搜索关键字，对资源的所有可搜索字段做 OR 模糊匹配
+  （``str.lower() contains``），与 ``filters`` 互补。
+
+示例::
+
+    {
+        "jsonrpc": "2.0",
+        "id": "...",
+        "method": "get_jobs",
+        "params": {
+            "query": {
+                "search": "bell",
+                "filters": {"job_status": "COMPLETED"},
+                "pagination": {"page": 1, "page_size": 20}
+            }
+        }
+    }
+
 驱动开发规范
 ------------------
 

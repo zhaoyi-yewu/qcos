@@ -9,6 +9,7 @@
    build-run-docker
    build-run-k8s
    build-run-wheel
+   config-run-webui
    build-docs
    security
    network-ports

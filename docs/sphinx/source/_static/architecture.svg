@@ -480,9 +480,9 @@
      y="13.178293"
      width="160"
      height="42"
-     class="box_green"
+     class="box"
      id="rect3"
-     style="fill:#c5e0c7;fill-opacity:1" />
+     style="fill:#dbe7fb;fill-opacity:1" />
   <text
      x="562"
      y="34.178299"
@@ -490,7 +490,7 @@
      id="text4"
      text-anchor="middle"
      dominant-baseline="middle"
-     style="text-anchor:middle;dominant-baseline:middle">Web管理界面 / GUI</text>
+     style="text-anchor:middle;dominant-baseline:middle">Web管理界面</text>
   <rect
      x="652"
      y="13.178293"
@@ -775,7 +775,7 @@
        x="906.74573"
        y="221.17628" /></text>
   <!-- 线路编译 -->
-  <!-- 量子引擎 -->
+  <!-- 作业引擎 -->
   <!-- 引擎第一行 -->
   <rect
      x="158.24391"
@@ -798,9 +798,9 @@
      y="371.45282"
      width="145"
      height="48"
-     class="box_green"
+     class="box"
      id="rect26"
-     style="fill:#c5e0c7;fill-opacity:1" />
+     style="fill:#c6dafb;fill-opacity:1" />
   <text
      x="392.64404"
      y="395.45282"
@@ -945,7 +945,7 @@
      id="text31-8-9-4"
      text-anchor="middle"
      dominant-baseline="middle"
-     style="font-size:14px;font-family:'Microsoft YaHei', sans-serif;dominant-baseline:middle;text-anchor:middle">光伊辛机测控驱动</text>
+     style="font-size:14px;font-family:'Microsoft YaHei', sans-serif;dominant-baseline:middle;text-anchor:middle">光量子测控驱动</text>
   <rect
      x="827.3869"
      y="547.29681"
@@ -1491,7 +1491,7 @@
      id="text25"
      text-anchor="middle"
      dominant-baseline="middle"
-     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Microsoft YaHei', sans-serif;-inkscape-font-specification:'Microsoft YaHei, sans-serif Bold';dominant-baseline:middle;text-anchor:middle">量子引擎</text>
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Microsoft YaHei', sans-serif;-inkscape-font-specification:'Microsoft YaHei, sans-serif Bold';dominant-baseline:middle;text-anchor:middle">作业引擎</text>
   <text
      x="86.688454"
      y="252.98888"

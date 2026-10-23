@@ -98,10 +98,12 @@ autodoc_mock_imports = [
     # "numpy",  # required for autodoc
     "numexpr",
     "openqasm3",
-    "pydantic",
-    "pydantic_core",
-    "pydantic_settings",
-    "pydantic.functional_serializers",
+    # NOTE: Do NOT mock pydantic / pydantic_core / pydantic_settings /
+    # pydantic.functional_serializers here. sphinxcontrib.autodoc_pydantic
+    # needs the real pydantic 2.x types (e.g. AnyHttpUrl) at import time;
+    # mocking them turns `AnyHttpUrl | None` into a MagicMock __or__ call
+    # and crashes plugin initialization with:
+    #   TypeError: unsupported operand type(s) for |: 'AnyHttpUrl' and 'NoneType'
     "ply",
     "prefect",
     "prometheus_client",

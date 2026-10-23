@@ -23,4 +23,5 @@
    user
    metrics
    background-tasks
+   mcp
    venv

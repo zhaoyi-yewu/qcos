@@ -35,6 +35,9 @@
    # 独立的命令行qcos-cli镜像 (可选)
    ./build-images.sh -c
 
+   # 操作系统WEB管理界面qcos-webui镜像 (可选)
+   ./build-images.sh -w
+
 修改配置文件
 -----------------
 
