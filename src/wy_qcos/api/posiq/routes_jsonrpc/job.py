@@ -272,6 +272,7 @@ def submit_job(
             ),
         )
     enable_wirecut = (options or {}).get("enable_wirecut", False)
+    enable_subqubo = (options or {}).get("enable_subqubo", False)
 
     # Validate: params
     if params:
@@ -350,6 +351,7 @@ def submit_job(
     body.backend_type = backend_type
     # filtered_devices is populated when falling back to wirecut
     filtered_devices = None
+    auto_scheduler = None
     if not backend:
         # check whether auto scheduling is enabled via the
         # [SCHEDULER].ENABLE_AUTO_SCHEDULE config flag; when disabled,
@@ -398,7 +400,7 @@ def submit_job(
             backend = auto_scheduler.schedule(request_spec)
         except DeviceQubitExceededError as e:
             # Qubit count exceeded: check if wirecut is enabled
-            if enable_wirecut:
+            if enable_wirecut or enable_subqubo:
                 # Build filtered_devices from all available devices
                 filtered_devices = auto_scheduler.get_last_filtered_devices()
                 if not filtered_devices:
@@ -432,6 +434,29 @@ def submit_job(
                 func_name,
                 (False, f"Auto scheduling failed: {e}"),
             )
+
+    # enable_subqubo: route to the multi-device wirecut flow for
+    # parallel sub-QUBO solving even when a single device can fit
+    # the problem (the DeviceQubitExceededError fallback above only
+    # triggers when NO device is large enough).
+    if (
+        enable_subqubo
+        and backend_type == Constant.BACKEND_TYPE_DEVICE
+        and auto_scheduler is not None
+    ):
+        filtered_devices = auto_scheduler.get_last_filtered_devices()
+        if not filtered_devices:
+            jsonrpc_errors.handle_error_bad_requests(
+                module_name,
+                func_name,
+                (False, "No available devices for subqubo"),
+            )
+        backend_type = Constant.BACKEND_TYPE_WIRECUT
+        logger.info(
+            f"enable_subqubo=True: routing to wirecut flow "
+            f"for multi-device parallel sub-QUBO, "
+            f"devices={[d.name for d in filtered_devices]}"
+        )
 
     job_scheduling_ended_at = time.time()
     job_schedule_duration = job_scheduling_ended_at - job_scheduling_started_at
@@ -504,6 +529,20 @@ def submit_job(
             ),
             param_name="driver_options",
         )
+
+    # Merge qubo-related options from job options into driver_options
+    # so that --options '{"enable_subqubo": true}' takes effect on
+    # the driver (driver.get_enable_subqubo() reads driver_options).
+    # Values explicitly set in --driver-options take precedence.
+    # Write back to body so create_job / scheduler.submit persist the
+    # merged value (body.driver_options may be None when only
+    # --options is used).
+    if options:
+        driver_options = driver_options or {}
+        for _key in ("enable_subqubo", "enable_prec_reduce"):
+            if _key in options and _key not in driver_options:
+                driver_options[_key] = options[_key]
+        body.driver_options = driver_options
 
     # if transpiler is not specified, set the default transpiler from driver
     if not transpiler_name:
@@ -606,17 +645,26 @@ def submit_job(
 
     # get supported_code_types
     supported_code_types = transpiler.get_supported_code_types()
-    if supported_code_types is None or len(supported_code_types) == 0:
+    if (
+        supported_code_types is None or len(supported_code_types) == 0
+    ) and driver is not None:
         supported_code_types = driver.get_supported_code_types()
 
     # validate supported_code_types
-    jsonrpc_errors.handle_error_bad_requests(
-        module_name,
-        func_name,
-        Library.validate_values_enum(
-            code_type, "code_type", supported_code_types, allow_none=False
-        ),
-    )
+    # In flavor/wirecut mode, driver is not yet resolved (None); the
+    # default transpiler may not list the code_type (e.g. qubo). Skip
+    # this check then -- the actual driver validates after scheduling.
+    if supported_code_types and driver is not None:
+        jsonrpc_errors.handle_error_bad_requests(
+            module_name,
+            func_name,
+            Library.validate_values_enum(
+                code_type,
+                "code_type",
+                supported_code_types,
+                allow_none=False,
+            ),
+        )
 
     # Validate: circuit_aggregation is supported
     if (

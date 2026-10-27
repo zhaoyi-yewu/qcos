@@ -37,6 +37,7 @@ import json
 import time
 from typing import Any
 
+import numpy as np
 import redis
 from loguru import logger
 from prefect import flow, get_client, task
@@ -55,6 +56,16 @@ from wy_qcos.engine.job_engine import (
     get_src_code_cnt,
     register_signals,
     update_progress,
+)
+from wy_qcos.engine.qubo import (
+    SubQUBOMultiSolution,
+    check_matrix,
+    check_qubo_matrix_bit_width,
+    get_spins_num,
+    ising_matrix_to_qubo_matrix,
+    precision_reduction,
+    qubo_matrix_to_ising_matrix,
+    scale_to_integer_matrix,
 )
 
 # TTL (seconds) for wirecut sub-job redis keys. Set to 7 days so
@@ -197,24 +208,40 @@ def wirecut_flow(job_info):
     source_code_count = get_src_code_cnt(src_code_info)
     monitor_info["source_code_count"] = source_code_count
 
-    schedule_results = wirecut_schedule(src_code_info, available_devices)
-    logger.debug(f"Wirecut schedule_results: {schedule_results}")
+    code_type = job_data.get("code_type")
     sync_client = get_client(sync_client=True)
-    new_job_list = submit_jobs(
-        schedule_results,
-        job_info,
-        monitor_info,
-        sync_client,
-        source_code_count,
-        deployments,
-    )
-    _job_results_list = poll_job_results(
-        new_job_list,
-        job_id=job_id,
-        redis_instance=redis_instance,
-        monitor_info=monitor_info,
-    )
-    job_results_list = merge_job_results(_job_results_list)
+
+    if code_type == Constant.CODE_TYPE_QUBO:
+        logger.info(
+            f"QUBO job detected, running subqubo_schedule for job_id: {job_id}"
+        )
+        job_results_list = subqubo_schedule(
+            job_info,
+            src_code_info,
+            available_devices,
+            monitor_info,
+            sync_client,
+            redis_instance,
+            deployments,
+            source_code_count,
+        )
+    else:
+        schedule_results = wirecut_schedule(src_code_info, available_devices)
+        logger.debug(f"Wirecut schedule_results: {schedule_results}")
+        new_job_list = submit_jobs(
+            schedule_results,
+            job_info,
+            monitor_info,
+            sync_client,
+            source_code_count,
+            deployments,
+        )
+        job_results_list = poll_job_results(
+            new_job_list,
+            job_id=job_id,
+            redis_instance=redis_instance,
+            monitor_info=monitor_info,
+        )
 
     monitor_info["running"] = False
     monitor_info["progress"] = 100
@@ -269,6 +296,383 @@ def wirecut_schedule(src_code_info, available_devices):
     return schedule_results
 
 
+def _get_device_max_qubits(device):
+    """Get max_qubits from a serialized device dict.
+
+    The serialized device (DeviceState.to_dict()) may carry qubit
+    counts under different keys depending on the serialization
+    path; this helper tries the common locations.
+
+    Args:
+        device: serialized device dict from available_devices.
+
+    Returns:
+        int max_qubits, or 0 if not found.
+    """
+    max_qubits = device.get("max_qubits")
+    if max_qubits is None:
+        configs = device.get("configs") or {}
+        max_qubits = configs.get("max_qubits")
+    if max_qubits is None:
+        max_qubits = device.get("available_qubits", 0)
+    return int(max_qubits) if max_qubits else 0
+
+
+def _extract_subqubo_solution(record):
+    """Extract the solutionVector from a sub-job redis record.
+
+    The sub-flow (job_flow) stores its return value via
+    db_job_callback into redis as ``record["results"]``, which is a
+    list of per-source-code result dicts. Each result dict carries
+    a ``results`` key holding the driver output, whose
+    ``out_data[0].solutionVector`` is the QUBO solution vector.
+    This helper defensively traverses the nested structure so it
+    works regardless of minor serialization differences.
+
+    Args:
+        record: redis job record dict from poll_job_results.
+
+    Returns:
+        list: solution vector (e.g. [0, 1, 0, 1]), or empty list
+        if not found.
+    """
+    if not record:
+        return []
+
+    results = record.get("results")
+
+    if isinstance(results, list):
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            inner = result.get("results")
+            if isinstance(inner, dict):
+                out_data = inner.get("out_data", [])
+                if out_data and isinstance(out_data[0], dict):
+                    solution = out_data[0].get("solutionVector", [])
+                    if solution:
+                        return list(solution)
+            if isinstance(result.get("out_data"), list) and result["out_data"]:
+                item = result["out_data"][0]
+                if isinstance(item, dict) and item.get("solutionVector"):
+                    return list(item["solutionVector"])
+
+    if isinstance(results, dict):
+        out_data = results.get("out_data", [])
+        if out_data and isinstance(out_data[0], dict):
+            solution = out_data[0].get("solutionVector", [])
+            if solution:
+                return list(solution)
+
+    return []
+
+
+def _build_subqubo_schedule_entries(subqubo_tasks, available_devices):
+    """Build schedule entries for one subqubo iteration round.
+
+    Distributes the N_E sub-QUBO matrices across available devices
+    in round-robin order. Each entry has the shape expected by
+    :func:`submit_jobs`.
+
+    Args:
+        subqubo_tasks: list of dicts, each containing the sub-QUBO
+            matrix under ``"matrix"``.
+        available_devices: list of serialized device dicts.
+
+    Returns:
+        list of schedule entries for submit_jobs.
+    """
+    device_count = len(available_devices)
+    schedule_results = []
+    for i, sub_task in enumerate(subqubo_tasks):
+        device = available_devices[i % device_count]
+        schedule_results.append({
+            "device_name": device["name"],
+            "driver_name": device["driver_name"],
+            "driver_module_name": device["driver_module_name"],
+            "driver_class_name": device["driver_class_name"],
+            "driver_package_paths": device["driver_package_paths"],
+            "configs": device.get("configs"),
+            "source_codes": [sub_task["matrix"]],
+        })
+    return schedule_results
+
+
+def subqubo_schedule(
+    job_info,
+    src_code_info,
+    available_devices,
+    monitor_info,
+    sync_client,
+    redis_instance,
+    deployments,
+    source_code_count,
+):
+    """Schedule sub-QUBO tasks across multiple devices with iteration.
+
+    Unlike :func:`wirecut_schedule` (one-shot dispatch), sub-QUBO
+    solving is an iterative optimisation: each round decomposes the
+    original QUBO into N_E sub-QUBOs, dispatches them in parallel
+    across the available device pool, collects results, merges them
+    back into the solution pool, and repeats until the energy
+    converges.
+
+    This function is self-contained: it performs the QUBO
+    preprocessing (matrix validation, precision reduction, total
+    spin count) and the full iteration loop internally, so
+    :func:`wirecut_flow` only needs to branch on ``code_type``.
+    The baseline ``max_qubits`` is the minimum across all available
+    devices, ensuring every sub-QUBO fits on any device.
+
+    Args:
+        job_info: original job info dict.
+        src_code_info: SourceCodeInfo built by create_src_code_info.
+        available_devices: list of serialized device dicts.
+        monitor_info: monitor info dict (updated in place for
+            progress aggregation).
+        sync_client: prefect sync client for sub-flow submission.
+        redis_instance: redis client for sub-job result polling.
+        deployments: deployments dict for deployment id resolution.
+        source_code_count: total source code count (for logging).
+
+    Returns:
+        list: job results list with the final solution pool, shaped
+        like a single poll_job_results record so the caller can
+        treat qubo and circuit branches uniformly.
+    """
+    job_data = job_info["data"]
+    job_id = job_data["job_id"]
+
+    # extract original QUBO matrix from src_code_info
+    src_code_map = src_code_info.src_code_list[0]
+    src_code_key = next(iter(src_code_map))
+    qubo_matrix = src_code_map[src_code_key]
+    logger.info(
+        f"subqubo_schedule: job_id={job_id}, matrix size="
+        f"{len(qubo_matrix)}x"
+        f"{len(qubo_matrix[0]) if qubo_matrix else 0}, "
+        f"devices={len(available_devices)}"
+    )
+
+    # baseline max_qubits: minimum across all available devices
+    max_qubits = min(
+        (_get_device_max_qubits(d) for d in available_devices),
+        default=0,
+    )
+    if max_qubits <= 0:
+        err_msg = "No available device with valid max_qubits for subqubo"
+        logger.error(err_msg)
+        raise ValueError(f"Subqubo error: {err_msg}")
+
+    # preprocessing (mirrors run_qubo_code)
+    success, err_msg = check_matrix(qubo_matrix)
+    if not success and err_msg:
+        raise ValueError(f"Subqubo error: {err_msg}")
+
+    success, err_msg = check_qubo_matrix_bit_width(
+        np.array(qubo_matrix), Constant.MAX_QUBO_BIT_WIDTH
+    )
+    if not success and err_msg:
+        raise ValueError(f"Subqubo error: {err_msg}")
+
+    ising_matrix = qubo_matrix_to_ising_matrix(np.array(qubo_matrix))
+    scaled_ising_matrix = scale_to_integer_matrix(ising_matrix)
+    max_precision_value = 2 ** (Constant.MAX_QUBO_BIT_WIDTH - 1) - 1
+    _, _, total_spins_num = get_spins_num(
+        scaled_ising_matrix, max_precision_value
+    )
+
+    # if the problem already fits on a single device, skip iteration
+    # and dispatch once (no sub-QUBO decomposition needed)
+    if total_spins_num <= max_qubits + 1:
+        logger.info(
+            f"subqubo_schedule: total_spins_num={total_spins_num} "
+            f"<= max_qubits+1={max_qubits + 1}, single dispatch"
+        )
+        schedule_results = _build_subqubo_schedule_entries(
+            [{"matrix": qubo_matrix}], available_devices
+        )
+        new_job_list = submit_jobs(
+            schedule_results,
+            job_info,
+            monitor_info,
+            sync_client,
+            source_code_count,
+            deployments,
+        )
+        return poll_job_results(
+            new_job_list,
+            job_id=job_id,
+            redis_instance=redis_instance,
+            monitor_info=monitor_info,
+        )
+
+    # iteration loop (mirrors run_subqubo_code)
+    subqubo_size = int(
+        np.floor(max_qubits * len(qubo_matrix) / total_spins_num)
+    )
+    if subqubo_size <= max_qubits / 4:
+        err_msg = (
+            f"SubQUBO size {subqubo_size} below threshold "
+            f"{int(max_qubits / 4)}."
+        )
+        raise ValueError(f"Subqubo error: {err_msg}")
+
+    # use a local SubQUBO instance instead of the global singleton
+    # to avoid thread-safety issues when multiple wirecut_flow
+    # instances run concurrently in different prefect workers
+    local_subqubo = SubQUBOMultiSolution(
+        subqubo_size=subqubo_size,
+        qubo_matrix=np.array(qubo_matrix),
+    )
+    solution_pool = local_subqubo.init_instance_pool()
+    best_solution, _ = local_subqubo.find_best_solution(solution_pool)
+    converged_num = 0
+    cycles_num = 0
+    max_iterations = 100
+
+    while converged_num <= local_subqubo.get_max_converged_num():
+        cycles_num += 1
+        if cycles_num > max_iterations:
+            logger.warning(
+                f"subqubo reached max iterations "
+                f"({max_iterations}), returning best solution "
+                f"so far, job_id={job_id}"
+            )
+            break
+        logger.info(
+            f"subqubo cycle {cycles_num}, converged={converged_num}, "
+            f"job_id={job_id}"
+        )
+        solution_pool = local_subqubo.optimize_solution_pool(solution_pool)
+        n_e_pools = local_subqubo.create_sub_solution_pools(solution_pool)
+
+        # build N_E sub-QUBO tasks for this round
+        subqubo_tasks = []
+        for i in range(local_subqubo.N_E):
+            subqubo_matrix, tmp_solution, extracted_index = (
+                local_subqubo.construct_subqubo(n_e_pools[i])
+            )
+            need_precision_reduction = False
+            last_idx = []
+            success, err_msg = check_qubo_matrix_bit_width(
+                np.array(subqubo_matrix), Constant.MAX_QUBO_BIT_WIDTH
+            )
+            if not success:
+                if err_msg:
+                    raise ValueError(f"Subqubo error: {err_msg}")
+                # err_msg is empty: bit width exceeded but matrix
+                # structure is valid — enter precision reduction,
+                # not an error
+                need_precision_reduction = True
+                subqubo_ising_matrix = qubo_matrix_to_ising_matrix(
+                    np.array(subqubo_matrix)
+                )
+                subqubo_precision_ising_matrix, last_idx, _ = (
+                    precision_reduction(
+                        subqubo_ising_matrix, Constant.MAX_QUBO_BIT_WIDTH
+                    )
+                )
+                subqubo_matrix = ising_matrix_to_qubo_matrix(
+                    subqubo_precision_ising_matrix
+                )
+                subqubo_matrix = subqubo_matrix.tolist()
+            # ensure native Python types for prefect JSON
+            # serialization (construct_subqubo may return numpy
+            # int64 elements that pydantic cannot serialize)
+            subqubo_matrix = np.array(subqubo_matrix).tolist()
+            subqubo_tasks.append({
+                "matrix": subqubo_matrix,
+                "tmp_solution": tmp_solution,
+                "extracted_index": extracted_index,
+                "need_precision_reduction": need_precision_reduction,
+                "last_idx": last_idx,
+            })
+
+        # dispatch all N_E sub-QUBOs in parallel across devices
+        # use a per-cycle job_id suffix so each round's sub-tasks
+        # have distinct names (platform rejects duplicate task_name)
+        round_job_id = f"{job_id}_c{cycles_num}"
+        round_job_info = copy.deepcopy(job_info)
+        round_job_info["data"]["job_id"] = round_job_id
+        schedule_results = _build_subqubo_schedule_entries(
+            subqubo_tasks, available_devices
+        )
+        new_job_list = submit_jobs(
+            schedule_results,
+            round_job_info,
+            monitor_info,
+            sync_client,
+            source_code_count,
+            deployments,
+        )
+        sub_records = poll_job_results(
+            new_job_list,
+            job_id=round_job_id,
+            redis_instance=redis_instance,
+            monitor_info=monitor_info,
+        )
+
+        # merge results back into new solutions
+        new_solutions = []
+        for i, sub_task in enumerate(subqubo_tasks):
+            record = sub_records[i] if i < len(sub_records) else {}
+            subqubo_solution = _extract_subqubo_solution(record)
+            if not subqubo_solution:
+                continue
+            if subqubo_solution and sub_task["need_precision_reduction"]:
+                subqubo_solution = list(
+                    np.array(subqubo_solution)[sub_task["last_idx"][:-1]]
+                )
+            solution = local_subqubo.merge_solution(
+                sub_task["tmp_solution"],
+                subqubo_solution,
+                sub_task["extracted_index"],
+            )
+            new_solutions.append(solution)
+
+        x_best, solution_pool = local_subqubo.update_solution_pool(
+            solution_pool, new_solutions
+        )
+        if best_solution.energy > x_best.energy:
+            best_solution.solution = x_best.solution.copy()
+            best_solution.energy = x_best.energy
+            converged_num = 0
+        else:
+            converged_num += 1
+
+    # build final results from solution_pool
+    out_data = []
+    for i in range(len(solution_pool)):
+        out_data.append({
+            "result": i + 1,
+            "quboValue": solution_pool[i].energy,
+            "solutionVector": solution_pool[i].solution.tolist(),
+        })
+
+    logger.info(
+        f"subqubo_schedule completed: job_id={job_id}, "
+        f"cycles={cycles_num}, solutions={len(out_data)}"
+    )
+
+    # wrap in the same record shape poll_job_results returns so the
+    # caller (wirecut_flow) treats qubo and circuit branches alike
+    return [
+        {
+            "job_id": job_id,
+            "job_status": Constant.JOB_STATUS_COMPLETED,
+            "progress": 100,
+            "results": [
+                {
+                    "results": {"out_data": out_data},
+                    "metadata": {"status": Constant.JOB_STATUS_COMPLETED},
+                    "num_qubits": len(qubo_matrix),
+                }
+            ],
+        }
+    ]
+
+
 def submit_jobs(
     schedule_results,
     job_info,
@@ -304,9 +708,10 @@ def submit_jobs(
     job_id = job_data["job_id"]
     wirecut_job_list = []
 
-    for device_schedule in schedule_results:
+    for idx, device_schedule in enumerate(schedule_results):
         device_name = device_schedule["device_name"]
         source_codes = device_schedule["source_codes"]
+        sub_job_id = f"{job_id}_{idx}"
 
         # resolve deployment id by name
         deployment_name = f"{Constant.WORK_POOL_DEV}|{device_name}"
@@ -321,7 +726,7 @@ def submit_jobs(
 
         wirecut_deploy_id = deployment["deploy_id"]
         wirecut_job_data = copy.deepcopy(job_data)
-        wirecut_job_data["job_id"] = job_id
+        wirecut_job_data["job_id"] = sub_job_id
         wirecut_job_data["job_name"] = None
         wirecut_job_data["backend"] = device_name
         wirecut_job_data["backend_type"] = Constant.BACKEND_TYPE_DEVICE
@@ -353,7 +758,7 @@ def submit_jobs(
         # submit sub-flow via prefect client
         try:
             wirecut_flow_run_name = (
-                f"{Constant.WIRECUT_FLOW_RUN_PREFIX}{job_id}"
+                f"{Constant.WIRECUT_FLOW_RUN_PREFIX}{sub_job_id}"
             )
             wirecut_work_queue_name = (
                 f"{Constant.WORK_POOL_DEV}|{device_name}_"
@@ -370,20 +775,30 @@ def submit_jobs(
             )
             wirecut_flow_run_id = wirecut_flow_run.id
             logger.info(
-                f"Submitted sub-flow for sub-circuit: "
-                f"job_id:{job_id}, "
+                f"Submitted sub-flow ... job_id:{sub_job_id}, "
+                f"device={device_name}, "
+                f"driver={device_schedule['driver_class_name']}, "
+                f"deploy_id={wirecut_deploy_id}, "
+                f"work_queue={wirecut_work_queue_name}"
+            )
+            logger.info(
+                f"Submitted sub-flow for sub-circuit or subqubo: "
+                f"job_id:{sub_job_id}, "
                 f"flow_run_name={wirecut_flow_run_name}, "
                 f"flow_run_id={wirecut_flow_run_id}, "
                 f"device={device_name}"
             )
             wirecut_job = {
                 "flow_run_id": wirecut_flow_run_id,
-                "job_id": job_id,
+                "job_id": sub_job_id,
                 "circuit": None,
             }
             wirecut_job_list.append(wirecut_job)
         except Exception as e:
-            err_msg = f"Failed to submit sub-flow for sub-circuit: {str(e)}"
+            err_msg = (
+                f"Failed to submit sub-flow for sub-circuit "
+                f"or subqubo: {str(e)}"
+            )
             logger.error(err_msg)
             raise ValueError(err_msg)
     return wirecut_job_list

@@ -1192,6 +1192,17 @@ class Library:
         # only QASM code types declare qubits via qreg/qubit statements
         qasm_types = set(Constant.CODE_TYPES_ALL_QASM)
         if code_type and code_type not in qasm_types:
+            # For QUBO, the qubit count equals the matrix dimension,
+            # so the scheduler can detect qubit-exceeded and fall back
+            # to the wirecut/subqubo multi-device flow.
+            if code_type == Constant.CODE_TYPE_QUBO:
+                max_qubits = 0
+                for item in source_code:
+                    if isinstance(item, list) and len(item) > 0:
+                        dim = len(item)
+                        if dim > max_qubits:
+                            max_qubits = dim
+                return max_qubits
             return 0
         max_qubits = 0
         for item in source_code:
