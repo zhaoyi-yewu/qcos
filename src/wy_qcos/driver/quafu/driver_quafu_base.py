@@ -108,6 +108,14 @@ class DriverQuafuBase(DriverGateBase):
         """
         logger.info(f"Cancel job: job_id: {job_id}")
 
+    def update_driver_options(self, driver_options):
+        """Update driver options.
+
+        Args:
+            driver_options: new driver options
+        """
+        self.driver_options.update(driver_options)
+
     def validate_driver_configs(self, configs):
         """Validate driver configs.
 
@@ -340,10 +348,18 @@ class DriverQuafuBase(DriverGateBase):
         # 5. Normalize results
         logger.info("5. normalize results")
         results = self.convert_results(_results)
+
+        enable_raw_results = self.driver_options.get(
+            "enable_raw_results", False
+        )
+        raw_results = None
+        if enable_raw_results:
+            raw_results = _results
         self.set_results(
             job_id,
             data_index,
             results=results,
+            raw_results=raw_results,
             result_type=Constant.RESULT_TYPE_SAMPLING,
         )
 
