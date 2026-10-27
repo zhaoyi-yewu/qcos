@@ -17,15 +17,19 @@
 
 import json
 
+import numpy as np
 import pytest
 from unittest.mock import MagicMock, patch
 
 from wy_qcos.common.constant import Constant
 from wy_qcos.engine.wirecut_engine import (
+    WirecutExecutionPlan,
     _build_subqubo_schedule_entries,
     _extract_subqubo_solution,
     _get_device_max_qubits,
+    execute_wirecut_sources,
     poll_job_results,
+    reconstruct_wirecut_result,
     submit_jobs,
     wirecut_schedule,
 )
@@ -461,9 +465,10 @@ class TestWirecutSchedule:
     """Unit tests for wirecut_engine.wirecut_schedule."""
 
     @staticmethod
-    def _device(name):
+    def _device(name, max_qubits=2):
         return {
             "name": name,
+            "max_qubits": max_qubits,
             "driver_name": "dummy",
             "driver_module_name": "wy_qcos.driver.dummy.driver_dummy",
             "driver_class_name": "DriverDummy",
@@ -471,26 +476,220 @@ class TestWirecutSchedule:
             "configs": {"key": "value"},
         }
 
-    def test_one_entry_per_device(self):
-        devices = [self._device("dev-1"), self._device("dev-2")]
+    @patch(
+        "wy_qcos.engine.wirecut_engine."
+        "generate_all_variant_subcircuits_for_execute"
+    )
+    def test_cuts_and_assigns_unique_subcircuits_round_robin(
+        self, mock_generate
+    ):
+        devices = [self._device("dev-1", 2), self._device("dev-2", 3)]
+        cut_wire = MagicMock()
+        mock_generate.return_value = (
+            ["original-0", "original-1"],
+            ["sub-0", "sub-1", "sub-2"],
+            cut_wire,
+        )
+        qasm = "OPENQASM 2.0; qreg q[4];"
 
-        results = wirecut_schedule({"source_codes": []}, devices)
+        plan = wirecut_schedule(0, "job-0", qasm, devices)
 
-        assert len(results) == 2
-        for device, entry in zip(devices, results):
-            assert entry["device_name"] == device["name"]
-            assert entry["driver_name"] == device["driver_name"]
-            assert entry["driver_module_name"] == device["driver_module_name"]
-            assert entry["driver_class_name"] == device["driver_class_name"]
-            assert (
-                entry["driver_package_paths"] == device["driver_package_paths"]
+        assert plan.source_code_index == 0
+        assert plan.source_code_key == "job-0"
+        assert plan.num_qubits == 4
+        assert plan.cut_wire is cut_wire
+        assert [entry["device_name"] for entry in plan.schedule_entries] == [
+            "dev-1",
+            "dev-2",
+            "dev-1",
+        ]
+        assert [entry["source_codes"] for entry in plan.schedule_entries] == [
+            ["sub-0"],
+            ["sub-1"],
+            ["sub-2"],
+        ]
+        assert [
+            entry["subcircuit_index"] for entry in plan.schedule_entries
+        ] == [0, 1, 2]
+        mock_generate.assert_called_once_with(
+            max_subcircuit_width=2,
+            qasm=qasm,
+            max_memory=16,
+            is_complete_reconstruction=True,
+        )
+
+    @patch(
+        "wy_qcos.engine.wirecut_engine."
+        "generate_all_variant_subcircuits_for_execute"
+    )
+    def test_ignores_devices_without_usable_width(self, mock_generate):
+        devices = [self._device("bad", 0), self._device("good", 4)]
+        mock_generate.return_value = ([], ["sub-0"], MagicMock())
+
+        plan = wirecut_schedule(
+            0,
+            "job-0",
+            "OPENQASM 2.0; qreg q[5];",
+            devices,
+        )
+
+        assert plan.schedule_entries[0]["device_name"] == "good"
+        assert mock_generate.call_args.kwargs["max_subcircuit_width"] == 4
+
+    def test_rejects_no_usable_devices(self):
+        with pytest.raises(ValueError, match="at least one device"):
+            wirecut_schedule(
+                0,
+                "job-0",
+                "OPENQASM 2.0; qreg q[3];",
+                [],
             )
-            assert entry["configs"] == device["configs"]
-            assert len(entry["source_codes"]) == 1
-            assert "OPENQASM 2.0" in entry["source_codes"][0]
 
-    def test_no_devices_returns_empty(self):
-        assert wirecut_schedule({"source_codes": []}, []) == []
+    def test_rejects_unknown_source_width(self):
+        with pytest.raises(ValueError, match="determine"):
+            wirecut_schedule(0, "job-0", "OPENQASM 2.0;", [self._device("d")])
+
+
+class TestReconstructWirecutResult:
+    """Unit tests for multi-device wirecut reconstruction."""
+
+    @staticmethod
+    def _plan(count=2):
+        return WirecutExecutionPlan(
+            source_code_index=0,
+            source_code_key="job-0",
+            num_qubits=2,
+            is_complete_reconstruction=True,
+            schedule_entries=[{} for _ in range(count)],
+            cut_wire=MagicMock(),
+        )
+
+    @staticmethod
+    def _completed(counts):
+        return {
+            "job_status": Constant.JOB_STATUS_COMPLETED,
+            "results": [
+                {
+                    "results": counts,
+                    "metadata": {
+                        "status": Constant.JOB_STATUS_COMPLETED,
+                    },
+                }
+            ],
+        }
+
+    @patch(
+        "wy_qcos.engine.wirecut_engine."
+        "reconstruct_probability_distribution_wire_cut"
+    )
+    def test_reconstructs_completed_children(self, mock_reconstruct):
+        plan = self._plan()
+        records = [
+            self._completed({"00": 3, "11": 1}),
+            self._completed({"0": 1, "1": 1}),
+        ]
+        mock_reconstruct.return_value = (
+            np.array([0.25, 0.0, 0.0, 0.75]),
+            [],
+        )
+
+        result = reconstruct_wirecut_result(plan, records)
+
+        assert result["metadata"]["status"] == Constant.JOB_STATUS_COMPLETED
+        assert result["num_qubits"] == 2
+        assert result["results"] == {"00": 0.25, "11": 0.75}
+        probabilities = mock_reconstruct.call_args.args[1]
+        np.testing.assert_array_equal(
+            probabilities[0], np.array([0.75, 0.0, 0.0, 0.25])
+        )
+        np.testing.assert_array_equal(probabilities[1], np.array([0.5, 0.5]))
+
+    @patch(
+        "wy_qcos.engine.wirecut_engine."
+        "reconstruct_probability_distribution_wire_cut"
+    )
+    def test_child_failure_skips_reconstruction(self, mock_reconstruct):
+        records = [
+            {
+                "job_status": Constant.JOB_STATUS_FAILED,
+                "results": [
+                    {
+                        "error": {"message": "device failed"},
+                        "metadata": {
+                            "status": Constant.JOB_STATUS_FAILED,
+                        },
+                    }
+                ],
+            }
+        ]
+
+        result = reconstruct_wirecut_result(self._plan(1), records)
+
+        assert result["metadata"]["status"] == Constant.JOB_STATUS_FAILED
+        assert "device failed" in result["error"]["message"]
+        mock_reconstruct.assert_not_called()
+
+    def test_rejects_child_result_count_mismatch(self):
+        result = reconstruct_wirecut_result(self._plan(2), [{}])
+
+        assert result["metadata"]["status"] == Constant.JOB_STATUS_FAILED
+        assert "does not match" in result["error"]["message"]
+
+
+class TestExecuteWirecutSources:
+    """Unit tests for orchestration across multiple source circuits."""
+
+    @patch("wy_qcos.engine.wirecut_engine.reconstruct_wirecut_result")
+    @patch("wy_qcos.engine.wirecut_engine.poll_job_results")
+    @patch("wy_qcos.engine.wirecut_engine.submit_jobs")
+    @patch("wy_qcos.engine.wirecut_engine.wirecut_schedule")
+    def test_preserves_multiple_source_order(
+        self,
+        mock_schedule,
+        mock_submit,
+        mock_poll,
+        mock_reconstruct,
+    ):
+        src_code_info = MagicMock()
+        src_code_info.src_code_list = [
+            {"job-0": "qasm-0"},
+            {"job-1": "qasm-1"},
+        ]
+        plans = [
+            WirecutExecutionPlan(i, f"job-{i}", 3, True, [{}], MagicMock())
+            for i in range(2)
+        ]
+        mock_schedule.side_effect = plans
+        mock_submit.side_effect = [[{"job_id": "a"}], [{"job_id": "b"}]]
+        mock_poll.side_effect = [[{"record": 0}], [{"record": 1}]]
+        expected = [{"result": 0}, {"result": 1}]
+        mock_reconstruct.side_effect = expected
+        job_info = {
+            "data": {"job_id": "job", "options": {}},
+            "global": {},
+        }
+
+        results = execute_wirecut_sources(
+            job_info,
+            src_code_info,
+            [],
+            {},
+            MagicMock(),
+            MagicMock(),
+            {},
+            2,
+        )
+
+        assert results == expected
+        assert [call.args[1] for call in mock_schedule.call_args_list] == [
+            "job-0",
+            "job-1",
+        ]
+        submitted_ids = [
+            call.args[1]["data"]["job_id"]
+            for call in mock_submit.call_args_list
+        ]
+        assert submitted_ids == ["job_s0", "job_s1"]
 
 
 class TestGetDeviceMaxQubits:
@@ -737,3 +936,31 @@ class TestSubmitJobsSubJobId:
                 source_code_count=1,
                 deployments={},
             )
+
+    def test_child_job_disables_recursive_wirecut(self):
+        entries = [self._schedule_entry("d1")]
+        job_info = self._job_info("base-job")
+        job_info["data"]["options"] = {"enable_wirecut": True}
+        job_info["data"]["driver_options"] = {"enable_wirecut": True}
+        mock_client = MagicMock()
+        mock_client.create_flow_run_from_deployment.return_value.id = "flow-1"
+
+        submit_jobs(
+            entries,
+            job_info,
+            monitor_info={"sub_job_progress": {}},
+            sync_client=mock_client,
+            source_code_count=1,
+            deployments={"dev|d1": {"deploy_id": "id-1"}},
+        )
+
+        parameters = (
+            mock_client.create_flow_run_from_deployment.call_args.kwargs[
+                "parameters"
+            ]
+        )
+        child_data = parameters["job_info"]["data"]
+        assert child_data["options"]["enable_wirecut"] is False
+        assert child_data["driver_options"]["enable_wirecut"] is False
+        assert job_info["data"]["options"]["enable_wirecut"] is True
+        assert job_info["data"]["driver_options"]["enable_wirecut"] is True

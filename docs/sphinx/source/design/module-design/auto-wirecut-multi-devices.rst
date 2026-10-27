@@ -72,6 +72,10 @@ wirecut_engine
 
 - ``wirecut_flow`` — Prefect Flow 入口，编排切割、提交、监听的完整流程
 - ``wirecut_schedule`` — 将源码切割为子电路，并为每个子电路分配设备
+- ``execute_wirecut_sources`` — 按输入顺序逐个处理原始线路，保证一个输入线路
+  对应一个最终结果
+- ``reconstruct_wirecut_result`` — 校验全部子任务状态，将测量计数转换为
+  概率数组并重构原始线路概率分布
 - ``submit_jobs`` — 通过 ``create_flow_run_from_deployment`` 将子电路
   提交到对应设备的 ``dev|{device}`` 工作池的
   ``dev|{device}_4`` 优先级队列
@@ -79,6 +83,17 @@ wirecut_engine
   确保子电路作业优先于普通用户作业被调度执行）
 - ``poll_job_results`` — 订阅 Redis Pub/Sub 通道并回查快照，
   收集子电路结果，等待全部到达终态后返回
+
+线路切割使用 ``generate_all_variant_subcircuits_for_execute`` 生成去重后的
+可执行子电路。切割宽度取候选设备 ``max_qubits`` 的最小正值，确保生成的
+任意子电路都可以分配到设备池内的任意有效设备。子电路按生成顺序采用
+round-robin 策略分配到设备， ``CutWire`` 重构状态仅保留在父 Flow 进程内，
+不会通过 Prefect 参数或 Redis 序列化。
+
+每个子电路作为独立子作业执行。子作业会同时关闭
+``options.enable_wirecut`` 和 ``driver_options.enable_wirecut``，避免再次触发
+线路切割。任一必要子任务失败、取消、缺少结果或返回格式异常时，当前原始
+线路直接返回 ``FAILED``，不会使用不完整结果进行重构。
 
 
 调度器增强
@@ -287,11 +302,14 @@ Redis Pub/Sub **不回放订阅建立之前发布的消息**。而
 3. 初始化数据库引擎并注册到 ``db_utils``
 4. 启动 ``flow_task_monitor`` 任务监控
 5. 创建 Redis 实例并注册到 ``db_utils`` （ ``set_redis_client`` ）
-6. 调用 ``wirecut_schedule`` 切割线路并分配设备
-7. 调用 ``submit_jobs`` 将子电路通过
+6. 遍历 ``SourceCodeInfo`` 中的每条原始线路，调用
+   ``wirecut_schedule`` 生成去重子电路并按 round-robin 分配设备
+7. 调用 ``submit_jobs`` 将当前线路的子电路通过
    ``create_flow_run_from_deployment`` 提交到各设备工作池
-8. 调用 ``poll_job_results`` 监听 Redis 收集子电路结果
-9. 返回结果列表
+8. 调用 ``poll_job_results`` 监听 Redis 收集当前线路的全部子电路结果
+9. 校验子任务终态并调用
+   ``reconstruct_probability_distribution_wire_cut`` 重构概率分布
+10. 按输入顺序返回每条原始线路的标准作业结果
 
 4. 子电路执行
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -312,7 +330,10 @@ Redis Pub/Sub **不回放订阅建立之前发布的消息**。而
 1. ``poll_job_results`` 先订阅全部 channel，再回查快照，
    随后阻塞监听，收集所有子电路结果
 2. 删除已消费的 Redis key
-3. 返回结果列表给 ``wirecut_flow``
+3. ``wirecut_flow`` 将测量计数转换为概率数组，并按子电路生成顺序执行
+   结果重构
+4. 任一子任务非 ``COMPLETED`` 时跳过重构，返回标准失败结果
+5. 返回与原始输入线路数量和顺序一致的结果列表
 
 
 配置说明

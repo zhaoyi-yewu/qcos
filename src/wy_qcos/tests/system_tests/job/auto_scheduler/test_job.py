@@ -38,6 +38,8 @@ flavor referencing all qutip_sim devices for auto scheduling.
 
 import json
 import logging
+from pathlib import Path
+
 import pytest
 
 from wy_qcos.common.constant import Constant
@@ -69,6 +71,7 @@ class TestJob:
         "test_device_status_filter_disabled",
         "test_device_status_filter_offline",
         "test_qubit_count_filter",
+        "test_auto_wirecut_multi_device",
         "test_device_load_weigher",
         "test_all_devices_disabled",
         "test_device_name_filter_whitelist",
@@ -87,6 +90,9 @@ class TestJob:
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.wirecut_qasm = Library.read_file(
+            Path(cls.samples_dir) / "qasm" / "2.0" / "wirecut" / "3_8.qasm"
+        )
 
         # clean up before tests
         StLibrary.cleanup_test_jobs(cls.admin_client, cls.test_job_names)
@@ -183,6 +189,7 @@ class TestJob:
         backend=None,
         transpiler_options=None,
         circuit_aggregation=None,
+        options=None,
     ):
         """Build a job_info dict for auto-scheduled submission.
 
@@ -202,6 +209,7 @@ class TestJob:
                 When None, no transpiler options are sent.
             circuit_aggregation: circuit aggregation type
                 (None, "internal", "external"). Defaults to None.
+            options: generic job options such as enable_wirecut.
 
         Returns:
             dict with job submission parameters
@@ -226,6 +234,7 @@ class TestJob:
             "flavor_id": flavor_id,
             "extra_specs": extra_specs,
             "qec_options": None,
+            "options": options,
         }
 
     def _submit_auto_job(self, job_name, expect_success=True):
@@ -456,6 +465,49 @@ class TestJob:
         finally:
             self.admin_client.set_device(DEVICE_QUTIP_SIM1, max_qubits="auto")
             self.admin_client.set_device(DEVICE_QUTIP_SIM2, max_qubits="auto")
+            self._restore_devices()
+
+    @pytest.mark.slow
+    def test_auto_wirecut_multi_device(self):
+        """Cut an oversized circuit and reconstruct its final result."""
+        self._restore_devices()
+        for device_name in ALL_QUTIP_SIM_DEVICES:
+            self.admin_client.set_device(device_name, max_qubits="2")
+        job_info = self._make_auto_job_info(
+            "test_auto_wirecut_multi_device",
+            flavor_id=self.flavor_id,
+            options={"enable_wirecut": True},
+        )
+        job_info["source_code_list"] = [self.wirecut_qasm]
+        try:
+            StLibrary.submit_job(self.admin_client, job_info)
+            success, err_msg, job_results = StLibrary.wait_and_get_job_result(
+                self.admin_client,
+                job_info,
+                self.timeout * 10,
+                self.interval,
+            )
+            if not success:
+                logger.warning(
+                    f"Job failed. err_msg: {err_msg}, "
+                    f"job_results: {job_results}"
+                )
+            assert success is True
+            result = job_results["result"]
+            assert result["job_status"] == Constant.JOB_STATUS_COMPLETED
+            assert result["backend"] == Constant.VIRT_DEVICE_WIRECUT
+            assert len(result["results"]) == 1
+            assert result["results"][0]["results"]
+        finally:
+            StLibrary.cleanup_test_jobs(
+                self.admin_client,
+                ["test_auto_wirecut_multi_device"],
+            )
+            for device_name in ALL_QUTIP_SIM_DEVICES:
+                self.admin_client.set_device(
+                    device_name,
+                    max_qubits="auto",
+                )
             self._restore_devices()
 
     def test_all_devices_disabled(self):
