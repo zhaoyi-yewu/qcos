@@ -57,6 +57,25 @@ export function deleteTask(jobIds = null) {
   )
 }
 
+/**
+ * Update a QUEUED job's mutable attributes.
+ *
+ * Only jobs in QUEUED state can be updated; the backend will return
+ * an error otherwise. Each field is optional - pass only the fields
+ * to be changed.
+ *
+ * @param {object} data - update payload
+ * @param {string} data.job_id - job uuid (required)
+ * @param {string} [data.job_name] - new job name
+ * @param {string} [data.description] - new job description
+ * @param {number} [data.job_priority] - new priority, integer 1-10
+ *   (1 = highest, 10 = lowest, default = 5)
+ * @returns {Promise} JSON-RPC response
+ */
+export function updateJob(data) {
+  return jsonrpcRequest('/v1/job', 'update_job', data)
+}
+
 // --- Calibration operations ---
 
 export function postCalibration(reqData) {

@@ -29,6 +29,24 @@ export function getDevice(deviceName) {
 }
 
 /**
+ * Set device attributes (state, enable, max_qubits, available_qubits).
+ *
+ * Each field is optional; pass only the fields to be changed.
+ *
+ * @param {object} data - update payload
+ * @param {string} data.device_name - device name (required)
+ * @param {string} [data.state] - one of: auto, online, offline, busy,
+ *   disconnected, calibrating, maintain, unknown
+ * @param {boolean} [data.enable] - enable or disable the device
+ * @param {string} [data.max_qubits] - 'auto' or positive integer string
+ * @param {string} [data.available_qubits] - 'auto' or positive integer string
+ * @returns {Promise} JSON-RPC response
+ */
+export function setDevice(data) {
+  return jsonrpcRequest('/v1/device', 'set_device', data)
+}
+
+/**
  * Query all device groups.
  *
  * @returns {Promise} JSON-RPC response, result is a list of device group objects.
