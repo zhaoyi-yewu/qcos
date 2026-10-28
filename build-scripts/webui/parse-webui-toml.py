@@ -114,6 +114,21 @@ def validate_endpoint(ep: dict, index: int) -> None:
                     f"{cacert}"
                 )
 
+    # prometheus_url / alertmanager_url: optional direct-access overrides.
+    # When set, the WebUI bypasses the QCOS API reverse proxy and talks to
+    # the given base URL directly. Only http:// or https:// are allowed.
+    for key in ("prometheus_url", "alertmanager_url"):
+        val = ep.get(key)
+        if val:
+            if not isinstance(val, str):
+                fail(f"endpoint '{name}': {key} must be a string")
+            if not (val.startswith("http://") or val.startswith("https://")):
+                fail(
+                    f"endpoint '{name}': {key} must start with http:// or https://, "
+                    f"got '{val}'"
+                )
+            ep[key] = val.rstrip("/")
+
 
 def validate_config(cfg: dict) -> dict:
     """Validate and normalize the raw TOML config."""
@@ -187,6 +202,13 @@ def write_json(cfg: dict, path: str) -> None:
             "url": f"/api/{ep['name']}",
             "use_ssl": ep.get("use_ssl", False),
         }
+        # Optional direct-access overrides for monitoring backends.
+        # When set, the SPA will call these URLs directly instead of
+        # routing through the QCOS API reverse proxy.
+        if ep.get("prometheus_url"):
+            entry["prometheus_url"] = ep["prometheus_url"]
+        if ep.get("alertmanager_url"):
+            entry["alertmanager_url"] = ep["alertmanager_url"]
         endpoints.append(entry)
 
     payload = {
@@ -209,6 +231,12 @@ def _nginx_location_block(ep: dict) -> str:
     url = ep["url"].rstrip("/")
     lines = [
         f"location /api/{name}/ {{",
+        # Re-emit the security headers inline: nginx does NOT merge
+        # add_header across levels, so this location would otherwise
+        # silently drop the server-level security headers.
+        '    add_header X-Frame-Options "SAMEORIGIN" always;',
+        '    add_header X-Content-Type-Options "nosniff" always;',
+        '    add_header Referrer-Policy "strict-origin-when-cross-origin" always;',
         f"    proxy_pass {url}/;",
         "    proxy_set_header Host $host;",
         "    proxy_set_header X-Real-IP $remote_addr;",

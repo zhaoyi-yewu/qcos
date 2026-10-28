@@ -84,7 +84,11 @@ services:
       - redis
     tty: True
     read_only: true
+    cap_add:
+      - SYS_ADMIN
     security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
       - no-new-privileges:true
     tmpfs:
       - /tmp

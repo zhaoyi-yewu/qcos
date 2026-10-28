@@ -42,6 +42,8 @@ RUN set -e && \
     # config yum and pip repos
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then mkdir -p /tmp/yum.repos.d/; mv /etc/yum.repos.d/*.repo /tmp/yum.repos.d/; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
     if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
+# install qcos specific rpm packages
+    yum install --nobest -y bubblewrap && \
 # Copy docker entrypoint
     /bin/cp ${BUILD_CONTEXT}/build-scripts/qcos/entrypoint.sh / && chmod +x /entrypoint.sh && \
 # Install qcos/qcos-cli packages

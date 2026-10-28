@@ -42,10 +42,11 @@ rm -rf ./dist
 mkdir -p ./dist
 # unpack js
 tar xzvf ${OPENAPI_DOCS_DIR}/js.tar.gz -C ${OPENAPI_DOCS_DIR}/dist
-# make openapi docs
+# make openapi docs (also emits qcos-mcp-docs.html for the MCP tool catalog)
 ./make-openapi-docs.py
 # copy openapi html and js to sphinx _static
 cp -rf ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html ${SPHINX_DOCS_DIR}/source/_static/
+cp -rf ${OPENAPI_DOCS_DIR}/dist/qcos-mcp-docs.html ${SPHINX_DOCS_DIR}/source/_static/
 cp -rf ${OPENAPI_DOCS_DIR}/dist/js ${SPHINX_DOCS_DIR}/source/_static/
 
 cd ${SPHINX_DOCS_DIR}
@@ -75,3 +76,4 @@ echo "Sphinx docs (latex): ${SPHINX_DOCS_DIR}/dist/latex/"
 echo "Sphinx docs (pdf)  : ${SPHINX_DOCS_DIR}/dist/pdf/qcos-full-docs.pdf"
 # echo "Sphinx docs (docx) : ${SPHINX_DOCS_DIR}/dist/docx/qcos-full-docs.docx"
 echo "OpenAPI docs (html): ${OPENAPI_DOCS_DIR}/dist/qcos-api-docs.html"
+echo "MCP docs (html)    : ${OPENAPI_DOCS_DIR}/dist/qcos-mcp-docs.html"
