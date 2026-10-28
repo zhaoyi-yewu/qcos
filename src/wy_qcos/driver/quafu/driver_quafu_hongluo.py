@@ -32,3 +32,4 @@ class DriverQuafuHongluo(DriverQuafuBase):
         self.alias_name = "北京量子院-夸父-Hongluo 超导驱动"
         self.description = "北京量子院-夸父-Hongluo 超导驱动"
         self.max_qubits = 84
+        self.chip_name = "Hongluo"

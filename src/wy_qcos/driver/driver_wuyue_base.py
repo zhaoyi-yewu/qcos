@@ -731,6 +731,27 @@ class DriverWuyueBase(DriverGateBase):
         if device_status is not None:
             device_running_info["status"] = device_status
             device_info.pop("status", None)
-        device_running_info["details"] = device_info
+
+        dt = datetime.strptime(device_info["time"], "%Y-%m-%d %H-%M-%S")
+        times = dt.strftime("%Y-%m-%dT%H:%M:%S")
+        trans_device_info = {
+            "calibration": {
+                "last_updated_at": times,
+                "timing": {
+                    "t1_avg": device_info["verticalRelaxationTime"],
+                    "t2_avg": device_info["horizontalRelaxationTime"],
+                },
+                "single_qubit_fidelity": {
+                    "fidelity_avg": device_info["singleFidelity"],
+                },
+                "double_qubit_fidelity": {
+                    "fidelity_avg": device_info["doubleFidelity"],
+                },
+                "spam_error": {
+                    "avg": device_info["SPAMError"],
+                },
+            }
+        }
+        device_running_info["details"] = trans_device_info
 
         return device_running_info

@@ -15,7 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+from datetime import datetime
 
+import quafu
 from loguru import logger
 from quark import Task
 from schema import And, Optional, Schema
@@ -87,6 +89,7 @@ class DriverQuafuBase(DriverGateBase):
             Optional("enable_mapping", default=False),
             bool,
         )
+        self.enable_device_monitor = True
 
     def init_driver(self):
         """Init driver."""
@@ -186,8 +189,75 @@ class DriverQuafuBase(DriverGateBase):
         Returns:
             remote device running info
         """
-        # TODO(jidalong) mock data currently
-        device_running_info = {"status": Device.DEVICE_STATUS_ONLINE}
+        device_running_info = {}
+        device_info = quafu.device(self.chip_name)
+        calibration = device_info.calibration()
+
+        fidelity_1q_values_list = []
+        for qubit in calibration.raw["qubits"]:
+            idx = qubit.get("index")
+            single_fidelity = qubit.get("gate_fidelity_1q", None)
+            single_fidelity_value = 0.0
+            if single_fidelity:
+                single_fidelity_value = single_fidelity.get("value", 0.0)
+            t1_time = qubit.get("t1_us", 0.0)
+            t2_time = qubit.get("t2_us", 0.0)
+            readout_fidelity_0 = qubit.get("readout_fidelity_0", 0.0)
+            readout_fidelity_1 = qubit.get("readout_fidelity_1", 0.0)
+            if not readout_fidelity_0:
+                readout_fidelity_0 = 0.0
+            if not readout_fidelity_1:
+                readout_fidelity_1 = 0.0
+            if not t1_time:
+                t1_time = 0.0
+            if not t2_time:
+                t2_time = 0.0
+
+            qubit_data = {
+                "qubit_id": idx,
+                "xeb_fidelity": single_fidelity_value,
+                "t1": t1_time,
+                "t2": t2_time,
+                "readout_fidelity_0": readout_fidelity_0,
+                "readout_fidelity_1": readout_fidelity_1,
+            }
+            fidelity_1q_values_list.append(qubit_data)
+
+        fidelity_2q_values_list = []
+        for qubit in calibration.raw["couplers"]:
+            qubit_couple = qubit.get("qubits")
+            double_qubit_fidelity = qubit.get("cz_fidelity", None)
+            double_fidelity_value = 0.0
+            if double_qubit_fidelity:
+                double_fidelity_value = double_qubit_fidelity.get("value", 0.0)
+            qubits_data = {
+                "qubits": qubit_couple,
+                "cz_fidelity": double_fidelity_value,
+            }
+            fidelity_2q_values_list.append(qubits_data)
+        device_running_info["details"] = {}
+        device_running_info["details"]["calibration"] = {}
+        times = calibration.raw.get("calibrated_at", None)
+        if times:
+            dt = datetime.fromisoformat(times)
+            result = dt.strftime("%Y-%m-%dT%H:%M:%S")
+            device_running_info["details"]["calibration"][
+                "last_updated_at"
+            ] = result
+
+        status = device_info.get("status", Device.DEVICE_STATUS_OFFLINE)
+        if status == "online":
+            device_running_info["status"] = Device.DEVICE_STATUS_ONLINE
+        elif status == "calibrating":
+            device_running_info["status"] = Device.DEVICE_STATUS_MAINTAIN
+        else:
+            device_running_info["status"] = Device.DEVICE_STATUS_OFFLINE
+        device_running_info["details"]["calibration"]["qubit_metrics"] = (
+            fidelity_1q_values_list
+        )
+        device_running_info["details"]["calibration"]["coupler_metrics"] = (
+            fidelity_2q_values_list
+        )
         return device_running_info
 
     def run(

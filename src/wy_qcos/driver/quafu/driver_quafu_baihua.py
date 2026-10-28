@@ -32,3 +32,4 @@ class DriverQuafuBaihua(DriverQuafuBase):
         self.alias_name = "北京量子院-夸父-Baihua 超导驱动"
         self.description = "北京量子院-夸父-Baihua 超导驱动"
         self.max_qubits = 156
+        self.chip_name = "Baihua"

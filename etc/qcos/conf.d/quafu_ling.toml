@@ -44,7 +44,7 @@ url = ""
 
 [quafu_ling.device_monitor]
 # [Optional] enable device monitor
-enable_device_monitor = false
+enable_device_monitor = true
 
 # [Optional] device monitor log file path
 monitor_log_file = "/var/log/qcos/device_monitor_quafu_ling.log"
