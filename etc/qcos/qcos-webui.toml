@@ -24,21 +24,32 @@ ENDPOINT_PROBE_TIMEOUT_MS = 3000
 
 # QCOS API endpoints visible to the user.
 # Each entry is a TOML inline table:
-#   name    - required; unique endpoint identifier (lowercase letters,
-#             digits, dash, underscore), stored in browser localStorage
-#   alias   - optional; human readable label; falls back to `name`
-#   url     - required; base URL of the QCOS API server (http:// or https://)
-#   use_ssl - optional; when true, explicitly require SSL/TLS connection
-#             (mirrors OpenStack Neutron style); when false or omitted,
-#             inferred from url scheme (https = true, http = false)
-#   cacert  - optional; absolute path *inside the webui container* of the
-#             CA certificate used to verify a self-signed https endpoint;
-#             ignored when use_ssl is false
+#   name            - required; unique endpoint identifier (lowercase letters,
+#                     digits, dash, underscore), stored in browser localStorage
+#   alias           - optional; human readable label; falls back to `name`
+#   url             - required; base URL of the QCOS API server (http:// or https://)
+#   use_ssl         - optional; when true, explicitly require SSL/TLS connection
+#                     (mirrors OpenStack Neutron style); when false or omitted,
+#                     inferred from url scheme (https = true, http = false)
+#   cacert          - optional; absolute path *inside the webui container* of the
+#                     CA certificate used to verify a self-signed https endpoint;
+#                     ignored when use_ssl is false
+#   prometheus_url  - optional; override base URL for Prometheus queries.
+#                     When omitted, the built-in `/v1/proxy/prometheus/...`
+#                     reverse-proxy path on the QCOS API server is used.
+#                     When set (http:// or https://), the WebUI will talk to
+#                     this URL directly instead of the QCOS reverse proxy.
+#   alertmanager_url - optional; override base URL for Alertmanager queries.
+#                     When omitted, the built-in `/v1/proxy/alertmanager/...`
+#                     reverse-proxy path on the QCOS API server is used.
+#                     When set (http:// or https://), the WebUI will talk to
+#                     this URL directly instead of the QCOS reverse proxy.
 #
 # Example (multiple endpoints, https with custom CA):
 # QCOS_API_ENDPOINTS = [
 #   { name = "local",      alias = "本地开发环境", url = "http://127.0.0.1:18400" },
 #   { name = "production", alias = "生产环境",     url = "https://127.0.0.1:18400", use_ssl = true, cacert = "/etc/qcos/ssl/cacert.pem" },
+#   { name = "remote-mon", alias = "独立监控",     url = "http://127.0.0.1:18400", prometheus_url = "http://prometheus:9090", alertmanager_url = "http://alertmanager:9093" },
 # ]
 QCOS_API_ENDPOINTS = [
   { name = "local", alias = "本地开发环境", url = "http://127.0.0.1:18400" }

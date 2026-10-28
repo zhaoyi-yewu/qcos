@@ -108,3 +108,58 @@ groups:
         annotations:
           summary: "API响应时间过长"
           description: "API P95响应时间超过2秒"
+
+      # ===== System resource alerts (qcos_system_*) =====
+      - alert: HostCpuUsageHigh
+        expr: qcos_system_host_cpu_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "主机CPU使用率过高"
+          description: "主机CPU使用率超过90%已持续5分钟 (当前: {{ $value }}%)"
+
+      - alert: HostMemoryUsageHigh
+        expr: qcos_system_mem_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "主机内存使用率过高"
+          description: "主机内存使用率超过90%已持续5分钟 (当前: {{ $value }}%)"
+
+      - alert: DiskUsageHigh
+        expr: qcos_system_disk_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "磁盘使用率过高"
+          description: "工作分区磁盘使用率超过85%已持续5分钟 (当前: {{ $value }}%)"
+
+      - alert: DiskUsageCritical
+        expr: qcos_system_disk_percent > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "磁盘即将耗尽"
+          description: "工作分区磁盘使用率超过95% (当前: {{ $value }}%)"
+
+      - alert: ApiServerMemoryHigh
+        expr: qcos_system_rss_mb > 4096
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API服务进程内存占用过高"
+          description: "API server进程RSS内存超过4GB已持续5分钟 (当前: {{ $value }}MB)"
+
+      - alert: ApiServerThreadLeak
+        expr: qcos_system_thread_count > 200
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API服务线程数异常"
+          description: "API server线程数超过200已持续10分钟，可能存在线程泄漏 (当前: {{ $value }})"

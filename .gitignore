@@ -52,6 +52,7 @@ docs/api-docs/js/
 docs/api-docs/dist/
 docs/sphinx/source/api/
 docs/sphinx/source/_static/qcos-api-docs.html
+docs/sphinx/source/_static/qcos-mcp-docs.html
 docs/sphinx/source/_static/js/
 docs/openapi-docs/dist/
 

@@ -58,6 +58,18 @@ filename = "build-scripts/version"
 search = "QCOS_VERSION={current_version}"
 replace = "QCOS_VERSION={new_version}"
 
+# WebUI version (constant consumed by the Vue app)
+[[tool.bumpversion.files]]
+filename = "webui/src/version.js"
+search = "WEBUI_VERSION = '{current_version}'"
+replace = "WEBUI_VERSION = '{new_version}'"
+
+# WebUI package.json version (kept in sync for tooling / docker tags)
+[[tool.bumpversion.files]]
+filename = "webui/package.json"
+search = "\"version\": \"{current_version}\""
+replace = "\"version\": \"{new_version}\""
+
 # Changelog version
 [[tool.bumpversion.files]]
 filename = "CHANGELOG.md"
