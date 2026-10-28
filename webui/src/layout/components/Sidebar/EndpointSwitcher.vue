@@ -1,4 +1,4 @@
-<!--
+，<!--
   Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 
   qcos is licensed under Mulan PSL v2.
@@ -136,7 +136,7 @@ async function onChange(name) {
   // log in again even though a re-login is unavoidable anyway.
   const hasSession = userStore.loadSessionForActiveEndpoint()
   if (!hasSession) {
-    router.push({ path: '/login', query: { redirect: route.fullPath, endpoint: name } })
+    router.push({ path: '/login', query: { redirect: route.fullPath, endpoint: name }})
     return
   }
   try {
@@ -151,7 +151,7 @@ async function onChange(name) {
     removeSession(name)
     userStore.resetToken()
     ElMessage.warning(`endpoint ${name} 登录态已失效，请重新登录`)
-    router.push({ path: '/login', query: { redirect: route.fullPath, endpoint: name } })
+    router.push({ path: '/login', query: { redirect: route.fullPath, endpoint: name }})
   }
 }
 </script>
@@ -159,8 +159,13 @@ async function onChange(name) {
 <style lang="scss" scoped>
 .endpoint-switcher {
   padding: 8px 10px;
-  background: #2b2f3a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  // Follow the sidebar color-mode-aware background. The
+  // --qcos-sub-menu-bg variable is set by utils/theme.js for both
+  // light and dark color modes (and by applyTheme() for non-default
+  // primary presets), so this block blends seamlessly with the rest
+  // of the sidebar.
+  background: var(--qcos-sub-menu-bg, #1f2d3d);
+  border-bottom: 1px solid var(--el-border-color-lighter, rgba(255, 255, 255, 0.06));
   display: flex;
   align-items: center;
   gap: 8px;
@@ -174,7 +179,10 @@ async function onChange(name) {
 .endpoint-label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.65);
+  // Use the same color as regular sidebar menu text so the label is
+  // legible in both light (#303133 on #f0f2f5) and dark (rgba(255,255,255,0.65)
+  // on #1f2d3d) sidebars.
+  color: var(--qcos-menu-text, rgba(255, 255, 255, 0.65));
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -191,19 +199,23 @@ async function onChange(name) {
   }
 
   :deep(.el-select__wrapper) {
-    background: rgba(255, 255, 255, 0.08);
+    // Subtle hover-ish background that works in both light and dark
+    // sidebar palettes: use the menu-hover variable at low opacity via
+    // color-mix. Fallback to a translucent white for legacy.
+    background: var(--qcos-menu-hover, rgba(255, 255, 255, 0.08));
     box-shadow: none;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #fff;
+    border: 1px solid var(--el-border-color-lighter, rgba(255, 255, 255, 0.12));
+    color: var(--qcos-menu-text, #fff);
     font-size: 12px;
 
     .el-select__placeholder {
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--qcos-menu-text, rgba(255, 255, 255, 0.5));
+      opacity: 0.6;
       font-size: 12px;
     }
 
     .el-select__selected-item {
-      color: #fff;
+      color: var(--qcos-menu-text, #fff);
       font-size: 12px;
     }
   }

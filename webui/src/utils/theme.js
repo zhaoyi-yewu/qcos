@@ -118,6 +118,36 @@ export function applyColorMode(mode) {
     root.classList.remove('dark')
   }
   root.setAttribute('data-color-mode', mode)
+
+  // Sidebar follows the color mode: light theme uses a soft light-grey
+  // sidebar with dark text; dark theme keeps the legacy deep blue.
+  // Only set these variables when the user has not chosen a custom
+  // primary color preset — applyTheme() writes the same variables for
+  // non-default themes and we don't want to stomp on that choice.
+  const themeKey = getPersistedThemeKey()
+  if (themeKey === DEFAULT_THEME_KEY) {
+    if (mode === 'dark') {
+      // dark mode → legacy deep blue sidebar
+      root.style.setProperty('--qcos-menu-bg', '#001529')
+      root.style.setProperty('--qcos-menu-hover', '#000c17')
+      root.style.setProperty('--qcos-sub-menu-bg', '#000c17')
+      root.style.setProperty('--qcos-sub-menu-hover', '#00060e')
+      root.style.setProperty('--qcos-menu-text', '#bfcbd9')
+      root.style.setProperty('--qcos-menu-active-text', '#409EFF')
+      root.style.setProperty('--qcos-sub-menu-active-text', '#f4f4f5')
+    } else {
+      // light mode → soft light sidebar. The hover background must be
+      // noticeably darker than the base (#f5f7fa) so the highlight is
+      // visible; #e4e7ed was too close and appeared "white on white".
+      root.style.setProperty('--qcos-menu-bg', '#f5f7fa')
+      root.style.setProperty('--qcos-menu-hover', '#e9ecef')
+      root.style.setProperty('--qcos-sub-menu-bg', '#f0f2f5')
+      root.style.setProperty('--qcos-sub-menu-hover', '#dde0e6')
+      root.style.setProperty('--qcos-menu-text', '#303133')
+      root.style.setProperty('--qcos-menu-active-text', '#409EFF')
+      root.style.setProperty('--qcos-sub-menu-active-text', '#303133')
+    }
+  }
 }
 
 /**
@@ -146,11 +176,17 @@ export function applyTheme(key) {
   // default blue theme keep the legacy dark blue sidebar so the UI looks
   // the same as before the theme picker was introduced
   if (preset.key === DEFAULT_THEME_KEY) {
+    // Clear sidebar color overrides; applyColorMode() will re-apply the
+    // appropriate light/dark sidebar palette for the default theme.
     root.style.removeProperty('--qcos-menu-bg')
     root.style.removeProperty('--qcos-menu-hover')
     root.style.removeProperty('--qcos-sub-menu-bg')
     root.style.removeProperty('--qcos-sub-menu-hover')
     root.style.removeProperty('--qcos-menu-active-text')
+    root.style.removeProperty('--qcos-menu-text')
+    root.style.removeProperty('--qcos-sub-menu-active-text')
+    // Re-apply color-mode-specific sidebar palette for the default theme
+    applyColorMode(getPersistedColorMode())
   } else {
     // darker shades of the primary color keep the active menu item (which
     // uses primary directly) readable against the sidebar background
