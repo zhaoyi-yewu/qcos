@@ -88,6 +88,7 @@ dependencies = [
     "prometheus-client==0.25.0",
     "psutil==7.2.2",
     "psycopg==3.3.3",
+    "ptyprocess==0.7.0",
     "pulp==3.3.2",
     "pwdlib==0.3.0",
     "py-spy==0.4.2",
@@ -196,6 +197,8 @@ docs = [
     # auto api docs
     "fastapi==0.139.2",
     "fastapi-jsonrpc==3.5.0",
+    # auto mcp api docs (reflection via mcp.list_tools())
+    "mcp==2.3.0",
 ]
 
 # requirements of sandbox

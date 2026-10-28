@@ -139,6 +139,14 @@ METRICS_SERVER_LISTEN_IP = ""
 # API server listen port
 METRICS_SERVER_LISTEN_PORT = 19400
 
+[PROXY]
+# Reverse-proxy upstream endpoints mounted under /v1/proxy/<service>.
+# Empty string disables the corresponding proxy endpoint.
+# Prometheus base URL (used by /v1/proxy/prometheus/*)
+PROMETHEUS_BASE_URL = "http://127.0.0.1:9090"
+# Alertmanager base URL (used by /v1/proxy/alertmanager/*)
+ALERTMANAGER_BASE_URL = "http://127.0.0.1:9093"
+
 [LOG]
 # api log file
 API_LOG_FILE = "/var/log/qcos/qcos-api.log"
@@ -162,6 +170,67 @@ USE_SSL = false
 # SSL KEY_FILE
 # eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
 # KEY_FILE =
+
+[TERMINAL]
+# Master switch for the in-browser terminal. Default off; flip to true
+# to expose /v1/terminal/ws and /v1/terminal/files on the API server.
+ENABLED = true
+
+# Idle session timeout in seconds; sessions idle longer than this are
+# reaped by the background task. 0 disables the reaper.
+IDLE_TIMEOUT_SECONDS = 1800
+
+# Per-user and global concurrent session caps.
+MAX_SESSIONS_PER_USER = 4
+MAX_SESSIONS_TOTAL = 128
+
+# Default shell path inside the sandbox (used when ENTRY_COMMAND is empty).
+DEFAULT_SHELL = "/bin/bash"
+
+# Entry command spawned inside the sandbox. Change to
+# "qcos-cli interactive" for a QCOS-native REPL.
+ENTRY_COMMAND = "/bin/bash"
+
+# Use bwrap for per-user isolation. false runs a bare host shell
+# (debug only - do NOT use in production).
+#
+# NOTE: requires the qcos-api container to run with CAP_SYS_ADMIN
+# (and seccomp=unconfined) for bwrap to create user/mount namespaces.
+# If you see "bwrap: Creating new namespace failed: Operation not
+# permitted", either grant those capabilities or set this to false.
+SANDBOX_ENABLED = false
+
+# Host directory holding one subdir per user UUID (mode 0700).
+SANDBOX_ROOT = "/var/qcos/users"
+
+# Path bind-mounted read-only inside the sandbox (QCOS install root).
+QCOS_ROOT = "/bin/"
+
+# seccomp blacklist profile name or path to a custom BPF file.
+SECCOMP_PROFILE = "default"
+
+# Sandbox network policy:
+#   "none"           - default, fully disconnected (adds --unshare-net)
+#   "local-api-only" - allow only 127.0.0.1:QCOS_API_PORT via host firewall
+#   "full"           - no restriction (debug only)
+NET_POLICY = "local-api-only"
+
+# QCOS API listen port override; used by NET_POLICY=local-api-only as
+# the only allowed egress target. When commented out / omitted, the
+# value falls back to [API_SERVER].API_SERVER_LISTEN_PORT so operators
+# do not need to keep two port fields in sync.
+# QCOS_API_PORT = 18400
+
+# Per-file upload size cap in megabytes for /v1/terminal/files/upload.
+MAX_UPLOAD_MB = 100
+
+# Record asciinema .cast transcripts of each session. Default off;
+# transcripts may contain sensitive output.
+RECORD_TRANSCRIPT = false
+
+# Root directory for transcripts. Per-user files land in
+# {TRANSCRIPT_DIR}/users/{USER_UUID}/ with mode 0700.
+TRANSCRIPT_DIR = "/var/log/qcos/terminal"
 
 [DEVICES]
 # DEVICE_LIST example:
