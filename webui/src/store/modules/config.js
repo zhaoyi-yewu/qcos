@@ -51,8 +51,8 @@ export const useConfigStore = defineStore('config', {
       this.endpointProbeTimeoutMs = data.endpointProbeTimeoutMs || 3000
       this.endpoints = data.endpoints || []
       const cookieName = getActiveEndpoint()
-      const fallback = this.defaultEndpoint
-        || (this.endpoints[0] && this.endpoints[0].name) || ''
+      const fallback = this.defaultEndpoint ||
+        (this.endpoints[0] && this.endpoints[0].name) || ''
       this.activeEndpointName =
         this.endpoints.some(e => e.name === cookieName) ? cookieName : fallback
     },
@@ -94,7 +94,7 @@ export const useConfigStore = defineStore('config', {
             jsonrpc: '2.0',
             id: 1,
             method: 'version',
-            params: { body: { details: false } }
+            params: { body: { details: false }}
           }),
           signal: ctrl.signal
         })

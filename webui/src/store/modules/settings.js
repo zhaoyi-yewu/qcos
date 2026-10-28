@@ -28,6 +28,16 @@ import {
 
 const { showSettings, fixedHeader, sidebarLogo } = defaultSettings
 
+const NAVBAR_COLLAPSED_KEY = 'qcos-navbar-collapsed'
+
+function readNavbarCollapsed() {
+  try {
+    return window.localStorage.getItem(NAVBAR_COLLAPSED_KEY) === '1'
+  } catch (e) {
+    return false
+  }
+}
+
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
     showSettings: showSettings,
@@ -37,7 +47,11 @@ export const useSettingsStore = defineStore('settings', {
     // remaps all element-plus CSS variables via theme-chalk/dark/css-vars.css
     colorMode: DEFAULT_COLOR_MODE,
     // primary color preset key; see utils/theme.js for the preset list
-    theme: DEFAULT_THEME_KEY
+    theme: DEFAULT_THEME_KEY,
+    // whether the top navbar is collapsed (slid up out of view). When
+    // collapsed, a small floating button is shown on the top-right to
+    // expand it back.
+    navbarCollapsed: readNavbarCollapsed()
   }),
   actions: {
     changeSetting({ key, value }) {
@@ -78,6 +92,19 @@ export const useSettingsStore = defineStore('settings', {
       this.theme = key
       persistThemeKey(key)
       applyTheme(key)
+    },
+
+    // toggle the top navbar visibility (collapsed = slid up out of view)
+    toggleNavbarCollapsed() {
+      this.navbarCollapsed = !this.navbarCollapsed
+      try {
+        window.localStorage.setItem(
+          NAVBAR_COLLAPSED_KEY,
+          this.navbarCollapsed ? '1' : '0'
+        )
+      } catch (e) {
+        // ignore (e.g. privacy mode)
+      }
     }
   }
 })

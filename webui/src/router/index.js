@@ -219,10 +219,16 @@ export const constantRoutes = [
   {
     path: '/system-mgmt',
     component: Layout,
-    redirect: '/system-mgmt/system-info',
+    redirect: '/system-mgmt/monitor-center',
     name: 'SystemManager',
     meta: { title: '系统监控', icon: 'el-icon-monitor', roles: ['admin'] },
     children: [
+      {
+        path: 'monitor-center',
+        name: 'MonitorCenter',
+        component: () => import('@/views/system/monitor_center.vue'),
+        meta: { title: '监控中心', icon: 'el-icon-data-analysis' }
+      },
       {
         path: 'system-info',
         name: 'SystemInfo',
