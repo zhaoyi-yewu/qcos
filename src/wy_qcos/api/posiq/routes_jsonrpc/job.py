@@ -1141,12 +1141,23 @@ def update_job(
         )
 
     try:
-        # Validate job_priority with scheduler before modifying database
-        if body.job_priority is not None:
+        # Validate job_priority with scheduler before modifying database.
+        # Only job_priority is restricted to QUEUED state; job_name and
+        # description can be updated at any time. When the requested
+        # priority equals the current value, the update is a no-op:
+        # skip the QUEUED check, the scheduler call and the DB write
+        # so that re-submitting the same value never fails
+        priority_changed = (
+            body.job_priority is not None
+            and body.job_priority != job_record.job_priority
+        )
+        if priority_changed:
             # check job status
             if job_record.job_status != Constant.JOB_STATUS_QUEUED:
                 err_msg = (
-                    f"Job: '{job_id}' is not in QUEUED state. Can't update_job"
+                    f"Job: '{job_id}' is not in QUEUED state. "
+                    f"job_priority can only be updated when the job is "
+                    f"QUEUED (current status: {job_record.job_status})"
                 )
                 jsonrpc_errors.handle_error_internal_server(
                     module_name, func_name, (False, err_msg)
@@ -1179,7 +1190,7 @@ def update_job(
         if body.description is not None:
             job_record.description = body.description
             updated = True
-        if body.job_priority is not None:
+        if priority_changed:
             job_record.job_priority = body.job_priority
             updated = True
 
