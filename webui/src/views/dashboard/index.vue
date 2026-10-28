@@ -145,7 +145,7 @@ export default {
     height: 100%;
     z-index: -2;
     pointer-events: none;
-    background: url('@/assets/background/6e04.png') no-repeat center/cover;
+    background: url('@/assets/background/dashboard-bottom.png') no-repeat center/cover;
     opacity: 0.8;
   }
 
@@ -160,7 +160,7 @@ export default {
     min-height: 300px;
     z-index: -1;
     pointer-events: none;
-    background-image: url('@/assets/background/5b49.png');
+    background-image: url('@/assets/background/dashboard-top.png');
     background-size: cover;
     background-position: center top;
     background-repeat: no-repeat;

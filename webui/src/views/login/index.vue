@@ -124,6 +124,7 @@
         <span>认证模式: {{ authMode === 'no' ? '未开启认证' : authMode }}</span>
       </div>
 
+      <div class="login-version-footer">QCOS管理界面版本: v{{ webuiVersion }}</div>
     </el-form>
   </div>
 </template>
@@ -135,6 +136,7 @@ import { useUserStore } from '@/store/modules/user'
 import { useConfigStore } from '@/store/modules/config'
 import { validUsername } from '@/utils/validate'
 import { Loading, Cpu } from '@element-plus/icons-vue'
+import { WEBUI_VERSION } from '@/version'
 
 export default {
   name: 'LoginPage',
@@ -310,7 +312,8 @@ export default {
       selectedEndpointStatus,
       showPwd,
       onEndpointChange,
-      handleLogin
+      handleLogin,
+      webuiVersion: WEBUI_VERSION
     }
   }
 }
@@ -392,7 +395,7 @@ $cursor: #333;
 </style>
 
 <style lang="scss" scoped>
-$bg: linear-gradient(135deg, #1a2a6c, #2d4a8a 50%, #3a6bb5);
+$bg: url('@/assets/background/login-bg.png') no-repeat center center / cover;
 $dark_gray: #5a6a7a;
 $light_gray: #333;
 
@@ -427,6 +430,17 @@ $light_gray: #333;
     gap: 20px;
   }
 
+  .login-version-footer {
+    position: absolute;
+    right: 14px;
+    bottom: 8px;
+    font-size: 12px;
+    color: #909399;
+    opacity: 0.85;
+    pointer-events: none;
+    user-select: none;
+  }
+
   .form-label-with-icon {
     display: inline-flex;
     align-items: center;
@@ -449,6 +463,7 @@ $light_gray: #333;
       color: #1a2a6c;
       margin: 0 auto 8px auto;
       font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     .subtitle {
