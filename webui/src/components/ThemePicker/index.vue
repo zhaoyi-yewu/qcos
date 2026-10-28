@@ -1,4 +1,4 @@
-<!--
+，<!--
   Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 
   qcos is licensed under Mulan PSL v2.
@@ -131,7 +131,10 @@ export default {
 <style scoped>
 .theme-picker {
   padding: 8px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  /* Use Element Plus border color variable so the divider matches the
+     active sidebar color mode (light sidebar → light border, dark
+     sidebar → subtle white border). */
+  border-top: 1px solid var(--el-border-color-lighter, rgba(255, 255, 255, 0.1));
 }
 
 .theme-picker.collapsed {
@@ -145,7 +148,9 @@ export default {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #bfcbd9;
+  /* Sidebar text color follows the color mode (set by utils/theme.js):
+     #303133 on light sidebar, #bfcbd9 on dark sidebar. */
+  color: var(--qcos-menu-text, #bfcbd9);
   font-size: 13px;
   padding: 6px;
   border-radius: 4px;
@@ -158,8 +163,10 @@ export default {
 }
 
 .theme-picker-trigger:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  /* Use the menu-hover variable so the highlight matches the rest of
+     the sidebar items in both light and dark modes. */
+  background: var(--qcos-menu-hover, rgba(255, 255, 255, 0.08));
+  color: var(--qcos-menu-active-text, #ffffff);
 }
 
 /* match the sidebar menu item icon style (1em, currentColor) */

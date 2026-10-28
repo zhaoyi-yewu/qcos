@@ -14,7 +14,7 @@
 -->
 
 <template>
-  <div style="padding: 0 15px;" @click="toggleClick">
+  <div class="hamburger-wrapper" @click="toggleClick">
     <svg
       :class="{'is-active':isActive}"
       class="hamburger"
@@ -47,14 +47,30 @@ export default {
 </script>
 
 <style scoped>
+.hamburger-wrapper {
+  padding: 0 15px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.hamburger-wrapper:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
 .hamburger {
   display: inline-block;
   vertical-align: middle;
   width: 20px;
   height: 20px;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .hamburger.is-active {
   transform: rotate(180deg);
+}
+
+.hamburger-wrapper:hover .hamburger {
+  color: var(--qcos-menu-active-text, #409eff);
 }
 </style>
