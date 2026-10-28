@@ -13,10 +13,10 @@
  * See the Mulan PSL v2 for more details.
  */
 
-// Patched: removed RegExp 'd' (hasIndices) flag for MS Edge compatibility.
-// The 'd' flag is not supported by older versions of Microsoft Edge and causes
-// "SyntaxError: Invalid flags supplied to RegExp constructor 'd'" at runtime.
-// The match.indices feature is not used in the QASM editor context.
+// Patched: removed RegExp 'd' (hasIndices) flag for older MS Edge compatibility.
+// The capture-group start/end columns are computed via String.prototype.indexOf,
+// which yields exactly the same values as match.indices[1][0] / match.indices[1][1]
+// for the '\\bMARK:\\s*(.*)$' pattern (single capturing group, no nested groups).
 const markRegex = new RegExp('\\bMARK:\\s*(.*)$');
 const trimDashesRegex = /^-+|-+$/g;
 /**
@@ -65,27 +65,37 @@ function collectMarkHeaders(model) {
     const endLineNumber = model.getLineCount();
     for (let lineNumber = 1; lineNumber <= endLineNumber; lineNumber++) {
         const lineContent = model.getLineContent(lineNumber);
-        const markMatch = lineContent.match(markRegex);
-        if (markMatch) {
-            const range = { startLineNumber: lineNumber, startColumn: markMatch[0].length + 1, endLineNumber: lineNumber, endColumn: lineContent.length + 1 };
-            if (range.endColumn > range.startColumn) {
-                const sectionHeader = {
-                    range,
-                    ...getHeaderText(lineContent.substring(markMatch[0].length)),
-                    shouldBeInComments: false
-                };
-                if (sectionHeader.text || sectionHeader.hasSeparatorLine) {
-                    markHeaders.push(sectionHeader);
-                }
-            }
-        }
+        addMarkHeaderIfFound(lineContent, lineNumber, markHeaders);
     }
     return markHeaders;
 }
-function getHeaderText(text) {
-    text = text.replace(trimDashesRegex, '').trim();
-    if (text.length > 0) {
-        return { text: text, hasSeparatorLine: text.includes('\n') };
+function addMarkHeaderIfFound(lineContent, lineNumber, sectionHeaders) {
+    markRegex.lastIndex = 0;
+    const match = markRegex.exec(lineContent);
+    if (match) {
+        // Equivalent of match.indices[1][0] / match.indices[1][1] without 'd' flag.
+        // match[1] is the captured text after 'MARK:' and optional whitespace.
+        // Its position in lineContent is match.index + offset of match[1] inside match[0].
+        const groupOffsetInMatch = match[0].indexOf(match[1]);
+        const groupStartInLine = match.index + (groupOffsetInMatch === -1 ? match[0].length - match[1].length : groupOffsetInMatch);
+        const column = groupStartInLine + 1;
+        const endColumn = groupStartInLine + match[1].length + 1;
+        const range = { startLineNumber: lineNumber, startColumn: column, endLineNumber: lineNumber, endColumn: endColumn };
+        if (range.endColumn > range.startColumn) {
+            const sectionHeader = {
+                range,
+                ...getHeaderText(match[1]),
+                shouldBeInComments: true
+            };
+            if (sectionHeader.text || sectionHeader.hasSeparatorLine) {
+                sectionHeaders.push(sectionHeader);
+            }
+        }
     }
-    return { hasSeparatorLine: false };
+}
+function getHeaderText(text) {
+    text = text.trim();
+    const hasSeparatorLine = text.startsWith('-');
+    text = text.replace(trimDashesRegex, '');
+    return { text, hasSeparatorLine };
 }

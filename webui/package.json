@@ -1,6 +1,6 @@
 {
   "name": "vue-admin-template",
-  "version": "5.1.0",
+  "version": "1.8.0",
   "description": "A vue admin template with Element Plus & axios & iconfont & permission control & lint",
   "author": "ljl",
   "scripts": {
@@ -9,7 +9,8 @@
     "build:stage": "vite build --mode staging",
     "preview": "vite preview",
     "svgo": "svgo -f src/icons/svg --config=src/icons/svgo.yml",
-    "lint": "eslint --ext .js,.vue src"
+    "lint": "eslint --ext .js,.vue src",
+    "postinstall": "node scripts/patch-monaco.js"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -27,7 +28,13 @@
     "pinia": "^2.2.6",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.2",
-    "vue-router": "^4.5.0"
+    "vue-echarts": "^7.0.3",
+    "grid-layout-plus": "^1.1.1",
+    "vue-router": "^4.5.0",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/addon-search": "^0.15.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
@@ -95,7 +102,7 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.24.0",
-    "@rollup/rollup-win32-x64-msvc": "^4.24.0"
+    "@rollup/rollup-win32-x64-msvc": "^4.65.0"
   },
   "browserslist": [
     "> 1%",
