@@ -619,6 +619,22 @@ class Constant:
     API_LAST_HOUR_REQUESTS = "last_hour_requests"
     API_LAST_DAY_REQUESTS = "last_day_requests"
 
+    # System stats Prometheus metric names (qcos_system_*)
+    # Process-level
+    SYSTEM_STATS_RSS_MB = "qcos_system_rss_mb"
+    SYSTEM_STATS_VMS_MB = "qcos_system_vms_mb"
+    SYSTEM_STATS_THREAD_COUNT = "qcos_system_thread_count"
+    SYSTEM_STATS_NUM_OBJECTS = "qcos_system_num_objects"
+    SYSTEM_STATS_CPU_PERCENT = "qcos_system_process_cpu_percent"
+    # Host-level
+    SYSTEM_STATS_HOST_CPU_PERCENT = "qcos_system_host_cpu_percent"
+    SYSTEM_STATS_CPU_COUNT = "qcos_system_cpu_count"
+    SYSTEM_STATS_MEM_TOTAL_MB = "qcos_system_mem_total_mb"
+    SYSTEM_STATS_MEM_PERCENT = "qcos_system_mem_percent"
+    SYSTEM_STATS_DISK_TOTAL_MB = "qcos_system_disk_total_mb"
+    SYSTEM_STATS_DISK_FREE_MB = "qcos_system_disk_free_mb"
+    SYSTEM_STATS_DISK_PERCENT = "qcos_system_disk_percent"
+
     DEFAULT_JOB_QUERY_INTERVAL = 5
     DEFAULT_JOB_WAIT_TIME = 604800
 
