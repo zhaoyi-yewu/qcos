@@ -149,3 +149,46 @@ class TestClient:
         assert reason == "Bad Request"
         assert text == "error"
         assert result is None
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_system_stats(self, mock_call_json_rpc):
+        """Test get_system_stats method."""
+        expected = {
+            "pid": 1234,
+            "rss_mb": 100.0,
+            "vms_mb": 200.0,
+            "thread_count": 10,
+            "num_objects": 5000,
+            "cpu_percent": 5.5,
+            "cpu_count": 8,
+            "host_cpu_percent": 35.2,
+            "mem_total_mb": 16384.0,
+            "mem_percent": 45.5,
+            "disk_total_mb": 512000.0,
+            "disk_free_mb": 256000.0,
+            "disk_percent": 50.0,
+        }
+        mock_call_json_rpc.return_value = (200, "OK", "text", expected)
+        status_code, reason, text, result = client.get_system_stats()
+        assert status_code == 200
+        assert reason == "OK"
+        assert text == "text"
+        assert result == expected
+        mock_call_json_rpc.assert_called_once_with(
+            client.metrics_url, "get_system_stats", body_data=None
+        )
+
+    @patch.object(Client, "call_json_rpc")
+    def test_get_system_stats_failure(self, mock_call_json_rpc):
+        """Test get_system_stats method with failure response."""
+        mock_call_json_rpc.return_value = (
+            500,
+            "Internal Server Error",
+            "error",
+            None,
+        )
+        status_code, reason, text, result = client.get_system_stats()
+        assert status_code == 500
+        assert reason == "Internal Server Error"
+        assert text == "error"
+        assert result is None

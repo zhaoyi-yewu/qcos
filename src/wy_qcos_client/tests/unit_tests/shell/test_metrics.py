@@ -28,6 +28,7 @@ from wy_qcos_client.shell import (
     GetSystemHealth,
     GetApiStats,
     GetJobStats,
+    GetSystemStats,
 )
 from wy_qcos_client.common.qcos_version import QcosVersion
 
@@ -130,3 +131,46 @@ class TestGetJobStats:
         mock_get_table_list_data.return_value = None
         table_values = GetJobStats(shell, None).take_action(mock_client)
         assert table_values is None
+
+
+class TestGetSystemStats:
+    def test_get_parser(self):
+        cmd = GetSystemStats(shell, None)
+        parser = cmd.get_parser("")
+        assert parser is not None
+
+    @patch.object(CommandHelper, "get_table_list_data")
+    @patch.object(CommandHelper, "check_results")
+    @patch.object(Client, "get_system_stats")
+    def test_take_action(
+        self,
+        mock_get_system_stats,
+        mock_check_results,
+        mock_get_table_list_data,
+    ):
+        mock_client = Mock(spec=Namespace)
+        mock_get_system_stats.return_value = (200, "OK", "text", None)
+        mock_check_results.return_value = {
+            "pid": 1234,
+            "rss_mb": 100.0,
+            "vms_mb": 200.0,
+            "thread_count": 10,
+            "num_objects": 5000,
+            "cpu_percent": 5.5,
+            "cpu_count": 8,
+            "host_cpu_percent": 35.2,
+            "mem_total_mb": 16384.0,
+            "mem_percent": 45.5,
+            "disk_total_mb": 512000.0,
+            "disk_free_mb": 256000.0,
+            "disk_percent": 50.0,
+        }
+        mock_get_table_list_data.return_value = None
+        table_values = GetSystemStats(shell, None).take_action(mock_client)
+        assert table_values is None
+
+    def test_command_registered(self):
+        """Verify get-system-stats is registered with the command manager."""
+        from wy_qcos_client.shell import command_manager as cm
+
+        assert "get-system-stats" in cm.commands
