@@ -157,7 +157,14 @@ export default {
           const list = []
           for (const fid in raw) {
             const f = raw[fid] || {}
-            list.push({ id: f.id || fid, name: f.name || fid })
+            // carry the description so the dropdown can render
+            // "name (description)" labels and tooltips; falls back to
+            // empty string when the flavor has no description
+            list.push({
+              id: f.id || fid,
+              name: f.name || fid,
+              description: f.description || ''
+            })
           }
           this.sharedFlavorOptions = list
         } else {

@@ -154,19 +154,19 @@
         width="90"
       >
         <template #default="scope">
+          <el-tooltip content="查看" placement="top">
+            <el-button
+              link
+              :icon="View"
+              @click="viewUserDetails(scope.row.id)"
+            />
+          </el-tooltip>
           <el-tooltip content="更新" placement="top">
             <el-button
               link
               type="primary"
               :icon="Edit"
               @click="openUpdateDialog(scope.row)"
-            />
-          </el-tooltip>
-          <el-tooltip content="查看" placement="top">
-            <el-button
-              link
-              :icon="View"
-              @click="viewUserDetails(scope.row.id)"
             />
           </el-tooltip>
         </template>

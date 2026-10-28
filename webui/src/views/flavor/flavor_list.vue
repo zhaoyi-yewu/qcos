@@ -124,19 +124,19 @@
         width="90"
       >
         <template #default="scope">
+          <el-tooltip content="查看" placement="top">
+            <el-button
+              link
+              :icon="View"
+              @click="viewFlavorDetails(scope.row.id)"
+            />
+          </el-tooltip>
           <el-tooltip content="更新" placement="top">
             <el-button
               link
               type="primary"
               :icon="Edit"
               @click="openUpdateDialog(scope.row)"
-            />
-          </el-tooltip>
-          <el-tooltip content="查看" placement="top">
-            <el-button
-              link
-              :icon="View"
-              @click="viewFlavorDetails(scope.row.id)"
             />
           </el-tooltip>
         </template>
@@ -238,9 +238,23 @@
             <el-option
               v-for="group in deviceGroupOptions"
               :key="group.id"
-              :label="group.name"
+              :label="deviceGroupLabel(group)"
               :value="group.id"
-            />
+            >
+              <el-tooltip
+                placement="right"
+                :show-after="200"
+                raw-content
+                :content="deviceGroupTooltipHtml(group)"
+                popper-class="device-option-tooltip"
+                :disabled="!group.description"
+              >
+                <div class="device-group-option-row">
+                  <span class="group-name">{{ group.name }}</span>
+                  <span v-if="group.description" class="group-desc">({{ group.description }})</span>
+                </div>
+              </el-tooltip>
+            </el-option>
           </el-select>
         </el-form-item>
 
@@ -406,12 +420,23 @@ export default {
         if (!response.error) {
           const groups = response.result
           this.deviceGroupOptions = []
+          // keep the description so the option label and tooltip can
+          // render "name (description)"; matches the resource spec
+          // dropdown on the job submit page
           if (Array.isArray(groups)) {
-            this.deviceGroupOptions = groups.map(g => ({ id: g.id, name: g.name }))
+            this.deviceGroupOptions = groups.map(g => ({
+              id: g.id,
+              name: g.name,
+              description: g.description || ''
+            }))
           } else if (groups && typeof groups === 'object') {
             for (const groupId in groups) {
               const g = groups[groupId]
-              this.deviceGroupOptions.push({ id: g.id, name: g.name })
+              this.deviceGroupOptions.push({
+                id: g.id,
+                name: g.name,
+                description: g.description || ''
+              })
             }
           }
         } else {
@@ -430,6 +455,30 @@ export default {
         return '-'
       }
       return deviceGroups.join(', ')
+    },
+
+    // label shown in the device-group dropdown: "name (description)" when
+    // a description exists, otherwise just the name; matches the resource
+    // spec dropdown on the job submit page
+    deviceGroupLabel(group) {
+      const desc = (group && group.description) || ''
+      return desc ? `${group.name} (${desc})` : (group ? group.name : '')
+    },
+
+    // Build the HTML string used as the el-tooltip content for a device
+    // group option; mirrors the flavor dropdown on the job submit page
+    deviceGroupTooltipHtml(group) {
+      if (!group || !group.description) return ''
+      const rows = [
+        ['名称', group.name],
+        ['描述', group.description]
+      ]
+      const rowStyle = 'display:flex;align-items:flex-start;gap:8px;line-height:1.5;'
+      const labelStyle = 'font-weight:600;opacity:0.85;min-width:56px;display:inline-block;'
+      const rowsHtml = rows.map(([label, value]) =>
+        `<div style="${rowStyle}"><span style="${labelStyle}">${label}:</span><span>${value}</span></div>`
+      ).join('')
+      return `<div style="display:flex;flex-direction:column;gap:4px;font-size:12px;max-width:380px;word-break:break-all;">${rowsHtml}</div>`
     },
 
     viewFlavorDetails(flavorId) {
@@ -649,5 +698,18 @@ export default {
 
 :deep(.el-form-item__label) {
   font-weight: 500;
+}
+
+/* device group option row -- mirrors the resource spec dropdown on the
+   job submit page */
+.device-group-option-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.device-group-option-row .group-desc {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

@@ -172,9 +172,81 @@
               @click="viewJobDetail(scope.row.job_id)"
             />
           </el-tooltip>
+          <el-tooltip content="更新" placement="top">
+            <el-button
+              link
+              type="primary"
+              :icon="Edit"
+              @click="openUpdateJobDialog(scope.row)"
+            />
+          </el-tooltip>
         </template>
       </el-table-column>
     </PageTable>
+
+    <!-- Update job dialog (job_priority requires QUEUED status;
+         job_name and description can be updated at any time) -->
+    <el-dialog
+      v-model="updateJobDialog.visible"
+      title="更新作业"
+      width="520px"
+      align-center
+      :close-on-click-modal="false"
+      @close="resetUpdateJobDialog"
+    >
+      <el-form
+        ref="updateJobFormRef"
+        :model="updateJobDialog.form"
+        :rules="updateJobRules"
+        label-width="120px"
+      >
+        <el-form-item label="作业ID">
+          <el-input v-model="updateJobDialog.form.job_id" disabled />
+        </el-form-item>
+        <el-form-item label="作业名称" prop="job_name">
+          <el-input
+            v-model="updateJobDialog.form.job_name"
+            placeholder="不修改"
+            clearable
+            maxlength="128"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="作业描述" prop="description">
+          <el-input
+            v-model="updateJobDialog.form.description"
+            type="textarea"
+            :rows="3"
+            placeholder="不修改"
+            clearable
+            maxlength="512"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="优先级" prop="job_priority">
+          <el-input-number
+            v-model="updateJobDialog.form.job_priority"
+            :min="1"
+            :max="10"
+            :step="1"
+            controls-position="right"
+            placeholder="不修改"
+            style="width: 100%"
+          />
+          <div class="form-item-tip">
+            取值 1-10，1 为最高优先级，10 为最低；留空表示不修改；仅当作业处于排队中（QUEUED）状态时才允许修改优先级，作业名称和描述可在任意状态修改
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="updateJobDialog.visible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="updateJobDialog.submitting"
+          @click="submitUpdateJob"
+        >确定</el-button>
+      </template>
+    </el-dialog>
 
     <!-- job submit dialog: embeds the unified job submit page -->
     <el-dialog
@@ -193,11 +265,11 @@
 
 <script>
 import { markRaw } from 'vue'
-import { Delete, Upload, View } from '@element-plus/icons-vue'
+import { Delete, Upload, View, Edit } from '@element-plus/icons-vue'
 import PageTable from '@/components/PageTable'
 import FilterableTableColumn from '@/components/PageTable/FilterableTableColumn.vue'
 import RefreshInterval from '@/components/RefreshInterval/index.vue'
-import { cancelTask, deleteTask, queryJobs } from '@/api/job'
+import { cancelTask, deleteTask, queryJobs, updateJob } from '@/api/job'
 import { convertDate, customColorMethod, getJobStatus, getJobStatusTag } from '@/common/library'
 import JobSubmit from './job_submit.vue'
 
@@ -213,9 +285,40 @@ export default {
       Delete: markRaw(Delete),
       Upload: markRaw(Upload),
       View: markRaw(View),
+      Edit: markRaw(Edit),
       // control visibility of the job submit dialog
       showSubmitDialog: false,
       selectedRows: [],
+      // update-job dialog state
+      updateJobDialog: {
+        visible: false,
+        submitting: false,
+        form: {
+          job_id: '',
+          job_name: '',
+          description: '',
+          job_priority: null
+        }
+      },
+      updateJobRules: {
+        job_priority: [
+          {
+            validator: (rule, value, callback) => {
+              if (value === null || value === undefined || value === '') {
+                callback()
+                return
+              }
+              const n = Number(value)
+              if (!Number.isInteger(n) || n < 1 || n > 10) {
+                callback(new Error('优先级必须为 1-10 的整数'))
+                return
+              }
+              callback()
+            },
+            trigger: 'blur'
+          }
+        ]
+      },
       // job ID to highlight after navigating from submit page (fades out after 5s)
       highlightJobId: null,
       highlightTimer: null,
@@ -502,6 +605,73 @@ export default {
 
     viewJobDetail(jobId) {
       this.$router.push({ name: 'JobDetail', params: { jobId: jobId }})
+    },
+
+    openUpdateJobDialog(row) {
+      this.updateJobDialog.form = {
+        job_id: row.job_id,
+        job_name: row.job_name || '',
+        description: row.description || '',
+        // do NOT pre-fill job_priority: the field uses "留空表示不修改"
+        // semantics and the backend rejects priority changes on
+        // non-QUEUED jobs. Pre-filling the current value would cause
+        // submitUpdateJob to always include job_priority in the payload
+        // even when the user only intended to rename the job, leading
+        // to a spurious QUEUED-state error on COMPLETED/RUNNING jobs
+        job_priority: null
+      }
+      this.updateJobDialog.visible = true
+    },
+
+    resetUpdateJobDialog() {
+      this.updateJobDialog.submitting = false
+      if (this.$refs.updateJobFormRef) {
+        this.$refs.updateJobFormRef.clearValidate()
+      }
+    },
+
+    async submitUpdateJob() {
+      const formRef = this.$refs.updateJobFormRef
+      if (formRef) {
+        const valid = await formRef.validate().catch(() => false)
+        if (!valid) return
+      }
+      const f = this.updateJobDialog.form
+      const payload = { job_id: f.job_id }
+      if (f.job_name !== '' && f.job_name !== null && f.job_name !== undefined) {
+        payload.job_name = f.job_name
+      }
+      if (f.description !== '' && f.description !== null && f.description !== undefined) {
+        payload.description = f.description
+      }
+      if (f.job_priority !== null && f.job_priority !== undefined && f.job_priority !== '') {
+        payload.job_priority = f.job_priority
+      }
+
+      const hasChange = Object.keys(payload).length > 1
+      if (!hasChange) {
+        this.$message.warning('未做任何修改')
+        return
+      }
+
+      this.updateJobDialog.submitting = true
+      try {
+        const response = await updateJob(payload)
+        if (!response.error) {
+          this.$message.success('作业更新成功')
+          this.updateJobDialog.visible = false
+          if (this.$refs.pageTableRef && this.$refs.pageTableRef.refresh) {
+            this.$refs.pageTableRef.refresh()
+          }
+        } else {
+          this.$message.error(`更新失败：${response.message || '未知错误'}`)
+        }
+      } catch (error) {
+        console.error('更新作业失败:', error)
+        this.$message.error('更新作业失败，请检查网络连接')
+      } finally {
+        this.updateJobDialog.submitting = false
+      }
     }
   }
 }
@@ -517,6 +687,13 @@ export default {
 }
 
 .header { margin: 0; }
+
+.form-item-tip {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
+  margin-top: 4px;
+}
 
 /* status column: tag on top, progress bar below; both are centered
    horizontally and the row is allowed to grow beyond the default 28px */
