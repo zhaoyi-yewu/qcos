@@ -38,6 +38,11 @@ WUYUEQbit量子计算操作系统(QCOS)文档
    .. toctree::
       :maxdepth: 2
 
+      mcp-api
+
+   .. toctree::
+      :maxdepth: 2
+
       api/modules
 
    **代码模块索引与搜索**

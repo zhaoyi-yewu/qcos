@@ -4,11 +4,12 @@
 [<img alt="qcos-cli" width="115" height="20" src="https://img.shields.io/docker/v/qcos/qcos-cli/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-cli"/>](https://hub.docker.com/r/qcos/qcos-cli)
 [<img alt="qcos-webui" width="115" height="20" src="https://img.shields.io/docker/v/qcos/qcos-webui/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-webui"/>](https://hub.docker.com/r/qcos/qcos-webui)
 [<img alt="qcos-sandbox" width="150" height="20" src="https://img.shields.io/docker/v/qcos/qcos-sandbox/latest?logo=docker&amp;logoColor=2496ED&amp;labelColor=white&amp;label=qcos-sandbox"/>](https://hub.docker.com/r/qcos/qcos-sandbox)
-
+<br>
 [<img alt="PyPI - Version" width="95" height="20" src="https://img.shields.io/pypi/v/wy-qcos?logo=pypi&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
 [<img alt="PyPI - Wheel" width="90" height="20" src="https://img.shields.io/pypi/wheel/wy-qcos?logo=python&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
 [<img alt="MCP Server" width="110" height="20" src="https://img.shields.io/badge/MCP-Server-black?logo=modelcontextprotocol"/>](https://qcos.readthedocs.io/zh-cn/latest/user-guide/mcp/mcp.html)
 [<img alt="License" width="150" height="20" src="https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative"/>](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
+<br>
 [<img alt="Codecov" width="110" height="20" src="https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg"/>](https://codecov.io/github/zhaoyi-yewu/qcos)
 [<img alt="Documentation Status" width="86" height="18" src="https://app.readthedocs.org/projects/qcos/badge/?version=latest&amp;style=plastic"/>](https://qcos.readthedocs.io/zh-cn/latest/)
 [<img alt="GITHUB CICD" width="130" height="20" src="https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&amp;logoColor=white&amp;labelColor=blue&amp;label=github/cicd"/>](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)

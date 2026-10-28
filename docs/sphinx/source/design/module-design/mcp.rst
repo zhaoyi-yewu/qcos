@@ -163,7 +163,7 @@ MCP 服务提供丰富的工具（Tools），覆盖 QCOS 主要功能领域：
    * - ``qcos_delete_jobs``
      - 删除作业
    * - ``qcos_update_job``
-     - 更新排队中作业的属性
+     - 更新作业属性（``job_name`` / ``description`` 任意状态可改；``job_priority`` 仅允许在排队中（QUEUED）状态下修改）
 
 资源规格（Flavor）
 ~~~~~~~~~~~~~~~~~~~~

@@ -9,6 +9,12 @@ JSON-RPC API 端点区分。调用 MCP 工具前需先通过 ``qcos_login`` 认�
 获取 JWT Token，后续调用自动在 HTTP Header 中携带
 ``Authorization: Bearer <token>``。
 
+.. note::
+
+   完整的 MCP 工具列表（含参数 schema、默认值、返回值说明）由
+   ``docs/openapi-docs/make-openapi-docs.py`` 自动从源码生成，
+   本文档侧重概念与典型调用流程，与自动生成的工具列表互补。
+
 .. contents:: 目录
    :local:
    :depth: 3
@@ -37,7 +43,7 @@ JSON-RPC API 端点区分。调用 MCP 工具前需先通过 ``qcos_login`` 认�
 
              {
                "username": "admin",
-               "password": "password"
+               "password": "initpassword"
              }
      - .. container:: table-code-small-font
 
@@ -1114,7 +1120,7 @@ JSON-RPC API 端点区分。调用 MCP 工具前需先通过 ``qcos_login`` 认�
 
              {
                "user_name": "user1",
-               "password": "password",
+               "password": "initpassword",
                "roles": ["user"],
                "project_id": "project-uuid",
                "password_expiry_days": 90,
@@ -1234,8 +1240,8 @@ JSON-RPC API 端点区分。调用 MCP 工具前需先通过 ``qcos_login`` 认�
 
              {
                "user_id": "user-uuid",
-               "new_password": "new-password",
-               "old_password": "old-password"
+               "new_password": "resetPassword",
+               "old_password": "initpassword"
              }
      - .. container:: table-code-small-font
 
