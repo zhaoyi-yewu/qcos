@@ -16,13 +16,16 @@
 # ----------------------------------------------------------------------
 
 import asyncio
+import gc
 import logging
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from functools import partial
 
+import psutil
 import redis.asyncio as async_redis
 from prefect.client.schemas.objects import WorkerStatus
 from sqlalchemy.orm import Session
@@ -541,13 +544,110 @@ async def update_system_health_metrics():
         )
 
 
+def _collect_system_stats_sync():
+    """Synchronously collect all psutil metrics (blocking).
+
+    ``psutil.cpu_percent(interval=...)`` and
+    ``process.cpu_percent(interval=...)`` each block for the given
+    interval (~0.1s each). Running them directly
+    inside an async coroutine freezes the event loop, so this helper is
+    intended to be scheduled on the default executor via
+    :func:`asyncio.AbstractEventLoop.run_in_executor`. All blocking calls
+    are batched here so the async wrapper pays the executor overhead
+    only once per cycle.
+
+    Returns:
+        Tuple of ``(rss_mb, vms_mb, thread_count, num_objects, cpu_percent,
+        cpu_count, host_cpu_percent, mem_total_mb, mem_percent,
+        disk_total_mb, disk_free_mb, disk_percent)``.
+    """
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+
+    # cpu_percent(interval=...) blocks for the given interval; use a
+    # small non-zero interval to get a meaningful reading without
+    # noticeably delaying the periodic task. Two calls total ~0.2s,
+    # offloaded to a worker thread so the event loop is not stalled.
+    host_cpu_percent = psutil.cpu_percent(interval=0.1)
+    process_cpu_percent = process.cpu_percent(interval=0.1)
+    cpu_count = psutil.cpu_count(logical=True) or 0
+    virtual_mem = psutil.virtual_memory()
+    disk = psutil.disk_usage(os.getcwd())
+
+    return (
+        round(mem_info.rss / 1024 / 1024, 2),
+        round(mem_info.vms / 1024 / 1024, 2),
+        process.num_threads(),
+        len(gc.get_objects()),
+        process_cpu_percent,
+        cpu_count,
+        host_cpu_percent,
+        round(virtual_mem.total / 1024 / 1024, 2),
+        virtual_mem.percent,
+        round(disk.total / 1024 / 1024, 2),
+        round(disk.free / 1024 / 1024, 2),
+        disk.percent,
+    )
+
+
+async def update_system_stats_metrics():
+    """Update system stats metrics (process + host CPU/memory/disk).
+
+    Reads process-level metrics via psutil for the current PID, and
+    host-level metrics (CPU count/usage, memory, disk) for the machine
+    hosting the API server. Updates the ``qcos_system_*`` Prometheus
+    gauges so the WebUI monitor center and Grafana can render trends.
+
+    The blocking psutil calls are offloaded to the default executor so
+    the event loop is not stalled; see :func:`_collect_system_stats_sync`.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        (
+            rss_mb,
+            vms_mb,
+            thread_count,
+            num_objects,
+            process_cpu_percent,
+            cpu_count,
+            host_cpu_percent,
+            mem_total_mb,
+            mem_percent,
+            disk_total_mb,
+            disk_free_mb,
+            disk_percent,
+        ) = await loop.run_in_executor(None, _collect_system_stats_sync)
+
+        data = metrics_collector.system_stats_metrics.SystemStatsData(
+            rss_mb=rss_mb,
+            vms_mb=vms_mb,
+            thread_count=thread_count,
+            num_objects=num_objects,
+            cpu_percent=process_cpu_percent,
+            cpu_count=cpu_count,
+            host_cpu_percent=host_cpu_percent,
+            mem_total_mb=mem_total_mb,
+            mem_percent=mem_percent,
+            disk_total_mb=disk_total_mb,
+            disk_free_mb=disk_free_mb,
+            disk_percent=disk_percent,
+        )
+        metrics_collector.update_system_stats(data)
+    except Exception as e:
+        logger.error(
+            f"Error updating system stats metrics: {e}", exc_info=True
+        )
+
+
 async def update_metrics_task_async():
     """Asynchronously update task metrics from task scheduler."""
     try:
         logger.debug("update_metrics_task_async() called")
         await asyncio.wait_for(
             asyncio.gather(
-                update_job_metrics(), update_system_health_metrics()
+                update_job_metrics(),
+                update_system_health_metrics(),
+                update_system_stats_metrics(),
             ),
             timeout=METRICS_TOTAL_TIMEOUT,
         )

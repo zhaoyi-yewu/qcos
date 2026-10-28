@@ -22,6 +22,7 @@ from contextlib import asynccontextmanager
 from typing import Protocol
 
 import fastapi_jsonrpc as jsonrpc
+import httpx
 
 from wy_qcos.common.config import Config
 from wy_qcos.metrics.metrics_server import MetricsServer
@@ -164,6 +165,14 @@ async def app_lifespan(app: jsonrpc.API):
     except Exception as e:
         logger.warning(f"Failed to initialize MCP server: {e}")
 
+    # Shared httpx.AsyncClient used by reverse-proxy sub-apps mounted
+    # under /v1/proxy/<service>. Storing on app.state avoids creating
+    # a new connection pool per request. Closed in the finally block.
+    app.state.http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=5.0, read=60.0, write=30.0, pool=5.0),
+        follow_redirects=False,
+    )
+
     try:
         yield
     finally:
@@ -171,5 +180,13 @@ async def app_lifespan(app: jsonrpc.API):
         from wy_qcos.api.mcp.mcp_server import cleanup_mcp_lifespan
 
         await cleanup_mcp_lifespan(mcp_lifespan_ctx)
+        # Close shared HTTP client used by reverse-proxy sub-apps
+        http_client = getattr(app.state, "http_client", None)
+        if http_client is not None:
+            try:
+                await http_client.aclose()
+            except Exception as e:
+                logger.warning(f"Error closing shared http_client: {e}")
+            app.state.http_client = None
         # Stop all background services
         await manager.stop_all()
