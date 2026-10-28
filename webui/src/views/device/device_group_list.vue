@@ -118,19 +118,19 @@
         width="90"
       >
         <template #default="scope">
+          <el-tooltip content="查看" placement="top">
+            <el-button
+              link
+              :icon="View"
+              @click="viewGroupDetails(scope.row.id)"
+            />
+          </el-tooltip>
           <el-tooltip content="更新" placement="top">
             <el-button
               link
               type="primary"
               :icon="Edit"
               @click="openUpdateDialog(scope.row)"
-            />
-          </el-tooltip>
-          <el-tooltip content="查看" placement="top">
-            <el-button
-              link
-              :icon="View"
-              @click="viewGroupDetails(scope.row.id)"
             />
           </el-tooltip>
         </template>
@@ -179,13 +179,55 @@
             placeholder="请选择设备（至少一个）"
             style="width: 100%"
             :loading="deviceLoading"
+            @change="handleDeviceNamesChange"
           >
+            <!-- special "_all" sentinel: matches Constant.DEVICE_GROUP_DN_ALL
+                 on the backend; when chosen, the server replaces the whole
+                 list with ["_all"], meaning "all devices" -->
+            <el-option
+              :key="DEVICE_ALL_VALUE"
+              :label="DEVICE_ALL_VALUE + '（所有设备）'"
+              :value="DEVICE_ALL_VALUE"
+            >
+              <el-tooltip
+                placement="right"
+                :show-after="200"
+                raw-content
+                :content="deviceAllTooltipHtml()"
+                popper-class="device-option-tooltip"
+              >
+                <div class="device-option-row">
+                  <span class="device-state-dot state-online" :title="'special'" />
+                  <span class="device-alias">{{ DEVICE_ALL_VALUE }}</span>
+                  <span class="device-name">（所有设备，与具体设备互斥）</span>
+                </div>
+              </el-tooltip>
+            </el-option>
             <el-option
               v-for="device in deviceOptions"
               :key="device.name"
-              :label="device.alias_name ? (device.alias_name + ' (' + device.name + ')') : device.name"
+              :label="deviceOptionLabel(device)"
               :value="device.name"
-            />
+            >
+              <el-tooltip
+                placement="right"
+                :show-after="200"
+                raw-content
+                :content="deviceTooltipHtml(device)"
+                popper-class="device-option-tooltip"
+              >
+                <div class="device-option-row">
+                  <span
+                    class="device-state-dot"
+                    :class="'state-' + (device.status || 'unknown')"
+                    :title="device.status || 'unknown'"
+                  />
+                  <span class="device-alias">{{ device.alias_name || device.name }}</span>
+                  <span v-if="device.alias_name" class="device-name">({{ device.name }})</span>
+                  <span class="device-qubits">[{{ deviceQubits(device) }} qubits]</span>
+                </div>
+              </el-tooltip>
+            </el-option>
           </el-select>
         </el-form-item>
 
@@ -221,6 +263,15 @@ import {
   deleteDeviceGroups,
   getDevices
 } from '@/api/device'
+import {
+  getDeviceStatusDisplay
+} from '@/common/library'
+
+// Special device-name sentinel meaning "all devices"; mirrors
+// Constant.DEVICE_GROUP_DN_ALL on the backend. When this value is part of
+// the submitted device_names list, the server replaces the whole list
+// with ["_all"] before persisting
+const DEVICE_ALL_VALUE = '_all'
 
 export default {
   components: {
@@ -242,6 +293,9 @@ export default {
       submitting: false,
       deviceLoading: false,
       deviceOptions: [],
+      // exposed to the template so the special "_all" el-option can bind
+      // its key/label/value against the same constant the script uses
+      DEVICE_ALL_VALUE,
       // current editing group id (for update mode)
       editingGroupId: null,
       formData: {
@@ -312,6 +366,91 @@ export default {
       }
     },
 
+    // label used by the device dropdown option: "<alias> (<name>) [<N>
+    // qubits]"; falls back to plain "<name>" when alias is missing.
+    // Mirrors the "后端设备" presentation on the job submit page so the
+    // same device renders identically across pages
+    deviceOptionLabel(device) {
+      if (!device) return ''
+      const alias = device.alias_name || device.name
+      const namePart = device.alias_name ? ` (${device.name})` : ''
+      return `${alias}${namePart} [${this.deviceQubits(device)} qubits]`
+    },
+
+    // qubit count shown next to the device name: prefer available_qubits
+    // and fall back to max_qubits, matching the job submit page rule
+    deviceQubits(device) {
+      if (!device) return '-'
+      const aq = device.available_qubits
+      const mq = device.max_qubits
+      if (aq !== undefined && aq !== null) return aq
+      if (mq !== undefined && mq !== null) return mq
+      return '-'
+    },
+
+    // Build the HTML string used as the el-tooltip content for a device
+    // option; mirrors the job submit page so the same device tooltip is
+    // consistent everywhere. inline styles are used because the tooltip
+    // popper is teleported to <body> and out of scoped CSS
+    deviceTooltipHtml(device) {
+      if (!device) return ''
+      const rows = [
+        ['名称', device.name],
+        ['别名', device.alias_name || device.name],
+        ['路线', device.tech_type || '-'],
+        ['比特数', String(this.deviceQubits(device))],
+        ['状态', getDeviceStatusDisplay(device.status || 'unknown', device.is_manual === true)],
+        ['描述', device.description || '-']
+      ]
+      const rowStyle = 'display:flex;align-items:flex-start;gap:8px;line-height:1.5;'
+      const labelStyle = 'font-weight:600;opacity:0.85;min-width:56px;display:inline-block;'
+      const rowsHtml = rows.map(([label, value]) =>
+        `<div style="${rowStyle}"><span style="${labelStyle}">${label}:</span><span>${value}</span></div>`
+      ).join('')
+      return `<div style="display:flex;flex-direction:column;gap:4px;font-size:12px;max-width:380px;word-break:break-all;">${rowsHtml}</div>`
+    },
+
+    // Tooltip content for the special "_all" sentinel option. Kept as a
+    // separate builder so the visual style matches the regular device
+    // tooltip while the wording explains the sentinel semantics
+    deviceAllTooltipHtml() {
+      const rows = [
+        ['名称', DEVICE_ALL_VALUE],
+        ['含义', '所有设备'],
+        ['行为', '与具体设备互斥：选择 _all 时其他设备会被自动移除；选择具体设备时 _all 会被自动移除'],
+        ['后端', '服务端收到 _all 后会将 device_names 规范为 ["_all"]，等价于"对所有设备生效"']
+      ]
+      const rowStyle = 'display:flex;align-items:flex-start;gap:8px;line-height:1.5;'
+      const labelStyle = 'font-weight:600;opacity:0.85;min-width:56px;display:inline-block;'
+      const rowsHtml = rows.map(([label, value]) =>
+        `<div style="${rowStyle}"><span style="${labelStyle}">${label}:</span><span>${value}</span></div>`
+      ).join('')
+      return `<div style="display:flex;flex-direction:column;gap:4px;font-size:12px;max-width:380px;word-break:break-all;">${rowsHtml}</div>`
+    },
+
+    // Enforce the mutual-exclusion rule for the special "_all" sentinel:
+    //  - picking _all clears every other selected device
+    //  - picking any concrete device removes _all
+    // The backend also enforces this on submit (it replaces device_names
+    // with ["_all"] when _all is present), so the frontend behaviour is
+    // purely a UX convenience to make the rule visible at selection time
+    handleDeviceNamesChange(newValue) {
+      if (!Array.isArray(newValue)) return
+      const hasAll = newValue.includes(DEVICE_ALL_VALUE)
+      const prevHadAll = Array.isArray(this._prevDeviceNames)
+        ? this._prevDeviceNames.includes(DEVICE_ALL_VALUE)
+        : false
+      if (hasAll && !prevHadAll) {
+        // _all was just added -> drop every other device
+        this.formData.device_names = [DEVICE_ALL_VALUE]
+      } else if (hasAll && newValue.length > 1) {
+        // _all was already selected and the user added a concrete device
+        // -> drop _all so only concrete devices remain
+        this.formData.device_names = newValue.filter(v => v !== DEVICE_ALL_VALUE)
+      }
+      this._prevDeviceNames = [...this.formData.device_names]
+    },
+
     viewGroupDetails(groupId) {
       this.$router.push({ name: 'DeviceGroupDetails', params: { groupId: groupId }})
     },
@@ -327,6 +466,10 @@ export default {
         is_public: true,
         project_id: ''
       }
+      // seed the _all mutual-exclusion baseline so handleDeviceNamesChange
+      // can distinguish "user just added _all" from "_all was already
+      // selected" when the dialog opens with a pre-filled list
+      this._prevDeviceNames = []
       this.showFormDialog = true
     },
 
@@ -341,6 +484,11 @@ export default {
         is_public: !!row.is_public,
         project_id: row.project_id || ''
       }
+      // seed the _all mutual-exclusion baseline; the existing list may
+      // already contain "_all" when editing a group that targets every
+      // device, in which case the next user action must be interpreted as
+      // "add a concrete device and drop _all"
+      this._prevDeviceNames = [...this.formData.device_names]
       this.showFormDialog = true
     },
 
@@ -467,5 +615,51 @@ export default {
   margin-left: 12px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+/* device option row with a leading status dot -- mirrors the job
+   submit page's "后端设备" dropdown so the same device renders
+   identically across pages */
+.device-option-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.device-state-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* status colors aligned with getDeviceStatusTagType in common/library.js */
+.device-state-dot.state-online {
+  background: var(--el-color-success);
+}
+
+.device-state-dot.state-offline {
+  background: var(--el-color-info);
+}
+
+.device-state-dot.state-busy,
+.device-state-dot.state-calibrating,
+.device-state-dot.state-maintain {
+  background: var(--el-color-warning);
+}
+
+.device-state-dot.state-disconnected {
+  background: var(--el-color-danger);
+}
+
+.device-state-dot.state-unknown {
+  background: var(--el-color-info);
+}
+
+.device-option-row .device-name,
+.device-option-row .device-qubits {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

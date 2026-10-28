@@ -65,7 +65,7 @@
         label="操作"
         class-name="center-column"
         fixed="right"
-        width="120"
+        width="90"
       >
         <template #default="scope">
           <el-tooltip content="查看" placement="top">

@@ -159,9 +159,9 @@ export default {
       }
 
       // 添加文件大小验证
-      const isLt2M = file.size / 1024 / 1024 < 2
-      if (!isLt2M) {
-        this.$message.error('上传的文件大小不能超过 2MB！')
+      const isLt10M = file.size / 1024 / 1024 < 10
+      if (!isLt10M) {
+        this.$message.error('上传的文件大小不能超过 10MB！')
         fileList.pop() // 如果大小超过限制，移除该文件
         return
       }

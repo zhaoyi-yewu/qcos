@@ -61,7 +61,9 @@
                       </div>
                     </template>
                     <div v-show="!isSourceCollapsed(index)" class="source-code-body">
-                      <pre class="code-block"><code v-html="highlightedCodes[index] || escapeHtml(item.code)" /></pre>
+                      <!-- v-text performs HTML escaping internally; pass the raw
+                           code so it renders as plain text (no XSS surface). -->
+                      <pre class="code-block"><code v-text="item.code" /></pre>
                     </div>
                   </el-card>
                   <br>
@@ -136,54 +138,6 @@ import {
   getQuboPrettyPrint
 } from '@/common/library'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
-// Use editor.api for read-only syntax highlighting (monaco.editor.colorize)
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
-import { registerQasmLanguage } from '@/components/MonacoEditor/qasm-language'
-
-// Configure Monaco worker to run on the main thread (no web workers needed
-// for read-only highlighting via colorize())
-self.MonacoEnvironment = self.MonacoEnvironment || {
-  getWorker() {
-    return {
-      postMessage() {},
-      terminate() {},
-      addEventListener() {},
-      removeEventListener() {},
-      dispatchEvent() { return true },
-      onerror: null,
-      onmessage: null,
-      onmessageerror: null
-    }
-  }
-}
-
-// Register QASM language (idempotent) for colorize() usage
-registerQasmLanguage(monaco)
-
-// Register a lightweight JSON monarch language for read-only highlighting
-if (!monaco.languages.getLanguages().some(l => l.id === 'json')) {
-  monaco.languages.register({ id: 'json' })
-  monaco.languages.setMonarchTokensProvider('json', {
-    defaultToken: '',
-    tokenPostfix: '.json',
-    keywords: ['true', 'false', 'null'],
-    tokenizer: {
-      root: [
-        [/{/, 'delimiter.bracket'],
-        [/}/, 'delimiter.bracket'],
-        [/\[/, 'delimiter.array'],
-        [/\]/, 'delimiter.array'],
-        [/:/, 'delimiter'],
-        [/,/, 'delimiter'],
-        [/"([^"\\]|\\.)*"/, 'string'],
-        [/'([^'\\]|\\.)*'/, 'string'],
-        [/\btrue\b|\bfalse\b|\bnull\b/, 'keyword'],
-        [/-?\d+\.?\d*([eE][+-]?\d+)?/, 'number'],
-        [/\s+/, 'white']
-      ]
-    }
-  })
-}
 
 export default {
   name: 'TaskDetail',
@@ -217,8 +171,6 @@ export default {
       },
       leftItems: [],
       rightItems: [],
-      // monaco colorize() rendered HTML keyed by source code index
-      highlightedCodes: {},
       // collapse state for source code / result cards (expanded by default)
       collapsedSource: {},
       collapsedResult: {}
@@ -289,8 +241,6 @@ export default {
           if (!response.error) {
             this.taskDetail = response.result
             this.formatTaskItems()
-            this.highlightedCodes = {}
-            this.highlightAllCodes()
           }
         })
         .catch(error => {
@@ -405,7 +355,7 @@ export default {
       return this.taskDetail.task_type === 'sequence_task'
     },
 
-    // Map job code_type to a monaco language id for syntax highlighting
+    // Map job code_type to a language id for display purposes.
     getLanguage(codeType) {
       if (['qasm', 'qasm2', 'qasm3'].includes(codeType)) {
         return 'qasm'
@@ -416,36 +366,9 @@ export default {
       return 'qasm'
     },
 
-    // Escape HTML special characters for safe v-html fallback rendering.
-    // Build entities via concatenation to avoid toolchain HTML-entity decoding.
-    escapeHtml(text) {
-      if (!text) return ''
-      const amp = '&' + 'amp;'
-      const lt = '&' + 'lt;'
-      const gt = '&' + 'gt;'
-      return String(text)
-        .replace(/&/g, amp)
-        .replace(/</g, lt)
-        .replace(/>/g, gt)
-    },
-
-    // Use monaco.editor.colorize to render syntax-highlighted HTML for each
-    // source code item; results are stored reactively in highlightedCodes.
-    // setTheme ensures the qasm-light theme CSS rules are active so that
-    // colorize() output (mtk* spans) gets correct colors.
-    highlightAllCodes() {
-      monaco.editor.setTheme('qasm-light')
-      const list = this.sourceCodeList
-      list.forEach((item, index) => {
-        monaco.editor.colorize(item.code, item.language, { tabSize: 2 })
-          .then(html => {
-            this.highlightedCodes = { ...this.highlightedCodes, [index]: html }
-          })
-          .catch(() => {
-            this.highlightedCodes = { ...this.highlightedCodes, [index]: this.escapeHtml(item.code) }
-          })
-      })
-    },
+    // Source code is rendered via `v-text`, which escapes HTML natively.
+    // The previous monaco.editor.colorize + v-html pipeline was removed
+    // to eliminate the v-html XSS surface flagged by static analysis.
 
     // Collapse toggles for source code and result cards (expanded by default)
     isSourceCollapsed(index) {

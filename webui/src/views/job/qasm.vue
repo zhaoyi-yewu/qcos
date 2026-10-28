@@ -186,6 +186,7 @@
                 class="auto-width backend-device-select"
                 placeholder="请输入后端设备"
                 label="后端设备"
+                popper-class="backend-device-select-popper"
                 @change="handleBackendChange"
               >
                 <template v-if="currentBackendStatus" #prefix>
@@ -256,10 +257,36 @@
                 <el-option
                   v-for="flavor in effectiveFlavorOptions"
                   :key="flavor.id"
-                  :label="flavor.name"
+                  :label="flavorLabel(flavor)"
                   :value="flavor.id"
-                />
+                >
+                  <el-tooltip
+                    placement="right"
+                    :show-after="200"
+                    raw-content
+                    :content="flavorTooltipHtml(flavor)"
+                    popper-class="device-option-tooltip"
+                    :disabled="!flavor.description"
+                  >
+                    <div class="device-option-row">
+                      <span class="device-alias">{{ flavor.name }}</span>
+                      <span v-if="flavor.description" class="device-name">({{ flavor.description }})</span>
+                    </div>
+                  </el-tooltip>
+                </el-option>
               </el-select>
+            </el-form-item>
+            <el-form-item
+              v-if="taskData.scheduleMode === 'flavor'"
+              label="额外调度参数"
+              prop="extraSpecs"
+            >
+              <el-input
+                v-model="taskData.extraSpecs"
+                type="textarea"
+                :rows="3"
+                placeholder="请输入额外调度参数 (可选, JSON格式)，例如 {&quot;qcos:min_qubits&quot;: 5, &quot;qc:tech_types&quot;: &quot;superconducting&quot;}"
+              />
             </el-form-item>
           </el-col>
 
@@ -451,6 +478,10 @@ export default {
         scheduleMode: 'backend',
         taskBackend: '',
         taskFlavor: '',
+        // extra scheduling specs (JSON text), only meaningful in flavor
+        // mode; parsed into extra_specs on submit and forwarded to the
+        // auto-scheduler to override flavor defaults
+        extraSpecs: null,
         driverOptions: null,
         taskDryRun: 'false',
         // Default shot count: 1024 is the standard default for quantum sampling experiments
@@ -1001,6 +1032,32 @@ export default {
       return `<div style="display:flex;flex-direction:column;gap:4px;font-size:12px;">${rowsHtml}</div>`
     },
 
+    // label shown in the flavor dropdown: "name (description)" when a
+    // description exists, otherwise just the name; matches the resource
+    // spec list page so the same flavor renders identically everywhere
+    flavorLabel(flavor) {
+      const desc = (flavor && flavor.description) || ''
+      return desc ? `${flavor.name} (${desc})` : (flavor ? flavor.name : '')
+    },
+
+    // Build the HTML string used as the el-tooltip content for a flavor
+    // option; mirrors deviceTooltipHtml so both dropdowns share the same
+    // visual language. Returns an empty string when there is no
+    // description -- the tooltip is then disabled via :disabled
+    flavorTooltipHtml(flavor) {
+      if (!flavor || !flavor.description) return ''
+      const rows = [
+        ['名称', flavor.name],
+        ['描述', flavor.description]
+      ]
+      const rowStyle = 'display:flex;align-items:flex-start;gap:8px;line-height:1.5;'
+      const labelStyle = 'font-weight:600;opacity:0.85;min-width:56px;display:inline-block;'
+      const rowsHtml = rows.map(([label, value]) =>
+        `<div style="${rowStyle}"><span style="${labelStyle}">${label}:</span><span>${value}</span></div>`
+      ).join('')
+      return `<div style="display:flex;flex-direction:column;gap:4px;font-size:12px;max-width:380px;word-break:break-all;">${rowsHtml}</div>`
+    },
+
     // CSS class for the availability badge, aligned with the tag type
     // thresholds used on the device list page
     availabilityTagClass(rate) {
@@ -1046,7 +1103,11 @@ export default {
             const f = flavors[fid]
             this.localFlavorOptions.push({
               id: f.id || fid,
-              name: f.name || fid
+              name: f.name || fid,
+              // keep description so flavorLabel / flavorTooltipHtml can
+              // render the same "name (description)" presentation as the
+              // parent-propelled flavorOptions
+              description: f.description || ''
             })
           }
           // default to the first flavor if none selected yet, so the
@@ -1088,9 +1149,9 @@ export default {
       }
 
       // add file size validation
-      const isLt2M = file.size / 1024 / 1024 < 2
-      if (!isLt2M) {
-        this.$message.error('上传的文件大小不能超过 2MB！')
+      const isLt10M = file.size / 1024 / 1024 < 10
+      if (!isLt10M) {
+        this.$message.error('上传的文件大小不能超过 10MB！')
         return
       }
 
@@ -1347,6 +1408,20 @@ export default {
         }
       }
 
+      // extra_specs -- optional JSON dict with scheduling overrides, only
+      // allowed when scheduleMode === 'flavor' (mutually exclusive with
+      // backend on the server side). Parsed early so a malformed payload
+      // fails fast before any submit request is issued
+      let extraSpecsObj = null
+      if (this.taskData.scheduleMode === 'flavor' && !isEmptyStr(this.taskData.extraSpecs)) {
+        try {
+          extraSpecsObj = JSON.parse(normalizeJsonInput(this.taskData.extraSpecs))
+        } catch (error) {
+          this.$message.error('额外调度参数格式错误，请输入有效的 JSON 格式！')
+          return
+        }
+      }
+
       // QEC (quantum error correction) options -- optional JSON dict,
       // forwarded to the submit API as `qec_options`
       let qecOptionsObj = null
@@ -1421,6 +1496,9 @@ export default {
       // pick the right field based on the user's scheduling mode
       if (this.taskData.scheduleMode === 'flavor') {
         requestData.flavor_id = this.taskData.taskFlavor
+        if (extraSpecsObj) {
+          requestData.extra_specs = extraSpecsObj
+        }
       } else {
         requestData.backend = this.taskData.taskBackend
       }

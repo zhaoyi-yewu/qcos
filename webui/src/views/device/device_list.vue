@@ -163,19 +163,96 @@
               @click="viewDeviceDetails(scope.row.name)"
             />
           </el-tooltip>
+          <el-tooltip content="更新" placement="top">
+            <el-button
+              link
+              type="primary"
+              :icon="Edit"
+              @click="openSetDeviceDialog(scope.row)"
+            />
+          </el-tooltip>
         </template>
       </el-table-column>
     </PageTable>
+
+    <!-- Set Device dialog -->
+    <el-dialog
+      v-model="setDeviceDialog.visible"
+      title="更新设备"
+      width="520px"
+      align-center
+      :close-on-click-modal="false"
+      @close="resetSetDeviceDialog"
+    >
+      <el-form
+        ref="setDeviceFormRef"
+        :model="setDeviceDialog.form"
+        :rules="setDeviceRules"
+        label-width="140px"
+      >
+        <el-form-item label="设备名称">
+          <el-input v-model="setDeviceDialog.form.device_name" disabled />
+        </el-form-item>
+        <el-form-item label="状态" prop="state">
+          <el-select
+            v-model="setDeviceDialog.form.state"
+            placeholder="不修改"
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="opt in deviceStateOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="启用" prop="enable">
+          <el-select
+            v-model="setDeviceDialog.form.enable"
+            placeholder="不修改"
+            clearable
+            style="width: 100%"
+          >
+            <el-option label="启用 (true)" :value="true" />
+            <el-option label="禁用 (false)" :value="false" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="最大比特数" prop="max_qubits">
+          <el-input
+            v-model="setDeviceDialog.form.max_qubits"
+            placeholder="不修改；填 auto 恢复驱动默认，或正整数"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="可用比特数" prop="available_qubits">
+          <el-input
+            v-model="setDeviceDialog.form.available_qubits"
+            placeholder="不修改；填 auto 恢复驱动默认，或正整数"
+            clearable
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="setDeviceDialog.visible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="setDeviceDialog.submitting"
+          @click="submitSetDevice"
+        >确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { markRaw } from 'vue'
-import { View } from '@element-plus/icons-vue'
+import { View, Edit } from '@element-plus/icons-vue'
 import PageTable from '@/components/PageTable'
 import FilterableTableColumn from '@/components/PageTable/FilterableTableColumn.vue'
 import { getDrivers } from '@/api/driver'
-import { getDevices } from '@/api/device'
+import { getDevices, setDevice } from '@/api/device'
 import {
   getEnable,
   getStatus,
@@ -191,6 +268,22 @@ export default {
     FilterableTableColumn
   },
   data() {
+    const qubitsValidator = (rule, value, callback) => {
+      if (value === '' || value === null || value === undefined) {
+        callback()
+        return
+      }
+      if (value === 'auto') {
+        callback()
+        return
+      }
+      const n = Number(value)
+      if (!Number.isInteger(n) || n <= 0) {
+        callback(new Error('必须为 auto 或正整数'))
+        return
+      }
+      callback()
+    }
     return {
       versionData: {
         version: '',
@@ -200,7 +293,36 @@ export default {
         capabilities: {}
       },
       driverDetails: {},
-      View: markRaw(View)
+      View: markRaw(View),
+      Edit: markRaw(Edit),
+      // options shown in the "state" select of the set-device dialog;
+      // label is "中文 (state)" per UX requirement, value is the raw
+      // state string sent to the backend
+      deviceStateOptions: [
+        { value: 'auto', label: '自动 (auto)' },
+        { value: 'online', label: '在线 (online)' },
+        { value: 'offline', label: '离线 (offline)' },
+        { value: 'busy', label: '繁忙 (busy)' },
+        { value: 'disconnected', label: '断连 (disconnected)' },
+        { value: 'calibrating', label: '校准 (calibrating)' },
+        { value: 'maintain', label: '维护 (maintain)' },
+        { value: 'unknown', label: '未知 (unknown)' }
+      ],
+      setDeviceDialog: {
+        visible: false,
+        submitting: false,
+        form: {
+          device_name: '',
+          state: null,
+          enable: null,
+          max_qubits: '',
+          available_qubits: ''
+        }
+      },
+      setDeviceRules: {
+        max_qubits: [{ validator: qubitsValidator, trigger: 'blur' }],
+        available_qubits: [{ validator: qubitsValidator, trigger: 'blur' }]
+      }
     }
   },
   created() {
@@ -309,6 +431,74 @@ export default {
 
     viewDeviceDetails(deviceName) {
       this.$router.push({ name: 'DeviceDetails', params: { deviceName: deviceName }})
+    },
+
+    openSetDeviceDialog(row) {
+      // Pre-fill state and enable from the current row so the selects
+      // reflect the live values.
+      // - When is_manual is false, the device is in auto mode -> pre-select 'auto'
+      // - When is_manual is true, the device state was set manually -> pre-select
+      //   the current status (online/offline/busy/...)
+      // max_qubits / available_qubits stay empty so unchanged fields are not
+      // sent on submit.
+      const defaultState = row.is_manual === false ? 'auto' : (row.status || null)
+      this.setDeviceDialog.form = {
+        device_name: row.name,
+        state: defaultState,
+        enable: row.enable !== null && row.enable !== undefined ? row.enable : null,
+        max_qubits: '',
+        available_qubits: ''
+      }
+      this.setDeviceDialog.visible = true
+    },
+
+    resetSetDeviceDialog() {
+      this.setDeviceDialog.submitting = false
+      if (this.$refs.setDeviceFormRef) {
+        this.$refs.setDeviceFormRef.clearValidate()
+      }
+    },
+
+    async submitSetDevice() {
+      const formRef = this.$refs.setDeviceFormRef
+      if (formRef) {
+        const valid = await formRef.validate().catch(() => false)
+        if (!valid) return
+      }
+      const f = this.setDeviceDialog.form
+      const payload = { device_name: f.device_name }
+      if (f.state) payload.state = f.state
+      if (f.enable !== null && f.enable !== undefined && f.enable !== '') {
+        payload.enable = f.enable
+      }
+      if (f.max_qubits) payload.max_qubits = f.max_qubits
+      if (f.available_qubits) payload.available_qubits = f.available_qubits
+
+      const hasChange = Object.keys(payload).length > 1
+      if (!hasChange) {
+        this.$message.warning('未做任何修改')
+        return
+      }
+
+      this.setDeviceDialog.submitting = true
+      try {
+        const response = await setDevice(payload)
+        if (!response.error) {
+          this.$message.success(`设备 ${f.device_name} 更新成功`)
+          this.setDeviceDialog.visible = false
+          // refresh device list
+          if (this.$refs.pageTableRef && this.$refs.pageTableRef.refresh) {
+            this.$refs.pageTableRef.refresh()
+          }
+        } else {
+          this.$message.error(`更新失败：${response.message || '未知错误'}`)
+        }
+      } catch (error) {
+        console.error('更新设备失败:', error)
+        this.$message.error('更新设备失败，请检查网络连接')
+      } finally {
+        this.setDeviceDialog.submitting = false
+      }
     }
   }
 }

@@ -91,7 +91,7 @@
         label="操作"
         class-name="center-column"
         fixed="right"
-        width="90"
+        width="70"
       >
         <template #default="scope">
           <el-tooltip content="查看" placement="top">
