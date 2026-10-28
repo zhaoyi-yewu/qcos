@@ -17,9 +17,9 @@ version: 1.0.0
 ### 步骤总览
 
 ```
-1. 需求分析 → 2. 选择基类 → 3. 创建驱动目录
-→ 4. 实现驱动类 → 5. 配置与注册 → 6. venv 部署
-→ 7. 单元测试 → 8. 系统测试 → 9. 文档更新
+1. 需求分析 → 2. 设计文档 → 3. 选择基类 → 4. 创建驱动目录
+→ 5. 实现驱动类 → 6. 配置与注册 → 7. venv 部署
+→ 8. 单元测试 → 9. 系统测试 → 10. 文档更新
 ```
 
 ### 步骤 1: 需求分析
@@ -30,7 +30,14 @@ version: 1.0.0
 - 确认设备是否支持校准、监控、设备管理等功能
 - 输出：需求清单和接口定义
 
-### 步骤 2: 选择基类
+### 步骤 2: 设计文档
+
+- 在 `plans/` 目录编写设计文档（Markdown）
+- 包含：架构图（Mermaid）、类关系图、时序图、数据模型设计
+- 明确各组件职责和依赖关系
+- 经用户确认后再进入实现阶段
+
+### 步骤 3: 选择基类
 
 QCOS 驱动继承体系（`src/wy_qcos/driver/`）：
 
@@ -57,7 +64,7 @@ DriverBase (driver_base.py)                   # 驱动基类
 
 参考现有驱动实现：[`DriverDummy`](src/wy_qcos/driver/dummy/driver_dummy.py) 是最简单的参考实现。
 
-### 步骤 3: 创建驱动目录
+### 步骤 4: 创建驱动目录
 
 ```
 src/wy_qcos/driver/<vendor厂商>/
@@ -76,12 +83,12 @@ src/wy_qcos/driver/<vendor厂商>/
 - 文件头部统一版权声明
 - `__init__.py` 可为空
 
-### 步骤 4: 实现驱动类
+### 步骤 5: 实现驱动类
 
 参考 [`DriverDummy`](src/wy_qcos/driver/dummy/driver_dummy.py) 和
 [`DriverQuafuBase`](src/wy_qcos/driver/quafu/driver_quafu_base.py) 实现。
 
-**4.1 `__init__` 设置驱动属性**
+**5.1 `__init__` 设置驱动属性**
 
 ```python
 class DriverXXX(DriverGateBase):
@@ -111,7 +118,7 @@ class DriverXXX(DriverGateBase):
         self.results_fetch_mode = Constant.RESULTS_FETCH_MODE_SYNC  # 结果获取方式 (同步(轮询)/异步(主动上报))
 ```
 
-**4.2 `init_driver` 初始化连接**
+**5.2 `init_driver` 初始化连接**
 
 ```python
 def init_driver(self):
@@ -119,7 +126,7 @@ def init_driver(self):
     self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 ```
 
-**4.3 `validate_driver_configs` 校验设备配置**
+**5.3 `validate_driver_configs` 校验设备配置**
 
 定义 `schema` 校验规则，验证设备配置文件（`etc/conf.d/<device>.toml`）中的参数：
 
@@ -140,7 +147,7 @@ def validate_driver_configs(self, configs):
     return success, err_msg
 ```
 
-**4.4 `fetch_configs` 获取远程配置**
+**5.4 `fetch_configs` 获取远程配置**
 
 从设备远程 API 获取动态配置（如校准数据、QPU 配置等）：
 
@@ -154,7 +161,7 @@ def fetch_configs(self):
     # ...
 ```
 
-**4.5 `fetch_running_info` 获取运行状态**
+**5.5 `fetch_running_info` 获取运行状态**
 
 供 device monitor 轮询设备状态：
 
@@ -164,7 +171,7 @@ def fetch_running_info(self):
     return {"status": Device.DEVICE_STATUS_ONLINE}
 ```
 
-**4.6 `run` 执行量子作业**
+**5.6 `run` 执行量子作业**
 
 核心方法，提交量子电路并获取结果：
 
@@ -195,7 +202,7 @@ def run(self, job_id, num_qubits, data, data_type, shots=1, qec_options=None):
     self.set_device_status(Device.DEVICE_STATUS_ONLINE)
 ```
 
-**4.7 `input_constrains` 定义调度约束**
+**5.7 `input_constrains` 定义调度约束**
 
 声明作业参数的约束 schema，供 `InputConstraintsFilter` 校验：
 
@@ -205,7 +212,7 @@ self.input_constrains["job_shots"] = Schema(
 )
 ```
 
-**4.8 `driver_options_schema` 驱动选项 schema**
+**5.8 `driver_options_schema` 驱动选项 schema**
 
 声明 `driver_options` 的可选参数 schema：
 
@@ -216,7 +223,7 @@ self.driver_options_schema.update({
 })
 ```
 
-**4.9 `transpiler_options_schema` 转译器选项 schema**
+**5.9 `transpiler_options_schema` 转译器选项 schema**
 
 声明转译器选项的可选参数 schema（继承自 `DriverGateBase`，按需扩展）：
 
@@ -226,11 +233,11 @@ self.transpiler_options_schema["enable_mapping"] = (
 )
 ```
 
-### 步骤 5: 配置与注册
+### 步骤 6: 配置与注册
 
-**5.1 添加设备配置文件**
+**6.1 添加设备配置文件**
 
-在 `etc/conf.d/` 下创建设备配置文件（TOML 格式），YYY为设备名，保证driver=后的Driver名称和4.1中的驱动类名DriverXXX一致：
+在 `etc/conf.d/` 下创建设备配置文件（TOML 格式），YYY为设备名，保证driver=后的Driver名称和5.1中的驱动类名DriverXXX一致：
 
 ```toml
 # etc/conf.d/YYY.toml
@@ -272,7 +279,7 @@ timeout = 30
 DEVICE_LIST = ["dummy", "YYY"]
 ```
 
-**5.2 添加驱动 venv 配置**
+**6.2 添加驱动 venv 配置**
 
 如果驱动中需要调用QCOS系统没有默认安装的特殊第三方库（比如：厂商自己的SDK），可以在 `requirements/venv-configs.toml` 中添加驱动的 venv 配置：
 
@@ -299,7 +306,7 @@ driver-xxx = [
 $ python3 requirements/install-venvs.py --name DriverXXX
 ```
 
-### 步骤 6: venv 部署
+### 步骤 7: venv 部署
 
 详见 :doc:`../design/module-design/venv`。
 
@@ -309,7 +316,7 @@ $ python3 requirements/install-venvs.py --name DriverXXX
 - Prefect worker 进程在对应 venv 中加载驱动模块
 - 调试时 source 对应 venv 环境
 
-### 步骤 7: 单元测试
+### 步骤 8: 单元测试
 
 ```
 src/wy_qcos/tests/unit_tests/driver/<vendor>
@@ -325,7 +332,7 @@ src/wy_qcos/tests/unit_tests/driver/<vendor>
 - 参考 [`test_driver_quafu.py`](src/wy_qcos/tests/unit_tests/driver/test_driver_quafu.py)
 - 运行：`python -m pytest src/wy_qcos/tests/unit_tests/driver/quafu/test_driver_xxx.py -v` 或者 `cicd/run-tests.sh -u src/wy_qcos/tests/unit_tests/driver/<vendor>/test_driver_xxx.py`
 
-### 步骤 8: 系统测试
+### 步骤 9: 系统测试
 
 ```
 src/wy_qcos/tests/system_tests/job/driver/<vendor>/
@@ -402,7 +409,7 @@ class TestJob:
         )
 ```
 
-### 步骤 9: 文档更新
+### 步骤 10: 文档更新
 
 **兼容性文档：**
 

@@ -24,4 +24,5 @@
    metrics
    background-tasks
    mcp
+   reverse-proxy
    venv
