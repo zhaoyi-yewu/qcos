@@ -277,6 +277,150 @@ class SystemHealthMetrics:
             return self._current_values
 
 
+class SystemStatsMetrics:
+    """System stats metrics (process + host CPU/memory/disk).
+
+    Exposes ``qcos_system_*`` Prometheus gauges so the WebUI monitor
+    center and Grafana dashboards can render CPU/memory/disk usage
+    trends over time. Values are refreshed by a periodic task in
+    ``metrics_task``.
+    """
+
+    class SystemStatsData:
+        """System stats data."""
+
+        __slots__ = (
+            "rss_mb",
+            "vms_mb",
+            "thread_count",
+            "num_objects",
+            "cpu_percent",
+            "cpu_count",
+            "host_cpu_percent",
+            "mem_total_mb",
+            "mem_percent",
+            "disk_total_mb",
+            "disk_free_mb",
+            "disk_percent",
+        )
+
+        def __init__(
+            self,
+            rss_mb: float = 0.0,
+            vms_mb: float = 0.0,
+            thread_count: int = 0,
+            num_objects: int = 0,
+            cpu_percent: float = 0.0,
+            cpu_count: int = 0,
+            host_cpu_percent: float = 0.0,
+            mem_total_mb: float = 0.0,
+            mem_percent: float = 0.0,
+            disk_total_mb: float = 0.0,
+            disk_free_mb: float = 0.0,
+            disk_percent: float = 0.0,
+        ):
+            self.rss_mb = rss_mb
+            self.vms_mb = vms_mb
+            self.thread_count = thread_count
+            self.num_objects = num_objects
+            self.cpu_percent = cpu_percent
+            self.cpu_count = cpu_count
+            self.host_cpu_percent = host_cpu_percent
+            self.mem_total_mb = mem_total_mb
+            self.mem_percent = mem_percent
+            self.disk_total_mb = disk_total_mb
+            self.disk_free_mb = disk_free_mb
+            self.disk_percent = disk_percent
+
+    def __init__(self) -> None:
+        # Process-level gauges
+        self.rss_mb_gauge = Gauge(
+            Constant.SYSTEM_STATS_RSS_MB,
+            "API server process resident set size in MB",
+        )
+        self.vms_mb_gauge = Gauge(
+            Constant.SYSTEM_STATS_VMS_MB,
+            "API server process virtual memory size in MB",
+        )
+        self.thread_count_gauge = Gauge(
+            Constant.SYSTEM_STATS_THREAD_COUNT,
+            "Number of threads in the API server process",
+        )
+        self.num_objects_gauge = Gauge(
+            Constant.SYSTEM_STATS_NUM_OBJECTS,
+            "Number of gc tracked objects in the API server process",
+        )
+        self.cpu_percent_gauge = Gauge(
+            Constant.SYSTEM_STATS_CPU_PERCENT,
+            "CPU usage percentage of the API server process",
+        )
+
+        # Host-level gauges
+        self.host_cpu_percent_gauge = Gauge(
+            Constant.SYSTEM_STATS_HOST_CPU_PERCENT,
+            "Host CPU usage percentage (0-100)",
+        )
+        self.cpu_count_gauge = Gauge(
+            Constant.SYSTEM_STATS_CPU_COUNT,
+            "Total number of logical CPUs on the host",
+        )
+        self.mem_total_mb_gauge = Gauge(
+            Constant.SYSTEM_STATS_MEM_TOTAL_MB,
+            "Total physical memory of the host in MB",
+        )
+        self.mem_percent_gauge = Gauge(
+            Constant.SYSTEM_STATS_MEM_PERCENT,
+            "Host memory usage percentage (0-100)",
+        )
+        self.disk_total_mb_gauge = Gauge(
+            Constant.SYSTEM_STATS_DISK_TOTAL_MB,
+            "Total disk space of the working partition in MB",
+        )
+        self.disk_free_mb_gauge = Gauge(
+            Constant.SYSTEM_STATS_DISK_FREE_MB,
+            "Free disk space of the working partition in MB",
+        )
+        self.disk_percent_gauge = Gauge(
+            Constant.SYSTEM_STATS_DISK_PERCENT,
+            "Disk usage percentage of the working partition (0-100)",
+        )
+
+        self._lock = threading.Lock()
+        self._current_values = self.SystemStatsData()
+
+    def update(self, data: SystemStatsData):
+        """Update system stats metrics.
+
+        Args:
+            data: SystemStatsData object
+        """
+        with self._lock:
+            self._current_values = data
+            self.rss_mb_gauge.set(data.rss_mb)
+            self.vms_mb_gauge.set(data.vms_mb)
+            self.thread_count_gauge.set(data.thread_count)
+            self.num_objects_gauge.set(data.num_objects)
+            self.cpu_percent_gauge.set(data.cpu_percent)
+            self.host_cpu_percent_gauge.set(data.host_cpu_percent)
+            self.cpu_count_gauge.set(data.cpu_count)
+            self.mem_total_mb_gauge.set(data.mem_total_mb)
+            self.mem_percent_gauge.set(data.mem_percent)
+            self.disk_total_mb_gauge.set(data.disk_total_mb)
+            self.disk_free_mb_gauge.set(data.disk_free_mb)
+            self.disk_percent_gauge.set(data.disk_percent)
+
+        logger.debug(f"System stats metrics updated: rss={data.rss_mb}MB")
+
+    def get_values(self) -> SystemStatsData:
+        """Get current system stats values.
+
+        Returns:
+            SystemStatsData object
+        """
+        with self._lock:
+            return self._current_values
+
+
 class APIMetrics:
     """API metrics."""
 
@@ -487,6 +631,9 @@ class MetricsCollector:
         # System health metrics
         self.system_health_metrics = SystemHealthMetrics()
 
+        # System stats metrics (process + host CPU/memory/disk)
+        self.system_stats_metrics = SystemStatsMetrics()
+
         logger.info("MetricsCollector initialized")
 
     def update_job_metrics(self, data: JobMetrics.JobMetricsData):
@@ -551,6 +698,22 @@ class MetricsCollector:
             System health status
         """
         return self.system_health_metrics.get_values()
+
+    def update_system_stats(self, data: "SystemStatsMetrics.SystemStatsData"):
+        """Update system stats metrics.
+
+        Args:
+            data: SystemStatsMetrics.SystemStatsData
+        """
+        self.system_stats_metrics.update(data)
+
+    def get_system_stats(self) -> "SystemStatsMetrics.SystemStatsData":
+        """Get current system stats values.
+
+        Returns:
+            SystemStatsMetrics.SystemStatsData
+        """
+        return self.system_stats_metrics.get_values()
 
     def get_metrics(self) -> bytes:
         """Generate Prometheus metrics output.

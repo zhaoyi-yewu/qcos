@@ -20,7 +20,11 @@ import logging
 import sys
 import uvicorn
 
-from wy_qcos.api.fastapi_server import app, QcosUvicornServer
+from wy_qcos.api.fastapi_server import (
+    app,
+    QcosUvicornServer,
+    register_terminal_routes,
+)
 from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 from wy_qcos.common import errors
 from wy_qcos.common.config import Config
@@ -165,6 +169,12 @@ class Server:
                 else "all IPs"
             )
             logger.info(f"Starting server, listening on '{_listen_ip}'")
+
+            # Terminal routes must be registered AFTER Config.initialize()
+            # (called from _parse_arguments above). Doing it at module
+            # import time would read the Pydantic default (False) instead
+            # of the value from qcos.toml.
+            register_terminal_routes()
 
             config = uvicorn.Config(
                 app,

@@ -48,6 +48,25 @@ class MetricsMiddleware(BaseHTTPMiddleware):
     # Modules for which metrics are collected
     MODULES = {"device", "driver", "job", "system", "transpiler"}
 
+    async def __call__(self, scope, receive, send):
+        """Pass non-HTTP scopes (e.g. WebSocket, lifespan) straight through.
+
+        BaseHTTPMiddleware's default `__call__` constructs a Request
+        object from the scope and invokes `dispatch()`. For WebSocket
+        scopes that means `await request.body()` is called on a scope
+        that has no body, which can fail or behave unexpectedly — and
+        in some Starlette versions the dispatch result is dropped
+        entirely, leaving the client hanging or receiving a 403.
+
+        This override short-circuits the middleware entirely for
+        non-HTTP scopes so WebSocket upgrades (e.g. /v1/terminal/ws)
+        reach the router untouched.
+        """
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
     async def dispatch(
         self, request: Request, call_next: Callable
     ) -> Response:
