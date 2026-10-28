@@ -23,11 +23,13 @@ from wy_qcos.api.posiq.routes_jsonrpc.metrics import (
     get_api_stats,
     get_job_stats,
     get_system_health,
+    get_system_stats,
 )
 from wy_qcos.api.schemas import (
     GetApiStatsResponse,
     GetJobStatsResponse,
     GetSystemHealthResponse,
+    GetSystemStatsResponse,
 )
 from wy_qcos.common.constant import Constant
 
@@ -341,3 +343,138 @@ class TestGetJobStats:
 
         assert isinstance(response, GetJobStatsResponse)
         assert response.total == 100
+
+
+class TestGetSystemStats:
+    """Test cases for get_system_stats function."""
+
+    @pytest.mark.smoke
+    def test_get_system_stats(self):
+        """Test system stats response with mocked psutil data."""
+        mock_process = Mock()
+        mock_process.pid = 1234
+        mock_mem_info = Mock()
+        mock_mem_info.rss = 100 * 1024 * 1024
+        mock_mem_info.vms = 200 * 1024 * 1024
+        mock_process.memory_info.return_value = mock_mem_info
+        mock_process.num_threads.return_value = 10
+        mock_process.cpu_percent.return_value = 5.5
+
+        mock_virtual_mem = Mock()
+        mock_virtual_mem.total = 16 * 1024 * 1024 * 1024
+        mock_virtual_mem.percent = 45.5
+
+        mock_disk = Mock()
+        mock_disk.total = 500 * 1024 * 1024 * 1024
+        mock_disk.free = 250 * 1024 * 1024 * 1024
+        mock_disk.percent = 50.0
+
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.psutil"
+        ) as mock_psutil:
+            mock_psutil.Process.return_value = mock_process
+            mock_psutil.cpu_percent.return_value = 35.2
+            mock_psutil.cpu_count.return_value = 8
+            mock_psutil.virtual_memory.return_value = mock_virtual_mem
+            mock_psutil.disk_usage.return_value = mock_disk
+
+            response = get_system_stats(None)
+
+        assert isinstance(response, GetSystemStatsResponse)
+        assert response.pid == 1234
+        assert response.rss_mb == 100.0
+        assert response.vms_mb == 200.0
+        assert response.thread_count == 10
+        assert response.cpu_percent == 5.5
+        assert response.cpu_count == 8
+        assert response.host_cpu_percent == 35.2
+        assert response.mem_total_mb == 16 * 1024
+        assert response.mem_percent == 45.5
+        assert response.disk_total_mb == 500 * 1024
+        assert response.disk_free_mb == 250 * 1024
+        assert response.disk_percent == 50.0
+
+    def test_get_system_stats_with_none_body(self):
+        """Test system stats response with None request body."""
+        mock_process = Mock()
+        mock_process.pid = 1
+        mock_mem_info = Mock()
+        mock_mem_info.rss = 0
+        mock_mem_info.vms = 0
+        mock_process.memory_info.return_value = mock_mem_info
+        mock_process.num_threads.return_value = 1
+        mock_process.cpu_percent.return_value = 0.0
+
+        mock_virtual_mem = Mock()
+        mock_virtual_mem.total = 0
+        mock_virtual_mem.percent = 0.0
+
+        mock_disk = Mock()
+        mock_disk.total = 0
+        mock_disk.free = 0
+        mock_disk.percent = 0.0
+
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.psutil"
+        ) as mock_psutil:
+            mock_psutil.Process.return_value = mock_process
+            mock_psutil.cpu_percent.return_value = 0.0
+            mock_psutil.cpu_count.return_value = 1
+            mock_psutil.virtual_memory.return_value = mock_virtual_mem
+            mock_psutil.disk_usage.return_value = mock_disk
+
+            response = get_system_stats(None)
+
+        assert isinstance(response, GetSystemStatsResponse)
+        assert response.pid == 1
+        assert response.cpu_count == 1
+
+    def test_get_system_stats_cpu_count_none(self):
+        """Test cpu_count fallback when psutil returns None."""
+        mock_process = Mock()
+        mock_process.pid = 42
+        mock_mem_info = Mock()
+        mock_mem_info.rss = 0
+        mock_mem_info.vms = 0
+        mock_process.memory_info.return_value = mock_mem_info
+        mock_process.num_threads.return_value = 1
+        mock_process.cpu_percent.return_value = 0.0
+
+        mock_virtual_mem = Mock()
+        mock_virtual_mem.total = 0
+        mock_virtual_mem.percent = 0.0
+
+        mock_disk = Mock()
+        mock_disk.total = 0
+        mock_disk.free = 0
+        mock_disk.percent = 0.0
+
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.psutil"
+        ) as mock_psutil:
+            mock_psutil.Process.return_value = mock_process
+            mock_psutil.cpu_percent.return_value = 0.0
+            # cpu_count returns None on some platforms; expect fallback to 0
+            mock_psutil.cpu_count.return_value = None
+            mock_psutil.virtual_memory.return_value = mock_virtual_mem
+            mock_psutil.disk_usage.return_value = mock_disk
+
+            response = get_system_stats(None)
+
+        assert response.cpu_count == 0
+
+    def test_get_system_stats_error_handling(self):
+        """Test system stats error path raises InternalServerError."""
+        from wy_qcos.api.posiq.routes_jsonrpc.errors import (
+            InternalServerError,
+        )
+
+        with patch(
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.psutil"
+        ) as mock_psutil:
+            mock_psutil.Process.side_effect = RuntimeError("psutil fail")
+
+            with pytest.raises(InternalServerError) as exc_info:
+                get_system_stats(None)
+
+        assert "psutil fail" in str(exc_info.value)
