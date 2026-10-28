@@ -673,17 +673,22 @@ async def qcos_update_job(
     description: str = "",
     job_priority: int = 0,
 ) -> str:
-    """Update attributes of a queued job.
+    """Update attributes of a job.
 
-    Only jobs in QUEUED state can be updated. Pass non-empty / non-zero
-    values for fields you want to change; omitted fields (empty string
-    or 0) are ignored.
+    ``job_name`` and ``description`` can be updated in any job state.
+    Only ``job_priority`` is restricted: the job must be in QUEUED
+    state, otherwise the server rejects the request. Pass non-empty /
+    non-zero values for fields you want to change; omitted fields
+    (empty string or 0) are ignored.
 
     Args:
         job_id: Job UUID string.
         job_name: New job name. Empty string means no change.
+            Updatable in any job state.
         description: New job description. Empty string means no change.
-        job_priority: New job priority 1-10 (1=highest). 0 means no change.
+            Updatable in any job state.
+        job_priority: New job priority 1-10 (1=highest). 0 means no
+            change. Only updatable when the job is QUEUED.
 
     Returns:
         JSON string with updated job info.

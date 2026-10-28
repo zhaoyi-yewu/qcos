@@ -133,6 +133,13 @@ from .metrics import (
     GetApiStatsResponse,
     GetJobStatsRequest,
     GetJobStatsResponse,
+    GetSystemStatsRequest,
+    GetSystemStatsResponse,
+)
+from .proxy import (
+    GetProxyHealthRequest,
+    GetProxyHealthResponse,
+    ProxyHealthItem,
 )
 from .flavor import (
     CreateFlavorRequest,

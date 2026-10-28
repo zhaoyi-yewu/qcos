@@ -27,3 +27,4 @@ from . import flavor
 from . import device_group
 from . import project
 from . import metrics
+from . import proxy

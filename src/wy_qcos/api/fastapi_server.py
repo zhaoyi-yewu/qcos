@@ -33,6 +33,17 @@ from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api, BASE_ENDPOINT
 from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
     decode_jwt_token,
 )
+from wy_qcos.api.posiq.routes_rest.proxy_auth import ProxyJwtMiddleware
+from wy_qcos.api.posiq.routes_rest.proxy_registry import PROXY_TARGETS
+from wy_qcos.api.posiq.routes_rest.reverse_proxy import (
+    create_reverse_proxy_app,
+)
+from wy_qcos.api.posiq.routes_rest.terminal_files import (
+    router as terminal_files_router,
+)
+from wy_qcos.api.posiq.routes_rest.terminal_ws import (
+    router as terminal_ws_router,
+)
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.metrics.metrics_middleware import MetricsMiddleware
@@ -89,9 +100,17 @@ jsonrpc.invalid_params_from_validation_error = (
 )
 
 
+# CORS: allow any origin. ``allow_origins=["*"]`` is incompatible with
+# ``allow_credentials=True`` per the CORS spec — Starlette's
+# CORSMiddleware will refuse credentialed requests (including WebSocket
+# handshakes, which always carry the ``Origin`` header and trigger
+# cookie-based auth) with HTTP 403 when both are set. Using
+# ``allow_origin_regex=".*"`` makes the middleware echo the request's
+# ``Origin`` header back instead of the literal "*", which is what the
+# browser expects for credentialed / WebSocket flows.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -248,6 +267,93 @@ try:
         logger.warning("MCP server: no suitable HTTP app method found")
 except Exception as e:
     logger.warning(f"Failed to mount MCP server: {e}")
+
+# Mount reverse-proxy endpoints under /v1/proxy/<service> for each
+# configured upstream (e.g. Prometheus, Alertmanager). Targets whose
+# configured base URL is empty are skipped so an unset field simply
+# disables the corresponding endpoint without breaking other routes.
+for _target in PROXY_TARGETS:
+    try:
+        _base_url = _target.config_getter()
+    except Exception as e:
+        logger.warning(
+            f"Reverse proxy '{_target.path_segment}': failed to resolve "
+            f"upstream base URL: {e}"
+        )
+        continue
+    if not _base_url:
+        logger.info(
+            f"Reverse proxy '{_target.path_segment}': "
+            f"disabled (empty base URL)"
+        )
+        continue
+    try:
+        app.mount(
+            f"{BASE_ENDPOINT}/proxy/{_target.path_segment}",
+            ProxyJwtMiddleware(
+                create_reverse_proxy_app(_target.path_segment, _base_url)
+            ),
+        )
+        logger.info(
+            f"Reverse proxy mounted at "
+            f"{BASE_ENDPOINT}/proxy/{_target.path_segment} -> {_base_url}"
+        )
+    except Exception as e:
+        logger.warning(
+            f"Failed to mount reverse proxy '{_target.path_segment}': {e}"
+        )
+
+# NOTE: Terminal routes (WebSocket + file REST) are NOT registered here at
+# module import time. Config.initialize() has not run yet when this module is
+# first imported by ``wy_qcos.server``, so ``Config.TERMINAL.ENABLED`` would
+# still be the Pydantic default (``False``) and the routes would never be
+# mounted even when ``qcos.toml`` has ``ENABLED = true``. Instead, call
+# :func:`register_terminal_routes` from ``Server.run()`` after
+# ``Config.initialize()``.
+
+
+def register_terminal_routes() -> None:
+    """Register terminal WebSocket / file REST routes on the FastAPI app.
+
+    Must be called after ``Config.initialize()`` so that
+    ``Config.TERMINAL.ENABLED`` reflects the actual ``qcos.toml`` value
+    instead of the Pydantic schema default (``False``).
+
+    The function is idempotent: if the routes are already present it
+    logs and returns without re-registering.
+    """
+    # Avoid double-registration on hot paths that may call this twice.
+    existing = {getattr(r, "path", None) for r in app.routes}
+    if "/v1/terminal/ws" in existing:
+        logger.info("Terminal routes already registered, skipping")
+        return
+
+    _terminal_enabled_type = type(Config.TERMINAL.ENABLED).__name__
+    logger.info(
+        f"Terminal route registration check: TERMINAL.ENABLED="
+        f"{Config.TERMINAL.ENABLED} (type={_terminal_enabled_type})"
+    )
+    if not Config.TERMINAL.ENABLED:
+        logger.info("Terminal feature disabled (TERMINAL.ENABLED=false)")
+        return
+
+    try:
+        app.include_router(terminal_ws_router)
+        app.include_router(terminal_files_router)
+        ws_paths = [
+            str(getattr(r, "path", ""))
+            for r in app.routes
+            if "terminal" in str(getattr(r, "path", ""))
+        ]
+        logger.info(
+            f"Terminal routes registered at /v1/terminal/ws and "
+            f"/v1/terminal/files; current terminal paths: {ws_paths}"
+        )
+    except Exception:
+        # Log full traceback so production deployments can see the real
+        # import/registration failure (previously silently swallowed).
+        logger.exception("Failed to register terminal routes")
+
 
 # Monkey Patch uvicorn signal handler to detect the app is shutting down
 app.state.exiting = False
