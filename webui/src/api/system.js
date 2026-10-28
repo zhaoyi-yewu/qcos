@@ -59,6 +59,21 @@ export function getJobStats() {
 }
 
 /**
+ * Query system statistics of the API server process and the host.
+ *
+ * The response.result contains:
+ *   - pid, rss_mb, vms_mb, thread_count, num_objects, cpu_percent
+ *   - cpu_count, host_cpu_percent
+ *   - mem_total_mb, mem_percent
+ *   - disk_total_mb, disk_free_mb, disk_percent
+ *
+ * @returns {Promise} axios response promise
+ */
+export function getSystemStats() {
+  return jsonrpcRequest('/v1/metrics', 'get_system_stats')
+}
+
+/**
  * Query memory usage of the API server process.
  *
  * The response.result contains:
