@@ -24,7 +24,11 @@
   .sidebar-container {
     flex-shrink: 0;
     transition: width 0.28s;
-    width: $sideBarWidth;
+    // width is driven by the runtime CSS variable --qcos-sidebar-width
+    // (set on .app-wrapper) so it tracks user-driven resizes; the SCSS
+    // variable remains as the first-paint fallback. Sidebar/index.vue
+    // also sets an inline width that takes precedence over this rule.
+    width: var(--qcos-sidebar-width, $sideBarWidth);
     // sidebar background follows the active theme via CSS variable.
     // defaults to the legacy dark blue; theme.js overrides --qcos-menu-bg
     // when a primary color preset is selected.
@@ -84,7 +88,10 @@
     }
 
     // menu hover
+    // element-plus 2.x renders sub-menu titles as .el-sub-menu__title
+    // (not the legacy .el-submenu__title), so both selectors are listed.
     .submenu-title-noDropdown,
+    .el-sub-menu__title,
     .el-submenu__title {
       font-size: 15px;
       font-weight: 600;
@@ -94,11 +101,15 @@
       }
     }
 
+
+    .is-active>.el-sub-menu__title,
     .is-active>.el-submenu__title {
-      color: $subMenuActiveText !important;
+      color: var(--qcos-sub-menu-active-text, $subMenuActiveText) !important;
     }
 
+    & .nest-menu .el-sub-menu>.el-sub-menu__title,
     & .nest-menu .el-submenu>.el-submenu__title,
+    & .el-sub-menu .el-menu-item,
     & .el-submenu .el-menu-item {
       min-width: $sideBarWidth !important;
       background-color: var(--qcos-sub-menu-bg, $subMenuBg) !important;
@@ -142,9 +153,11 @@
       }
     }
 
+    .el-sub-menu,
     .el-submenu {
       overflow: hidden;
 
+      &>.el-sub-menu__title,
       &>.el-submenu__title {
         padding: 0 !important;
 
@@ -156,6 +169,7 @@
           margin-left: 19px;
         }
 
+        .el-sub-menu__icon-arrow,
         .el-submenu__icon-arrow {
           display: none;
         }
@@ -163,7 +177,9 @@
     }
 
     .el-menu--collapse {
+      .el-sub-menu,
       .el-submenu {
+        &>.el-sub-menu__title,
         &>.el-submenu__title {
           &>span {
             height: 0;
@@ -177,6 +193,7 @@
     }
   }
 
+  .el-menu--collapse .el-menu .el-sub-menu,
   .el-menu--collapse .el-menu .el-submenu {
     min-width: $sideBarWidth !important;
   }
@@ -224,7 +241,8 @@
       margin-left: -2px;
     }
   }
-
+  
+  .nest-menu .el-sub-menu>.el-sub-menu__title,
   .nest-menu .el-submenu>.el-submenu__title,
   .el-menu-item {
     &:hover {
@@ -248,6 +266,20 @@
     &::-webkit-scrollbar-thumb {
       background: #99a9bf;
       border-radius: 20px;
+    }
+  }
+}
+
+// Light-mode override: ensure the first-level sidebar menu hover stays
+// light even if --qcos-menu-hover is not yet set (falls back to the
+// legacy dark blue #263445). Placed outside #app to raise specificity
+// without relying on the CSS variable being present.
+html:not(.dark) #app .sidebar-container {
+  .submenu-title-noDropdown,
+  .el-sub-menu__title,
+  .el-submenu__title {
+    &:hover {
+      background-color: var(--qcos-menu-hover, #e9ecef) !important;
     }
   }
 }

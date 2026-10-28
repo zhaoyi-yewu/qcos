@@ -142,3 +142,17 @@ html.dark {
     color: var(--el-text-color-primary);
   }
 }
+
+/*
+ * Backend device select popper used on the job-submit page (qasm.vue / qubo.vue).
+ * The popper is teleported to <body> by Element Plus, so its styles must live
+ * in a global stylesheet instead of scoped component CSS.
+ *
+ * Make the dropdown show more rows: allow it to grow up to 60% of the viewport
+ * height (instead of the default ~274px which only fits ~8 items) so users see
+ * many more devices before having to scroll. The popper still respects small
+ * viewports because of the vh-based cap, giving an "auto / adaptive" behavior.
+ */
+.backend-device-select-popper .el-select-dropdown__wrap {
+  max-height: min(60vh, 560px);
+}

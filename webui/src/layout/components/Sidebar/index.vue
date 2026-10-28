@@ -17,6 +17,7 @@
   <div
     class="sidebar-inner"
     :class="{'has-logo':showLogo}"
+    :style="sidebarWidthStyle"
   >
     <endpoint-switcher :collapse="isCollapse" />
     <logo v-if="showLogo" :collapse="isCollapse" />
@@ -25,7 +26,8 @@
         :default-active="activeMenu"
         :collapse="isCollapse"
         background-color="var(--qcos-menu-bg, #304156)"
-        :text-color="variables.menuText"
+        text-color="var(--qcos-menu-text, #bfcbd9)"
+        hover-background-color="var(--qcos-menu-hover, #263445)"
         :unique-opened="false"
         active-text-color="var(--qcos-menu-active-text, #409EFF)"
         :collapse-transition="false"
@@ -36,6 +38,7 @@
     </el-scrollbar>
     <!-- theme picker pinned to the bottom of the sidebar -->
     <theme-picker :collapse="isCollapse" class="sidebar-theme-picker" />
+
   </div>
 </template>
 
@@ -106,6 +109,16 @@ const activeMenu = computed(() => {
 })
 const showLogo = computed(() => sidebarLogo.value)
 const isCollapse = computed(() => !sidebar.value.opened)
+
+// user-resizable sidebar width: applied as an inline style so it
+// overrides the static $sideBarWidth from sidebar.scss. When the sidebar
+// is collapsed we fall back to the store default; the global
+// .hideSidebar rules already force width:0 via display:none.
+const sidebarWidthStyle = computed(() => {
+  if (isCollapse.value) return {}
+  const w = sidebar.value.width
+  return w ? { width: `${w}px` } : {}
+})
 </script>
 
 <style scoped>
@@ -134,5 +147,6 @@ const isCollapse = computed(() => !sidebar.value.opened)
 .sidebar-theme-picker {
   flex-shrink: 0;
 }
+
 </style>
 
