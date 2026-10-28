@@ -120,6 +120,25 @@ class MetricsServerSection(BaseModel):
     )
 
 
+class ProxySection(BaseModel):
+    """PROXY section configuration.
+
+    Reverse-proxy upstream endpoints. An empty string disables the
+    corresponding proxy mount.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    PROMETHEUS_BASE_URL: str = Field(
+        default="http://127.0.0.1:9090",
+        description="Prometheus base URL ('' to disable proxy endpoint)",
+    )
+    ALERTMANAGER_BASE_URL: str = Field(
+        default="http://127.0.0.1:9093",
+        description="Alertmanager base URL ('' to disable proxy endpoint)",
+    )
+
+
 class PrefectSection(BaseModel):
     """PREFECT section configuration."""
 
@@ -362,6 +381,115 @@ class SchedulerSection(BaseModel):
     )
 
 
+class TerminalSection(BaseModel):
+    """TERMINAL section configuration.
+
+    Mirrors the ``[TERMINAL]`` table documented in
+    ``plans/terminal.md`` §7.4. All fields have safe defaults so the
+    terminal feature can be enabled by simply flipping ``ENABLED``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ENABLED: bool = Field(
+        default=False,
+        description="Master switch for the in-browser terminal",
+    )
+    IDLE_TIMEOUT_SECONDS: int = Field(
+        default=1800,
+        ge=0,
+        description="Idle session timeout in seconds (0 disables reaper)",
+    )
+    MAX_SESSIONS_PER_USER: int = Field(
+        default=4,
+        ge=1,
+        description="Max concurrent terminal sessions per user",
+    )
+    MAX_SESSIONS_TOTAL: int = Field(
+        default=128,
+        ge=1,
+        description="Max concurrent terminal sessions globally",
+    )
+    DEFAULT_SHELL: str = Field(
+        default="/bin/bash",
+        description=(
+            "Default shell path inside the sandbox; used when "
+            "ENTRY_COMMAND is empty"
+        ),
+    )
+    ENTRY_COMMAND: str = Field(
+        default="/bin/bash",
+        description=(
+            "Command spawned inside the sandbox. Change to "
+            "'qcos-cli interactive' for a QCOS-native REPL."
+        ),
+    )
+    SANDBOX_ENABLED: bool = Field(
+        default=True,
+        description=(
+            "Use bwrap for per-user isolation; false runs a bare "
+            "host shell (debug only)"
+        ),
+    )
+    SANDBOX_ROOT: str = Field(
+        default="/var/qcos/users",
+        description="Host directory holding one subdir per user UUID",
+    )
+    QCOS_ROOT: str = Field(
+        default="/opt/qcos",
+        description="Path bind-mounted read-only inside the sandbox",
+    )
+    SECCOMP_PROFILE: str = Field(
+        default="default",
+        description=(
+            "seccomp blacklist profile name or path to a custom BPF "
+            "file (P1; reserved for future use)"
+        ),
+    )
+    NET_POLICY: str = Field(
+        default="none",
+        description=(
+            "Sandbox network policy: 'none' (default, fully "
+            "disconnected), 'local-api-only' (allow only "
+            "127.0.0.1:QCOS_API_PORT via host firewall), or 'full' "
+            "(no restriction; debug only)"
+        ),
+    )
+    # Optional override. When omitted (None or 0), the value falls back
+    # to Config.API_SERVER.API_SERVER_LISTEN_PORT so operators don't
+    # have to keep two port fields in sync. Only consumed when
+    # NET_POLICY == "local-api-only".
+    QCOS_API_PORT: int | None = Field(
+        default=None,
+        ge=1,
+        le=65535,
+        description=(
+            "QCOS API listen port override; used by NET_POLICY="
+            "local-api-only as the only allowed egress target. "
+            "Defaults to API_SERVER_LISTEN_PORT when omitted."
+        ),
+    )
+    MAX_UPLOAD_MB: int = Field(
+        default=100,
+        ge=1,
+        description="Per-file upload size cap in megabytes",
+    )
+    RECORD_TRANSCRIPT: bool = Field(
+        default=False,
+        description=(
+            "Record asciinema .cast transcripts of each session. "
+            "Default off; transcripts may contain sensitive output."
+        ),
+    )
+    TRANSCRIPT_DIR: str = Field(
+        default="/var/log/qcos/terminal",
+        description=(
+            "Root directory for transcripts; per-user files land in "
+            "{TRANSCRIPT_DIR}/users/{USER_UUID}/ with mode 0700"
+        ),
+    )
+
+
 class ConfigModel(BaseModel):
     """Complete QCOS configuration model."""
 
@@ -372,6 +500,7 @@ class ConfigModel(BaseModel):
     METRICS_SERVER: MetricsServerSection = Field(
         default_factory=MetricsServerSection
     )
+    PROXY: ProxySection = Field(default_factory=ProxySection)
     PREFECT: PrefectSection = Field(default_factory=PrefectSection)
     TRANSPILER: TranspilerSection = Field(default_factory=TranspilerSection)
     REDIS: RedisSection = Field(default_factory=RedisSection)
@@ -382,6 +511,7 @@ class ConfigModel(BaseModel):
     SSL: SSLSection = Field(default_factory=SSLSection)
     DEVICES: DevicesSection = Field(default_factory=DevicesSection)
     SCHEDULER: SchedulerSection = Field(default_factory=SchedulerSection)
+    TERMINAL: TerminalSection = Field(default_factory=TerminalSection)
 
 
 # ==================== Config Manager ====================
@@ -413,6 +543,7 @@ class Config:
         "DEFAULT",
         "API_SERVER",
         "METRICS_SERVER",
+        "PROXY",
         "PREFECT",
         "REDIS",
         "DATABASE",
@@ -422,12 +553,14 @@ class Config:
         "SSL",
         "DEVICES",
         "SCHEDULER",
+        "TERMINAL",
     ]
 
     # Expose sections as class attributes for type hints and access
     DEFAULT: DefaultSection = DefaultSection()
     API_SERVER: APIServerSection = APIServerSection()
     METRICS_SERVER: MetricsServerSection = MetricsServerSection()
+    PROXY: ProxySection = ProxySection()
     PREFECT: PrefectSection = PrefectSection()
     TRANSPILER: TranspilerSection = TranspilerSection()
     REDIS: RedisSection = RedisSection()
@@ -438,6 +571,7 @@ class Config:
     SSL: SSLSection = SSLSection()
     DEVICES: DevicesSection = DevicesSection()
     SCHEDULER: SchedulerSection = SchedulerSection()
+    TERMINAL: TerminalSection = TerminalSection()
 
     @classmethod
     def initialize(cls):
@@ -450,6 +584,7 @@ class Config:
         cls.DEFAULT = cls._model.DEFAULT
         cls.API_SERVER = cls._model.API_SERVER
         cls.METRICS_SERVER = cls._model.METRICS_SERVER
+        cls.PROXY = cls._model.PROXY
         cls.PREFECT = cls._model.PREFECT
         cls.TRANSPILER = cls._model.TRANSPILER
         cls.REDIS = cls._model.REDIS
@@ -460,6 +595,7 @@ class Config:
         cls.LOG = cls._model.LOG
         cls.SSL = cls._model.SSL
         cls.DEVICES = cls._model.DEVICES
+        cls.TERMINAL = cls._model.TERMINAL
 
     @classmethod
     def load_config_file(cls, config_file: str, extra_config: bool = False):

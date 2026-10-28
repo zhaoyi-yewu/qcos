@@ -15,8 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import gc
 import logging
+import os
 
+import psutil
 from fastapi import Depends
 
 from wy_qcos.api import schemas
@@ -176,6 +179,86 @@ def get_job_stats(
         return response_info
     except Exception as e:
         logger.error(f"Failed to get job stats: {e}")
+        return jsonrpc_errors.handle_error_internal_server(
+            module_name, func_name, (False, str(e))
+        )
+
+
+@metrics_api_v1.method(
+    tags=[module_name.lower()],
+    openapi_extra={"allowed_roles": [Constant.ROLE_ADMIN]},
+)
+def get_system_stats(
+    body: schemas.GetSystemStatsRequest | None = None,
+    auth_data: dict | None = Depends(auth),
+) -> schemas.GetSystemStatsResponse:
+    """Get system stats of the API server process and the host.
+
+    Combines process-level metrics (RSS/VMS/threads/objects/CPU) with
+    host-level metrics (CPU count and usage, memory usage, disk usage)
+    so the WebUI monitor center can render usage percentages without
+    issuing multiple RPCs.
+
+    Args:
+        body: Get system stats request (empty)
+        auth_data: Authentication data
+
+    Returns:
+        System stats response
+    """
+    func_name = "get_system_stats"
+    logger.info(f"Call {func_name}")
+
+    try:
+        # Prefer the values collected by the periodic metrics task so
+        # concurrent WebUI polling does not repeatedly invoke psutil.
+        # Fall back to a direct psutil snapshot when the collector has
+        # not produced data yet (e.g. right after server start).
+        cached = metrics_collector.system_stats_metrics.get_values()
+        if cached.cpu_count > 0:
+            _response_info = {
+                "pid": os.getpid(),
+                "rss_mb": cached.rss_mb,
+                "vms_mb": cached.vms_mb,
+                "thread_count": cached.thread_count,
+                "num_objects": cached.num_objects,
+                "cpu_percent": cached.cpu_percent,
+                "cpu_count": cached.cpu_count,
+                "host_cpu_percent": cached.host_cpu_percent,
+                "mem_total_mb": cached.mem_total_mb,
+                "mem_percent": cached.mem_percent,
+                "disk_total_mb": cached.disk_total_mb,
+                "disk_free_mb": cached.disk_free_mb,
+                "disk_percent": cached.disk_percent,
+            }
+        else:
+            process = psutil.Process(os.getpid())
+            mem_info = process.memory_info()
+            host_cpu_percent = psutil.cpu_percent(interval=0.1)
+            cpu_count = psutil.cpu_count(logical=True) or 0
+            virtual_mem = psutil.virtual_memory()
+            disk = psutil.disk_usage(os.getcwd())
+            _response_info = {
+                "pid": process.pid,
+                "rss_mb": round(mem_info.rss / 1024 / 1024, 2),
+                "vms_mb": round(mem_info.vms / 1024 / 1024, 2),
+                "thread_count": process.num_threads(),
+                "num_objects": len(gc.get_objects()),
+                "cpu_percent": process.cpu_percent(interval=0.1),
+                "cpu_count": cpu_count,
+                "host_cpu_percent": host_cpu_percent,
+                "mem_total_mb": round(virtual_mem.total / 1024 / 1024, 2),
+                "mem_percent": virtual_mem.percent,
+                "disk_total_mb": round(disk.total / 1024 / 1024, 2),
+                "disk_free_mb": round(disk.free / 1024 / 1024, 2),
+                "disk_percent": disk.percent,
+            }
+        response_info = schemas.GetSystemStatsResponse.model_validate(
+            _response_info
+        )
+        return response_info
+    except Exception as e:
+        logger.error(f"Failed to get system stats: {e}")
         return jsonrpc_errors.handle_error_internal_server(
             module_name, func_name, (False, str(e))
         )

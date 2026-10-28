@@ -103,3 +103,60 @@ class GetJobStatsResponse(BaseModel):
         description="Completed job rate in the last minute "
         "(completed jobs per minute), based on created_at",
     )
+
+
+class GetSystemStatsRequest(BaseModel):
+    """Get system stats request."""
+
+
+class GetSystemStatsResponse(BaseModel):
+    """Get system stats response.
+
+    Reports resource usage of the API server process and the host
+    machine. Similar to ``show_mem`` but additionally exposes the
+    host-level CPU count and disk free space so the WebUI monitor
+    center can render usage percentages.
+    """
+
+    # process id
+    pid: int = Field(..., description="Process id of the API server")
+    # resident set size in MB
+    rss_mb: float = Field(..., description="Resident set size memory in MB")
+    # virtual memory size in MB
+    vms_mb: float = Field(..., description="Virtual memory size in MB")
+    # number of threads
+    thread_count: int = Field(
+        ..., description="Number of threads in the process"
+    )
+    # number of gc tracked objects
+    num_objects: int = Field(..., description="Number of gc tracked objects")
+    # process-level cpu percent (0-100 * num_cores, as per psutil)
+    cpu_percent: float = Field(
+        ..., description="CPU usage percentage of the process"
+    )
+    # host-level total logical CPU count
+    cpu_count: int = Field(
+        ..., description="Total number of logical CPUs on the host"
+    )
+    # host-level CPU usage percent (0-100)
+    host_cpu_percent: float = Field(
+        ..., description="Host CPU usage percentage (0-100)"
+    )
+    # host-level total physical memory in MB
+    mem_total_mb: float = Field(
+        ..., description="Total physical memory of the host in MB"
+    )
+    # host-level memory usage percent (0-100)
+    mem_percent: float = Field(
+        ..., description="Host memory usage percentage (0-100)"
+    )
+    # disk total / free in MB for the partition hosting the working dir
+    disk_total_mb: float = Field(
+        ..., description="Total disk space of the working partition in MB"
+    )
+    disk_free_mb: float = Field(
+        ..., description="Free disk space of the working partition in MB"
+    )
+    disk_percent: float = Field(
+        ..., description="Disk usage percentage of the working partition"
+    )
