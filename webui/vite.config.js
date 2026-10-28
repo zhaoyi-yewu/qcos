@@ -65,7 +65,12 @@ function webuiConfigPlugin() {
       const alias = (block.match(/alias\s*=\s*"([^"]*)"/) || [null, name])[1]
       const url = (block.match(/url\s*=\s*"([^"]*)"/) || [null, ''])[1]
       const useSsl = /use_ssl\s*=\s*true/i.test(block)
-      endpoints.push({ name, alias, url, use_ssl: useSsl })
+      const prometheusUrl = (block.match(/prometheus_url\s*=\s*"([^"]*)"/) || [null, ''])[1]
+      const alertmanagerUrl = (block.match(/alertmanager_url\s*=\s*"([^"]*)"/) || [null, ''])[1]
+      const ep = { name, alias, url, use_ssl: useSsl }
+      if (prometheusUrl) ep.prometheus_url = prometheusUrl.replace(/\/$/, '')
+      if (alertmanagerUrl) ep.alertmanager_url = alertmanagerUrl.replace(/\/$/, '')
+      endpoints.push(ep)
     }
 
     return { debug, defaultEndpoint, endpointProbeTimeoutMs: probeTimeout, endpoints }
@@ -73,6 +78,37 @@ function webuiConfigPlugin() {
 
   return {
     name: 'webui-config',
+
+    // The `config` hook runs BEFORE the dev server is created, which
+    // lets us register per-endpoint proxy entries in `server.proxy`
+    // (powered by http-proxy-middleware). Doing it here ensures vite's
+    // built-in proxy middleware is initialised with our rules; mutating
+    // `server.config.server.proxy` later inside `configureServer` would
+    // be too late and the proxies would not take effect.
+    //
+    // Each endpoint produces a `/api/<name>` proxy entry. The `rewrite`
+    // strips the `/api/<name>` prefix so the upstream receives the bare
+    // path (e.g. `/v1/proxy/prometheus/...`), matching what nginx's
+    // `proxy_pass <url>/` does in production.
+    config() {
+      const cfg = parseToml()
+      const proxy = {}
+      for (const ep of cfg.endpoints) {
+        const targetUrl = ep.url.replace(/\/$/, '')
+        proxy[`/api/${ep.name}`] = {
+          target: targetUrl,
+          changeOrigin: true,
+          // forward WebSocket upgrades (e.g. /api/<name>/v1/terminal/ws)
+          // so the dev-mode terminal works the same as behind nginx
+          ws: true,
+          rewrite: (p) => p.replace(new RegExp(`^/api/${ep.name}`), '')
+        }
+      }
+      return {
+        server: { proxy }
+      }
+    },
+
     configureServer(server) {
       // serve /webui-config.json
       server.middlewares.use('/webui-config.json', (req, res) => {
@@ -82,12 +118,17 @@ function webuiConfigPlugin() {
             debug: cfg.debug,
             defaultEndpoint: cfg.defaultEndpoint,
             endpointProbeTimeoutMs: cfg.endpointProbeTimeoutMs,
-            endpoints: cfg.endpoints.map(ep => ({
-              name: ep.name,
-              alias: ep.alias,
-              url: `/api/${ep.name}`,
-              use_ssl: ep.use_ssl
-            }))
+            endpoints: cfg.endpoints.map(ep => {
+              const entry = {
+                name: ep.name,
+                alias: ep.alias,
+                url: `/api/${ep.name}`,
+                use_ssl: ep.use_ssl
+              }
+              if (ep.prometheus_url) entry.prometheus_url = ep.prometheus_url
+              if (ep.alertmanager_url) entry.alertmanager_url = ep.alertmanager_url
+              return entry
+            })
           }
           res.setHeader('Content-Type', 'application/json')
           res.setHeader('Cache-Control', 'no-store')
@@ -97,30 +138,6 @@ function webuiConfigPlugin() {
           res.end(JSON.stringify({ error: err.message }))
         }
       })
-
-      // proxy /api/<name>/ to the real QCOS API
-      const cfg = parseToml()
-      for (const ep of cfg.endpoints) {
-        const proxyPath = `/api/${ep.name}/`
-        server.middlewares.use(proxyPath, (req, res) => {
-          const targetUrl = ep.url.replace(/\/$/, '')
-          const proxyReq = new URL(req.url, targetUrl)
-          const options = {
-            method: req.method,
-            headers: { ...req.headers, host: new URL(targetUrl).host }
-          }
-          const lib = targetUrl.startsWith('https:') ? https : http
-          const proxy = lib.request(proxyReq, options, (proxyRes) => {
-            res.writeHead(proxyRes.statusCode, proxyRes.headers)
-            proxyRes.pipe(res)
-          })
-          proxy.on('error', (err) => {
-            res.statusCode = 502
-            res.end(JSON.stringify({ error: `proxy error: ${err.message}` }))
-          })
-          req.pipe(proxy)
-        })
-      }
     }
   }
 }

@@ -141,14 +141,19 @@ ENDPOINT_PROBE_TIMEOUT_MS = 3000
 #             digits, dash, underscore), stored in browser localStorage
 #   alias   - optional; human readable label; falls back to `name`
 #   url     - required; base URL of the QCOS API server (http:// or https://)
+#   use_ssl - optional; explicit SSL/TLS switch for the upstream QCOS API.
+#             Defaults to `true` when `url` starts with `https://` and
+#             `false` otherwise. Setting `use_ssl = true` requires the
+#             url to be `https://`; setting `use_ssl = false` with an
+#             https url disables SSL verification (NOT recommended).
 #   cacert  - optional; absolute path *inside the webui container* of the
-#             CA certificate used to verify a self-signed https endpoint;
-#             ignored for http:// endpoints
+#             CA certificate used to verify a self-signed https endpoint.
+#             Only consulted when `use_ssl = true`; ignored otherwise.
 #
 # Example (multiple endpoints, https with custom CA):
 # QCOS_API_ENDPOINTS = [
 #   { name = "local",      alias = "本地开发环境", url = "http://127.0.0.1:18400" },
-#   { name = "production", alias = "生产环境",     url = "https://127.0.0.1:18400", cacert = "/etc/qcos/ssl/cacert.pem" },
+#   { name = "production", alias = "生产环境",     url = "https://127.0.0.1:18400", use_ssl = true, cacert = "/etc/qcos/ssl/cacert.pem" },
 # ]
 QCOS_API_ENDPOINTS = [
   { name = "local", alias = "本地开发环境", url = "http://127.0.0.1:18400" }
@@ -173,7 +178,8 @@ QCOS_API_ENDPOINTS = [
 | `name` | string | 是 | 唯一标识，仅允许 `a-z 0-9 _ -`，写入浏览器 localStorage |
 | `alias` | string | 否 | 显示名，缺省用 `name` |
 | `url` | string | 是 | QCOS API 完整地址，支持 `http://` 或 `https://` |
-| `cacert` | string | 否 | 自签名 https 的 CA 证书在容器内的绝对路径，仅 https 时有效 |
+| `use_ssl` | bool | 否 | 是否对上游启用 SSL/TLS 校验。缺省时按 `url` scheme 推断（`https://` → `true`，否则 `false`）。`use_ssl = true` 要求 `url` 必须是 `https://`；`use_ssl = false` 搭配 `https://` url 会关闭 SSL 校验（不推荐） |
+| `cacert` | string | 否 | 自签名 https 的 CA 证书在容器内的绝对路径，仅 `use_ssl = true` 时生效 |
 
 ### 3.4 配置文件加载流程
 
@@ -191,7 +197,8 @@ flowchart LR
 
 - `name`：必填、唯一、正则 `^[a-z0-9_-]+$`
 - `url`：必填，scheme 必须是 `http` 或 `https`
-- `cacert`：必须是 `/etc/qcos/ssl/` 下的可读 regular file，否则解析失败容器启动报错
+- `use_ssl`：可选 bool；缺省时按 `url` scheme 自动推断。`use_ssl = true` 与 `http://` url 冲突会启动失败；`use_ssl = false` 与 `https://` url 冲突会记录警告并关闭 SSL 校验
+- `cacert`：仅在 `use_ssl = true` 时校验，必须是 `/etc/qcos/ssl/` 下的可读 regular file，否则解析失败容器启动报错；`use_ssl = false` 时即使配置了也会被忽略（仅记录警告）
 
 ---
 
@@ -206,7 +213,7 @@ flowchart LR
    - 未认证 → 自动跳转登录页，登录成功后再切换
 4. 每个 endpoint 在 nginx 中有独立的 `location /api/<name>/` 反向代理
 
-### 4.2 HTTPS endpoint 与 cacert
+### 4.2 HTTPS endpoint、`use_ssl` 与 cacert
 
 由于浏览器的证书校验无法被 JS 控制，WebUI 采用 **nginx 反向代理 + 服务端证书校验** 方案：
 
@@ -220,7 +227,19 @@ flowchart LR
 - nginx 在 `location /api/<name>/` 内通过 `proxy_ssl_trusted_certificate` 校验上游证书
 - **每个 endpoint 的 cacert 完全独立**，互不影响
 
-cacert 文件准备：
+#### `use_ssl` 字段语义
+
+`use_ssl` 是 endpoint 级别的 SSL/TLS 显式开关（参考 OpenStack Neutron 风格），用于显式声明该 endpoint 是否走加密 + 证书校验：
+
+| 配置组合 | 行为 |
+|---|---|
+| `url = "https://..."` （不写 `use_ssl`） | 自动推断 `use_ssl = true`，启用 SSL 校验 |
+| `url = "http://..."` （不写 `use_ssl`） | 自动推断 `use_ssl = false`，纯 HTTP |
+| `use_ssl = true` + `url = "https://..."` | 显式启用 SSL 校验（推荐写法） |
+| `use_ssl = true` + `url = "http://..."` | **配置冲突**，启动时报错退出 |
+| `use_ssl = false` + `url = "https://..."` | 关闭 SSL 校验（仅记录警告），仅用于调试自签名环境，**生产不推荐** |
+
+#### cacert 文件准备
 
 ```shell
 # 把 CA 证书放到宿主机 /etc/qcos/ssl/ 下，容器通过 volume 挂载访问
@@ -269,9 +288,11 @@ docker logs qcos-webui
 
 ### Q3：HTTPS endpoint 提示"不可用"
 
+- 检查 `use_ssl` 与 `url` 是否匹配：`https://` url 必须 `use_ssl = true`（或省略让其自动推断）
 - 检查 `cacert` 路径在容器内是否可读：`docker exec qcos-webui ls -l /etc/qcos/ssl/`
 - 检查上游 QCOS API 证书是否由该 CA 签发
 - 如果是完整证书链，确认 cacert 文件包含中间 CA + 根 CA
+- 调试阶段可临时设置 `use_ssl = false` 跳过证书校验定位问题，确认是证书问题后再改回 `true`
 
 ### Q4：修改 webui.toml 后没生效
 
