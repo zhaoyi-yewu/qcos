@@ -2006,3 +2006,33 @@ class Client:
             self.metrics_url, method_name, body_data=None
         )
         return status_code, reason, text, result
+
+    def get_system_stats(self):
+        """Get system statistics.
+
+        Returns:
+            System stats including process-level metrics (rss_mb,
+            vms_mb, thread_count, num_objects, cpu_percent) and
+            host-level metrics (cpu_count, host_cpu_percent,
+            mem_total_mb, mem_percent, disk_total_mb, disk_free_mb,
+            disk_percent).
+        """
+        method_name = "get_system_stats"
+        status_code, reason, text, result = self.call_json_rpc(
+            self.metrics_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result
+
+    # [Proxy]
+    def get_proxy_health(self):
+        """Get reverse-proxy upstream health status.
+
+        Returns:
+            Health status of every registered proxy target
+            (Prometheus, Alertmanager, ...)
+        """
+        method_name = "get_proxy_health"
+        status_code, reason, text, result = self.call_json_rpc(
+            self.metrics_url, method_name, body_data=None
+        )
+        return status_code, reason, text, result

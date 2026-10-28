@@ -60,6 +60,7 @@ class QcosShell(App):
     CMD_GROUP_FLAVOR = "Flavor"
     CMD_GROUP_DEVICE_GROUP = "DeviceGroup"
     CMD_GROUP_METRICS = "Metrics"
+    CMD_GROUP_PROXY = "Proxy"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
         CMD_GROUP_VERSION,
@@ -74,6 +75,7 @@ class QcosShell(App):
         CMD_GROUP_JOB,
         CMD_GROUP_FLAVOR,
         CMD_GROUP_METRICS,
+        CMD_GROUP_PROXY,
     ]
 
     def __init__(self, description, version, command_manager):
@@ -4747,6 +4749,94 @@ class GetJobStats(Lister):
         return table_values
 
 
+class GetSystemStats(Lister):
+    """Get system statistics (process + host CPU/memory/disk)."""
+
+    group = QcosShell.CMD_GROUP_METRICS
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_system_stats()
+
+        json_results = CommandHelper.check_results(
+            resource, "get_system_stats", status_code, reason, text
+        )
+        header_list = ["SYSTEM_METRICS", "VALUE"]
+
+        stats_list = [
+            {header_list[0]: key, header_list[1]: value}
+            for key, value in json_results.items()
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+        return table_values
+
+
+# Proxy commands
+class GetProxyHealth(Lister):
+    """Get reverse-proxy upstream health status."""
+
+    group = QcosShell.CMD_GROUP_PROXY
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        return parser
+
+    def take_action(self, parsed_args):
+        resource = self.group
+
+        status_code, reason, text, result = self.app.client.get_proxy_health()
+        json_results = CommandHelper.check_results(
+            resource, "get_proxy_health", status_code, reason, text
+        )
+
+        if "targets" not in json_results:
+            raise errors.GenericException(
+                "Invalid response format: 'targets' field is missing"
+            )
+
+        header_list = [
+            "NAME",
+            "STATUS",
+            "ENABLED",
+            "HEALTHY",
+            "LATENCY_MS",
+            "BASE_URL",
+            "PATH",
+            "DETAIL",
+        ]
+
+        stats_list = [
+            {
+                "NAME": item.get("name", ""),
+                "STATUS": item.get("status", ""),
+                "ENABLED": item.get("enabled", False),
+                "HEALTHY": item.get("healthy", False),
+                "LATENCY_MS": (
+                    item.get("latency_ms")
+                    if item.get("latency_ms") is not None
+                    else "-"
+                ),
+                "BASE_URL": item.get("base_url", ""),
+                "PATH": item.get("path", ""),
+                "DETAIL": item.get("detail", ""),
+            }
+            for item in json_results["targets"]
+        ]
+
+        table_values = CommandHelper.get_table_list_data(
+            stats_list, header_list, is_dict=False
+        )
+        return table_values
+
+
 # Flavor commands
 class CreateFlavor(Command):
     """Create flavor (preset scheduling policy)."""
@@ -6010,6 +6100,9 @@ command_manager.add_command("delete-role", DeleteRole)
 command_manager.add_command("get-system-health", GetSystemHealth)
 command_manager.add_command("get-api-stats", GetApiStats)
 command_manager.add_command("get-job-stats", GetJobStats)
+command_manager.add_command("get-system-stats", GetSystemStats)
+# proxy command
+command_manager.add_command("get-proxy-health", GetProxyHealth)
 
 
 def set_debug_option(args):
