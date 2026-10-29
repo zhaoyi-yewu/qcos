@@ -278,8 +278,8 @@ TEST_F(QasmConverterTest, Qasm2HeaderFormat) {
   std::string result = ops_to_qasm2(qc);
 
   EXPECT_TRUE(result.find("OPENQASM 2.0;\n") == 0);
-  size_t header_end = result.find("\n\n");
-  EXPECT_NE(header_end, std::string::npos);
+  size_t include_pos = result.find("include \"qelib1.inc\";\n");
+  EXPECT_NE(include_pos, std::string::npos);
 }
 
 TEST_F(QasmConverterTest, Qasm3HeaderFormat) {
