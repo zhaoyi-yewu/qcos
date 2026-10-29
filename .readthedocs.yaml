@@ -22,6 +22,7 @@ build:
       - python docs/openapi-docs/make-openapi-docs.py
       - mkdir -p docs/sphinx/source/_static
       - cp docs/openapi-docs/dist/qcos-api-docs.html docs/sphinx/source/_static/
+      - cp docs/openapi-docs/dist/qcos-mcp-docs.html docs/sphinx/source/_static/
       - tar xzvf docs/openapi-docs/js.tar.gz -C docs/openapi-docs/dist
       - cp -r docs/openapi-docs/dist/js docs/sphinx/source/_static/
 
