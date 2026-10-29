@@ -90,7 +90,6 @@ std::string to_qasm2(
   oss << "include \"qelib1.inc\";\n";
   oss << "qreg q[" << qubit_num << "];\n";
   oss << "creg c[" << qubit_num << "];\n";
-  oss << "\n";
   oss << body.str();
 
   return oss.str();
@@ -118,7 +117,6 @@ std::string to_qasm3(
   oss << "include \"stdgates.inc\";\n";
   oss << "qubit[" << qubit_num << "] q;\n";
   oss << "bit[" << qubit_num << "] c;\n";
-  oss << "\n";
   oss << body.str();
 
   return oss.str();
