@@ -17,9 +17,11 @@
 
 import json
 import time
+from datetime import datetime, timezone
 
 from loguru import logger
 from schema import And, Optional, Schema
+from zoneinfo import ZoneInfo
 
 from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
@@ -546,12 +548,14 @@ class DriverQudoorAbaQu100(DriverQudoorBase):
             task_id: task ID
 
         Returns:
-            (success, err_msg, data) where *data* is the ``outData``
-            dict on success.
+            (success, err_msg, data, machine_profiling) where *data*
+            is the ``outData`` dict on success and *machine_profiling*
+            contains exec start/end timestamps.
         """
         success = True
         err_msgs = []
         data = None
+        machine_profiling = {}
 
         url = f"{self.base_url}{self.path_task_result}"
         params = {"taskId": task_id}
@@ -576,25 +580,69 @@ class DriverQudoorAbaQu100(DriverQudoorBase):
                 f"HTTP {status_code}: {reason}, "
                 f"response: {text[:500] if text else 'None'}"
             )
-            return success, "\n".join(err_msgs), data
+            return success, "\n".join(err_msgs), data, machine_profiling
 
         if not text:
             success = False
             err_msgs.append("Empty response body")
-            return success, "\n".join(err_msgs), data
+            return success, "\n".join(err_msgs), data, machine_profiling
 
         try:
             result = json.loads(text)
         except (json.JSONDecodeError, ValueError):
             success = False
             err_msgs.append("Failed to parse response")
-            return success, "\n".join(err_msgs), data
+            return success, "\n".join(err_msgs), data, machine_profiling
 
         task_status = result.get("taskStatus", 0)
         status_name = TASK_STATUS.get(task_status, "unknown")
         logger.info(
             f"task result: taskId={task_id}, "
             f"status={task_status} ({status_name})"
+        )
+
+        # extract machine profiling data
+        # execStartTime/execEndTime are microsecond timestamps;
+        # convert to Beijing time ISO string
+        time_consume = result.get("timeConsume")
+        exec_start_time = result.get("execStartTime")
+        exec_end_time = result.get("execEndTime")
+        machine_profiling = {}
+        if exec_start_time:
+            try:
+                dt_utc = datetime.fromtimestamp(
+                    exec_start_time / 1000000, tz=timezone.utc
+                )
+                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+                machine_profiling["machine_started_at"] = (
+                    dt_beijing.isoformat()
+                )
+            except (ValueError, OSError, TypeError):
+                logger.warning(
+                    f"Failed to convert exec_start_time="
+                    f"{exec_start_time} to datetime, "
+                    f"skipping machine_started_at"
+                )
+        if exec_end_time:
+            try:
+                dt_utc = datetime.fromtimestamp(
+                    exec_end_time / 1000000, tz=timezone.utc
+                )
+                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+                machine_profiling["machine_ended_at"] = dt_beijing.isoformat()
+            except (ValueError, OSError, TypeError):
+                logger.warning(
+                    f"Failed to convert exec_end_time="
+                    f"{exec_end_time} to datetime, "
+                    f"skipping machine_ended_at"
+                )
+        if time_consume:
+            machine_profiling["machine_duration"] = float(time_consume)
+        logger.info(
+            f"machine profiling: "
+            f"started_at={machine_profiling.get('machine_started_at')}, "
+            f"ended_at={machine_profiling.get('machine_ended_at')}, "
+            f"duration={machine_profiling.get('machine_duration')}"
         )
 
         if task_status == TASK_STATUS_SUCCESS:
@@ -619,7 +667,7 @@ class DriverQudoorAbaQu100(DriverQudoorBase):
                 f"({status_name}), outData={result.get('outData', '')}"
             )
 
-        return success, "\n".join(err_msgs), data
+        return success, "\n".join(err_msgs), data, machine_profiling
 
     # ------------------------------------------------------------------
     # Results conversion
@@ -754,7 +802,9 @@ class DriverQudoorAbaQu100(DriverQudoorBase):
         # 4. Get task results
         logger.info("4. get task results")
         self.set_progress_by_task(self.TASK_STAGE_GET_RESULTS)
-        success, err_msg, _results = self.get_task_results(task_id)
+        success, err_msg, _results, machine_profiling = self.get_task_results(
+            task_id
+        )
         if not success:
             raise ValueError(
                 f"Failed to get task results [{job_id}]: {err_msg}"
@@ -768,6 +818,7 @@ class DriverQudoorAbaQu100(DriverQudoorBase):
             data_index,
             results=results,
             result_type=Constant.RESULT_TYPE_SAMPLING,
+            machine_profiling=machine_profiling,
         )
 
         # 6. Set driver status to ONLINE

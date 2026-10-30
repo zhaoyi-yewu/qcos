@@ -612,11 +612,13 @@ class DriverBase:
         machine_started_at = machine_profiling.get("machine_started_at", None)
         machine_ended_at = machine_profiling.get("machine_ended_at", None)
         machine_duration = machine_profiling.get("machine_duration", None)
-        if machine_started_at and not isinstance(machine_started_at, float):
+        if machine_started_at and not isinstance(
+            machine_started_at, (float, str)
+        ):
             del machine_profiling["machine_started_at"]
-        if machine_ended_at and not isinstance(machine_ended_at, float):
+        if machine_ended_at and not isinstance(machine_ended_at, (float, str)):
             del machine_profiling["machine_ended_at"]
-        if machine_duration and not isinstance(machine_duration, float):
+        if machine_duration and not isinstance(machine_duration, (float, int)):
             del machine_profiling["machine_duration"]
 
         # set machine profiling
