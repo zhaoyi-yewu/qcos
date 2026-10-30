@@ -36,6 +36,9 @@ pipeline {
         persistentString(name: 'NPM_MIRROR',
                defaultValue: '',
                description: 'NPM mirror URL. Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org:28081/repository/qcos/)')
+        persistentString(name: 'NODE_BIN_MIRROR',
+               defaultValue: '',
+               description: 'Node.js binary tarball mirror URL (used by the qcos-webui image build). Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/nodejs/node-v22.14.0-linux-x64.tar.gz)')
         persistentString(name: 'PYTHON_SRC_MIRROR',
                defaultValue: '',
                description: 'PYTHON source mirror URL. Leave empty to use default. e.g. GitLab (http://qcos-mirrors.bclinux.org/bigcloud/bc-uns/bc-uns/extra_pkgs/pkgs/python/python-src/3.11.6/Python-3.11.6.tgz)')
@@ -55,6 +58,7 @@ pipeline {
         YUM_MIRROR = "${params.YUM_MIRROR?: ''}"
         PIP_MIRROR = "${params.PIP_MIRROR?: ''}"
         NPM_MIRROR = "${params.NPM_MIRROR?: ''}"
+        NODE_BIN_MIRROR = "${params.NODE_BIN_MIRROR?: ''}"        
         PYTHON_SRC_MIRROR = "${params.PYTHON_SRC_MIRROR?: ''}"
         PYPY3_BIN_MIRROR = "${params.PYPY3_BIN_MIRROR?: ''}"
         DOCKER_COMPOSE_BIN_MIRROR = "${params.DOCKER_COMPOSE_BIN_MIRROR?: ''}"
@@ -239,6 +243,61 @@ pipeline {
                 ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
                 export BUILD_WHEEL_IN_SANDBOX=false
                 docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -c -t dev"
+                """
+            }
+            post {
+                always {
+                    qcosCleanup()
+                }
+            }
+        }
+
+        // =============================================================
+        // Build Stage 5: Build qcos-webui Docker image
+        // Mirrors build-qcos-webui-image in .github/workflows/qcos-cicd.yml:
+        // spins up qcos-sandbox-temp and runs build-images.sh -w -t dev
+        // inside it (the webui Dockerfile only needs the sandbox image,
+        // not the qcos base image, so no qcos image load step here).
+        // =============================================================
+        stage('Build QCOS-WEBUI Image') {
+            steps {
+                sh """#!/bin/bash
+                set -eo pipefail
+                cd build-scripts
+                if [ -e /usr/libexec/docker/cli-plugins/docker-compose ] && [ ! -e /usr/bin/docker-compose ] && [ ! -L /usr/bin/docker-compose ]; then
+                    ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose
+                fi
+                source ./version
+                cp ./env.template ./.env
+                if [ -n "\${YUM_MIRROR}" ]; then
+                    sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
+                fi
+                if [ -n "\${PIP_MIRROR}" ]; then
+                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
+                fi
+                if [ -n "\${NPM_MIRROR}" ]; then
+                    sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
+                fi
+                if [ -n "\${NODE_BIN_MIRROR}" ]; then
+                    sed -i "s@^NODE_BIN_MIRROR=.*@NODE_BIN_MIRROR=\${NODE_BIN_MIRROR}@" ./.env
+                fi
+                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
+                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
+                fi
+                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
+                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
+                fi
+                if [ -n "\${DOCKER_COMPOSE_BIN_MIRROR}" ]; then
+                    sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
+                fi
+                sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
+
+                df -h
+                cp ./docker-compose-sandbox.yaml ./docker-compose-sandbox-temp.yaml
+                sed -i 's/qcos-sandbox:/qcos-sandbox-temp:/' ./docker-compose-sandbox-temp.yaml
+                ./run-sandbox.sh -n qcos-sandbox-temp -f ./docker-compose-sandbox-temp.yaml
+                export BUILD_WHEEL_IN_SANDBOX=false
+                docker exec qcos-sandbox-temp sh -c "source /root/.bashrc; cd /root/qcos-project/build-scripts; ./build-images.sh -w -t dev"
                 """
             }
             post {

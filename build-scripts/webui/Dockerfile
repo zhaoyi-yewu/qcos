@@ -52,9 +52,10 @@ RUN set -e && \
     chmod +x /entrypoint.sh && \
     /bin/cp ${BUILD_CONTEXT}/build-scripts/webui/parse-webui-toml.py /usr/local/bin/ && \
     chmod +x /usr/local/bin/parse-webui-toml.py && \
+    echo "LANG=C.UTF-8" > /etc/locale.conf && \
 # copy yum repos and create dirs
-    rm -rf /etc/yum.repos.d/*.repo && \
-    cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/ && \
+    if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then mkdir -p /tmp/yum.repos.d/; mv /etc/yum.repos.d/*.repo /tmp/yum.repos.d/; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
+    if [ -f "${BUILD_CONTEXT}/pip.conf" ]; then mkdir -p /root/.pip; cp ${BUILD_CONTEXT}/pip.conf /root/.pip/pip.conf; fi && \
 # install basic rpms (nodejs is installed separately below because
 # the distro npm package is too old for vite 6)
     yum install -y hostname iputils iproute telnet net-tools openssl \

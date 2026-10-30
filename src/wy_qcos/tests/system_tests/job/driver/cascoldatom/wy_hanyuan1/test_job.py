@@ -142,10 +142,12 @@ class TestJob:
             "callbacks": None,
             "dry_run": False,
         }
+        self.admin_client.set_device(job_info["backend"], state="online")
         StLibrary.submit_job(self.admin_client, job_info)
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.admin_client, job_info, self.timeout, self.interval
         )
+        self.admin_client.set_device(job_info["backend"], state="auto")
         if success:
             StLibrary.delete_job(self.admin_client, job_info["job_id"])
             assert (
