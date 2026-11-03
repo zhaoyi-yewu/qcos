@@ -39,7 +39,7 @@ max_job_wait_time = 604800
 job_query_interval = 5
 
 # [Required] SpinQ Cloud username
-username = "spinq_ncmt_2026080701"
+username = "test"
 
 # [Required] path to RSA private key file for authentication
 keyfile = "/etc/qcos/conf.d/spinq_pri.key"
