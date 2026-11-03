@@ -3,12 +3,6 @@ alias_name = "量旋科技-双子座核磁量子计算机"
 driver = "DriverSpinQGemini"
 description = "量旋科技-双子座核磁量子计算机"
 
-# [Optional] enable or disable the device
-# enable = true
-
-# [Optional] max qubits of device
-# device_max_qubits = 100
-
 # [Optional] debug
 # debug = false
 debug = false
@@ -23,7 +17,7 @@ device_log_file = "/var/log/qcos/device_spinq_gemini.log"
 # [Optional] log format string
 # log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
 
-# [Optional] log rotate, max_size (MB). default: 10MB
+# [Optional] log rotate, max size (MB). default: 10MB
 # log_rotate_max_size_mb = 10
 
 # [Optional] log rotate, backup count. default: 10
@@ -35,23 +29,21 @@ device_log_file = "/var/log/qcos/device_spinq_gemini.log"
 # [Optional] max queued jobs, -1 means unlimited
 max_queued_jobs = -1
 
-# [Optional] remote host
-remote_host = "cloud.spinq.cn"
-
-# [Optional] remote port
-remote_port = 6060
-
-# [Required] user name
-username = "spinq_visitor_002"
-
-# [Required] key file content
-signature = ""
-
 # [Optional] max job wait time, default value is 604800 seconds (7 days)
 max_job_wait_time = 604800
 
 # [Optional] job query interval, default value is 5 seconds
 job_query_interval = 5
+
+# [Required] SpinQ Cloud username
+username = "spinq_ncmt_2026080701"
+
+# [Required] path to RSA private key file for authentication
+keyfile = "/etc/qcos/conf.d/spinq_pri.key"
+
+# [Required] SpinQ Cloud API host
+host = "https://cloud.spinq.com/api"
+machine_code = "Gemini-pro-1"
 
 [spinq_gemini.device_monitor]
 # [Optional] enable device monitor
@@ -64,6 +56,10 @@ monitor_log_file = "/var/log/qcos/device_monitor_spinq_gemini.log"
 polling_interval = 60
 
 [spinq_gemini.transpiler.qpu_configs]
+# SpinQ Gemini NMR platform qpu configs
+# 2-qubit topology from designedCouplingMap
 qubits = 2
-coupler_map.CX1_2 = ["Q1", "Q2"]
-coupler_map.CX2_1 = ["Q2", "Q1"]
+
+# Coupler map: bidirectional edges
+coupler_map.CX0_1 = ["Q0", "Q1"]
+coupler_map.CX1_0 = ["Q1", "Q0"]
