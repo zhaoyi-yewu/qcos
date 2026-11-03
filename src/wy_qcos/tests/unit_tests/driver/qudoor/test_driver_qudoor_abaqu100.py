@@ -457,7 +457,7 @@ class TestDriverQudoorAbaQu100:
             },
         })
         mock_http.return_value = _http_ok(resp)
-        success, err, data = driver.get_task_results("task-1")
+        success, err, data, mp = driver.get_task_results("task-1")
         assert success is True
         assert "probs" in data
         assert len(data["probs"]) == 2
@@ -470,7 +470,7 @@ class TestDriverQudoorAbaQu100:
             "outData": out_data_str,
         })
         mock_http.return_value = _http_ok(resp)
-        success, err, data = driver.get_task_results("task-1")
+        success, err, data, mp = driver.get_task_results("task-1")
         assert success is True
         assert "probs" in data
 
@@ -478,7 +478,7 @@ class TestDriverQudoorAbaQu100:
     def test_get_task_results_not_succeeded(self, mock_http):
         resp = json.dumps({"taskStatus": 1, "outData": "已提交."})
         mock_http.return_value = _http_ok(resp)
-        success, err, data = driver.get_task_results("task-1")
+        success, err, data, mp = driver.get_task_results("task-1")
         assert success is False
         assert "task not succeeded" in err
         assert data is None
@@ -486,7 +486,7 @@ class TestDriverQudoorAbaQu100:
     @patch.object(Library, "call_http_api")
     def test_get_task_results_http_error(self, mock_http):
         mock_http.return_value = _http_err(500, "Error", "err")
-        success, err, data = driver.get_task_results("task-1")
+        success, err, data, mp = driver.get_task_results("task-1")
         assert success is False
         assert "HTTP 500" in err
         assert data is None
@@ -494,14 +494,14 @@ class TestDriverQudoorAbaQu100:
     @patch.object(Library, "call_http_api")
     def test_get_task_results_empty_body(self, mock_http):
         mock_http.return_value = _http_ok("")
-        success, err, data = driver.get_task_results("task-1")
+        success, err, data, mp = driver.get_task_results("task-1")
         assert success is False
         assert "Empty response body" in err
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results_invalid_json(self, mock_http):
         mock_http.return_value = _http_ok("bad json")
-        success, err, data = driver.get_task_results("task-1")
+        success, err, data, mp = driver.get_task_results("task-1")
         assert success is False
         assert "Failed to parse response" in err
 
@@ -509,7 +509,7 @@ class TestDriverQudoorAbaQu100:
     def test_get_task_results_outdata_none(self, mock_http):
         resp = json.dumps({"taskStatus": TASK_STATUS_SUCCESS})
         mock_http.return_value = _http_ok(resp)
-        success, err, data = driver.get_task_results("task-1")
+        success, err, data, mp = driver.get_task_results("task-1")
         assert success is True
         assert data == {}
 
@@ -595,6 +595,7 @@ class TestDriverQudoorAbaQu100:
             True,
             "",
             {"probs": [{"qstate": "00", "prob": 1.0}]},
+            {"machine_started_at": None, "machine_ended_at": None},
         )
         mock_convert_results.return_value = {"00": 1024}
 
