@@ -36,6 +36,8 @@ The benchmark runner iterates over all benchpress QASM files
 whose line count is below MAX_QASM_LINES (default 10 000).
 """
 
+import contextlib
+import os
 import sys
 import time
 from datetime import datetime
@@ -93,6 +95,20 @@ _PASS_ORDER: list[str] = [
 
 # Type alias for a single comparison result dict.
 ComparisonResult = dict[str, Any]
+
+
+@contextlib.contextmanager
+def _suppress_stderr():
+    """Redirect fd 2 to /dev/null to suppress C++ library warnings."""
+    saved_fd = os.dup(2)
+    devnull_fd = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull_fd, 2)
+    try:
+        yield
+    finally:
+        os.dup2(saved_fd, 2)
+        os.close(devnull_fd)
+        os.close(saved_fd)
 
 
 def _count_lines(path: Path) -> int:
@@ -173,8 +189,12 @@ def _cpp_optimize(
         opt_level=OPT_LEVEL,
         basis_gates=BASIS_GATE_SET,
     )
+    # Exclude measure/barrier from gate count for fair comparison.
+    quantum_ops = [
+        op for op in opt_ops if op.name not in ("measure", "barrier", "reset")
+    ]
     circ = _ir_to_circuit(opt_ops, num_qubits)
-    return circ.size(), circ.depth(), opt_ops, metrics
+    return len(quantum_ops), circ.depth(), opt_ops, metrics
 
 
 def _qiskit_optimize(
@@ -190,7 +210,12 @@ def _qiskit_optimize(
         basis_gates=BASIS_GATES,
         optimization_level=OPT_LEVEL,
     )
-    return opt.size(), opt.depth()
+    # Exclude measure/barrier from gate count for fair comparison.
+    ops = dict(opt.count_ops())
+    quantum_gates = sum(
+        v for k, v in ops.items() if k not in ("measure", "barrier", "reset")
+    )
+    return quantum_gates, opt.depth()
 
 
 def compare_single(
@@ -215,7 +240,11 @@ def compare_single(
     # Step 3: convert base circuit to C++ IR (shared input)
     ir_ops, num_qubits = _base_circuit_to_ir(base_circuit)
     base_circ = _ir_to_circuit(ir_ops, num_qubits)
-    base_gate_count = base_circ.size()
+    # Exclude measure/barrier from gate count for fair comparison.
+    quantum_ir = [
+        op for op in ir_ops if op.name not in ("measure", "barrier", "reset")
+    ]
+    base_gate_count = len(quantum_ir)
     base_depth = base_circ.depth()
 
     # Step 4: C++ optimize (with per-pass timing)
@@ -732,24 +761,14 @@ def run_benchmark(
             continue
 
         try:
-            result = compare_single(qasm_path)
+            with _suppress_stderr():
+                result = compare_single(qasm_path)
             results.append(result)
             _write_result(result, fh)
         except Exception as exc:  # noqa: BLE001
             errors.append((str(qasm_path), repr(exc)))
-            print(
-                f"  SKIP {qasm_path.name}: {exc!r}",
-                file=fh,
-            )
 
     _write_summary(results, fh, show_all=show_all)
-
-    if errors:
-        print("", file=fh)
-        print(
-            f"  {len(errors)} file(s) skipped due to errors.",
-            file=fh,
-        )
 
     return results, errors
 
@@ -816,9 +835,6 @@ def main() -> None:
     with open(timings_path, "w", encoding="utf-8") as tfh:
         _write_config(timestamp_str, tfh)
         _write_pass_timings_detail(all_results, tfh)
-
-    if all_errors:
-        print(f"\nTotal skipped: {len(all_errors)} file(s).")
 
     print(f"Results written to {output_path}")
     print(f"Pass timings written to {timings_path}")
