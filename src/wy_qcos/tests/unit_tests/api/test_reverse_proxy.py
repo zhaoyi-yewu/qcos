@@ -456,6 +456,55 @@ class TestReverseProxyApp:
         assert captured["url"] in ("http://prom:9090/", "http://prom:9090")
         assert recorder.status == 200
 
+    @pytest.mark.asyncio
+    async def test_large_response_is_streamed_in_chunks(self):
+        """Large upstream responses must be streamed, not buffered.
+
+        Regression test for the in-memory buffering issue: previously
+        the proxy read ``upstream_resp.content`` in full before sending
+        anything downstream, which could spike memory under concurrent
+        multi-MB ``query_range`` responses. The proxy must now emit the
+        body as multiple ``http.response.body`` messages with
+        ``more_body=True`` on all but the final (empty) chunk.
+        """
+        # 200 KiB payload forces multiple 64 KiB chunks.
+        payload = b"x" * (200 * 1024)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                content=payload,
+                headers={"content-type": "application/octet-stream"},
+            )
+
+        client = _build_mock_client(handler)
+        app = _fake_app_with_client(client)
+        proxy = create_reverse_proxy_app("prometheus", "http://prom:9090")
+
+        recorder = _SendRecorder()
+        await proxy(_make_scope(app=app), _make_receive(), recorder)
+        await client.aclose()
+
+        assert recorder.status == 200
+        assert recorder.body == payload
+
+        body_msgs = [
+            m for m in recorder.messages if m["type"] == "http.response.body"
+        ]
+        # 200 KiB / 64 KiB -> 3 data chunks + 1 terminal empty chunk.
+        assert len(body_msgs) >= 2
+        # All data chunks must carry more_body=True.
+        for m in body_msgs[:-1]:
+            assert m.get("more_body") is True
+            assert len(m["body"]) > 0
+        # Final message must be the empty terminator.
+        assert body_msgs[-1]["body"] == b""
+        assert body_msgs[-1].get("more_body") is False
+
+        # Content-Length must NOT be forwarded (chunked transfer).
+        header_names = [n for n, _ in recorder.response_headers]
+        assert b"content-length" not in header_names
+
 
 # ----------------------------------------------------------------------
 # JWT middleware
@@ -520,7 +569,7 @@ class TestProxyJwtMiddleware:
         with (
             patch.object(Config.DEFAULT, "AUTH_MODE", Constant.AUTH_MODE_JWT),
             patch(
-                "wy_qcos.api.posiq.routes_rest.proxy_auth.decode_jwt_token",
+                "wy_qcos.api.posiq.routes_rest.jwt_utils.decode_jwt_token",
                 return_value=None,
             ),
         ):
@@ -537,7 +586,7 @@ class TestProxyJwtMiddleware:
         with (
             patch.object(Config.DEFAULT, "AUTH_MODE", Constant.AUTH_MODE_JWT),
             patch(
-                "wy_qcos.api.posiq.routes_rest.proxy_auth.decode_jwt_token",
+                "wy_qcos.api.posiq.routes_rest.jwt_utils.decode_jwt_token",
                 return_value={"sub": "user1"},
             ),
         ):
