@@ -34,6 +34,11 @@ API_WORKERS = 8
 API_SERVER_LISTEN_IP = ""
 # API server listen port
 API_SERVER_LISTEN_PORT = 18400
+# CORS allowed origins for the WebUI.
+# Use ["*"] to allow any origin (insecure, only for development).
+# For production, list the exact origins of the WebUI, e.g.:
+# CORS_ALLOWED_ORIGINS = ["https://qcos.example.com", "https://qcos.example.com:8443"]
+CORS_ALLOWED_ORIGINS = ["*"]
 
 [SCHEDULER]
 # enable auto scheduling (select device automatically when backend
@@ -130,34 +135,22 @@ PREFECT_LOGGING_LEVEL = "INFO"
 # This timeout ensures QCOS fails fast instead of hanging indefinitely.
 QCOS_FLOW_RUN_TIMEOUT = 600
 
-[METRICS_SERVER]
-# metrics server listen ip.
-# listen on all IPv4+IPv6 address (Default): METRICS_SERVER_LISTEN_IP = ""
-# listen on all IPV4 address: METRICS_SERVER_LISTEN_IP = "0.0.0.0"
-# listen on all IPv6 address: METRICS_SERVER_LISTEN_IP = "::"
-METRICS_SERVER_LISTEN_IP = ""
-# API server listen port
-METRICS_SERVER_LISTEN_PORT = 19400
-
-[PROXY]
-# Reverse-proxy upstream endpoints mounted under /v1/proxy/<service>.
-# Empty string disables the corresponding proxy endpoint.
-# Prometheus base URL (used by /v1/proxy/prometheus/*)
-PROMETHEUS_BASE_URL = "http://127.0.0.1:9090"
-# Alertmanager base URL (used by /v1/proxy/alertmanager/*)
-ALERTMANAGER_BASE_URL = "http://127.0.0.1:9093"
+[DEVICES]
+# DEVICE_LIST example:
+# DEVICE_LIST = ["dummy", "hanyuan1", "wy_hanyuan1", "wy_hanyuan1_sim", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "spinq_sqc_25", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim", "qutip_ashn_sim", "ciqtek_ion_1", "quafu_dongling", "quafu_shenglian", "quafu_baihua", "quafu_ling", "quafu_hongluo", "hanyuan1_pulse", "lq_qz01_surface", "lq_mq02", "lq_agate100", "lq_qz02", "lq_qz01_repetition", "lq_mq02_pulse", "cetc_baihua", "qudoor_abaqu100"]
+DEVICE_LIST = ["dummy", "qutip_sim"]
 
 [LOG]
 # api log file
 API_LOG_FILE = "/var/log/qcos/qcos-api.log"
 # log format
-LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s | %(message)s"
 # log rotate, max_size (MB). default: 10MB
-LOG_ROTATE_MAX_SIZE_MB = 10
+# LOG_ROTATE_MAX_SIZE_MB = 10
 # log rotate, backup count. default: 10
-LOG_ROTATE_BACKUP_COUNT = 10
+# LOG_ROTATE_BACKUP_COUNT = 10
 # log rotate, compression. default: true
-LOG_ROTATE_COMPRESSION = true
+# LOG_ROTATE_COMPRESSION = true
 
 [SSL]
 # Enable HTTPS for API server
@@ -171,10 +164,97 @@ USE_SSL = false
 # eg. KEY_FILE = "/etc/qcos/ssl/ssl.key"
 # KEY_FILE =
 
+[METRICS_SERVER]
+# metrics server listen ip.
+# listen on all IPv4+IPv6 address (Default): METRICS_SERVER_LISTEN_IP = ""
+# listen on all IPV4 address: METRICS_SERVER_LISTEN_IP = "0.0.0.0"
+# listen on all IPv6 address: METRICS_SERVER_LISTEN_IP = "::"
+METRICS_SERVER_LISTEN_IP = ""
+# API server listen port
+METRICS_SERVER_LISTEN_PORT = 19400
+
+[PROXY]
+# Reverse-proxy upstream endpoints mounted under /v1/proxy/<service>.
+#
+# 每项字段的语义：
+#   - 非空字符串：将该服务的请求通过 QCOS API 反向代理转发到该 URL，
+#     例如 PROMETHEUS_BASE_URL = "http://127.0.0.1:9090" 后，
+#     WebUI 可通过 /v1/proxy/prometheus/* 访问 Prometheus。
+#   - 空字符串 ""  ：禁用该代理端点，对应的 /v1/proxy/<service>/*
+#     不会被注册，健康检查接口 (get_proxy_health) 会把该项目标记为
+#     status="disabled"。如果三个字段全为空字符串，整个反代挂载
+#     循环会跳过所有项目，等同于关闭反代功能。
+#
+# 示例：禁用全部反代
+#   PROMETHEUS_BASE_URL = ""
+#   ALERTMANAGER_BASE_URL = ""
+#   VICTORIALOGS_BASE_URL = ""
+#
+# Prometheus base URL (used by /v1/proxy/prometheus/*).
+# Set to "" to disable the prometheus proxy endpoint.
+PROMETHEUS_BASE_URL = "http://127.0.0.1:9090"
+# Alertmanager base URL (used by /v1/proxy/alertmanager/*).
+# Set to "" to disable the alertmanager proxy endpoint.
+ALERTMANAGER_BASE_URL = "http://127.0.0.1:9093"
+# VictoriaLogs base URL (used by /v1/proxy/victorialogs/*).
+# Set to "" to disable the victorialogs proxy endpoint.
+VICTORIALOGS_BASE_URL = "http://127.0.0.1:9428"
+
+[AI]
+# Global master switch for the whole AI feature family.
+# When false, both the MCP server endpoint (/v1/ai/mcp) and the AI
+# agent chat API (/v1/ai/*) are disabled regardless of their own
+# ENABLED flags below.
+ENABLED = false
+
+[AI.MCP_SERVER]
+# Enable the MCP server endpoint (/v1/ai/mcp) which exposes QCOS
+# tools to external LLM clients (Claude Desktop, IDEs, ...).
+# Effective only when [AI].ENABLED is also true.
+ENABLED = false
+
+[AI.AGENT]
+# Master switch for the AI agent chat feature (/v1/ai/*).
+# Effective only when [AI].ENABLED is also true.
+ENABLED = false
+# LLM provider: openai_compatible | openai | anthropic
+LLM_PROVIDER = "openai_compatible"
+# LLM endpoint base URL (ignored for openai/anthropic)
+# eg. LLM_BASE_URL = "http://vllm:8000/v1"
+LLM_BASE_URL = ""
+# LLM API key (empty for unauthenticated endpoints)
+LLM_API_KEY = ""
+# LLM model name passed to the provider
+LLM_MODEL = "glm/glm-5.3"
+LLM_TEMPERATURE = 0.3
+LLM_MAX_TOKENS = 4096
+# LLM HTTP request timeout in seconds (default: 60). Guards against
+# hung LLM endpoints: on expiry the chat stream returns RUN_ERROR to
+# the frontend instead of spinning forever.
+LLM_TIMEOUT = 60.0
+# Vision model (optional, falls back to LLM_* when empty)
+VISION_PROVIDER = ""
+VISION_BASE_URL = ""
+VISION_API_KEY = ""
+VISION_MODEL = ""
+# Image attachment limits
+IMAGE_MAX_COUNT_PER_MESSAGE = 4
+IMAGE_MAX_BYTES_PER_IMAGE = 5242880
+IMAGE_MAX_TOTAL_BYTES_PER_SESSION = 52428800
+# Embedding
+# eg. EMBEDDING_BASE_URL = "http://embedding:8001/v1"
+EMBEDDING_BASE_URL = "http://127.0.0.1:18500/v1"
+EMBEDDING_API_KEY = ""
+EMBEDDING_MODEL = "bge-m3"
+EMBEDDING_DIM = 1024
+# Session
+SESSION_TTL_SECONDS = 604800
+RAG_TOP_K = 8
+
 [TERMINAL]
 # Master switch for the in-browser terminal. Default off; flip to true
 # to expose /v1/terminal/ws and /v1/terminal/files on the API server.
-ENABLED = true
+ENABLED = false
 
 # Idle session timeout in seconds; sessions idle longer than this are
 # reaped by the background task. 0 disables the reaper.
@@ -231,8 +311,3 @@ RECORD_TRANSCRIPT = false
 # Root directory for transcripts. Per-user files land in
 # {TRANSCRIPT_DIR}/users/{USER_UUID}/ with mode 0700.
 TRANSCRIPT_DIR = "/var/log/qcos/terminal"
-
-[DEVICES]
-# DEVICE_LIST example:
-# DEVICE_LIST = ["dummy", "hanyuan1", "wy_hanyuan1", "wy_hanyuan1_sim", "tiangong100", "tiangong550_v2", "tiangong1000_v2", "spinq_rpc", "spinq_gemini", "spinq_triangulum", "spinq_sqc_25", "uqc_matrix2", "qiskit_aer_sim", "qiskit_qasm_sim", "qutip_sim", "qutip_ashn_sim", "ciqtek_ion_1", "quafu_dongling", "quafu_shenglian", "quafu_baihua", "quafu_ling", "quafu_hongluo", "hanyuan1_pulse", "lq_qz01_surface", "lq_mq02", "lq_agate100", "lq_qz02", "lq_qz01_repetition", "lq_mq02_pulse", "cetc_baihua", "qudoor_abaqu100"]
-DEVICE_LIST = ["dummy", "qutip_sim"]
