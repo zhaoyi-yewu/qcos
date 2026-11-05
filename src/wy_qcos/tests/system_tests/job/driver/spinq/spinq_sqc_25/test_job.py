@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright漏 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -10,7 +10,7 @@
 #         http://license.coscl.org.cn/MulanPSL2
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
 #     WITHOUT WARRANTIES OF ANY KIND,
-# EITHER EXPRESS OR IMPLIED, INCLUDING NOT LIMITED TO NON-INFRINGEMENT,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
@@ -158,7 +158,9 @@ class TestJob:
     def test_spinq_sqc_25_submit_job(self):
         """Submit a sampling job to spinq_sqc_25 and verify results."""
         job_info = self._make_job_info("test_spinq_sqc_25_submit_job")
+        self.admin_client.set_device(job_info["backend"], state="online")
         StLibrary.submit_job(self.admin_client, job_info)
+        self.admin_client.set_device(job_info["backend"], state="auto")
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.admin_client, job_info, self.timeout, self.interval
         )
@@ -181,7 +183,9 @@ class TestJob:
             "test_spinq_sqc_25_submit_job_dry_run",
             dry_run=True,
         )
+        self.admin_client.set_device(job_info["backend"], state="online")
         StLibrary.submit_job(self.admin_client, job_info)
+        self.admin_client.set_device(job_info["backend"], state="auto")
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.admin_client, job_info, self.timeout, self.interval
         )
@@ -209,7 +213,9 @@ class TestJob:
                 Constant.PROFILING_TYPE_DRIVER_RUN,
             ],
         )
+        self.admin_client.set_device(job_info["backend"], state="online")
         StLibrary.submit_job(self.admin_client, job_info)
+        self.admin_client.set_device(job_info["backend"], state="auto")
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.admin_client, job_info, self.timeout, self.interval
         )
@@ -255,7 +261,9 @@ class TestJob:
             ],
             circuit_aggregation=Constant.AGGREGATION_TYPE_INTERNAL,
         )
+        self.admin_client.set_device(job_info["backend"], state="online")
         StLibrary.submit_job(self.admin_client, job_info)
+        self.admin_client.set_device(job_info["backend"], state="auto")
         success, err_msg, job_results = StLibrary.wait_and_get_job_result(
             self.admin_client, job_info, self.timeout, self.interval
         )

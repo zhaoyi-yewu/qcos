@@ -235,13 +235,20 @@ class TestDriverSpinqSqc25:
 
     def test_supported_basis_gates(self):
         expected = [
-            Constant.SINGLE_QUBIT_GATE_H,
             Constant.SINGLE_QUBIT_GATE_I,
+            Constant.SINGLE_QUBIT_GATE_H,
             Constant.SINGLE_QUBIT_GATE_X,
             Constant.SINGLE_QUBIT_GATE_Y,
             Constant.SINGLE_QUBIT_GATE_Z,
-            Constant.TWO_QUBIT_GATE_CX,
+            Constant.SINGLE_QUBIT_GATE_T,
+            Constant.SINGLE_QUBIT_GATE_S,
             Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.SINGLE_QUBIT_GATE_U,
+            Constant.TWO_QUBIT_GATE_CX,
+            Constant.TWO_QUBIT_GATE_CZ,
+            Constant.TWO_QUBIT_GATE_SWAP,
         ]
         assert driver_sqc25.supported_basis_gates == expected
 
