@@ -1,0 +1,28 @@
+-- ----------------------------------------------------------------------
+-- Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+--
+-- qcos is licensed under Mulan PSL v2.
+-- You can use this software according to the terms and conditions
+-- of the Mulan PSL v2.
+-- You may obtain a copy of Mulan PSL v2 at:
+--         http://license.coscl.org.cn/MulanPSL2
+-- THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
+--     WITHOUT WARRANTIES OF ANY KIND,
+--     EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+--     MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+-- See the Mulan PSL v2 for more details.
+-- ----------------------------------------------------------------------
+
+-- Enable the pgvector extension for AI Agent RAG embeddings.
+--
+-- Executed automatically by the PostgreSQL docker entrypoint when the
+-- data directory is first initialized (scripts under
+-- /docker-entrypoint-initdb.d/ only run on an empty PGDATA). The image
+-- pgvector/pgvector ships the extension binaries, so this merely
+-- registers it in the cluster. "IF NOT EXISTS" keeps the script
+-- idempotent when the data directory is recreated.
+--
+-- Requires superuser: run-docker.sh also issues the same statement via
+-- `docker exec` for deployments whose data directory predates this
+-- file (the extension is cluster-wide, so double execution is a no-op).
+CREATE EXTENSION IF NOT EXISTS vector;

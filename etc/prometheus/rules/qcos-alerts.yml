@@ -163,3 +163,108 @@ groups:
         annotations:
           summary: "API服务线程数异常"
           description: "API server线程数超过200已持续10分钟，可能存在线程泄漏 (当前: {{ $value }})"
+
+  # ===== Host-level alerts (node-exporter) =====
+  - name: host-alerts
+    rules:
+      - alert: HostCpuUsageHigh
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "主机 CPU 使用率过高"
+          description: "实例 {{ $labels.instance }} CPU 使用率连续 10 分钟超过 90%"
+
+      - alert: HostMemoryUsageHigh
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "主机内存使用率过高"
+          description: "实例 {{ $labels.instance }} 内存使用率连续 10 分钟超过 90%"
+
+      - alert: HostDiskUsageHigh
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "主机磁盘使用率过高"
+          description: "实例 {{ $labels.instance }} 根分区使用率超过 85%"
+
+      - alert: HostLoadHigh
+        expr: node_load15 / on(instance) group_left() count by (instance) (node_cpu_seconds_total{mode="idle"}) > 2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "主机负载过高"
+          description: "实例 {{ $labels.instance }} load15 持续超过核数 2 倍"
+
+      - alert: HostFileDescriptorExhaustion
+        expr: node_filefd_allocated / node_filefd_maximum * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "文件句柄接近耗尽"
+          description: "实例 {{ $labels.instance }} 文件句柄使用率超过 80%"
+
+  # ===== QCOS process-level alerts (process-exporter) =====
+  - name: qcos-process-alerts
+    rules:
+      - alert: QcosApiCpuHigh
+        expr: rate(namedprocess_namegroup_cpu_seconds_total{groupname="qcos-api"}[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "QCOS API 进程 CPU 过高"
+          description: "qcos-api 进程组 CPU 使用率连续 10 分钟超过 80%"
+
+      - alert: QcosApiMemoryHigh
+        expr: sum by (groupname) (namedprocess_namegroup_memory_bytes{groupname="qcos-api", memtype="resident"}) > 4 * 1024 * 1024 * 1024
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "QCOS API 进程内存过高"
+          description: "qcos-api 进程组 RSS 超过 4 GiB"
+
+      - alert: QcosPrefectServerDown
+        expr: sum(namedprocess_namegroup_num_procs{groupname="qcos-prefect-server"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prefect server 进程消失"
+          description: "prefect-server 进程组进程数为 0 持续 2 分钟"
+
+      - alert: QcosPrefectWorkerDown
+        expr: sum(namedprocess_namegroup_num_procs{groupname="qcos-prefect-worker"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prefect worker 进程消失"
+          description: "prefect-worker 进程组进程数为 0 持续 2 分钟"
+
+      - alert: QcosPostgresDown
+        expr: sum(namedprocess_namegroup_num_procs{groupname="qcos-postgres"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL 进程消失"
+          description: "postgres 进程组进程数为 0 持续 2 分钟"
+
+      - alert: QcosRedisDown
+        expr: sum(namedprocess_namegroup_num_procs{groupname="qcos-redis"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis 进程消失"
+          description: "redis-server 进程组进程数为 0 持续 2 分钟"
