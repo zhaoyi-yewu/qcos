@@ -27,6 +27,18 @@ Protocol summary (see ``plans/terminal.md`` §4):
    ``{"type":"auth_ok", ...}`` and starts bidirectional forwarding.
 4. Client sends ``input`` / ``resize`` / ``ping`` / ``close`` frames;
    the server sends ``output`` / ``exit`` / ``error`` / ``pong``.
+
+The route handler :func:`terminal_ws` is intentionally thin — it only
+orchestrates the lifecycle. Each stage is implemented in a dedicated
+helper so the flow is easy to read, test, and maintain:
+
+* :func:`_handle_auth` — receive + validate the initial auth frame.
+* :func:`_setup_session` — spawn the pty session, start the audit
+  recorder and send ``auth_ok``.
+* :func:`_forward_loop` — run the two forwarding half-loops
+  concurrently until either side ends.
+* :func:`_teardown_session` — final audit entry, terminate the
+  session and close the WebSocket.
 """
 
 from __future__ import annotations
@@ -47,8 +59,10 @@ from wy_qcos.common.constant import Constant
 from wy_qcos.terminal import (
     TerminalAuditor,
     TerminalConfig,
+    TerminalSession,
     TerminalSessionLimitError,
     TerminalSessionManager,
+    TranscriptRecorder,
 )
 from wy_qcos.user.user_manager import UserManager
 
@@ -59,6 +73,16 @@ router = APIRouter()
 #: How long (seconds) to wait for the initial ``auth`` frame before
 #: closing the connection.
 AUTH_TIMEOUT_SECONDS = 3.0
+
+# Application-level WebSocket close codes (private use range 4000-4999,
+# see RFC 6455 §7.4.2). Each code mirrors the corresponding HTTP status
+# semantics so WebUI clients can map them to familiar meanings.
+#: 4401 — Unauthorized: auth frame missing, malformed, or timed out.
+WS_CLOSE_AUTH_FAIL = 4401
+#: 4403 — Forbidden: JWT token invalid or expired.
+WS_CLOSE_JWT_INVALID = 4403
+#: 4429 — Too Many Requests: per-user session limit reached.
+WS_CLOSE_SESSION_LIMIT = 4429
 
 
 # ----------------------------------------------------------------------
@@ -142,22 +166,13 @@ async def _close_ws_safe(
         logger.debug("terminal ws: close failed: %s", exc)
 
 
-# ----------------------------------------------------------------------
-# WebSocket route
-# ----------------------------------------------------------------------
+def _log_handshake(ws: WebSocket, cols: int, rows: int) -> None:
+    """DEBUG-log the handshake with sensitive headers redacted.
 
-
-@router.websocket("/v1/terminal/ws")
-async def terminal_ws(
-    ws: WebSocket,
-    cols: int = Query(80, ge=20, le=500),
-    rows: int = Query(24, ge=5, le=200),
-) -> None:
-    """WebSocket endpoint driving one interactive pty session."""
-    # DEBUG: log every handshake attempt so we can confirm the route
-    # is reachable when diagnosing "NS_ERROR_WEBSOCKET_CONNECTION_REFUSED"
-    # reports from the browser. Sensitive headers (credentials) are
-    # redacted so tokens never land on disk in plaintext.
+    This is meant to help diagnose
+    ``NS_ERROR_WEBSOCKET_CONNECTION_REFUSED`` reports from the browser
+    without leaking credentials to disk.
+    """
     client_host = ws.client.host if ws.client else "<unknown>"
     sensitive_headers = {"authorization", "cookie", "proxy-authorization"}
     safe_headers = {
@@ -168,17 +183,31 @@ async def terminal_ws(
         f"terminal ws handshake: client={client_host} "
         f"cols={cols} rows={rows} headers={safe_headers}"
     )
-    await ws.accept()
-    logger.info(f"terminal ws accepted: client={client_host}")
 
-    cfg = _build_terminal_config()
-    session = None
-    recorder = None
-    user: user_schemas.User | None = None
-    manager = TerminalSessionManager.instance()
-    auditor = TerminalAuditor(cfg)
 
-    # ---- 1. Auth (first frame, 3s timeout) -------------------------
+# ----------------------------------------------------------------------
+# Lifecycle stages (single-responsibility helpers)
+# ----------------------------------------------------------------------
+
+
+async def _handle_auth(
+    ws: WebSocket, user_manager: UserManager
+) -> user_schemas.User | None:
+    """Receive the first frame and authenticate the user.
+
+    On any failure this helper sends the appropriate ``auth_fail``
+    frame, closes the WebSocket with an app-level code and returns
+    ``None``. On success it returns the authenticated
+    :class:`user_schemas.User` and leaves the socket open.
+
+    Args:
+        ws: The accepted WebSocket connection.
+        user_manager: Manager used to look up the user from a JWT.
+
+    Returns:
+        The authenticated user, or ``None`` if the connection has
+        already been closed due to an auth failure.
+    """
     try:
         auth_msg = await asyncio.wait_for(
             ws.receive_json(), timeout=AUTH_TIMEOUT_SECONDS
@@ -188,37 +217,56 @@ async def terminal_ws(
             ws,
             {"type": "auth_fail", "reason": "auth timeout"},
         )
-        await _close_ws_safe(ws, code=4401)
-        return
+        await _close_ws_safe(ws, code=WS_CLOSE_AUTH_FAIL)
+        return None
     except Exception as exc:
         logger.warning("terminal ws: malformed auth frame: %s", exc)
         await _send_json_safe(ws, {"type": "auth_fail", "reason": "bad frame"})
-        await _close_ws_safe(ws, code=4401)
-        return
+        await _close_ws_safe(ws, code=WS_CLOSE_AUTH_FAIL)
+        return None
 
     if not isinstance(auth_msg, dict) or auth_msg.get("type") != "auth":
         await _send_json_safe(
             ws, {"type": "auth_fail", "reason": "expected auth frame"}
         )
-        await _close_ws_safe(ws, code=4401)
-        return
+        await _close_ws_safe(ws, code=WS_CLOSE_AUTH_FAIL)
+        return None
 
-    # ``ws.app.state._user_manager`` is set in the main lifespan. We cannot
-    # construct a ``Request`` here because Starlette asserts
-    # ``scope["type"] == "http"``; for WebSocket scopes it is "websocket".
-    # ``get_user_manager`` only reads ``request.app.state._user_manager``,
-    # so pass the ``WebSocket`` itself — ``ws.app`` works the same way.
-    user_manager: UserManager = ws.app.state._user_manager
     user = _authenticate_token(auth_msg.get("token"), user_manager)
     if user is None:
         await _send_json_safe(
             ws,
             {"type": "auth_fail", "reason": "invalid or expired token"},
         )
-        await _close_ws_safe(ws, code=4403)
-        return
+        await _close_ws_safe(ws, code=WS_CLOSE_JWT_INVALID)
+        return None
+    return user
 
-    # ---- 2. Create session ------------------------------------------
+
+async def _setup_session(
+    ws: WebSocket,
+    user: user_schemas.User,
+    cols: int,
+    rows: int,
+    manager: TerminalSessionManager,
+    auditor: TerminalAuditor,
+) -> tuple[TerminalSession, TranscriptRecorder | None] | None:
+    """Create the pty session, start the audit recorder, send auth_ok.
+
+    On failure the appropriate error frame is sent, the WebSocket is
+    closed, and ``None`` is returned.
+
+    Args:
+        ws: The authenticated WebSocket connection.
+        user: The authenticated user.
+        cols: Initial terminal column count.
+        rows: Initial terminal row count.
+        manager: Process-wide session manager.
+        auditor: Auditor used to emit ``session_started``.
+
+    Returns:
+        ``(session, recorder)`` on success, ``None`` on failure.
+    """
     try:
         session = await manager.create(
             user_id=str(user.id),
@@ -228,18 +276,18 @@ async def terminal_ws(
         )
     except TerminalSessionLimitError as exc:
         await _send_json_safe(ws, {"type": "error", "message": str(exc)})
-        await _close_ws_safe(ws, code=4429)  # Too Many Requests (app-level)
-        return
+        await _close_ws_safe(ws, code=WS_CLOSE_SESSION_LIMIT)
+        return None
     except Exception as exc:
         logger.exception("terminal ws: failed to spawn session")
         await _send_json_safe(
             ws,
             {"type": "error", "message": f"failed to start: {exc}"},
         )
-        await _close_ws_safe(ws, code=1011)
-        return
+        await _close_ws_safe(ws, code=http_status.WS_1011_INTERNAL_ERROR)
+        return None
 
-    # ---- 3. Audit + auth_ok -----------------------------------------
+    # ---- Audit: session_started -------------------------------------
     client_ip = None
     user_agent = None
     try:
@@ -268,96 +316,186 @@ async def terminal_ws(
             "shell": session.shell,
         },
     )
+    return session, recorder
 
-    # ---- 4. Bidirectional forwarding --------------------------------
-    async def client_to_pty() -> None:
-        """WS -> pty."""
-        while True:
-            msg = await ws.receive_json()
-            if not isinstance(msg, dict):
-                continue
-            mtype = msg.get("type")
-            if mtype == "input":
-                data = msg.get("data")
-                if isinstance(data, str) and data:
-                    session.write(data)
-            elif mtype == "resize":
-                try:
-                    c = int(msg.get("cols", cols))
-                    r = int(msg.get("rows", rows))
-                except (TypeError, ValueError):
-                    continue
-                session.resize(c, r)
-            elif mtype == "ping":
-                await _send_json_safe(ws, {"type": "pong"})
-            elif mtype == "close":
-                # Client asked to shut down; break out and let the
-                # outer ``finally`` clean up the session.
-                return
-            # Unknown types are ignored on purpose.
 
-    async def pty_to_client() -> None:
-        """Pty -> WS (via read_loop + add_reader)."""
+async def _client_to_pty(
+    ws: WebSocket,
+    session: TerminalSession,
+    default_cols: int,
+    default_rows: int,
+) -> None:
+    """Forward client -> pty frames (WS -> shell stdin).
 
-        async def _on_output(data: str) -> None:
-            if recorder is not None:
-                try:
-                    recorder.record_output(data)
-                except Exception:
-                    logger.debug("transcript record failed")
-            await _send_json_safe(ws, {"type": "output", "data": data})
-
-        async def _on_exit(code: int | None) -> None:
-            await _send_json_safe(ws, {"type": "exit", "code": code})
-
-        await session.read_loop(_on_output, _on_exit)
-
-    exit_code: int | None = None
-    try:
-        # Run both halves concurrently; when either finishes (client
-        # closed or pty exited) cancel the other and clean up.
-        client_task = asyncio.create_task(client_to_pty())
-        pty_task = asyncio.create_task(pty_to_client())
-        done, pending = await asyncio.wait(
-            {client_task, pty_task},
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for t in pending:
-            t.cancel()
-        for t in done:
+    Handles ``input`` / ``resize`` / ``ping`` / ``close`` frames. Any
+    unknown frame type is ignored on purpose. Returns when the client
+    sends ``close`` or when the receive call raises (e.g. disconnect).
+    """
+    while True:
+        msg = await ws.receive_json()
+        if not isinstance(msg, dict):
+            continue
+        mtype = msg.get("type")
+        if mtype == "input":
+            data = msg.get("data")
+            if isinstance(data, str) and data:
+                session.write(data)
+        elif mtype == "resize":
             try:
-                t.result()
-            except (WebSocketDisconnect, asyncio.CancelledError):
-                pass
+                c = int(msg.get("cols", default_cols))
+                r = int(msg.get("rows", default_rows))
+            except (TypeError, ValueError):
+                continue
+            session.resize(c, r)
+        elif mtype == "ping":
+            await _send_json_safe(ws, {"type": "pong"})
+        elif mtype == "close":
+            # Client asked to shut down; break out and let the
+            # outer teardown logic clean up the session.
+            return
+        # Unknown types are ignored on purpose.
+
+
+async def _pty_to_client(
+    ws: WebSocket,
+    session: TerminalSession,
+    recorder: TranscriptRecorder | None,
+) -> None:
+    """Forward pty -> client frames (shell stdout -> WS)."""
+
+    async def _on_output(data: str) -> None:
+        if recorder is not None:
+            try:
+                recorder.record_output(data)
             except Exception:
-                logger.exception("terminal ws forwarding task failed")
-        # Give the pty task a brief moment to flush the exit frame.
+                logger.debug("transcript record failed")
+        await _send_json_safe(ws, {"type": "output", "data": data})
+
+    async def _on_exit(code: int | None) -> None:
+        await _send_json_safe(ws, {"type": "exit", "code": code})
+
+    await session.read_loop(_on_output, _on_exit)
+
+
+async def _forward_loop(
+    ws: WebSocket,
+    session: TerminalSession,
+    recorder: TranscriptRecorder | None,
+    cols: int,
+    rows: int,
+) -> None:
+    """Run the two forwarding half-loops until either side finishes.
+
+    When one task finishes (client closed or pty exited), the other is
+    cancelled and the function returns; cleanup is the caller's job.
+    """
+    client_task = asyncio.create_task(_client_to_pty(ws, session, cols, rows))
+    pty_task = asyncio.create_task(_pty_to_client(ws, session, recorder))
+    done, pending = await asyncio.wait(
+        {client_task, pty_task},
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    for t in pending:
+        t.cancel()
+    for t in done:
         try:
-            await asyncio.wait_for(asyncio.shield(pty_task), timeout=1.0)
-        except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
-            logger.debug("terminal ws: pty flush wait ended: %s", exc)
-        except Exception as exc:
-            logger.debug("terminal ws: pty flush error: %s", exc)
-    finally:
-        exit_code = session.exit_code
-        auditor.session_ended(
-            session_id=session.session_id,
-            user_id=str(user.id),
-            user_name=user.user_name,
-            exit_code=exit_code,
-            bytes_in=session.bytes_in,
-            bytes_out=session.bytes_out,
-            duration_seconds=session.last_active_at - session.created_at,
-            recorder=recorder,
-        )
-        try:
-            await manager.terminate(session.session_id)
+            t.result()
+        except (WebSocketDisconnect, asyncio.CancelledError):
+            pass
         except Exception:
-            logger.exception(
-                "terminal ws: failed to terminate session %s",
-                session.session_id,
-            )
-        try:
-            await _close_ws_safe(ws, code=http_status.WS_1000_NORMAL_CLOSURE)
-        except Exception as exc:
-            logger.debug("terminal ws: close failed: %s", exc)
+            logger.exception("terminal ws forwarding task failed")
+    # Give the pty task a brief moment to flush the exit frame.
+    try:
+        await asyncio.wait_for(asyncio.shield(pty_task), timeout=1.0)
+    except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
+        logger.debug("terminal ws: pty flush wait ended: %s", exc)
+    except Exception as exc:
+        logger.debug("terminal ws: pty flush error: %s", exc)
+
+
+async def _teardown_session(
+    ws: WebSocket,
+    user: user_schemas.User,
+    session: TerminalSession,
+    recorder: TranscriptRecorder | None,
+    manager: TerminalSessionManager,
+    auditor: TerminalAuditor,
+) -> None:
+    """Final audit entry, terminate the session, close the WebSocket."""
+    exit_code = session.exit_code
+    auditor.session_ended(
+        session_id=session.session_id,
+        user_id=str(user.id),
+        user_name=user.user_name,
+        exit_code=exit_code,
+        bytes_in=session.bytes_in,
+        bytes_out=session.bytes_out,
+        duration_seconds=session.last_active_at - session.created_at,
+        recorder=recorder,
+    )
+    try:
+        await manager.terminate(session.session_id)
+    except Exception:
+        logger.exception(
+            "terminal ws: failed to terminate session %s",
+            session.session_id,
+        )
+    try:
+        await _close_ws_safe(ws, code=http_status.WS_1000_NORMAL_CLOSURE)
+    except Exception as exc:
+        logger.debug("terminal ws: close failed: %s", exc)
+
+
+# ----------------------------------------------------------------------
+# WebSocket route
+# ----------------------------------------------------------------------
+
+
+@router.websocket("/v1/terminal/ws")
+async def terminal_ws(
+    ws: WebSocket,
+    cols: int = Query(80, ge=20, le=500),
+    rows: int = Query(24, ge=5, le=200),
+) -> None:
+    """WebSocket endpoint driving one interactive pty session.
+
+    This handler only orchestrates the per-connection lifecycle:
+
+    1. Accept the connection and log the handshake.
+    2. :func:`_handle_auth` — authenticate the first frame.
+    3. :func:`_setup_session` — spawn the pty and start auditing.
+    4. :func:`_forward_loop` — bidirectional forwarding.
+    5. :func:`_teardown_session` — audit + cleanup.
+    """
+    _log_handshake(ws, cols, rows)
+    await ws.accept()
+    client_host = ws.client.host if ws.client else "<unknown>"
+    logger.info(f"terminal ws accepted: client={client_host}")
+
+    cfg = _build_terminal_config()
+    manager = TerminalSessionManager.instance()
+    auditor = TerminalAuditor(cfg)
+
+    # ---- 1. Auth (first frame, 3s timeout) --------------------------
+    # ``ws.app.state._user_manager`` is set in the main lifespan. We
+    # cannot construct a ``Request`` here because Starlette asserts
+    # ``scope["type"] == "http"``; for WebSocket scopes it is
+    # "websocket". ``get_user_manager`` only reads
+    # ``request.app.state._user_manager``, so passing the ``WebSocket``
+    # itself works the same way (``ws.app``).
+    user_manager: UserManager = ws.app.state._user_manager
+    user = await _handle_auth(ws, user_manager)
+    if user is None:
+        return
+
+    # ---- 2. Spawn session + start audit ------------------------------
+    setup = await _setup_session(ws, user, cols, rows, manager, auditor)
+    if setup is None:
+        return
+    session, recorder = setup
+
+    # ---- 3. Bidirectional forwarding + teardown ----------------------
+    try:
+        await _forward_loop(ws, session, recorder, cols, rows)
+    finally:
+        await _teardown_session(ws, user, session, recorder, manager, auditor)
