@@ -1,4 +1,4 @@
-[spinq_sqc_25]
+﻿[spinq_sqc_25]
 alias_name = "量旋科技 SQC-25 云平台超导驱动"
 driver = "DriverSpinqSqc25"
 description = "量旋科技 SQC-25 云平台超导驱动"
@@ -45,7 +45,7 @@ username = "spinq_ncmt_2026080701"
 keyfile = "/etc/qcos/conf.d/spinq_pri.key"
 
 # [Required] SpinQ Cloud API host
-host = "https://uat-cloud.spinq.cn:8050/api"
+host = "https://cloud.spinq.com/api"
 machine_code = "SCQ-2"
 
 [spinq_sqc_25.device_monitor]
