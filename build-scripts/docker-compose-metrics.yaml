@@ -140,6 +140,11 @@ services:
     restart: unless-stopped
     network_mode: "host"
     pid: "host"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
       - /etc/qcos/process-exporter:/config:ro
     environment:
@@ -159,6 +164,11 @@ services:
       # 30-day retention, matching Prometheus. Override via the
       # VICTORIALOGS_RETENTION env var (e.g. 90d) if needed.
       - '-retentionPeriod=${VICTORIALOGS_RETENTION:-30d}'
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
       - victorialogs-data:/victoria-logs-data
     environment:
@@ -174,6 +184,11 @@ services:
     container_name: fluentbit
     restart: unless-stopped
     network_mode: "host"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
       - /etc/qcos/fluent-bit:/fluent-bit/etc:ro
       - /var/log/qcos:/var/log/qcos:ro

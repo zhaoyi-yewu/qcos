@@ -74,6 +74,4 @@ if [ "${DEV,,}" = "true" ]; then
 fi
 
 # Node.js binary mirror default value
-if [ -z "${NODE_BIN_MIRROR}" ]; then
-  export NODE_BIN_MIRROR="https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.xz"
-fi
+export NODE_BIN_MIRROR="${NODE_BIN_MIRROR:-https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.xz}"
