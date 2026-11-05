@@ -29,3 +29,4 @@ from .flavor import Flavor
 from .device_group import DeviceGroup
 from .device_availability import DeviceAvailabilityHourly
 from .flavor_device_group import FlavorDeviceGroup
+from .ai_document_chunk import AiDocumentChunk
