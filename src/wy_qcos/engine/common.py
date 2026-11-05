@@ -62,17 +62,29 @@ def convert_log_format_to_loguru(log_format):
         log_format: Standard Python logging format string
 
     Returns:
-        Loguru format string
-        e.g., "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{line} {message}"
+        Loguru format string, with millisecond timestamps:
+        "{time:YYYY-MM-DD HH:mm:ss,SSS} | {level} | {name}:{line} | {message}"
+
+    Note:
+        Standard logging renders ``%(asctime)s`` with milliseconds by
+        default (``2026-11-03 17:16:39,917``). The loguru conversion
+        must keep milliseconds too, otherwise the fluent-bit parser
+        (which expects ``%H:%M:%S,%L``) fails to match device worker
+        log lines. In loguru tokens, milliseconds are ``SSS`` and the
+        fractional separator is a literal comma.
     """
     if log_format is None:
-        return "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{line} {message}"
+        return (
+            "{time:YYYY-MM-DD HH:mm:ss,SSS} | {level} | "
+            "{name}:{line} | {message}"
+        )
 
     # Convert format string
     result = log_format
 
-    # Replace %(asctime)s with loguru time format
-    result = result.replace("%(asctime)s", "{time:YYYY-MM-DD HH:mm:ss}")
+    # Replace %(asctime)s with loguru time format (keep milliseconds
+    # to stay parser-compatible and to match standard logging output)
+    result = result.replace("%(asctime)s", "{time:YYYY-MM-DD HH:mm:ss,SSS}")
 
     # Replace %(levelname)s with loguru level
     result = result.replace("%(levelname)s", "{level}")

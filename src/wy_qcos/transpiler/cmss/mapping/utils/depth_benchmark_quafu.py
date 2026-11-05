@@ -128,7 +128,7 @@ def _cmss_transpile(
         return None, None
 
 
-def main():
+def main() -> None:
     paths = sorted(
         p
         for p in Path(CDIR).rglob("*.qasm")
@@ -183,10 +183,12 @@ def main():
                 single_qubit_fidelities,
             )
 
-            if q_depth is not None:
+            # Both depth and 2q-count are None on failure - skip both
+            # together so the averages below only see real ints.
+            if q_depth is not None and q_2q is not None:
                 quark_depths.append(q_depth)
                 quark_2q_counts.append(q_2q)
-            if c_depth is not None:
+            if c_depth is not None and c_2q is not None:
                 cmss_depths.append(c_depth)
                 cmss_2q_counts.append(c_2q)
 

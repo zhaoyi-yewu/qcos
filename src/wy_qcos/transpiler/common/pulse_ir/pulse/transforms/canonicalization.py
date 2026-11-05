@@ -358,12 +358,12 @@ def align_measures(
         PulseError: If the provided alignment time is negative.
     """
 
-    def get_first_acquire_times(schedules):
+    def get_first_acquire_times(schedules) -> list:
         """Return a list of first acquire times for each schedule."""
         acquire_times = []
         for schedule in schedules:
             visited_channels = set()
-            qubit_first_acquire_times: dict[int, int] = defaultdict(
+            qubit_first_acquire_times: dict[int, int | None] = defaultdict(
                 lambda: None
             )
 

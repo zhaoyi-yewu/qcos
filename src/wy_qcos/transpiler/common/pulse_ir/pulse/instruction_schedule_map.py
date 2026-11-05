@@ -79,7 +79,7 @@ class InstructionScheduleMap:
     """
 
     @deprecate_pulse_func
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize a circuit instruction to schedule mapper instance."""
         # The processed and reformatted circuit instruction definitions
 

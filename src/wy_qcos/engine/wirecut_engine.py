@@ -109,7 +109,7 @@ class WirecutExecutionPlan:
     on_cancellation=[db_utils.db_job_callback],
     on_completion=[db_utils.db_job_callback],
 )
-def wirecut_flow(job_info):
+def wirecut_flow(job_info: dict) -> None:
     """Wire-cut multi-device flow.
 
     Similar to :func:`job_engine.job_flow` but:
