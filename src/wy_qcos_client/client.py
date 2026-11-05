@@ -2036,3 +2036,198 @@ class Client:
             self.metrics_url, method_name, body_data=None
         )
         return status_code, reason, text, result
+
+    # [AI Agent]
+    # The AI endpoints are plain REST (not JSON-RPC) and the chat
+    # endpoint streams Server-Sent Events, so they use requests
+    # directly instead of call_json_rpc.
+
+    @property
+    def ai_url(self):
+        """Base URL for the AI agent endpoints."""
+        base = self.version_url.rsplit("/", 1)[0]
+        api_version = Constant.DEFAULT_API_VERSION
+        return f"{base}/{api_version}/ai"
+
+    def _ai_headers(self, accept_sse=False):
+        """Build request headers with the current JWT token."""
+        headers = {"Content-Type": "application/json"}
+        if accept_sse:
+            headers["Accept"] = "text/event-stream"
+        access_token = os.environ.get(Constant.ENV_VAR_ACCESS_TOKEN, None)
+        if self.access_token:
+            access_token = self.access_token
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        virtual_instance_id = os.environ.get(
+            Constant.ENV_VAR_VIRTUAL_INSTANCE_ID, None
+        )
+        if virtual_instance_id:
+            headers["x-qcos-virtual-instance-id"] = virtual_instance_id
+        if self.request_headers:
+            headers.update(self.request_headers)
+        return headers
+
+    def _ai_verify(self):
+        """Return the verify argument for requests based on SSL config."""
+        if SSL.use_ssl:
+            return SSL.ca_file if SSL.ca_file else False
+        return False
+
+    def _ai_cert(self):
+        """Return the cert argument for requests based on SSL config."""
+        if SSL.use_ssl and SSL.cert_file and SSL.key_file:
+            return (SSL.cert_file, SSL.key_file)
+        return None
+
+    def ai_chat_stream(
+        self,
+        message,
+        session_id=None,
+        enable_rag=True,
+        timeout=None,
+    ):
+        """Send a chat message and return the raw streaming response.
+
+        The caller is responsible for closing the returned response
+        object and iterating over its SSE lines.
+
+        Args:
+            message: user message text
+            session_id: existing session ID or None for a new session
+            enable_rag: whether to enable RAG retrieval
+            timeout: request timeout in seconds (None uses client default)
+
+        Returns:
+            requests.Response with stream=True
+
+        Raises:
+            requests.exceptions.RequestException: on connection errors
+            errors.GenericException: on non-200 HTTP status
+        """
+        url = f"{self.ai_url}/chat"
+        payload = {
+            "session_id": session_id,
+            "message": message,
+            "enable_rag": enable_rag,
+            "attachments": [],
+        }
+        headers = self._ai_headers(accept_sse=True)
+        if Client.verbose:
+            logger.info(
+                f"Request [ai_chat_stream]: {url}, "
+                f"METHOD: POST, HEADER: {headers}, "
+                f"PARAMS: None, DATA: None, JSON: {payload}"
+            )
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            stream=True,
+            timeout=timeout or Client.timeout,
+            verify=self._ai_verify(),
+            cert=self._ai_cert(),
+        )
+        if Client.verbose:
+            logger.info(
+                f"Response: status_code: {response.status_code}, "
+                f"reason: {response.reason}"
+            )
+        if response.status_code != 200:
+            detail = response.text
+            response.close()
+            raise errors.GenericException(
+                f"AI chat request failed "
+                f"[status_code: {response.status_code}]: {detail}"
+            )
+        return response
+
+    def ai_list_sessions(self):
+        """List all AI chat sessions for the current user.
+
+        Returns:
+            list of session info dicts
+        """
+        response = requests.get(
+            f"{self.ai_url}/sessions",
+            headers=self._ai_headers(),
+            timeout=Client.timeout,
+            verify=self._ai_verify(),
+            cert=self._ai_cert(),
+        )
+        if response.status_code != 200:
+            raise errors.GenericException(
+                f"Failed to list AI sessions "
+                f"[status_code: {response.status_code}]: {response.text}"
+            )
+        return response.json()
+
+    def ai_create_session(self, title="New conversation"):
+        """Create a new empty AI chat session.
+
+        Args:
+            title: session title
+
+        Returns:
+            dict with session_id and title
+        """
+        response = requests.post(
+            f"{self.ai_url}/sessions",
+            headers=self._ai_headers(),
+            json={"title": title},
+            timeout=Client.timeout,
+            verify=self._ai_verify(),
+            cert=self._ai_cert(),
+        )
+        if response.status_code != 200:
+            raise errors.GenericException(
+                f"Failed to create AI session "
+                f"[status_code: {response.status_code}]: {response.text}"
+            )
+        return response.json()
+
+    def ai_get_session(self, session_id):
+        """Get all messages of a single AI chat session.
+
+        Args:
+            session_id: session ID
+
+        Returns:
+            dict with session info and message list
+        """
+        response = requests.get(
+            f"{self.ai_url}/sessions/{session_id}",
+            headers=self._ai_headers(),
+            timeout=Client.timeout,
+            verify=self._ai_verify(),
+            cert=self._ai_cert(),
+        )
+        if response.status_code != 200:
+            raise errors.GenericException(
+                f"Failed to get AI session "
+                f"[status_code: {response.status_code}]: {response.text}"
+            )
+        return response.json()
+
+    def ai_delete_session(self, session_id):
+        """Delete an AI chat session.
+
+        Args:
+            session_id: session ID
+
+        Returns:
+            dict with deletion status
+        """
+        response = requests.delete(
+            f"{self.ai_url}/sessions/{session_id}",
+            headers=self._ai_headers(),
+            timeout=Client.timeout,
+            verify=self._ai_verify(),
+            cert=self._ai_cert(),
+        )
+        if response.status_code != 200:
+            raise errors.GenericException(
+                f"Failed to delete AI session "
+                f"[status_code: {response.status_code}]: {response.text}"
+            )
+        return response.json()

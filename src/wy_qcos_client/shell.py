@@ -61,6 +61,7 @@ class QcosShell(App):
     CMD_GROUP_DEVICE_GROUP = "DeviceGroup"
     CMD_GROUP_METRICS = "Metrics"
     CMD_GROUP_PROXY = "Proxy"
+    CMD_GROUP_AI = "AI"
     CMD_GROUPS = [
         CMD_GROUP_DEFAULT,
         CMD_GROUP_VERSION,
@@ -76,6 +77,7 @@ class QcosShell(App):
         CMD_GROUP_FLAVOR,
         CMD_GROUP_METRICS,
         CMD_GROUP_PROXY,
+        CMD_GROUP_AI,
     ]
 
     def __init__(self, description, version, command_manager):
@@ -441,7 +443,9 @@ class CommandHelper:
                 else:
                     err_msg_list.append(f"{message} ({code})")
             except Exception as e:
-                err_msg_list.append(e)
+                # Convert the exception to a string so join() below
+                # never raises TypeError (e.g. json.JSONDecodeError).
+                err_msg_list.append(str(e))
         else:
             err_msg_list.append(reason)
         err_msgs = ""
@@ -683,6 +687,7 @@ class Version(Command):
         )
         print(f"Platform version: {json_results['platform_version']}")
         print(f"Auth mode: {json_results['auth_mode']}")
+        print(f"Components: {json_results['components']}")
         caps = json_results.get("capabilities", None)
         if caps:
             print("Capabilities:")
@@ -6022,6 +6027,249 @@ class DeleteDeviceGroups(Command):
         print(f"Total: {success_count} succeeded, {fail_count} failed")
 
 
+# AI Agent commands
+def _print_ai_stream(response, show_tool_events=False):
+    """Consume an SSE streaming response and print the assistant text.
+
+    Args:
+        response: requests.Response with stream=True
+        show_tool_events: also print tool call/result markers
+
+    Returns:
+        The final session_id extracted from done events, or None
+    """
+    session_id = None
+    try:
+        for raw_line in response.iter_lines(decode_unicode=True):
+            if not raw_line or not raw_line.startswith("data: "):
+                continue
+            try:
+                event = json.loads(raw_line[6:])
+            except json.JSONDecodeError:
+                continue
+            event_type = event.get("type")
+            if event_type == "chunk":
+                delta = event.get("delta", "")
+                sys.stdout.write(delta)
+                sys.stdout.flush()
+            elif event_type == "tool_call" and show_tool_events:
+                tool = event.get("tool", "")
+                print(f"\n[tool call: {tool}]")
+            elif event_type == "tool_result" and show_tool_events:
+                tool = event.get("tool", "")
+                print(f"[tool result: {tool}]")
+            elif event_type == "done":
+                # The backend sends the session ID in the "message_id"
+                # field of the done event; accept both spellings.
+                session_id = event.get("session_id") or event.get("message_id")
+            elif event_type == "error":
+                message = event.get("error", "unknown error")
+                raise errors.GenericException(f"AI error: {message}")
+    finally:
+        response.close()
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+    return session_id
+
+
+class AiAsk(Command):
+    """Ask the AI assistant a single question."""
+
+    group = QcosShell.CMD_GROUP_AI
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "message",
+            type=str,
+            nargs="+",
+            help="Question text for the AI assistant",
+        )
+        parser.add_argument(
+            "--session-id",
+            type=str,
+            default=None,
+            help="Continue an existing AI chat session",
+        )
+        parser.add_argument(
+            "--no-rag",
+            action="store_true",
+            default=False,
+            help="Disable RAG retrieval for this question",
+        )
+        parser.add_argument(
+            "--show-tools",
+            action="store_true",
+            default=False,
+            help="Show tool call/result markers in the output",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        message = " ".join(parsed_args.message)
+        response = self.app.client.ai_chat_stream(
+            message=message,
+            session_id=parsed_args.session_id,
+            enable_rag=not parsed_args.no_rag,
+        )
+        _print_ai_stream(response, show_tool_events=parsed_args.show_tools)
+
+
+class AiChat(Command):
+    """Interactive multi-turn chat with the AI assistant."""
+
+    group = QcosShell.CMD_GROUP_AI
+
+    REPL_HELP = (
+        "Commands:\n"
+        "  /new [title]      Start a new session\n"
+        "  /list             List my sessions\n"
+        "  /use <id>         Switch to an existing session\n"
+        "  /history          Show messages of the current session\n"
+        "  /delete <id>      Delete a session\n"
+        "  /rag on|off       Toggle RAG retrieval\n"
+        "  /tools on|off     Toggle tool call/result markers\n"
+        "  /help             Show this help\n"
+        "  /exit             Quit the chat\n"
+        "Any other input is sent as a chat message."
+    )
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument(
+            "--session-id",
+            type=str,
+            default=None,
+            help="Resume an existing AI chat session",
+        )
+        parser.add_argument(
+            "--no-rag",
+            action="store_true",
+            default=False,
+            help="Disable RAG retrieval",
+        )
+        parser.add_argument(
+            "--show-tools",
+            action="store_true",
+            default=False,
+            help="Show tool call/result markers in the output",
+        )
+        return parser
+
+    def take_action(self, parsed_args):
+        client = self.app.client
+        session_id = parsed_args.session_id
+        enable_rag = not parsed_args.no_rag
+        show_tools = parsed_args.show_tools
+
+        print(
+            "AI chat session started. Type /help for commands, /exit to quit."
+        )
+        if session_id:
+            print(f"Resuming session: {session_id}")
+
+        while True:
+            try:
+                if session_id:
+                    prompt = f"ai[{session_id[:8]}]> "
+                else:
+                    prompt = "ai> "
+                line = input(prompt).strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                break
+            if not line:
+                continue
+
+            if line.startswith("/"):
+                parts = line.split(maxsplit=1)
+                cmd = parts[0].lower()
+                arg = parts[1].strip() if len(parts) > 1 else ""
+
+                if cmd in ("/exit", "/quit"):
+                    break
+                elif cmd == "/help":
+                    print(self.REPL_HELP)
+                elif cmd == "/new":
+                    title = arg or "CLI conversation"
+                    result = client.ai_create_session(title=title)
+                    session_id = result.get("session_id")
+                    print(f"New session created: {session_id} ({title})")
+                elif cmd == "/list":
+                    sessions = client.ai_list_sessions()
+                    if not sessions:
+                        print("No sessions found.")
+                    for s in sessions:
+                        created = datetime.fromtimestamp(
+                            s.get("created_at", 0)
+                        ).strftime("%Y-%m-%d %H:%M:%S")
+                        if s.get("session_id") == session_id:
+                            marker = "*"
+                        else:
+                            marker = " "
+                        print(
+                            f"{marker} {s.get('session_id')}  "
+                            f"{created}  "
+                            f"({s.get('message_count', 0)} msgs)  "
+                            f"{s.get('title', '')}"
+                        )
+                elif cmd == "/use":
+                    if not arg:
+                        print("Usage: /use <session_id>")
+                        continue
+                    session_id = arg
+                    print(f"Switched to session: {session_id}")
+                elif cmd == "/history":
+                    if not session_id:
+                        print("No active session. Use /new or /use first.")
+                        continue
+                    data = client.ai_get_session(session_id)
+                    for m in data.get("messages", []):
+                        role = m.get("role", "?")
+                        content = m.get("content", "")
+                        print(f"[{role}] {content}\n")
+                elif cmd == "/delete":
+                    if not arg:
+                        print("Usage: /delete <session_id>")
+                        continue
+                    client.ai_delete_session(arg)
+                    if arg == session_id:
+                        session_id = None
+                    print(f"Session deleted: {arg}")
+                elif cmd == "/rag":
+                    if arg.lower() == "on":
+                        enable_rag = True
+                    elif arg.lower() == "off":
+                        enable_rag = False
+                    print(f"RAG: {'on' if enable_rag else 'off'}")
+                elif cmd == "/tools":
+                    if arg.lower() == "on":
+                        show_tools = True
+                    elif arg.lower() == "off":
+                        show_tools = False
+                    print(f"Tool markers: {'on' if show_tools else 'off'}")
+                else:
+                    print(f"Unknown command: {cmd}. Type /help.")
+                continue
+
+            # regular chat message
+            try:
+                response = client.ai_chat_stream(
+                    message=line,
+                    session_id=session_id,
+                    enable_rag=enable_rag,
+                )
+                new_session_id = _print_ai_stream(
+                    response, show_tool_events=show_tools
+                )
+                if new_session_id and not session_id:
+                    session_id = new_session_id
+            except errors.GenericException as exc:
+                print(f"Error: {exc}")
+            except Exception as exc:
+                print(f"Request failed: {exc}")
+
+
 # Register commands
 command_manager = CommandManager("qcos")
 # version command
@@ -6103,6 +6351,9 @@ command_manager.add_command("get-job-stats", GetJobStats)
 command_manager.add_command("get-system-stats", GetSystemStats)
 # proxy command
 command_manager.add_command("get-proxy-health", GetProxyHealth)
+# ai command
+command_manager.add_command("ai-ask", AiAsk)
+command_manager.add_command("ai-chat", AiChat)
 
 
 def set_debug_option(args):
