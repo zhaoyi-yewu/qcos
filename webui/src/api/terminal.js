@@ -15,6 +15,7 @@
 
 import axios from 'axios'
 import { useConfigStore } from '@/store/modules/config'
+import { useComponentsStore } from '@/store/modules/components'
 import { getSession } from '@/utils/session'
 
 const HEARTBEAT_INTERVAL_MS = 25 * 1000
@@ -162,6 +163,19 @@ function withAuth(extra = {}) {
 }
 
 /**
+ * Guard that throws when the terminal feature is disabled on the backend.
+ *
+ * @returns {Error|null} Error when disabled, null when enabled
+ */
+function ensureTerminalEnabled() {
+  const componentsStore = useComponentsStore()
+  if (!componentsStore.terminalEnabled) {
+    return new Error('终端功能未开启')
+  }
+  return null
+}
+
+/**
  * Create a terminal WebSocket connection.
  *
  * The socket authenticates on the first frame, forwards messages to
@@ -187,6 +201,20 @@ export function createTerminalSocket({ cols, rows, token, onMessage, onOpen, onC
   let reconnectAttempts = 0
   let closedByUser = false
   let authed = false
+
+  const disabledErr = ensureTerminalEnabled()
+  if (disabledErr) {
+    // Surface a synthetic close so the UI reacts the same way it would
+    // for a failed connection instead of leaving a forever-loading term.
+    if (typeof onError === 'function') {
+      setTimeout(() => onError(disabledErr), 0)
+    }
+    return {
+      send() { /* no-op */ },
+      close() { /* no-op */ },
+      isOpen() { return false }
+    }
+  }
 
   const buildUrl = () => {
     const base = getWsBase()
@@ -333,6 +361,8 @@ export function createTerminalSocket({ cols, rows, token, onMessage, onOpen, onC
  * @returns {Promise<Array<{name,is_dir,size,mtime}>>}
  */
 export async function listFiles(path = '') {
+  const disabledErr = ensureTerminalEnabled()
+  if (disabledErr) throw disabledErr
   const base = getHttpBase()
   try {
     const resp = await axios(withAuth({
@@ -355,6 +385,8 @@ export async function listFiles(path = '') {
  * @returns {Promise<Object>} server response data
  */
 export async function uploadFile(dir, file, onProgress) {
+  const disabledErr = ensureTerminalEnabled()
+  if (disabledErr) throw disabledErr
   const base = getHttpBase()
   const form = new FormData()
   form.append('file', file)
@@ -385,6 +417,8 @@ export async function uploadFile(dir, file, onProgress) {
  * @returns {Promise<void>}
  */
 export async function downloadFile(path) {
+  const disabledErr = ensureTerminalEnabled()
+  if (disabledErr) throw disabledErr
   const base = getHttpBase()
   try {
     const resp = await axios(withAuth({
@@ -418,6 +452,8 @@ export async function downloadFile(path) {
  * @returns {Promise<Object>} server response data
  */
 export async function deleteFile(path) {
+  const disabledErr = ensureTerminalEnabled()
+  if (disabledErr) throw disabledErr
   const base = getHttpBase()
   try {
     const resp = await axios(withAuth({

@@ -23,13 +23,30 @@
     >
       <el-icon><Monitor /></el-icon>
       <span class="pill-text">终端</span>
-      <span v-if="anyConnected" class="pill-dot pill-dot-on" />
+      <!--
+        Use a single class per state instead of "pill-dot pill-dot-on".
+        The previous stacked form compiled to a selector whose
+        specificity was not enough to override the base .pill-dot
+        rule, leaving the dot grey even when sessions were connected.
+      -->
+      <span v-if="anyConnected" class="pill-dot-on" />
       <span v-else class="pill-dot" />
     </div>
 
-    <!-- floating dialog -->
+    <!--
+      floating dialog.
+
+      IMPORTANT: keep the dialog MOUNTED while minimized. The outer
+      v-if only reacts to `visible`; hiding on minimize is done via
+      v-show so the inner TerminalSession components (and their
+      WebSocket connections) survive minimize/restore cycles. The
+      previous `v-if="visible && !minimized"` destroyed the DOM and
+      dropped every live shell the moment the user minimized, then
+      re-connected only the active tab on restore.
+    -->
     <div
-      v-if="visible && !minimized"
+      v-if="visible"
+      v-show="!minimized"
       ref="dialogRef"
       class="terminal-dialog"
       :class="{ 'is-fullscreen': fullscreen }"
@@ -683,6 +700,13 @@ watch(activeSessionId, async() => {
   background: linear-gradient(135deg, transparent 50%, #c0c4cc 50%, #c0c4cc 60%, transparent 60%);
 }
 
+/*
+ * Minimized terminal pill: 40% opacity by default so it reads as a
+ * passive "dock" element on the page corner instead of competing
+ * with the content underneath (matches the AI-agent pill's visual
+ * treatment). Full opacity returns on hover so the click target is
+ * still discoverable.
+ */
 .terminal-minimized-pill {
   position: fixed;
   right: 24px;
@@ -698,21 +722,39 @@ watch(activeSessionId, async() => {
   border-radius: 18px;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+  }
 
   .pill-text {
     font-size: 13px;
   }
 
-  .pill-dot {
+  .pill-dot,
+  .pill-dot-on {
     display: inline-block;
     width: 8px;
     height: 8px;
     border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .pill-dot {
     background: #909399;
   }
 
+  /*
+   * "Connected" indicator. Use a vivid green + subtle glow so the
+   * minimized pill makes it obvious at a glance that a shell session
+   * is still alive in the background. Defined AFTER .pill-dot so the
+   * green wins when both classes are present.
+   */
   .pill-dot-on {
     background: #67c23a;
+    box-shadow: 0 0 6px rgba(103, 194, 58, 0.95);
   }
 }
 </style>

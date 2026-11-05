@@ -23,6 +23,12 @@ export const MAX_SESSIONS = 4
 
 // localStorage key used to persist the terminal theme across reloads
 const THEME_STORAGE_KEY = 'qcos-terminal-theme'
+// one-shot migration key: after the "terminal defaults to dark theme"
+// change, existing browsers may still hold a persisted non-dark theme
+// (e.g. 'light' saved by an older build). The migration below clears
+// that stale preference exactly once so every user lands on the dark
+// default, while still allowing them to re-pick another theme after.
+const THEME_MIGRATION_KEY = 'qcos-terminal-theme-dark-default-v1'
 
 // built-in terminal themes. each entry maps directly onto xterm's ITheme.
 export const TERMINAL_THEMES = [
@@ -59,9 +65,20 @@ const DEFAULT_THEME_NAME = TERMINAL_THEMES[0].name
 
 function loadPersistedTheme() {
   try {
-    const raw = typeof localStorage !== 'undefined'
-      ? localStorage.getItem(THEME_STORAGE_KEY)
-      : null
+    if (typeof localStorage === 'undefined') {
+      return DEFAULT_THEME_NAME
+    }
+    // One-shot migration: browsers that saved a non-dark theme with an
+    // older build are reset to the dark default exactly once. The
+    // migration flag is set immediately so any theme the user picks
+    // afterwards is honored again.
+    const migrated = localStorage.getItem(THEME_MIGRATION_KEY)
+    if (!migrated) {
+      localStorage.setItem(THEME_MIGRATION_KEY, '1')
+      localStorage.removeItem(THEME_STORAGE_KEY)
+      return DEFAULT_THEME_NAME
+    }
+    const raw = localStorage.getItem(THEME_STORAGE_KEY)
     if (!raw) return DEFAULT_THEME_NAME
     return TERMINAL_THEMES.some(t => t.name === raw) ? raw : DEFAULT_THEME_NAME
   } catch (e) {

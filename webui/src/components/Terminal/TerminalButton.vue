@@ -14,8 +14,17 @@
 -->
 
 <template>
-  <el-tooltip v-if="hasToken" content="打开终端" :placement="tooltipPlacement" :show-after="200">
-    <span class="terminal-button" @click="onOpen">
+  <el-tooltip
+    v-if="hasToken"
+    :content="enabled ? '打开终端' : '功能未开启'"
+    :placement="tooltipPlacement"
+    :show-after="200"
+  >
+    <span
+      class="terminal-button"
+      :class="{ 'is-disabled': !enabled }"
+      @click="onOpen"
+    >
       <svg-icon icon-class="terminal" class="terminal-icon" />
     </span>
   </el-tooltip>
@@ -23,8 +32,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useTerminalStore } from '@/store/modules/terminal'
 import { getTerminalToken } from '@/api/terminal'
+import { useComponentsStore } from '@/store/modules/components'
 
 defineOptions({ name: 'TerminalButton' })
 
@@ -38,10 +49,16 @@ defineProps({
 })
 
 const terminalStore = useTerminalStore()
+const componentsStore = useComponentsStore()
 
 const hasToken = computed(() => !!getTerminalToken())
+const enabled = computed(() => componentsStore.terminalEnabled)
 
 function onOpen() {
+  if (!enabled.value) {
+    ElMessage.warning('终端功能未开启')
+    return
+  }
   terminalStore.openDialog()
 }
 </script>
