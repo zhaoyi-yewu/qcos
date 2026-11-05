@@ -156,14 +156,22 @@ async def app_lifespan(app: jsonrpc.API):
     # Start all background services
     await manager.start_all()
 
-    # Initialize MCP server lifespan (MCP 2.x requires task group init)
+    # Initialize MCP server lifespan (MCP 2.x requires task group
+    # init). Skip when the MCP endpoint is disabled via config.
     mcp_lifespan_ctx = None
-    try:
-        from wy_qcos.api.mcp.mcp_server import init_mcp_lifespan
 
-        mcp_lifespan_ctx = await init_mcp_lifespan()
-    except Exception as e:
-        logger.warning(f"Failed to initialize MCP server: {e}")
+    if Config.is_ai_mcp_server_enabled():
+        try:
+            from wy_qcos.api.mcp.mcp_server import init_mcp_lifespan
+
+            mcp_lifespan_ctx = await init_mcp_lifespan()
+        except Exception as e:
+            logger.warning(f"Failed to initialize MCP server: {e}")
+    else:
+        logger.info(
+            "MCP server lifespan skipped "
+            "([AI].ENABLED or [AI.MCP_SERVER].ENABLED is false)"
+        )
 
     # Shared httpx.AsyncClient used by reverse-proxy sub-apps mounted
     # under /v1/proxy/<service>. Storing on app.state avoids creating
