@@ -8,6 +8,7 @@
 [<img alt="PyPI - Version" width="95" height="20" src="https://img.shields.io/pypi/v/wy-qcos?logo=pypi&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
 [<img alt="PyPI - Wheel" width="90" height="20" src="https://img.shields.io/pypi/wheel/wy-qcos?logo=python&amp;logoColor=white"/>](https://pypi.org/project/wy-qcos)
 [<img alt="MCP Server" width="110" height="20" src="https://img.shields.io/badge/MCP-Server-black?logo=modelcontextprotocol"/>](https://qcos.readthedocs.io/zh-cn/latest/user-guide/mcp/mcp.html)
+[<img alt="AI Agent Chat" width="130" height="20" src="https://img.shields.io/badge/AI_Agent-Chat_Enabled-brightgreen?style=flat-square&logo=probot&logoColor=white"/>](https://qcos.readthedocs.io/zh-cn/latest/user-guide/ai-agent.html)
 [<img alt="License" width="150" height="20" src="https://img.shields.io/crates/l/efi_signer?logo=opensourceinitiative"/>](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
 <br>
 [<img alt="Codecov" width="110" height="20" src="https://codecov.io/github/zhaoyi-yewu/qcos/branch/develop/graph/badge.svg"/>](https://codecov.io/github/zhaoyi-yewu/qcos)
@@ -25,7 +26,7 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 
 | 类别 | 功能 |
 |:------|:------------------------------------------------------------------------------------------------------------------------------|
-| 交互方式 | 命令行、API、SDK、WEBUI、MCP协议 |
+| 交互方式 | 命令行、API、SDK、WEBUI、AI-Agent 协议：AG-UI（over SSE）、MCP（over Streamable HTTP） |
 | 用户管理 | 多租户隔离、多用户、RBAC（基于角色的）API 权限控制、JWT登录认证 |
 | 设备管理 | 校准操作（规划）、设备配置/查询、设备可用率统计 |
 | 作业管理 | 作业提交、取消、删除、状态查询、结果查询、自动调度 |
@@ -33,6 +34,7 @@ WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）
 | 量子引擎 | QASM解析、逻辑门分解、量子比特映射、编译优化、线路聚合、线路拆分、量子纠错QEC（规划） |
 | 驱动插件 | 各类超导、中性原子、离子阱、光量子以及模拟器等，详见：[量子硬件兼容性说明](https://qcos.readthedocs.io/zh-cn/latest/user-guide/compatibility.html#qdevice-compat) |
 | 系统服务 | 配置管理、日志管理、监控告警、运维调试 |
+| 人工智能 | 内置AI Agent助手：多模型接入、RAG文档检索、MCP工具调用、源码只读问答、图片分析、SSE流式对话 |
 | 监控告警 | 支持Prometheus指标采集、Alertmanager告警分发及Grafana 可视化面板 |
 
 ## 3. 安装使用

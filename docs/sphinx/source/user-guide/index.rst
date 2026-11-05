@@ -13,3 +13,5 @@
    scenario/index
    sdk
    mcp/index
+   ai-agent
+   ai/index

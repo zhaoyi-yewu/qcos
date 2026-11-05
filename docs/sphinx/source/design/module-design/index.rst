@@ -25,4 +25,5 @@
    background-tasks
    mcp
    reverse-proxy
+   ai-agent
    venv
