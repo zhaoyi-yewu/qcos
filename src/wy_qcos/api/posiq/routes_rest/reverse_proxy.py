@@ -30,6 +30,11 @@ Design goals:
 * Map read / write timeouts to ``504 Gateway Timeout``
 * Reuse a shared :class:`httpx.AsyncClient` from
   ``scope["app"].state.http_client`` when available
+* Stream the upstream response body back to the client in chunks so
+  that large responses (e.g. Prometheus ``query_range`` results
+  containing many time series, several MB or more) do not need to be
+  fully buffered in proxy memory. Under high concurrency this avoids
+  memory spikes caused by many large in-flight response bodies.
 """
 
 import logging
@@ -106,15 +111,18 @@ def _filter_response_headers(
 
     Both ``Content-Length`` and ``Content-Encoding`` are dropped:
 
-    * ``Content-Length`` — we re-frame the body through ASGI and the
-      server (uvicorn) recomputes it from the actual payload.
+    * ``Content-Length`` — we re-frame the body through ASGI as a
+      chunked stream (no ``more_body=False`` until the final empty
+      chunk), so the original length no longer applies. The server
+      (uvicorn) emits ``Transfer-Encoding: chunked`` for the downstream
+      connection.
     * ``Content-Encoding`` — httpx transparently decompresses gzip /
-      deflate / br bodies when reading ``upstream_resp.content``. If we
-      forwarded the upstream ``Content-Encoding: gzip`` header while
-      sending the *decompressed* payload, the browser would attempt to
-      gunzip a plain JSON body and fail with
-      ``NS_ERROR_INVALID_CONTENT_ENCODING`` (Firefox) or a blank
-      response (Chrome).
+      deflate / br bodies as they are iterated via
+      :meth:`httpx.Response.aiter_bytes`. If we forwarded the upstream
+      ``Content-Encoding: gzip`` header while sending the *decompressed*
+      payload, the browser would attempt to gunzip a plain JSON body
+      and fail with ``NS_ERROR_INVALID_CONTENT_ENCODING`` (Firefox) or
+      a blank response (Chrome).
 
     Args:
         headers: Upstream response headers list
@@ -255,14 +263,46 @@ def create_reverse_proxy_app(
             )
             client = own_client
 
+        # Chunk size used when streaming the upstream response body to
+        # the downstream client. 64 KiB is a reasonable trade-off
+        # between syscall overhead and per-request memory footprint.
+        _STREAM_CHUNK_SIZE = 64 * 1024
+
         try:
+            # Use client.stream() so the upstream response body is NOT
+            # fully buffered in proxy memory. This matters for large
+            # Prometheus query_range / series responses which can be
+            # several MB or more; under high concurrency, buffering all
+            # of them simultaneously would cause memory spikes.
             try:
-                upstream_resp = await client.request(
+                async with client.stream(
                     method,
                     url,
                     content=body if body else None,
                     headers=headers,
-                )
+                ) as upstream_resp:
+                    resp_headers = _filter_response_headers(
+                        list(upstream_resp.headers.raw)
+                    )
+                    await send({
+                        "type": "http.response.start",
+                        "status": upstream_resp.status_code,
+                        "headers": resp_headers,
+                    })
+                    async for chunk in upstream_resp.aiter_bytes(
+                        _STREAM_CHUNK_SIZE
+                    ):
+                        await send({
+                            "type": "http.response.body",
+                            "body": chunk,
+                            "more_body": True,
+                        })
+                    # Terminal empty chunk signals end of body.
+                    await send({
+                        "type": "http.response.body",
+                        "body": b"",
+                        "more_body": False,
+                    })
             except httpx.TimeoutException as e:
                 logger.warning(
                     f"Reverse proxy '{service_name}' timeout "
@@ -279,21 +319,6 @@ def create_reverse_proxy_app(
                     send, 502, f"Bad gateway: {type(e).__name__}: {e}"
                 )
                 return
-
-            resp_headers = _filter_response_headers(
-                list(upstream_resp.headers.raw)
-            )
-            resp_body = upstream_resp.content
-            resp_headers.append((
-                b"content-length",
-                str(len(resp_body)).encode("latin-1"),
-            ))
-            await send({
-                "type": "http.response.start",
-                "status": upstream_resp.status_code,
-                "headers": resp_headers,
-            })
-            await send({"type": "http.response.body", "body": resp_body})
         finally:
             if own_client is not None:
                 await own_client.aclose()

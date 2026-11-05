@@ -63,4 +63,9 @@ PROXY_TARGETS: list[ProxyTarget] = [
         config_getter=lambda: Config.PROXY.ALERTMANAGER_BASE_URL,
         health_path="/-/healthy",
     ),
+    ProxyTarget(
+        path_segment="victorialogs",
+        config_getter=lambda: Config.PROXY.VICTORIALOGS_BASE_URL,
+        health_path="/health",
+    ),
 ]
