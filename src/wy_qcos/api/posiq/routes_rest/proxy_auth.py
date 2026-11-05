@@ -29,23 +29,18 @@ The error response matches the MCP middleware format so clients see
 a consistent shape across the QCOS REST surface.
 """
 
-import json
 import logging
-from collections.abc import Awaitable, Callable
 
-from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
-    decode_jwt_token,
+from wy_qcos.api.posiq.routes_rest.jwt_utils import (
+    ASGIApp,
+    Receive,
+    Scope,
+    Send,
+    check_jwt,
+    send_unauthorized,
 )
-from wy_qcos.common.config import Config
-from wy_qcos.common.constant import Constant
 
 logger = logging.getLogger(__name__)
-
-Scope = dict
-Message = dict
-Receive = Callable[[], Awaitable[Message]]
-Send = Callable[[Message], Awaitable[None]]
-ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
 
 
 class ProxyJwtMiddleware:
@@ -71,61 +66,8 @@ class ProxyJwtMiddleware:
             await self.app(scope, receive, send)
             return
 
-        if not self._check_jwt(scope):
-            await self._send_unauthorized(send)
+        if not check_jwt(scope, log_prefix="Proxy access"):
+            await send_unauthorized(send)
             return
 
         await self.app(scope, receive, send)
-
-    @staticmethod
-    def _check_jwt(scope: Scope) -> bool:
-        """Return True if the request is allowed through.
-
-        See :class:`ProxyJwtMiddleware` docstring for the mode table.
-        """
-        if Config.DEFAULT.AUTH_MODE != Constant.AUTH_MODE_JWT:
-            return True
-
-        headers = scope.get("headers", [])
-        auth_header: str | None = None
-        for key, value in headers:
-            if key.lower() == b"authorization":
-                auth_header = value.decode("latin-1")
-                break
-
-        if not auth_header:
-            logger.warning("Proxy access denied: missing Authorization header")
-            return False
-
-        parts = auth_header.split(" ", 1)
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            logger.warning("Proxy access denied: invalid Authorization scheme")
-            return False
-
-        token = parts[1].strip()
-        payload = decode_jwt_token(token)
-        if not payload:
-            logger.warning("Proxy access denied: invalid or expired JWT token")
-            return False
-        return True
-
-    @staticmethod
-    async def _send_unauthorized(send: Send) -> None:
-        """Send HTTP 401 with a JSON error body (MCP-style shape)."""
-        body = json.dumps({
-            "jsonrpc": "2.0",
-            "error": {
-                "code": -32001,
-                "message": "Unauthorized: valid JWT token required",
-            },
-            "id": None,
-        }).encode("utf-8")
-        await send({
-            "type": "http.response.start",
-            "status": 401,
-            "headers": [
-                (b"content-type", b"application/json"),
-                (b"content-length", str(len(body)).encode("latin-1")),
-            ],
-        })
-        await send({"type": "http.response.body", "body": body})
