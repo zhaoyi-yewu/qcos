@@ -23,6 +23,8 @@ import uvicorn
 from wy_qcos.api.fastapi_server import (
     app,
     QcosUvicornServer,
+    register_ai_routes,
+    register_cors_middleware,
     register_terminal_routes,
 )
 from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
@@ -37,6 +39,7 @@ from wy_qcos.device.device_manager import DeviceManager
 from wy_qcos.driver.driver_manager import DriverManager
 from wy_qcos.log.logger import init_logger, PERF_LEVEL
 from wy_qcos.task_manager import scheduler
+from wy_qcos.task_manager.job_synchronizer import JobSynchronizer
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
 from wy_qcos.user.project_manager import ProjectManager
 from wy_qcos.user.security_manager import SecurityManager
@@ -176,6 +179,18 @@ class Server:
             # of the value from qcos.toml.
             register_terminal_routes()
 
+            # AI routes (MCP endpoint + AI chat) share the same
+            # constraint: they are gated by [AI]/[AI.MCP_SERVER]/
+            # [AI.AGENT] ENABLED flags, which are only loaded after
+            # Config.initialize().
+            register_ai_routes()
+
+            # CORS middleware must also be registered AFTER
+            # Config.initialize() so that the configured
+            # CORS_ALLOWED_ORIGINS from qcos.toml is used instead of
+            # the Pydantic default (["*"]).
+            register_cors_middleware()
+
             config = uvicorn.Config(
                 app,
                 host=Config.API_SERVER.API_SERVER_LISTEN_IP,
@@ -269,9 +284,15 @@ class Server:
             scheduler.start_taskmanager()
             app.state._task_manager = scheduler.get_task_manager()
 
-            # handle any unfinished jobs from previous runs
-            logger.info("Processing unfinished callbacks ...")
-            scheduler.process_unfinished_jobs()
+            # Sync all non-terminal jobs with Prefect flow-run states.
+            # This absorbs the legacy process_unfinished_jobs() fast-fail
+            # logic (UNKNOWN / CANCELLING -> FAILED + cancel flow run).
+            logger.info("Syncing non-terminal jobs with Prefect ...")
+            syncer = JobSynchronizer(
+                task_manager=scheduler.get_task_manager(),
+                db_engine=db_engine,
+            )
+            syncer.sync()
 
             # run any unfinished callbacks
             logger.info("Processing unfinished callbacks ...")
