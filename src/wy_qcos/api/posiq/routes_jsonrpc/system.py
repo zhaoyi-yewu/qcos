@@ -26,6 +26,7 @@ from fastapi import Depends, Request
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import system_api_v1
+from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.common.pagination import (
@@ -95,7 +96,10 @@ def system_info(
     # Query total jobs count from database
     total_jobs_count = job_repo.get_jobs_count()
 
-    _response_info = {"total_jobs_count": total_jobs_count}
+    _response_info = {
+        "total_jobs_count": total_jobs_count,
+        "components": Config.get_component_switch_status(),
+    }
     response_info = schemas.SystemInfoResponse.model_validate(_response_info)
     return response_info
 

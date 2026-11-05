@@ -55,6 +55,11 @@ class SystemInfoResponse(BaseModel):
     total_jobs_count: int = Field(
         ..., description="Total number of jobs in the system"
     )
+    # component switch status
+    components: dict = Field(
+        default_factory=dict,
+        description="component switch status",
+    )
 
 
 class ShowMemRequest(BaseModel):

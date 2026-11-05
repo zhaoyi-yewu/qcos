@@ -52,6 +52,7 @@ def version(
         ],
         "platform_version": Constant.PLATFORM_VERSION,
         "auth_mode": Config.DEFAULT.AUTH_MODE,
+        "components": Config.get_component_switch_status(),
     }
 
     # Only include detailed capabilities if details=True

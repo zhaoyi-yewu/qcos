@@ -43,6 +43,10 @@ class GetVersionResponse(BaseModel):
     )
     platform_version: str = Field(..., description="platform version")
     auth_mode: str = Field(..., description="authentication mode")
+    components: dict = Field(
+        default_factory=dict,
+        description="component switch status",
+    )
     capabilities: dict | None = Field(
         default=None, description="capabilities (included when details=True)"
     )
