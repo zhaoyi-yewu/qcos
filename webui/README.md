@@ -125,7 +125,6 @@ webui/
 
 - [`INSTALL.md`](INSTALL.md) — 安装部署详细说明
 - [`config-run-webui.rst`](../docs/sphinx/source/user-guide/deploy-guide/config-run-webui.rst) — 配置与启动手册
-- [`plans/webui-multi-endpoint-plan.md`](../plans/webui-multi-endpoint-plan.md) — 完整设计方案
 - [`etc/qcos/qcos-webui.toml`](../etc/qcos/qcos-webui.toml) — 默认配置文件模板
 
 ## 许可证
