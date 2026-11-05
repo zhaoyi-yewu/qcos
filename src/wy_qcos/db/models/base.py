@@ -68,6 +68,26 @@ class BaseTable(Base):
     __mapper_args__ = {"eager_defaults": True}
 
 
+class JSONBType(TypeDecorator):
+    """Platform-independent JSONB type.
+
+    Uses PostgreSQL JSONB on PostgreSQL; falls back to generic JSON on
+    other dialects (e.g. SQLite used in unit tests).
+    """
+
+    impl = JSON
+    cache_ok = True
+    """Using cache."""
+
+    def load_dialect_impl(self, dialect):
+        """Load dialect impl."""
+        if dialect.name == Constant.DB_DIALECT_POSTGRESQL:
+            from sqlalchemy.dialects.postgresql import JSONB
+
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
+
+
 class ArrayType(TypeDecorator):
     """Platform-independent Array type."""
 
