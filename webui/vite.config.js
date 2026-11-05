@@ -170,11 +170,23 @@ export default defineConfig(({ mode, command }) => {
       }
     },
     optimizeDeps: {
+      // Force pre-bundling of the TDesign chat bundle. Vite's default
+      // heuristic may miss the dynamic / transitive imports inside
+      // @tdesign-vue-next/chat (e.g. omi-vueify, web-components),
+      // which surfaces as "Failed to resolve import" at runtime.
+      include: [
+        '@tdesign-vue-next/chat',
+        'tdesign-vue-next',
+        'tdesign-icons-vue-next'
+      ],
       esbuildOptions: {
         // Patch findSectionHeaders.js in pre-bundled deps as well
         alias: {
           'monaco-editor/esm/vs/editor/common/services/findSectionHeaders': path.resolve(__dirname, 'patches/findSectionHeaders.js')
-        }
+        },
+        // TDesign uses `.mjs` ESM; make sure esbuild honours it.
+        mainFields: ['module', 'jsnext:main', 'jsnext'],
+        resolveExtensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
       }
     },
     server: {
@@ -199,7 +211,12 @@ export default defineConfig(({ mode, command }) => {
           manualChunks: {
             'element-plus': ['element-plus', '@element-plus/icons-vue'],
             echarts: ['echarts'],
-            'monaco-editor': ['monaco-editor/esm/vs/editor/editor.api']
+            'monaco-editor': ['monaco-editor/esm/vs/editor/editor.api'],
+            // Split TDesign (chat + core) into its own chunk so the
+            // ~300KB gzipped overhead is only paid when the AI agent
+            // drawer / floating window is actually opened.
+            'tdesign-chat': ['@tdesign-vue-next/chat'],
+            'tdesign-core': ['tdesign-vue-next', 'tdesign-icons-vue-next']
           }
         }
       }
