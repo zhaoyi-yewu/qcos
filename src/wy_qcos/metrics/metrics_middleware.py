@@ -43,7 +43,17 @@ class MetricsMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware for collecting API access metrics."""
 
     # Excluded paths for which metrics are not collected
-    EXCLUDED_PATHS = {"/metrics", "/v1/metrics", "/health", "/favicon.ico"}
+    # /v1/ai/chat and /v1/ai/chat/agui are excluded because SSE streaming
+    # responses are incompatible with BaseHTTPMiddleware (raises
+    # RuntimeError on unexpected http.request message).
+    EXCLUDED_PATHS = {
+        "/metrics",
+        "/v1/metrics",
+        "/health",
+        "/favicon.ico",
+        "/v1/ai/chat",
+        "/v1/ai/chat/agui",
+    }
 
     # Modules for which metrics are collected
     MODULES = {"device", "driver", "job", "system", "transpiler"}
@@ -80,7 +90,9 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             Response object
         """
         # Skip metrics collection for /metrics endpoint itself
-        if request.url.path in self.EXCLUDED_PATHS:
+        # Use endswith to match paths with project prefix, e.g.
+        # /api/A03-22-1/v1/ai/chat -> /v1/ai/chat
+        if any(request.url.path.endswith(p) for p in self.EXCLUDED_PATHS):
             return await call_next(request)
 
         # Increment in-progress counter

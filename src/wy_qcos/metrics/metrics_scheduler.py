@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import asyncio
 import logging
 from datetime import datetime
 
@@ -102,6 +103,10 @@ class MetricsScheduler:
             return
         try:
             await update_metrics_task_async()
+        except asyncio.CancelledError:
+            # Graceful shutdown: scheduler stopping cancelled this run.
+            # Swallow so apscheduler does not log it as an ERROR traceback.
+            logger.debug("Metrics update cancelled during shutdown")
         except Exception:
             logger.error(
                 "Error during metrics update (periodic)", exc_info=True

@@ -633,6 +633,12 @@ async def update_system_stats_metrics():
             disk_percent=disk_percent,
         )
         metrics_collector.update_system_stats(data)
+    except asyncio.CancelledError:
+        # Graceful shutdown: caller (update_metrics_task_async) was
+        # cancelled while we were running in the executor. Swallow so the
+        # gather() future does not surface an unretrieved CancelledError
+        # traceback at process exit.
+        logger.debug("System stats metrics update cancelled during shutdown")
     except Exception as e:
         logger.error(
             f"Error updating system stats metrics: {e}", exc_info=True
@@ -655,5 +661,10 @@ async def update_metrics_task_async():
         logger.error(
             f"Metrics update timed out after {METRICS_TOTAL_TIMEOUT} seconds"
         )
+    except asyncio.CancelledError:
+        # Graceful shutdown: the surrounding scheduler job was cancelled
+        # while gather() was in flight. Swallow to avoid noisy ERROR
+        # tracebacks on process exit.
+        logger.debug("Metrics update task cancelled during shutdown")
     except Exception as e:
         logger.error(f"Error updating task metrics: {e}", exc_info=True)
