@@ -302,6 +302,12 @@ jobs:
           if [ -n "${{ vars.YUM_MIRROR }}" ]; then
             sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=${{ vars.YUM_MIRROR }}@" ./.env
           fi
+          if [ -n "${{ vars.NPM_MIRROR }}" ]; then
+            sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=${{ vars.NPM_MIRROR }}@" ./.env
+          fi
+          if [ -n "${{ vars.NODE_BIN_MIRROR }}" ]; then
+            sed -i "s@^NODE_BIN_MIRROR=.*@NODE_BIN_MIRROR=${{ vars.NODE_BIN_MIRROR }}@" ./.env
+          fi
           df -h
 
           # run sandbox in container sandbox-temp, since another sandbox will be run from ./build-images.sh

@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=61.0", "nanobind>=2.13.0", "wheel>=0.37.1"]
+requires = ["setuptools>=83.0.0", "nanobind>=2.13.0", "wheel>=0.37.1"]
 
 [project]
 name = "wy-qcos"
@@ -59,9 +59,10 @@ dependencies = [
     "anyio==4.14.2",
     "apscheduler==3.11.3",
     "argcomplete==3.7.0",
+    "asyncpg==0.32.0",
     "bcrypt==5.0.0",
     "click==8.4.2",
-    "cliff==4.15.0",
+    "cliff==4.17.0",
     "cryptography==49.0.0",
     "fastapi==0.139.2",
     "fastapi-jsonrpc==3.5.0",
@@ -79,7 +80,7 @@ dependencies = [
     "numpy==2.4.6",
     "openpulse==1.0.1",
     "openqasm3==1.0.1",
-    "opentelemetry-api==1.44.0",
+    "opentelemetry-api==1.45.1",
     "oqpy==0.3.10",
     "pg8000==1.31.5",
     "ply==3.11",
@@ -130,6 +131,15 @@ dependencies = [
     "uv==0.9.13",
     "uvloop==0.22.1",
     "wheel==0.47.0",
+    # AI agent (pydantic-ai + LLM providers + RAG + vision)
+    "anthropic==2.3.0",
+    "docutils==0.21.2",
+    "markdown-it-py==4.2.0",
+    "openai==3.41.0",
+    "pillow==13.0.0",
+    "pgvector==0.5.1",
+    "pydantic-ai==2.66.0",
+    "pydantic-ai-harness==0.66.0",
     # driver: hanyuan1 only
     "zerorpc==0.6.3",
 ]
@@ -139,7 +149,7 @@ dependencies = [
 base = [
     # compatible with oe21.10
     "argcomplete",
-    "cliff",
+    "cliff==4.17.0",
     "jsonrpcclient",
     "memray",
     "patchelf",
@@ -399,6 +409,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/wy_qcos/tests/**/*.py" = ["S101"]
+# LLM system-prompt templates: long single-line English sentences are
+# intentional - line wrapping them would break the prompt's token
+# rhythm and is risky for tool-calling accuracy. The file contains
+# only string literals, never logic, so E501 is harmless here.
+"src/wy_qcos/ai/llm/prompts.py" = ["E501"]
 # Tests below must mock prefect.flow before importing the engine module,
 # so the engine import intentionally appears after executable statements.
 "src/wy_qcos/tests/unit_tests/engine/test_device_mgr_engine.py" = ["E402"]

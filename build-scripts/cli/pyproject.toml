@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=61.0", "wheel>=0.37.1"]
+requires = ["setuptools>=83.0.0", "wheel>=0.46.2"]
 
 [project]
 name = "wy-qcos-client"

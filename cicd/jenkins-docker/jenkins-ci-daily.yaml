@@ -272,23 +272,11 @@ pipeline {
                 if [ -n "\${YUM_MIRROR}" ]; then
                     sed -i "s@^YUM_MIRROR=.*@YUM_MIRROR=\${YUM_MIRROR}@" ./.env
                 fi
-                if [ -n "\${PIP_MIRROR}" ]; then
-                    sed -i "s@^PIP_MIRROR=.*@PIP_MIRROR=\${PIP_MIRROR}@" ./.env
-                fi
                 if [ -n "\${NPM_MIRROR}" ]; then
                     sed -i "s@^NPM_MIRROR=.*@NPM_MIRROR=\${NPM_MIRROR}@" ./.env
                 fi
                 if [ -n "\${NODE_BIN_MIRROR}" ]; then
                     sed -i "s@^NODE_BIN_MIRROR=.*@NODE_BIN_MIRROR=\${NODE_BIN_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYTHON_SRC_MIRROR}" ]; then
-                    sed -i "s@^PYTHON_SRC_MIRROR=.*@PYTHON_SRC_MIRROR=\${PYTHON_SRC_MIRROR}@" ./.env
-                fi
-                if [ -n "\${PYPY3_BIN_MIRROR}" ]; then
-                    sed -i "s@^PYPY3_BIN_MIRROR=.*@PYPY3_BIN_MIRROR=\${PYPY3_BIN_MIRROR}@" ./.env
-                fi
-                if [ -n "\${DOCKER_COMPOSE_BIN_MIRROR}" ]; then
-                    sed -i "s@^DOCKER_COMPOSE_BIN_MIRROR=.*@DOCKER_COMPOSE_BIN_MIRROR=\${DOCKER_COMPOSE_BIN_MIRROR}@" ./.env
                 fi
                 sed -i "s@^BUILD_WHEEL_IN_SANDBOX=.*@BUILD_WHEEL_IN_SANDBOX=False@" ./.env
 
