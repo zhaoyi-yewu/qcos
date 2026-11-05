@@ -1,4 +1,4 @@
-﻿<!--
+ <!--
   Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 
   qcos is licensed under Mulan PSL v2.
@@ -27,31 +27,62 @@
       </div>
     </div>
 
+    <!-- Feature-disabled notice: shown when Prometheus / Alertmanager /
+         VictoriaLogs switches are off on the backend. Each metric fetch
+         already fails silently to null, this banner explains why. -->
+    <el-alert
+      v-if="!prometheusEnabled"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="feature-disabled-alert"
+      title="监控功能未开启"
+      description="Prometheus 反向代理未启用，监控数据不可用。请联系管理员在 qcos.toml 中配置 [PROXY] PROMETHEUS_BASE_URL。"
+    />
+    <el-alert
+      v-if="!alertmanagerEnabled"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="feature-disabled-alert"
+      title="告警功能未开启"
+      description="Alertmanager 反向代理未启用，告警数据不可用。请联系管理员在 qcos.toml 中配置 [PROXY] ALERTMANAGER_BASE_URL。"
+    />
+    <el-alert
+      v-if="!victorialogsEnabled"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="feature-disabled-alert"
+      title="日志功能未开启"
+      description="VictoriaLogs 反向代理未启用，日志查询不可用。请联系管理员在 qcos.toml 中配置 [PROXY] VICTORIALOGS_BASE_URL。"
+    />
+
     <el-tabs v-model="activeTab" class="monitor-tabs">
       <!-- ==================== Tab 1: 总览 ==================== -->
       <el-tab-pane label="总览" name="overview">
-        <div ref="bigscreenRef" class="bigscreen-container">
-          <div class="bigscreen-toolbar">
-            <!-- Endpoint switcher is only visible while the bigscreen is
+        <div ref="browserFullscreenRef" class="browser-fullscreen-container">
+          <div class="browser-fullscreen-toolbar">
+            <!-- Endpoint switcher is only visible while the browser-fullscreen is
                  in browser fullscreen; in normal mode the sidebar already
                  offers the same selector and would be redundant here.
                  popper teleported=false keeps the dropdown attached to
                  this fullscreen container so options actually render. -->
-            <div class="bigscreen-endpoint">
-              <span class="bigscreen-endpoint-label">量子计算操作系统</span>
+            <div class="browser-fullscreen-endpoint">
+              <span class="browser-fullscreen-endpoint-label">量子计算操作系统</span>
               <el-select
-                v-model="bigscreenEndpointName"
+                v-model="browserFullscreenEndpointName"
                 size="small"
-                class="bigscreen-endpoint-select"
+                class="browser-fullscreen-endpoint-select"
                 popper-class="endpoint-switcher-popper"
                 :teleported="false"
-                @change="onBigscreenEndpointChange"
+                @change="onBrowserFullscreenEndpointChange"
               >
-                <template v-if="bigscreenEndpointStatus" #prefix>
+                <template v-if="browserFullscreenEndpointStatus" #prefix>
                   <span
                     class="endpoint-state-dot"
-                    :class="'state-' + bigscreenEndpointStatus"
-                    :title="bigscreenEndpointStatus"
+                    :class="'state-' + browserFullscreenEndpointStatus"
+                    :title="browserFullscreenEndpointStatus"
                   />
                 </template>
                 <el-option
@@ -81,13 +112,13 @@
                 </el-option>
               </el-select>
             </div>
-            <el-tooltip :content="isBigscreenFullscreen ? '退出全屏' : '进入浏览器全屏'" placement="bottom">
+            <el-tooltip :content="isBrowserFullscreen ? '退出全屏' : '进入浏览器全屏'" placement="bottom">
               <el-button
                 size="small"
                 :icon="FullScreen"
-                @click="toggleBigscreenFullscreen"
+                @click="toggleBrowserFullscreen"
               >
-                {{ isBigscreenFullscreen ? '退出全屏' : '全屏' }}
+                {{ isBrowserFullscreen ? '退出全屏' : '全屏' }}
               </el-button>
             </el-tooltip>
           </div>
@@ -105,6 +136,13 @@
               @click="resetLayout('overview')"
             >
               重置布局
+            </el-button>
+            <el-button
+              size="small"
+              class="edit-mode-cancel-btn"
+              @click="cancelEditMode('overview')"
+            >
+              取消
             </el-button>
             <el-button
               size="small"
@@ -140,282 +178,224 @@
               class="chart-grid-item"
               :class="{ 'is-edit-mode': isOverviewEditMode }"
             >
-              <!-- 8 stat cards -->
+              <!-- ==================== 分组 1：操作系统指标 ==================== -->
               <div
-                v-if="item.i === 'stat-system'"
-                class="panel-wrapper stat-panel"
+                v-if="item.i === 'group-os'"
+                class="panel-wrapper group-panel"
                 @pointerdown="onPanelPointerDown('overview', $event)"
                 @pointerup="onPanelPointerUp"
                 @pointerleave="onPanelPointerUp"
                 @pointercancel="onPanelPointerUp"
               >
                 <div class="panel-header">
-                  <span class="panel-title">系统状态</span>
+                  <span class="panel-title">操作系统指标</span>
+                  <span class="group-subtitle">系统状态 · 作业 · API</span>
                 </div>
-                <div class="panel-body stat-content">
-                  <el-tag
-                    :type="systemHealthy ? 'success' : 'danger'"
-                    size="large"
-                    class="stat-tag"
-                  >
-                    {{ systemHealthy ? '健康' : '异常' }}
-                  </el-tag>
-                  <div class="stat-desc">系统整体运行状态</div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'stat-jobs-total'"
-                class="panel-wrapper stat-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">作业总数</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <div class="stat-value">{{ jobStats.total }}</div>
-                  <div class="stat-desc">作业总数</div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'stat-jobs-running'"
-                class="panel-wrapper stat-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">运行中作业</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <div class="stat-value primary">{{ jobStats.running }}</div>
-                  <div class="stat-desc">运行中作业</div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'stat-jobs-queued'"
-                class="panel-wrapper stat-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">队列中作业</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <div class="stat-value warning">{{ jobStats.queued }}</div>
-                  <div class="stat-desc">队列中作业</div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'stat-jobs-completed'"
-                class="panel-wrapper stat-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">已完成作业</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <div class="stat-value success">{{ jobStats.completed }}</div>
-                  <div class="stat-desc">已完成作业</div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'stat-jobs-failed'"
-                class="panel-wrapper stat-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">失败作业</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <div class="stat-value danger">{{ jobStats.failed }}</div>
-                  <div class="stat-desc">失败作业</div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'stat-api-requests'"
-                class="panel-wrapper stat-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">API 总请求数</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <div class="stat-value">{{ apiStats.totalRequests }}</div>
-                  <div class="stat-desc">API 总请求数</div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'stat-api-progress'"
-                class="panel-wrapper stat-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">API 并发请求</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <div class="stat-value primary">{{ apiStats.inProgress }}</div>
-                  <div class="stat-desc">API 并发请求</div>
-                </div>
-              </div>
-              <!-- 3 gauge cards -->
-              <div
-                v-else-if="item.i === 'gauge-cpu'"
-                class="panel-wrapper stat-panel gauge-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">节点CPU总使用率</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <el-progress
-                    type="dashboard"
-                    :width="110"
-                    :stroke-width="10"
-                    :percentage="clampPercent(systemStats.host_cpu_percent)"
-                    :color="percentColor(systemStats.host_cpu_percent)"
-                  />
-                  <div class="stat-desc">
-                    {{ systemStats.host_cpu_percent.toFixed(1) }}% ·
-                    {{ systemStats.cpu_count }} 核
+                <div class="panel-body group-body">
+                  <!-- 系统状态 / 各作业数 / API 请求（紧凑 8 项） -->
+                  <div class="os-stats-row">
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">系统状态</span>
+                      <el-tag :type="systemHealthy ? 'success' : 'danger'" size="small">
+                        {{ systemHealthy ? '健康' : '异常' }}
+                      </el-tag>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">作业总数</span>
+                      <span class="mini-stat-value">{{ jobStats.total }}</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">运行中</span>
+                      <span class="mini-stat-value primary">{{ jobStats.running }}</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">队列中</span>
+                      <span class="mini-stat-value warning">{{ jobStats.queued }}</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">已完成</span>
+                      <span class="mini-stat-value success">{{ jobStats.completed }}</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">失败</span>
+                      <span class="mini-stat-value danger">{{ jobStats.failed }}</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">API 总请求</span>
+                      <span class="mini-stat-value">{{ apiStats.totalRequests }}</span>
+                    </div>
+                    <div class="mini-stat">
+                      <span class="mini-stat-label">API 并发</span>
+                      <span class="mini-stat-value primary">{{ apiStats.inProgress }}</span>
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'gauge-mem'"
-                class="panel-wrapper stat-panel gauge-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">节点内存总使用率</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <el-progress
-                    type="dashboard"
-                    :width="110"
-                    :stroke-width="10"
-                    :percentage="clampPercent(systemStats.mem_percent)"
-                    :color="percentColor(systemStats.mem_percent)"
-                  />
-                  <div class="stat-desc">
-                    {{ systemStats.mem_percent.toFixed(1) }}% ·
-                    共 {{ formatMb(systemStats.mem_total_mb) }}
+                  <!-- QCOS 进程指标单行摘要 -->
+                  <div class="os-proc-line">
+                    进程：API {{ qcosProcessStats.apiCpu || '--' }}% / {{ qcosProcessStats.apiMem || '--' }} ·
+                    Prefect {{ qcosProcessStats.prefectCpu || '--' }}% / {{ qcosProcessStats.prefectMem || '--' }} ·
+                    PostgreSQL {{ qcosProcessStats.pgCpu || '--' }}% ·
+                    Redis {{ qcosProcessStats.redisCpu || '--' }}% ·
+                    共 {{ qcosProcessStats.totalProcs || '--' }} 进程
                   </div>
-                </div>
-              </div>
-              <div
-                v-else-if="item.i === 'gauge-disk'"
-                class="panel-wrapper stat-panel gauge-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">磁盘总使用率</span>
-                </div>
-                <div class="panel-body stat-content">
-                  <el-progress
-                    type="dashboard"
-                    :width="110"
-                    :stroke-width="10"
-                    :percentage="clampPercent(systemStats.disk_percent)"
-                    :color="percentColor(systemStats.disk_percent)"
-                  />
-                  <div class="stat-desc">
-                    {{ systemStats.disk_percent.toFixed(1) }}% ·
-                    剩余 {{ formatMb(systemStats.disk_free_mb) }}
-                  </div>
-                </div>
-              </div>
-              <!-- 4 chart panels -->
-              <div
-                v-else-if="findPanel(item.i)"
-                class="panel-wrapper chart-panel"
-                @pointerdown="onPanelPointerDown('overview', $event)"
-                @pointerup="onPanelPointerUp"
-                @pointerleave="onPanelPointerUp"
-                @pointercancel="onPanelPointerUp"
-              >
-                <div class="panel-header">
-                  <span class="panel-title">{{ findPanel(item.i)?.title }}</span>
-                  <div class="panel-toolbar" @pointerdown.stop>
-                    <el-select
-                      v-model="findPanel(item.i).timeRange"
-                      size="small"
-                      class="toolbar-select"
-                      @change="onChartParamsChange(item.i)"
+                  <!-- 2x2 紧凑折线图：作业数量（总数/运行中/队列中/已完成/失败）、
+                       API 总请求数、API 请求速率、API 响应时长 -->
+                  <div class="os-charts-row">
+                    <div
+                      v-for="cid in OVERVIEW_OS_CHART_IDS"
+                      :key="cid"
+                      class="compact-chart-card"
                     >
-                      <el-option
-                        v-for="opt in TIME_RANGE_OPTIONS"
-                        :key="opt.value"
-                        :label="opt.label"
-                        :value="opt.value"
-                      />
-                    </el-select>
-                    <el-select
-                      v-model="findPanel(item.i).step"
-                      size="small"
-                      class="toolbar-select"
-                      @change="onChartParamsChange(item.i)"
-                    >
-                      <el-option
-                        v-for="opt in getSafeStepOptions(findPanel(item.i).timeRange)"
-                        :key="opt.value"
-                        :label="opt.label"
-                        :value="opt.value"
-                      />
-                    </el-select>
-                    <el-button
-                      size="small"
-                      :icon="FullScreen"
-                      circle
-                      @click="toggleFullscreen(item.i)"
-                    />
+                      <template v-if="findPanel(cid)">
+                        <div class="compact-chart-header">
+                          <span class="compact-chart-title">{{ findPanel(cid).title }}</span>
+                          <div class="panel-toolbar" @pointerdown.stop>
+                            <el-select
+                              v-model="findPanel(cid).timeRange"
+                              size="small"
+                              class="toolbar-select"
+                              @change="onChartParamsChange(cid)"
+                            >
+                              <el-option
+                                v-for="opt in TIME_RANGE_OPTIONS"
+                                :key="opt.value"
+                                :label="opt.label"
+                                :value="opt.value"
+                              />
+                            </el-select>
+                            <el-select
+                              v-model="findPanel(cid).step"
+                              size="small"
+                              class="toolbar-select"
+                              @change="onChartParamsChange(cid)"
+                            >
+                              <el-option
+                                v-for="opt in getSafeStepOptions(findPanel(cid).timeRange)"
+                                :key="opt.value"
+                                :label="opt.label"
+                                :value="opt.value"
+                              />
+                            </el-select>
+                            <el-button
+                              size="small"
+                              :icon="FullScreen"
+                              circle
+                              @click="toggleFullscreen(cid)"
+                            />
+                          </div>
+                        </div>
+                        <div class="compact-chart-body">
+                          <sized-chart class="chart" :option="findPanel(cid).option" />
+                        </div>
+                      </template>
+                    </div>
                   </div>
                 </div>
-                <div class="panel-body chart-body">
-                  <v-chart
-                    class="chart"
-                    :option="findPanel(item.i).option"
-                    :autoresize="true"
-                  />
-                </div>
               </div>
-              <!-- Alert panel -->
+              <!-- ==================== 分组 2：节点信息 ==================== -->
               <div
-                v-else-if="item.i === 'panel-alerts'"
-                class="panel-wrapper alert-panel"
+                v-else-if="item.i === 'group-node'"
+                class="panel-wrapper group-panel"
                 @pointerdown="onPanelPointerDown('overview', $event)"
                 @pointerup="onPanelPointerUp"
                 @pointerleave="onPanelPointerUp"
                 @pointercancel="onPanelPointerUp"
               >
                 <div class="panel-header">
-                  <span class="panel-title">告警信息</span>
+                  <span class="panel-title">节点信息</span>
+                  <span class="group-subtitle">CPU · 内存 · 磁盘</span>
+                </div>
+                <div class="panel-body group-body">
+                  <!-- node-exporter 主机指标 -->
+                  <div class="node-host-grid">
+                    <div class="host-chip">
+                      <span class="host-chip-label">主机负载</span>
+                      <span class="host-chip-value">{{ hostExtendedStats.load1 || '--' }}<em> ({{ hostExtendedStats.load5 || '--' }} / {{ hostExtendedStats.load15 || '--' }})</em></span>
+                    </div>
+                    <div class="host-chip">
+                      <span class="host-chip-label">主机内存</span>
+                      <span class="host-chip-value">{{ hostExtendedStats.memUsagePercent || '--' }}%</span>
+                    </div>
+                    <div class="host-chip">
+                      <span class="host-chip-label">磁盘 IO</span>
+                      <span class="host-chip-value">读 {{ hostExtendedStats.diskReadRate || '--' }}<em> / 写 {{ hostExtendedStats.diskWriteRate || '--' }}</em></span>
+                    </div>
+                    <div class="host-chip">
+                      <span class="host-chip-label">网络 IO</span>
+                      <span class="host-chip-value">收 {{ hostExtendedStats.netRecvRate || '--' }}<em> / 发 {{ hostExtendedStats.netSentRate || '--' }}</em></span>
+                    </div>
+                    <div class="host-chip">
+                      <span class="host-chip-label">文件句柄</span>
+                      <span class="host-chip-value">{{ hostExtendedStats.fdUsagePercent || '--' }}%</span>
+                    </div>
+                    <div class="host-chip">
+                      <span class="host-chip-label">磁盘容量</span>
+                      <span class="host-chip-value">{{ formatMb(systemStats.disk_total_mb) }}<em> · 剩余 {{ formatMb(systemStats.disk_free_mb) }}</em></span>
+                    </div>
+                  </div>
+                  <!-- CPU / 内存 / 磁盘 / 网络历史折线图（2x2） -->
+                  <div class="node-charts-row">
+                    <div
+                      v-for="cid in OVERVIEW_NODE_CHART_IDS"
+                      :key="cid"
+                      class="compact-chart-card"
+                    >
+                      <template v-if="findPanel(cid)">
+                        <div class="compact-chart-header">
+                          <span class="compact-chart-title">{{ findPanel(cid).title }}</span>
+                          <div class="panel-toolbar" @pointerdown.stop>
+                            <el-select
+                              v-model="findPanel(cid).timeRange"
+                              size="small"
+                              class="toolbar-select"
+                              @change="onChartParamsChange(cid)"
+                            >
+                              <el-option
+                                v-for="opt in TIME_RANGE_OPTIONS"
+                                :key="opt.value"
+                                :label="opt.label"
+                                :value="opt.value"
+                              />
+                            </el-select>
+                            <el-select
+                              v-model="findPanel(cid).step"
+                              size="small"
+                              class="toolbar-select"
+                              @change="onChartParamsChange(cid)"
+                            >
+                              <el-option
+                                v-for="opt in getSafeStepOptions(findPanel(cid).timeRange)"
+                                :key="opt.value"
+                                :label="opt.label"
+                                :value="opt.value"
+                              />
+                            </el-select>
+                            <el-button
+                              size="small"
+                              :icon="FullScreen"
+                              circle
+                              @click="toggleFullscreen(cid)"
+                            />
+                          </div>
+                        </div>
+                        <div class="compact-chart-body">
+                          <sized-chart class="chart" :option="findPanel(cid).option" />
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- ==================== 分组 3：告警列表 ==================== -->
+              <div
+                v-else-if="item.i === 'group-alerts'"
+                class="panel-wrapper group-panel alert-panel"
+                @pointerdown="onPanelPointerDown('overview', $event)"
+                @pointerup="onPanelPointerUp"
+                @pointerleave="onPanelPointerUp"
+                @pointercancel="onPanelPointerUp"
+              >
+                <div class="panel-header">
+                  <span class="panel-title">告警列表</span>
                   <div class="panel-toolbar" @pointerdown.stop>
                     <el-tag v-if="activeAlertCount > 0" type="danger" size="small">
                       {{ activeAlertCount }} 条活跃 / 共 {{ alerts.length }} 条
@@ -431,17 +411,19 @@
                     ref="alertsOverviewTableRef"
                     :fetch-data="fetchAlertsTable"
                     search-placeholder="全局搜索：告警名称 / 实例 / 描述 …"
-                    :default-page-size="10"
+                    :default-page-size="5"
                     :page-size-options="[
+                      { label: '5 条/页', value: 5 },
                       { label: '10 条/页', value: 10 },
-                      { label: '20 条/页', value: 20 },
-                      { label: '50 条/页', value: 50 }
+                      { label: '20 条/页', value: 20 }
                     ]"
                   >
                     <filterable-table-column
                       prop="alertname"
                       label="告警名称"
-                      class-name="left-column" sortable="custom" label-class-name="col-nowrap"
+                      class-name="left-column"
+                      sortable="custom"
+                      label-class-name="col-nowrap"
                     >
                       <template #default="scope">
                         <el-icon class="alert-icon"><Warning /></el-icon>
@@ -451,7 +433,7 @@
                     <filterable-table-column
                       prop="severity"
                       label="级别"
-                      width="140"
+                      width="120"
                       class-name="center-column"
                       sortable="custom"
                       label-class-name="col-nowrap"
@@ -479,7 +461,9 @@
                     <filterable-table-column
                       prop="instance"
                       label="实例"
-                      class-name="left-column" sortable="custom" label-class-name="col-nowrap"
+                      class-name="left-column"
+                      sortable="custom"
+                      label-class-name="col-nowrap"
                     />
                     <filterable-table-column
                       prop="startsAt"
@@ -500,18 +484,42 @@
                     <filterable-table-column
                       prop="summary"
                       label="描述"
-                      class-name="left-column" sortable="custom" label-class-name="col-nowrap"
+                      class-name="left-column"
+                      sortable="custom"
+                      label-class-name="col-nowrap"
                     />
                   </PageTable>
                 </div>
               </div>
+              <!-- ==================== 分组 4：日志列表 ==================== -->
+              <div
+                v-else-if="item.i === 'group-logs'"
+                class="panel-wrapper group-panel logs-group"
+                @pointerdown="onPanelPointerDown('overview', $event)"
+                @pointerup="onPanelPointerUp"
+                @pointerleave="onPanelPointerUp"
+                @pointercancel="onPanelPointerUp"
+              >
+                <div class="panel-header">
+                  <span class="panel-title">日志列表</span>
+                  <span class="group-subtitle">VictoriaLogs</span>
+                </div>
+                <div class="panel-body logs-group-body">
+                  <LogsPanel :auto-refresh="overviewLogsAutoRefresh" />
+                </div>
+              </div>
+
             </GridItem>
           </GridLayout>
         </div>
       </el-tab-pane>
 
-      <!-- ==================== Tab 3: 监控指标 ==================== -->
-      <el-tab-pane label="监控指标" name="metrics">
+      <!-- ==================== Tab 3: 操作系统指标 ==================== -->
+      <!-- lazy: only mount this pane's DOM when the tab is first activated.
+           Without it the pane is rendered but display:none, so every
+           v-chart inside initialises against a 0x0 container and ECharts
+           logs "Can't get DOM width or height" on page mount. -->
+      <el-tab-pane label="操作系统指标" name="metrics" lazy>
         <!-- 编辑模式提示 -->
         <div v-if="isMetricsEditMode" class="edit-mode-tip">
           <el-alert type="info" :closable="false" show-icon>
@@ -525,6 +533,13 @@
             @click="resetLayout('metrics')"
           >
             重置布局
+          </el-button>
+          <el-button
+            size="small"
+            class="edit-mode-cancel-btn"
+            @click="cancelEditMode('metrics')"
+          >
+            取消
           </el-button>
           <el-button
             size="small"
@@ -570,6 +585,14 @@
             >
               <div class="panel-header">
                 <span class="panel-title">节点CPU总使用率</span>
+                <div class="panel-toolbar" @pointerdown.stop>
+                  <el-button
+                    size="small"
+                    :icon="FullScreen"
+                    circle
+                    @click="toggleFullscreen('gauge-cpu')"
+                  />
+                </div>
               </div>
               <div class="panel-body stat-content">
                 <el-progress
@@ -595,6 +618,14 @@
             >
               <div class="panel-header">
                 <span class="panel-title">节点内存总使用率</span>
+                <div class="panel-toolbar" @pointerdown.stop>
+                  <el-button
+                    size="small"
+                    :icon="FullScreen"
+                    circle
+                    @click="toggleFullscreen('gauge-mem')"
+                  />
+                </div>
               </div>
               <div class="panel-body stat-content">
                 <el-progress
@@ -620,6 +651,14 @@
             >
               <div class="panel-header">
                 <span class="panel-title">磁盘总使用率</span>
+                <div class="panel-toolbar" @pointerdown.stop>
+                  <el-button
+                    size="small"
+                    :icon="FullScreen"
+                    circle
+                    @click="toggleFullscreen('gauge-disk')"
+                  />
+                </div>
               </div>
               <div class="panel-body stat-content">
                 <el-progress
@@ -684,11 +723,10 @@
                 </div>
               </div>
               <div class="panel-body chart-body">
-                <v-chart
+                <sized-chart
                   v-if="findPanel(item.i)"
                   class="chart"
                   :option="findPanel(item.i).option"
-                  :autoresize="true"
                 />
               </div>
             </div>
@@ -696,8 +734,14 @@
         </GridLayout>
       </el-tab-pane>
 
+      <!-- ==================== Tab 3.5: 节点信息 ==================== -->
+      <!-- lazy: same 0x0-container rationale as the metrics tab above. -->
+      <el-tab-pane label="节点信息" name="node-info" lazy>
+        <NodeInfoPanel />
+      </el-tab-pane>
+
       <!-- ==================== Tab 3: 告警 ==================== -->
-      <el-tab-pane label="告警" name="alerts">
+      <el-tab-pane label="告警" name="alerts" lazy>
         <div class="panel-wrapper alert-panel alert-panel-pagetable">
           <PageTable
             ref="alertsTableRef"
@@ -717,7 +761,9 @@
             <filterable-table-column
               prop="alertname"
               label="告警名称"
-              class-name="left-column" sortable="custom" label-class-name="col-nowrap"
+              class-name="left-column"
+              sortable="custom"
+              label-class-name="col-nowrap"
             >
               <template #default="scope">
                 <el-icon class="alert-icon"><Warning /></el-icon>
@@ -755,7 +801,9 @@
             <filterable-table-column
               prop="instance"
               label="实例"
-              class-name="left-column" sortable="custom" label-class-name="col-nowrap"
+              class-name="left-column"
+              sortable="custom"
+              label-class-name="col-nowrap"
             />
             <filterable-table-column
               prop="startsAt"
@@ -776,22 +824,17 @@
             <filterable-table-column
               prop="summary"
               label="描述"
-              class-name="left-column" sortable="custom" label-class-name="col-nowrap"
+              class-name="left-column"
+              sortable="custom"
+              label-class-name="col-nowrap"
             />
           </PageTable>
         </div>
       </el-tab-pane>
 
       <!-- ==================== Tab 5: 日志 ==================== -->
-      <el-tab-pane label="日志" name="logs">
-        <div class="panel-wrapper logs-panel">
-          <div class="panel-header">
-            <span class="panel-title">日志</span>
-          </div>
-          <div class="panel-body logs-body">
-            <el-empty description="开发中" />
-          </div>
-        </div>
+      <el-tab-pane label="日志" name="logs" lazy>
+        <LogsPanel />
       </el-tab-pane>
     </el-tabs>
 
@@ -802,43 +845,85 @@
       fullscreen
       destroy-on-close
       append-to-body
+      @opened="onFullscreenDialogOpened"
     >
       <div class="fullscreen-wrapper">
         <div v-if="fullscreenPanel" class="fullscreen-toolbar">
+          <!-- Gauge panels (CPU / memory / disk) support switching between
+               the dashboard ring and the history line chart inside the
+               fullscreen dialog, mirroring the in-grid panel toolbar. -->
           <el-select
-            v-model="fullscreenPanel.timeRange"
+            v-if="isGaugePanel"
+            v-model="fullscreenGaugeView"
             size="small"
-            class="toolbar-select"
-            @change="onChartParamsChange(fullscreenPanel.id)"
+            class="toolbar-select gauge-view-select"
+            @change="onFullscreenGaugeViewChange"
           >
-            <el-option
-              v-for="opt in TIME_RANGE_OPTIONS"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
+            <el-option label="仪表盘" value="gauge" />
+            <el-option label="折线图" value="chart" />
           </el-select>
-          <el-select
-            v-model="fullscreenPanel.step"
-            size="small"
-            class="toolbar-select"
-            @change="onChartParamsChange(fullscreenPanel.id)"
-          >
-            <el-option
-              v-for="opt in getSafeStepOptions(fullscreenPanel.timeRange)"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
-          </el-select>
+          <template v-if="!isGaugePanel || fullscreenGaugeView === 'chart'">
+            <el-select
+              v-model="fullscreenPanel.timeRange"
+              size="small"
+              class="toolbar-select"
+              @change="onChartParamsChange(fullscreenPanel.id)"
+            >
+              <el-option
+                v-for="opt in TIME_RANGE_OPTIONS"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+            <el-select
+              v-model="fullscreenPanel.step"
+              size="small"
+              class="toolbar-select"
+              @change="onChartParamsChange(fullscreenPanel.id)"
+            >
+              <el-option
+                v-for="opt in getSafeStepOptions(fullscreenPanel.timeRange)"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+          </template>
         </div>
         <div class="fullscreen-chart-container">
-          <v-chart
-            v-if="currentFullscreenOption"
+          <!-- SizedChart observes its host with ResizeObserver and only
+               mounts the inner v-chart once the dialog content has a
+               non-zero size, so the ECharts "Can't get DOM width or
+               height" warning cannot occur. The fullscreenDialogOpened
+               flag still guards against mounting before the dialog has
+               even opened (saves an unnecessary observer). -->
+          <template v-if="isGaugePanel && fullscreenGaugeView === 'gauge'">
+            <!-- Dashboard ring enlarged for the fullscreen dialog. The ring
+                 itself stays a fixed pixel size (360px reads well on any
+                 viewport), centered by the flex container. -->
+            <div class="fullscreen-gauge">
+              <el-progress
+                type="dashboard"
+                :width="360"
+                :stroke-width="22"
+                :percentage="clampPercent(currentGaugeValue)"
+                :color="percentColor(currentGaugeValue)"
+              />
+              <div class="fullscreen-gauge-desc">
+                {{ currentGaugeValue.toFixed(1) }}% · {{ currentGaugeSubText }}
+              </div>
+            </div>
+          </template>
+          <sized-chart
+            v-else-if="currentFullscreenOption && fullscreenDialogOpened"
+            :key="fullscreenChart + fullscreenRenderKey"
             class="chart-fullscreen"
             :option="currentFullscreenOption"
-            :autoresize="true"
           />
+          <div v-else class="fullscreen-empty">
+            <el-empty description="暂无数据" />
+          </div>
         </div>
       </div>
     </el-dialog>
@@ -848,8 +933,7 @@
 <script>
 import { markRaw } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Warning, FullScreen, Loading } from '@element-plus/icons-vue'
-import VChart from 'vue-echarts'
+import { Warning, FullScreen, Loading, TrendCharts } from '@element-plus/icons-vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, PieChart } from 'echarts/charts'
@@ -857,7 +941,8 @@ import {
   TitleComponent,
   TooltipComponent,
   LegendComponent,
-  GridComponent
+  GridComponent,
+  VisualMapComponent
 } from 'echarts/components'
 import { GridLayout, GridItem } from 'grid-layout-plus'
 
@@ -868,7 +953,8 @@ use([
   TitleComponent,
   TooltipComponent,
   LegendComponent,
-  GridComponent
+  GridComponent,
+  VisualMapComponent
 ])
 
 import {
@@ -887,9 +973,15 @@ import {
   PROMQL
 } from '@/api/monitor'
 import RefreshInterval from '@/components/RefreshInterval/index.vue'
+import SizedChart from '@/components/SizedChart/index.vue'
 import PageTable from '@/components/PageTable/index.vue'
 import FilterableTableColumn from '@/components/PageTable/FilterableTableColumn.vue'
+import LogsPanel from '@/views/system/components/LogsPanel.vue'
+import NodeInfoPanel from '@/views/system/components/NodeInfoPanel.vue'
 import { useConfigStore } from '@/store/modules/config'
+import { useUserStore } from '@/store/modules/user'
+import { useComponentsStore } from '@/store/modules/components'
+import { removeSession } from '@/utils/session'
 
 // Chart color palette. The first four entries match the job status tag
 // colors used in the job list page (see webui/src/common/library.js
@@ -972,34 +1064,72 @@ const DEFAULT_CHART_PARAMS = {
   step: '60s'
 }
 
+// Non-reactive per-instance values that should NOT live in `data()`:
+// Vue reserves `_`-prefixed keys on the component proxy and the ESLint
+// vue/no-reserved-keys rule flags them. Keep them as module-level
+// constants / instance fields assigned in `created()`.
+const LONG_PRESS_DURATION_MS = 600 // press-and-hold to enter edit mode
+// Bump whenever the default grid layout shape changes (panel ids
+// added/removed, default x/y/w/h rearranged). Saved layouts whose
+// embedded version does not match are discarded on load so users
+// always land on the current default after an upgrade.
+const LAYOUT_VERSION = 7
+
+// Overview-tab grouped panel constants. The overview grid hosts three
+// grouped border panels; each group renders a fixed set of inner
+// panels (charts / gauges) declared here so the template can loop
+// over them while the draggable grid item stays a single unit.
+// Rendered as a 2x2 grid: row 1 = job counts + API total requests,
+// row 2 = API request rate + API response duration.
+const OVERVIEW_OS_CHART_IDS = [
+  'chart-overview-jobs',
+  'chart-overview-api-total',
+  'chart-api-rate',
+  'chart-api-duration'
+]
+// Node-info group history line charts (CPU / memory / disk / network),
+// rendered as a 2x2 compact chart grid below the numeric chips.
+const OVERVIEW_NODE_CHART_IDS = [
+  'chart-overview-node-cpu',
+  'chart-overview-node-mem',
+  'chart-overview-node-disk',
+  'chart-overview-node-net'
+]
+
 export default {
   name: 'MonitorCenter',
   components: {
     RefreshInterval,
-    VChart,
+    SizedChart,
     Warning,
-    FullScreen,
+    NodeInfoPanel,
     Loading,
     GridLayout,
     GridItem,
     PageTable,
-    FilterableTableColumn
+    FilterableTableColumn,
+    LogsPanel
   },
   data() {
     return {
       FullScreen: markRaw(FullScreen),
+      TrendCharts: markRaw(TrendCharts),
       activeTab: 'overview',
       // Endpoint switcher in the overview toolbar (mirrors the sidebar
       // "当前系统" selector; the active endpoint drives every API call
       // on this page).
-      bigscreenEndpointName: '',
-      // True while the overview bigscreen is in browser-native fullscreen
+      browserFullscreenEndpointName: '',
+      // True while the overview browser-fullscreen is in browser-native fullscreen
       // (tracked via fullscreenchange so the button label / endpoint
       // selector can react even if the user pressed ESC to exit).
-      isBigscreenFullscreen: false,
+      isBrowserFullscreen: false,
       loading: false,
       alertsLoading: false,
       systemHealthy: false,
+      // Current refresh interval in seconds (mirrors the RefreshInterval
+      // header selector). Passed to the overview logs group so the
+      // embedded LogsPanel refreshes in sync with the other panels.
+      refreshIntervalSec: 10,
       jobStats: {
         total: 0,
         running: 0,
@@ -1022,7 +1152,55 @@ export default {
         disk_free_mb: 0,
         disk_total_mb: 0
       },
+      // Host extended stats from node-exporter
+      hostExtendedStats: {
+        load1: null,
+        load5: null,
+        load15: null,
+        memUsagePercent: null,
+        diskReadRate: null,
+        diskWriteRate: null,
+        netRecvRate: null,
+        netSentRate: null,
+        fdUsagePercent: null
+      },
+      // QCOS process stats from process-exporter
+      qcosProcessStats: {
+        apiCpu: null,
+        apiMem: null,
+        prefectCpu: null,
+        prefectMem: null,
+        pgCpu: null,
+        pgMem: null,
+        redisCpu: null,
+        redisMem: null,
+        totalProcs: null
+      },
       alerts: [],
+      // Gauge panels (CPU / memory / disk). Each has a viewMode toggle
+      // ('gauge' = dashboard ring, 'chart' = history line chart) plus
+      // its own timeRange/step for the Prometheus range query when in
+      // chart mode.
+      gaugePanels: {
+        'gauge-cpu': {
+          viewMode: 'gauge',
+          timeRange: DEFAULT_CHART_PARAMS.timeRange,
+          step: DEFAULT_CHART_PARAMS.step,
+          option: {}
+        },
+        'gauge-mem': {
+          viewMode: 'gauge',
+          timeRange: DEFAULT_CHART_PARAMS.timeRange,
+          step: DEFAULT_CHART_PARAMS.step,
+          option: {}
+        },
+        'gauge-disk': {
+          viewMode: 'gauge',
+          timeRange: DEFAULT_CHART_PARAMS.timeRange,
+          step: DEFAULT_CHART_PARAMS.step,
+          option: {}
+        }
+      },
       // 图表面板配置（每个面板有独立的查询参数）
       chartPanels: [
         {
@@ -1052,13 +1230,79 @@ export default {
           ref: 'jobStatusChart',
           option: {},
           ...JSON.parse(JSON.stringify(DEFAULT_CHART_PARAMS))
+        },
+        // Overview-tab only compact charts: job counts (total / running /
+        // queued / completed / failed in one line chart) and cumulative
+        // API total requests.
+        {
+          id: 'chart-overview-jobs',
+          title: '作业数量',
+          ref: 'overviewJobsChart',
+          option: {},
+          ...JSON.parse(JSON.stringify(DEFAULT_CHART_PARAMS))
+        },
+        {
+          id: 'chart-overview-api-total',
+          title: 'API 总请求数',
+          ref: 'overviewApiTotalChart',
+          option: {},
+          ...JSON.parse(JSON.stringify(DEFAULT_CHART_PARAMS))
+        },
+        // Overview node-info group history line charts: CPU / memory /
+        // disk percent plus network IO rates, rendered as a 2x2 grid
+        // below the numeric chips.
+        {
+          id: 'chart-overview-node-cpu',
+          title: '节点 CPU 使用率',
+          ref: 'overviewNodeCpuChart',
+          option: {},
+          ...JSON.parse(JSON.stringify(DEFAULT_CHART_PARAMS))
+        },
+        {
+          id: 'chart-overview-node-mem',
+          title: '节点内存使用率',
+          ref: 'overviewNodeMemChart',
+          option: {},
+          ...JSON.parse(JSON.stringify(DEFAULT_CHART_PARAMS))
+        },
+        {
+          id: 'chart-overview-node-disk',
+          title: '节点磁盘使用率',
+          ref: 'overviewNodeDiskChart',
+          option: {},
+          ...JSON.parse(JSON.stringify(DEFAULT_CHART_PARAMS))
+        },
+        {
+          id: 'chart-overview-node-net',
+          title: '节点网络 IO',
+          ref: 'overviewNodeNetChart',
+          option: {},
+          ...JSON.parse(JSON.stringify(DEFAULT_CHART_PARAMS))
         }
       ],
       TIME_RANGE_OPTIONS,
+      // Expose the overview group panel id lists to the template loops.
+      OVERVIEW_OS_CHART_IDS,
+      OVERVIEW_NODE_CHART_IDS,
       // 全屏
       fullscreenVisible: false,
       fullscreenChart: '',
       fullscreenTitle: '',
+      // Incremented every time the fullscreen dialog opens so v-chart
+      // re-mounts after the dialog has finished its CSS transition and
+      // has non-zero dimensions.
+      fullscreenRenderKey: 0,
+      // True only after the fullscreen dialog has finished its open
+      // transition (@opened). v-chart stays unmounted until then so
+      // ECharts always initialises against a container with real
+      // dimensions; mounting earlier triggers "Can't get DOM width or
+      // height" and leaves the dialog showing only the panel title.
+      fullscreenDialogOpened: false,
+      // View mode shown inside the fullscreen dialog when the panel is a
+      // gauge (CPU / memory / disk): 'gauge' = dashboard ring, 'chart' =
+      // history line chart. Kept separate from gaugePanels[id].viewMode
+      // so opening the fullscreen dialog never mutates the in-grid view.
+      fullscreenGaugeView: 'gauge',
       // Metrics tab grid layout: 3 gauge cards (top row) + 4 charts (2x2)
       metricsLayout: [
         { i: 'gauge-cpu', x: 0, y: 0, w: 4, h: 5 },
@@ -1069,50 +1313,119 @@ export default {
         { i: 'chart-api-duration', x: 0, y: 17, w: 6, h: 12 },
         { i: 'chart-job-status', x: 6, y: 17, w: 6, h: 12 }
       ],
-      // Overview tab grid layout: 8 stat cards (top rows) + 3 gauges +
-      // 4 charts + 1 alert. Kept compact so the whole bigscreen fits on
-      // a single 1080p fullscreen page (row-height=24, margin=6).
+      // Overview tab grid layout. Three grouped border panels fit one
+      // screen: 1) OS metrics (system status / job counts / API requests
+      // + process stats + API charts), 2) node info (CPU / memory / disk
+      // gauges + node-exporter chips), 3) alert list table.
       overviewLayout: [
-        { i: 'stat-system', x: 0, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-total', x: 3, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-running', x: 6, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-queued', x: 9, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-completed', x: 0, y: 4, w: 3, h: 4 },
-        { i: 'stat-jobs-failed', x: 3, y: 4, w: 3, h: 4 },
-        { i: 'stat-api-requests', x: 6, y: 4, w: 3, h: 4 },
-        { i: 'stat-api-progress', x: 9, y: 4, w: 3, h: 4 },
-        { i: 'gauge-cpu', x: 0, y: 8, w: 4, h: 7 },
-        { i: 'gauge-mem', x: 4, y: 8, w: 4, h: 7 },
-        { i: 'gauge-disk', x: 8, y: 8, w: 4, h: 7 },
-        { i: 'chart-job-trend', x: 0, y: 15, w: 3, h: 9 },
-        { i: 'chart-api-rate', x: 3, y: 15, w: 3, h: 9 },
-        { i: 'chart-api-duration', x: 6, y: 15, w: 3, h: 9 },
-        { i: 'chart-job-status', x: 9, y: 15, w: 3, h: 9 },
-        { i: 'panel-alerts', x: 0, y: 24, w: 12, h: 14 }
+        { i: 'group-os', x: 0, y: 0, w: 8, h: 22 },
+        { i: 'group-node', x: 8, y: 0, w: 4, h: 22 },
+        { i: 'group-alerts', x: 0, y: 22, w: 6, h: 10 },
+        { i: 'group-logs', x: 6, y: 22, w: 6, h: 10 }
       ],
       // Edit-mode flags (long-press to enter, "完成" to exit).
       // Each tab tracks its own edit-mode state so switching tabs doesn't
       // accidentally leave the other tab in edit mode.
       isOverviewEditMode: false,
-      isMetricsEditMode: false,
-      _longPressTimer: null,
-      _longPressDuration: 600, // ms; press and hold to enter edit mode
-      // Bump this whenever the default grid layout shape changes (panel
-      // ids added/removed, default x/y/w/h rearranged). Saved layouts
-      // whose embedded version does not match are discarded on load so
-      // users always land on the current default after an upgrade.
-      _layoutVersion: 4
+      isMetricsEditMode: false
     }
   },
 
   computed: {
+    // Feature flags sourced from the components store. When the backend
+    // turns one of these off, the corresponding data fetches short-circuit
+    // in webui/src/api/monitor.js / logs.js and the warning banners at the
+    // top of the page explain why the panels are empty.
+    prometheusEnabled() {
+      return useComponentsStore().proxyPrometheusEnabled
+    },
+    alertmanagerEnabled() {
+      return useComponentsStore().proxyAlertmanagerEnabled
+    },
+    victorialogsEnabled() {
+      return useComponentsStore().proxyVictorialogsEnabled
+    },
     fullscreenPanel() {
-      return (
-        this.chartPanels.find(p => p.id === this.fullscreenChart) || null
-      )
+      // Chart panels first, then gauge panels so both can be opened in
+      // the fullscreen dialog.
+      const chart = this.chartPanels.find(p => p.id === this.fullscreenChart)
+      if (chart) return chart
+      const gauge = this.gaugePanels[this.fullscreenChart]
+      if (gauge) {
+        const titleMap = {
+          'gauge-cpu': '节点CPU总使用率',
+          'gauge-mem': '节点内存总使用率',
+          'gauge-disk': '磁盘总使用率'
+        }
+        // Getter/setter write-through: the dialog toolbar binds
+        // v-model="fullscreenPanel.timeRange" / ".step". Returning a plain
+        // copy would silently discard those writes for gauge panels
+        // (fetchGaugeHistory re-reads gaugePanels[id]), so the chart mode
+        // could never pick up a new time range. The accessors delegate
+        // straight to the source-of-truth panel object.
+        return {
+          id: this.fullscreenChart,
+          title: titleMap[this.fullscreenChart] || this.fullscreenChart,
+          get timeRange() {
+            return gauge.timeRange
+          },
+          set timeRange(v) {
+            gauge.timeRange = v
+          },
+          get step() {
+            return gauge.step
+          },
+          set step(v) {
+            gauge.step = v
+          },
+          option: gauge.option
+        }
+      }
+      return null
     },
     currentFullscreenOption() {
-      return this.fullscreenPanel ? this.fullscreenPanel.option : null
+      const option = this.fullscreenPanel ? this.fullscreenPanel.option : null
+      // Guard against empty option objects (e.g. gauge panels before
+      // history data has been fetched). ECharts throws when initialised
+      // with an empty option on a zero-size DOM element.
+      if (!option || typeof option !== 'object' || !option.series) {
+        return null
+      }
+      return option
+    },
+    // True when the panel opened in the fullscreen dialog is one of the
+    // three gauge panels (CPU / memory / disk), which support the
+    // gauge / chart view switch inside the dialog.
+    isGaugePanel() {
+      return Boolean(this.gaugePanels[this.fullscreenChart])
+    },
+    // Live percentage of the gauge panel currently shown in the
+    // fullscreen dialog, read from the latest system stats snapshot.
+    currentGaugeValue() {
+      switch (this.fullscreenChart) {
+        case 'gauge-cpu':
+          return this.systemStats.host_cpu_percent
+        case 'gauge-mem':
+          return this.systemStats.mem_percent
+        case 'gauge-disk':
+          return this.systemStats.disk_percent
+        default:
+          return 0
+      }
+    },
+    // Secondary line under the fullscreen gauge ring, mirroring the
+    // in-grid gauge panel descriptions (cores / total / free).
+    currentGaugeSubText() {
+      switch (this.fullscreenChart) {
+        case 'gauge-cpu':
+          return `${this.systemStats.cpu_count} 核`
+        case 'gauge-mem':
+          return `共 ${this.formatMb(this.systemStats.mem_total_mb)}`
+        case 'gauge-disk':
+          return `剩余 ${this.formatMb(this.systemStats.disk_free_mb)}`
+        default:
+          return ''
+      }
     },
     // Endpoint options for the overview toolbar selector. Mirrors the
     // sidebar EndpointSwitcher: each option carries its probe status
@@ -1132,9 +1445,9 @@ export default {
         }
       })
     },
-    bigscreenEndpointStatus() {
+    browserFullscreenEndpointStatus() {
       const cfg = useConfigStore()
-      const h = cfg.healthMap[this.bigscreenEndpointName] || {}
+      const h = cfg.healthMap[this.browserFullscreenEndpointName] || {}
       return h.status || ''
     },
     // Alerts whose Alertmanager state is still "active" (i.e. currently
@@ -1142,7 +1455,27 @@ export default {
     // inhibited records pulled for history display.
     activeAlertCount() {
       return this.alerts.filter(a => a.status === 'active').length
+    },
+    // Auto-refresh interval forwarded to the overview embedded LogsPanel.
+    // Clamped to a minimum of 10s so a very short global interval does
+    // not hammer VictoriaLogs; 0 disables (interval selector "off").
+    overviewLogsAutoRefresh() {
+      if (!this.refreshIntervalSec) return 0
+      return Math.max(10, this.refreshIntervalSec)
     }
+  },
+
+  created() {
+    // Non-reactive instance fields (see module-level comment above).
+    // Assigned here so every component instance gets its own timer
+    // handle without going through the reactive proxy.
+    this.longPressTimer = null
+    // Layout snapshots taken when entering edit mode. Used by
+    // cancelEditMode() to restore the previous layout. Not part of
+    // data() because we never want these to be reactive (would deep-
+    // watch large layout arrays on every drag tick for no benefit).
+    this._editModeSnapshotOverview = null
+    this._editModeSnapshotMetrics = null
   },
 
   mounted() {
@@ -1152,11 +1485,11 @@ export default {
     // Initialize the overview endpoint selector from the active endpoint
     // so the dropdown reflects whatever was picked in the sidebar.
     const cfg = useConfigStore()
-    this.bigscreenEndpointName = cfg.activeEndpointName
+    this.browserFullscreenEndpointName = cfg.activeEndpointName
     this.fetchAllData()
     this._onFullscreenChange = () => {
-      this.isBigscreenFullscreen =
-        document.fullscreenElement === this.$refs.bigscreenRef
+      this.isBrowserFullscreen =
+        document.fullscreenElement === this.$refs.browserFullscreenRef
     }
     document.addEventListener('fullscreenchange', this._onFullscreenChange)
   },
@@ -1179,7 +1512,9 @@ export default {
           this.fetchJobStats(),
           this.fetchApiStats(),
           this.fetchSystemStats(),
-          this.fetchAlerts()
+          this.fetchAlerts(),
+          this.fetchHostExtendedStats(),
+          this.fetchQcosProcessStats()
         ])
         // Fetch chart data for every chart panel using its own params
         await Promise.all(
@@ -1276,6 +1611,62 @@ export default {
         }
       } catch (error) {
         console.error('获取系统资源失败:', error)
+      }
+    },
+
+    async fetchHostExtendedStats() {
+      try {
+        const [load1, load5, load15, memUsage, diskRead, diskWrite, netRecv, netSent, fdUsage] = await Promise.all([
+          queryPrometheus('node_load1').then(extractLatestValue).catch(() => null),
+          queryPrometheus('node_load5').then(extractLatestValue).catch(() => null),
+          queryPrometheus('node_load15').then(extractLatestValue).catch(() => null),
+          queryPrometheus('(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(rate(node_disk_read_bytes_total[5m]))').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(rate(node_disk_written_bytes_total[5m]))').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(rate(node_network_receive_bytes_total[5m]))').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(rate(node_network_transmit_bytes_total[5m]))').then(extractLatestValue).catch(() => null),
+          queryPrometheus('node_filefd_allocated / node_filefd_maximum * 100').then(extractLatestValue).catch(() => null)
+        ])
+
+        this.hostExtendedStats.load1 = load1 !== null ? load1.toFixed(2) : '--'
+        this.hostExtendedStats.load5 = load5 !== null ? load5.toFixed(2) : '--'
+        this.hostExtendedStats.load15 = load15 !== null ? load15.toFixed(2) : '--'
+        this.hostExtendedStats.memUsagePercent = memUsage !== null ? memUsage.toFixed(1) : '--'
+        this.hostExtendedStats.diskReadRate = diskRead !== null ? this.formatBytesPerSecond(diskRead) : '--'
+        this.hostExtendedStats.diskWriteRate = diskWrite !== null ? this.formatBytesPerSecond(diskWrite) : '--'
+        this.hostExtendedStats.netRecvRate = netRecv !== null ? this.formatBytesPerSecond(netRecv) : '--'
+        this.hostExtendedStats.netSentRate = netSent !== null ? this.formatBytesPerSecond(netSent) : '--'
+        this.hostExtendedStats.fdUsagePercent = fdUsage !== null ? fdUsage.toFixed(1) : '--'
+      } catch (error) {
+        console.error('获取主机扩展指标失败:', error)
+      }
+    },
+
+    async fetchQcosProcessStats() {
+      try {
+        const [apiCpu, apiMem, prefectCpu, prefectMem, pgCpu, pgMem, redisCpu, redisMem, totalProcs] = await Promise.all([
+          queryPrometheus('sum(rate(namedprocess_namegroup_cpu_seconds_total{groupname="qcos-api"}[5m])) * 100').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(namedprocess_namegroup_memory_bytes{groupname="qcos-api", memtype="resident"}) / 1024 / 1024').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(rate(namedprocess_namegroup_cpu_seconds_total{groupname=~"qcos-prefect-.*"}[5m])) * 100').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(namedprocess_namegroup_memory_bytes{groupname=~"qcos-prefect-.*", memtype="resident"}) / 1024 / 1024').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(rate(namedprocess_namegroup_cpu_seconds_total{groupname="qcos-postgres"}[5m])) * 100').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(namedprocess_namegroup_memory_bytes{groupname="qcos-postgres", memtype="resident"}) / 1024 / 1024').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(rate(namedprocess_namegroup_cpu_seconds_total{groupname="qcos-redis"}[5m])) * 100').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(namedprocess_namegroup_memory_bytes{groupname="qcos-redis", memtype="resident"}) / 1024 / 1024').then(extractLatestValue).catch(() => null),
+          queryPrometheus('sum(namedprocess_namegroup_num_procs{groupname=~"qcos-.*"})').then(extractLatestValue).catch(() => null)
+        ])
+
+        this.qcosProcessStats.apiCpu = apiCpu !== null ? apiCpu.toFixed(1) : '--'
+        this.qcosProcessStats.apiMem = apiMem !== null ? this.formatMb(apiMem) : '--'
+        this.qcosProcessStats.prefectCpu = prefectCpu !== null ? prefectCpu.toFixed(1) : '--'
+        this.qcosProcessStats.prefectMem = prefectMem !== null ? this.formatMb(prefectMem) : '--'
+        this.qcosProcessStats.pgCpu = pgCpu !== null ? pgCpu.toFixed(1) : '--'
+        this.qcosProcessStats.pgMem = pgMem !== null ? this.formatMb(pgMem) : '--'
+        this.qcosProcessStats.redisCpu = redisCpu !== null ? redisCpu.toFixed(1) : '--'
+        this.qcosProcessStats.redisMem = redisMem !== null ? this.formatMb(redisMem) : '--'
+        this.qcosProcessStats.totalProcs = totalProcs !== null ? Math.round(totalProcs) : '--'
+      } catch (error) {
+        console.error('获取 QCOS 进程指标失败:', error)
       }
     },
 
@@ -1407,7 +1798,7 @@ export default {
       const size = params.page_size || 20
       const start = (page - 1) * size
       const items = rows.slice(start, start + size)
-      return { result: { items, total } }
+      return { result: { items, total }}
     },
 
     // ==================== 图表配置 ====================
@@ -1443,7 +1834,7 @@ export default {
           name: yAxisName,
           nameTextStyle: { fontSize: 10 },
           axisLabel: { fontSize: 10 },
-          splitLine: { lineStyle: { type: 'dashed' } }
+          splitLine: { lineStyle: { type: 'dashed' }}
         },
         series: []
       }
@@ -1461,15 +1852,15 @@ export default {
         title: hasData
           ? { show: false }
           : {
-              text: '暂无数据',
-              left: 'center',
-              top: 'center',
-              textStyle: {
-                color: '#909399',
-                fontSize: 14,
-                fontWeight: 'normal'
-              }
-            },
+            text: '暂无数据',
+            left: 'center',
+            top: 'center',
+            textStyle: {
+              color: '#909399',
+              fontSize: 14,
+              fontWeight: 'normal'
+            }
+          },
         tooltip: {
           trigger: 'item',
           formatter: '{b}: {c} ({d}%)'
@@ -1534,7 +1925,8 @@ export default {
     },
 
     onChartParamsChange(id) {
-      const panel = this.findPanel(id)
+      // Gauge panels live outside chartPanels; fall back to gaugePanels.
+      const panel = this.findPanel(id) || this.gaugePanels[id]
       if (!panel) return
       // 当时间范围变化时，若当前 step 已不安全，自动调整为最近合法档位
       const minSafeSeconds = getMinSafeStepSeconds(panel.timeRange)
@@ -1547,7 +1939,13 @@ export default {
           `时间范围过大，采样周期已自动调整为「${safeOption.label}」以避免超出 Prometheus 单次查询点数限制`
         )
       }
-      this.fetchChartDataById(id)
+      // Gauge panels fetch history via fetchGaugeHistory, not
+      // fetchChartDataById which only handles chartPanels.
+      if (this.gaugePanels[id]) {
+        this.fetchGaugeHistory(id)
+      } else {
+        this.fetchChartDataById(id)
+      }
     },
 
     async fetchChartDataById(id) {
@@ -1584,6 +1982,18 @@ export default {
           break
         case 'chart-job-status':
           await this.fetchJobStatusData(panel, start, end, step)
+          break
+        case 'chart-overview-jobs':
+          await this.fetchOverviewJobsData(panel, start, end, step)
+          break
+        case 'chart-overview-api-total':
+          await this.fetchOverviewApiTotalData(panel, start, end, step)
+          break
+        case 'chart-overview-node-cpu':
+        case 'chart-overview-node-mem':
+        case 'chart-overview-node-disk':
+        case 'chart-overview-node-net':
+          await this.fetchOverviewNodeChartData(id, panel, start, end, step)
           break
       }
     },
@@ -1715,20 +2125,391 @@ export default {
       }
     },
 
-    // ==================== 全屏 ====================
-    toggleFullscreen(id) {
-      const panel = this.findPanel(id)
+    /**
+     * Overview-tab compact chart: job counts as one line chart covering
+     * total / running / queued / completed / failed. Colors come from
+     * JOB_STATUS_COLORS (total uses grey) so the chart matches the job
+     * list tag colors.
+     */
+    async fetchOverviewJobsData(panel, start, end, step) {
+      try {
+        const queries = [
+          { key: 'total', label: '总数' },
+          { key: 'running', label: '运行中' },
+          { key: 'queued', label: '队列中' },
+          { key: 'completed', label: '已完成' },
+          { key: 'failed', label: '失败' }
+        ]
+        const results = await Promise.all(
+          queries.map(q =>
+            queryPrometheusRange(
+              `sum(job_count{status="${q.key}"})`,
+              start,
+              end,
+              step
+            )
+              .then(r => extractMultiTimeSeries(r))
+              .catch(() => [])
+          )
+        )
+
+        const seriesData = queries.map((q, i) => ({
+          name: q.label,
+          data: results[i][0]?.data || []
+        }))
+        const colors = queries.map(q => JOB_STATUS_COLORS[q.key])
+
+        panel.option.legend.data = seriesData.map(s => s.name)
+        panel.option.series = this.buildSeries(seriesData, colors)
+      } catch (error) {
+        console.error('获取总览作业数量数据失败:', error)
+      }
+    },
+
+    /**
+     * Overview-tab compact chart: cumulative API total requests
+     * (sum(api_requests_total)) as a single line.
+     */
+    async fetchOverviewApiTotalData(panel, start, end, step) {
+      try {
+        const result = await queryPrometheusRange(PROMQL.apiTotalRequests, start, end, step)
+          .then(r => extractMultiTimeSeries(r, 'API 总请求数'))
+          .catch(() => [])
+
+        const seriesData = [
+          { name: 'API 总请求数', data: result[0]?.data || [] }
+        ]
+
+        panel.option.legend.data = seriesData.map(s => s.name)
+        panel.option.series = this.buildSeries(seriesData, ['#409eff'])
+      } catch (error) {
+        console.error('获取总览 API 总请求数数据失败:', error)
+      }
+    },
+
+    /**
+     * Overview node-info group history line charts: CPU / memory / disk
+     * usage percentages and network IO rates. CPU / mem / disk reuse the
+     * qcos_system_* percent gauges (same source as the gauge panels),
+     * network uses node-exporter receive / transmit rates (bytes per
+     * second, auto-scaled via the y-axis formatter).
+     */
+    async fetchOverviewNodeChartData(id, panel, start, end, step) {
+      try {
+        let seriesData = []
+        let colors = []
+        let yAxisFormatter = null
+
+        switch (id) {
+          case 'chart-overview-node-cpu':
+            seriesData = [
+              { name: 'CPU 使用率', data: await this.queryPercentRange('qcos_system_host_cpu_percent', 'CPU 使用率', start, end, step) }
+            ]
+            colors = ['#409eff']
+            break
+          case 'chart-overview-node-mem':
+            seriesData = [
+              { name: '内存使用率', data: await this.queryPercentRange('qcos_system_mem_percent', '内存使用率', start, end, step) }
+            ]
+            colors = ['#67c23a']
+            break
+          case 'chart-overview-node-disk':
+            seriesData = [
+              { name: '磁盘使用率', data: await this.queryPercentRange('qcos_system_disk_percent', '磁盘使用率', start, end, step) }
+            ]
+            colors = ['#e6a23c']
+            break
+          case 'chart-overview-node-net': {
+            const [recv, sent] = await Promise.all([
+              queryPrometheusRange('sum(rate(node_network_receive_bytes_total[5m]))', start, end, step)
+                .then(r => extractMultiTimeSeries(r, '接收'))
+                .catch(() => []),
+              queryPrometheusRange('sum(rate(node_network_transmit_bytes_total[5m]))', start, end, step)
+                .then(r => extractMultiTimeSeries(r, '发送'))
+                .catch(() => [])
+            ])
+            seriesData = [
+              { name: '接收', data: recv[0]?.data || [] },
+              { name: '发送', data: sent[0]?.data || [] }
+            ]
+            colors = ['#409eff', '#67c23a']
+            yAxisFormatter = v => this.formatBytesPerSecond(v)
+            break
+          }
+          default:
+            return
+        }
+
+        panel.option.legend.data = seriesData.map(s => s.name)
+        panel.option.series = this.buildSeries(seriesData, colors)
+        if (yAxisFormatter) {
+          panel.option.yAxis.axisLabel = {
+            ...panel.option.yAxis.axisLabel,
+            formatter: yAxisFormatter
+          }
+        } else {
+          panel.option.yAxis.min = 0
+          panel.option.yAxis.max = 100
+          panel.option.yAxis.name = '%'
+        }
+      } catch (error) {
+        console.error('获取总览节点历史数据失败:', error)
+      }
+    },
+
+    /**
+     * Helper: run one Prometheus range query and return the first
+     * time-series data array (empty array on failure).
+     */
+    async queryPercentRange(promql, label, start, end, step) {
+      const result = await queryPrometheusRange(promql, start, end, step)
+        .then(r => extractMultiTimeSeries(r, label))
+        .catch(() => [])
+      return result[0]?.data || []
+    },
+
+    // ==================== Gauge 面板切换 ====================
+    onGaugeViewChange(id) {
+      if (this.gaugePanels[id] && this.gaugePanels[id].viewMode === 'chart') {
+        this.fetchGaugeHistory(id)
+      }
+    },
+
+    onGaugeParamsChange(id) {
+      const panel = this.gaugePanels[id]
       if (!panel) return
+      // 当时间范围变化时，若当前 step 已不安全，自动调整为最近合法档位
+      const minSafeSeconds = getMinSafeStepSeconds(panel.timeRange)
+      const currentStepOption = STEP_OPTIONS.find(opt => opt.value === panel.step)
+      const currentStepSeconds = currentStepOption ? currentStepOption.seconds : 60
+      if (currentStepSeconds < minSafeSeconds) {
+        const safeOption = getDefaultSafeStepOption(panel.timeRange)
+        panel.step = safeOption.value
+        ElMessage.warning(
+          `时间范围过大，采样周期已自动调整为「${safeOption.label}」以避免超出 Prometheus 单次查询点数限制`
+        )
+      }
+      this.fetchGaugeHistory(id)
+    },
+
+    async fetchGaugeHistory(id) {
+      const panel = this.gaugePanels[id]
+      if (!panel) return
+      const end = Math.floor(Date.now() / 1000)
+      const start = end - panel.timeRange
+      const step = panel.step
+
+      let promql = ''
+      let label = ''
+      switch (id) {
+        case 'gauge-cpu':
+          promql = 'qcos_system_host_cpu_percent'
+          label = 'CPU 使用率'
+          break
+        case 'gauge-mem':
+          promql = 'qcos_system_mem_percent'
+          label = '内存使用率'
+          break
+        case 'gauge-disk':
+          promql = 'qcos_system_disk_percent'
+          label = '磁盘使用率'
+          break
+        default:
+          return
+      }
+
+      try {
+        const result = await queryPrometheusRange(promql, start, end, step)
+          .then(r => extractMultiTimeSeries(r, label))
+          .catch(() => [])
+
+        const seriesData = result.length > 0
+          ? [{ name: label, data: result[0].data }]
+          : [{ name: label, data: [] }]
+
+        panel.option = {
+          title: { show: false },
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'cross' },
+            valueFormatter: v => v + ' %'
+          },
+          legend: { show: false },
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '10%',
+            top: '10%',
+            containLabel: true
+          },
+          xAxis: {
+            type: 'time',
+            splitLine: { show: false },
+            axisLabel: { fontSize: 10 }
+          },
+          yAxis: {
+            type: 'value',
+            min: 0,
+            max: 100,
+            name: '%',
+            nameTextStyle: { fontSize: 10 },
+            axisLabel: { fontSize: 10 },
+            splitLine: { lineStyle: { type: 'dashed' }}
+          },
+          // 按数值区间着色，与仪表盘颜色规则一致：
+          // <70 绿 (#67c23a), 70-90 黄 (#e6a23c), >=90 红 (#f56c6c)
+          visualMap: {
+            show: false,
+            dimension: 1,
+            pieces: [
+              { lt: 70, color: '#67c23a' },
+              { gte: 70, lt: 90, color: '#e6a23c' },
+              { gte: 90, color: '#f56c6c' }
+            ]
+          },
+          series: this.buildSeries(seriesData, ['#67c23a'])
+        }
+      } catch (error) {
+        console.error(`获取 ${label} 历史趋势失败:`, error)
+        panel.option = {
+          title: {
+            text: '暂无数据',
+            left: 'center',
+            top: 'center',
+            textStyle: { color: '#909399', fontSize: 14, fontWeight: 'normal' }
+          }
+        }
+      }
+    },
+
+    // ==================== 全屏 ====================
+    async toggleFullscreen(id) {
+      // Support both chart panels and gauge panels. For gauge panels we
+      // fabricate a panel-like object so the fullscreen dialog can reuse
+      // the same rendering path.
+      let panel = this.findPanel(id)
+      if (!panel) {
+        const gauge = this.gaugePanels[id]
+        if (gauge) {
+          const titleMap = {
+            'gauge-cpu': '节点CPU总使用率',
+            'gauge-mem': '节点内存总使用率',
+            'gauge-disk': '磁盘总使用率'
+          }
+          panel = {
+            id,
+            title: titleMap[id] || id,
+            timeRange: gauge.timeRange,
+            step: gauge.step,
+            option: gauge.option
+          }
+        }
+      }
+      if (!panel) return
+      // Gauge panels support the gauge / chart view switch inside the
+      // fullscreen dialog. Start from the panel's in-grid view mode so
+      // the fullscreen dialog feels like a magnified version of it.
+      if (this.gaugePanels[id]) {
+        this.fullscreenGaugeView = this.gaugePanels[id].viewMode
+        // Pre-fetch history (when not yet loaded) so the chart view has
+        // data ready if/when the user switches to it inside the dialog.
+        await this.fetchGaugeHistory(id)
+        panel.option = this.gaugePanels[id].option
+      }
       this.fullscreenChart = id
       this.fullscreenTitle = panel.title
       this.fullscreenVisible = true
+      // Bump the render key so v-chart re-mounts after the dialog has
+      // finished its CSS transition and has non-zero dimensions.
+      this.fullscreenRenderKey += 1
+      // Reset the opened flag so v-chart stays unmounted until the
+      // dialog fires @opened (see onFullscreenDialogOpened).
+      this.fullscreenDialogOpened = false
     },
 
-    // Bigscreen tab: toggle browser-native fullscreen on the whole
-    // bigscreen container so the user can put the dashboard on a
+    // View switch inside the fullscreen dialog for gauge panels. When
+    // switching to the chart view, ensure history data has been fetched
+    // for the panel's current timeRange/step and bump the render key so
+    // SizedChart mounts fresh against the now-visible container.
+    async onFullscreenGaugeViewChange() {
+      if (this.fullscreenGaugeView !== 'chart') return
+      const id = this.fullscreenChart
+      if (!this.gaugePanels[id]) return
+      await this.fetchGaugeHistory(id)
+      this.fullscreenRenderKey += 1
+    },
+
+    // Called by el-dialog @opened: the dialog content now has its final
+    // non-zero size, so it is safe to mount v-chart.
+    onFullscreenDialogOpened() {
+      this.fullscreenDialogOpened = true
+      // Belt-and-braces: even with SizedChart's ResizeObserver +
+      // double-rAF retry, force a window resize event on the next
+      // frame so any v-chart that somehow mounted against a stale
+      // 0x0 box gets one more chance to re-fit. Cheap because
+      // listeners are throttled internally by vue-echarts.
+      this.$nextTick(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+    },
+
+    // Endpoint selector embedded in the overview browser-fullscreen toolbar.
+    // Mirrors the sidebar EndpointSwitcher.onChange flow: probe the target
+    // endpoint, refuse the switch when unhealthy, restore the saved session
+    // (or fall back to no-auth), then reload so every view fetches data
+    // against the new endpoint.
+    async onBrowserFullscreenEndpointChange(name) {
+      const cfg = useConfigStore()
+      if (!name || name === cfg.activeEndpointName) return
+      // Ensure health info is up-to-date before switching.
+      const health = await cfg.probeEndpoint(name)
+      if (!health || health.status !== 'ok') {
+        ElMessage.warning(`endpoint ${name} 当前不可用，无法切换`)
+        this.browserFullscreenEndpointName = cfg.activeEndpointName
+        return
+      }
+      cfg.setActive(name)
+
+      const userStore = useUserStore()
+      // auth mode "no": treat as authenticated and reload immediately.
+      const authMode = String(health.authMode || '').toLowerCase().trim()
+      if (authMode === 'no') {
+        userStore.noAuthLogin()
+        location.reload()
+        return
+      }
+
+      // jwt (or other auth modes): restore the persisted session and
+      // verify the token against the new endpoint before reloading.
+      const hasSession = userStore.loadSessionForActiveEndpoint()
+      if (!hasSession) {
+        this.$router.push({
+          path: '/login',
+          query: { redirect: this.$route.fullPath, endpoint: name }
+        })
+        return
+      }
+      try {
+        await userStore.getInfo()
+        location.reload()
+      } catch {
+        // Token no longer valid on the target endpoint: drop the stored
+        // session so the login page does not loop, then re-authenticate.
+        removeSession(name)
+        userStore.resetToken()
+        ElMessage.warning(`endpoint ${name} 登录态已失效，请重新登录`)
+        this.$router.push({
+          path: '/login',
+          query: { redirect: this.$route.fullPath, endpoint: name }
+        })
+      }
+    },
+
+    // Browser fullscreen tab: toggle browser-native fullscreen on the whole
+    // browser-fullscreen container so the user can put the dashboard on a
     // large TV / projector without browser chrome.
-    toggleBigscreenFullscreen() {
-      const el = this.$refs.bigscreenRef
+    toggleBrowserFullscreen() {
+      const el = this.$refs.browserFullscreenRef
       if (!el) return
       const doc = document
       if (doc.fullscreenElement) {
@@ -1762,6 +2543,20 @@ export default {
       return `${n.toFixed(0)} MB`
     },
 
+    formatBytesPerSecond(bytes) {
+      const n = Number(bytes) || 0
+      if (n >= 1024 * 1024 * 1024) {
+        return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB/s`
+      }
+      if (n >= 1024 * 1024) {
+        return `${(n / (1024 * 1024)).toFixed(2)} MB/s`
+      }
+      if (n >= 1024) {
+        return `${(n / 1024).toFixed(2)} KB/s`
+      }
+      return `${n.toFixed(0)} B/s`
+    },
+
     getSeverityType(severity) {
       const map = {
         critical: 'danger',
@@ -1783,7 +2578,10 @@ export default {
       return map[status] || 'info'
     },
 
-    onIntervalChange() {
+    onIntervalChange(seconds) {
+      // Track the interval (seconds; 0 = off) so the overview logs
+      // group can sync its own auto-refresh timer.
+      this.refreshIntervalSec = seconds
       this.fetchAllData()
     },
 
@@ -1799,9 +2597,9 @@ export default {
       if (isEditMode) return
       if (event.button !== undefined && event.button !== 0) return
       this._clearLongPressTimer()
-      this._longPressTimer = setTimeout(() => {
+      this.longPressTimer = setTimeout(() => {
         this.enterEditMode(tab)
-      }, this._longPressDuration)
+      }, LONG_PRESS_DURATION_MS)
     },
 
     onPanelPointerUp() {
@@ -1809,33 +2607,57 @@ export default {
     },
 
     _clearLongPressTimer() {
-      if (this._longPressTimer) {
-        clearTimeout(this._longPressTimer)
-        this._longPressTimer = null
+      if (this.longPressTimer) {
+        clearTimeout(this.longPressTimer)
+        this.longPressTimer = null
       }
     },
 
     enterEditMode(tab) {
       if (tab === 'overview') {
         if (this.isOverviewEditMode) return
+        // Snapshot the current layout so "取消" can restore it later.
+        this._editModeSnapshotOverview = JSON.parse(JSON.stringify(this.overviewLayout))
         this.isOverviewEditMode = true
       } else {
         if (this.isMetricsEditMode) return
+        this._editModeSnapshotMetrics = JSON.parse(JSON.stringify(this.metricsLayout))
         this.isMetricsEditMode = true
       }
       this.$message.info(
-        '已进入编辑模式，可拖动 / 调整面板大小。点击"完成"退出。'
+        '已进入编辑模式，可拖动 / 调整面板大小。点击"完成"保存退出，点击"取消"放弃修改。'
       )
     },
 
     exitEditMode(tab) {
       if (tab === 'overview') {
         this.isOverviewEditMode = false
+        this._editModeSnapshotOverview = null
       } else {
         this.isMetricsEditMode = false
+        this._editModeSnapshotMetrics = null
       }
       this._saveLayout(tab)
       this.$message.success('布局已保存')
+    },
+
+    // Discard in-flight edits and leave edit mode without saving.
+    // Restores the layout snapshot taken by enterEditMode().
+    cancelEditMode(tab) {
+      if (tab === 'overview') {
+        if (this._editModeSnapshotOverview) {
+          this.overviewLayout = this._editModeSnapshotOverview
+          this._editModeSnapshotOverview = null
+        }
+        this.isOverviewEditMode = false
+      } else {
+        if (this._editModeSnapshotMetrics) {
+          this.metricsLayout = this._editModeSnapshotMetrics
+          this._editModeSnapshotMetrics = null
+        }
+        this.isMetricsEditMode = false
+      }
+      this.$message.info('已放弃布局修改')
     },
 
     resetLayout(tab) {
@@ -1870,7 +2692,7 @@ export default {
           : this.metricsLayout
         localStorage.setItem(
           `monitor-center-${tab}-layout`,
-          JSON.stringify({ v: this._layoutVersion, layout })
+          JSON.stringify({ v: LAYOUT_VERSION, layout })
         )
       } catch (e) {
         console.error('Failed to save layout:', e)
@@ -1892,7 +2714,7 @@ export default {
         if (Array.isArray(parsed)) {
           // legacy: no version tag -> treat as outdated
           layout = null
-        } else if (parsed && parsed.v === this._layoutVersion && Array.isArray(parsed.layout)) {
+        } else if (parsed && parsed.v === LAYOUT_VERSION && Array.isArray(parsed.layout)) {
           layout = parsed.layout
         }
         if (!layout) return
@@ -1908,22 +2730,10 @@ export default {
 
     _getDefaultOverviewLayout() {
       return [
-        { i: 'stat-system', x: 0, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-total', x: 3, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-running', x: 6, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-queued', x: 9, y: 0, w: 3, h: 4 },
-        { i: 'stat-jobs-completed', x: 0, y: 4, w: 3, h: 4 },
-        { i: 'stat-jobs-failed', x: 3, y: 4, w: 3, h: 4 },
-        { i: 'stat-api-requests', x: 6, y: 4, w: 3, h: 4 },
-        { i: 'stat-api-progress', x: 9, y: 4, w: 3, h: 4 },
-        { i: 'gauge-cpu', x: 0, y: 8, w: 4, h: 7 },
-        { i: 'gauge-mem', x: 4, y: 8, w: 4, h: 7 },
-        { i: 'gauge-disk', x: 8, y: 8, w: 4, h: 7 },
-        { i: 'chart-job-trend', x: 0, y: 15, w: 3, h: 9 },
-        { i: 'chart-api-rate', x: 3, y: 15, w: 3, h: 9 },
-        { i: 'chart-api-duration', x: 6, y: 15, w: 3, h: 9 },
-        { i: 'chart-job-status', x: 9, y: 15, w: 3, h: 9 },
-        { i: 'panel-alerts', x: 0, y: 24, w: 12, h: 14 }
+        { i: 'group-os', x: 0, y: 0, w: 8, h: 22 },
+        { i: 'group-node', x: 8, y: 0, w: 4, h: 22 },
+        { i: 'group-alerts', x: 0, y: 22, w: 6, h: 10 },
+        { i: 'group-logs', x: 6, y: 22, w: 6, h: 10 }
       ]
     },
 
@@ -1946,10 +2756,14 @@ export default {
 .monitor-center-container {
   display: flex;
   flex-direction: column;
-  background: var(--el-fill-color-light);
+  /* Match .app-main / PageTable background so no seam shows between the
+     container and the exposed area below short content. */
+  background: var(--el-bg-color-page);
   padding: 20px;
   box-sizing: border-box;
-  min-height: 100%;
+  /* Fill the scrollable area so the page background never peeks
+     through below short content (viewport minus the 50px navbar). */
+  min-height: calc(100vh - 50px);
 }
 
 .header {
@@ -1958,6 +2772,11 @@ export default {
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 16px;
+}
+
+/* feature-disabled banners (Prometheus / Alertmanager / VictoriaLogs) */
+.feature-disabled-alert {
+  margin-bottom: 10px;
 }
 
 .header-actions {
@@ -2003,6 +2822,10 @@ export default {
 
 .toolbar-select {
   width: 92px;
+}
+
+.gauge-view-select {
+  width: 78px;
 }
 
 .toolbar-select :deep(.el-select__wrapper) {
@@ -2092,6 +2915,15 @@ export default {
   line-height: 1.3;
 }
 
+/* When a gauge panel is toggled to history-chart mode the v-chart
+   element replaces the el-progress ring. Force it to fill the same
+   panel-body area so the layout doesn't jump. */
+.gauge-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
 .stat-value {
   font-size: 24px;
   font-weight: 700;
@@ -2164,6 +2996,10 @@ export default {
   flex-shrink: 0;
 }
 
+.edit-mode-cancel-btn {
+  flex-shrink: 0;
+}
+
 :deep(.vue-grid-layout) {
   background: transparent;
 }
@@ -2201,6 +3037,22 @@ export default {
   height: 100%;
 }
 
+/* SizedChart's host element must fill its parent even before the inner
+   v-chart mounts. Inside flex containers that center their children
+   (gauge panels, the fullscreen dialog), an empty host would otherwise
+   collapse to 0x0 and the ResizeObserver inside SizedChart would never
+   observe a non-zero size — deadlock. :deep() is required because
+   .sized-chart-host is the root element of the child SizedChart
+   component and does not carry this component's scoped attribute. */
+.panel-body > :deep(.sized-chart-host),
+.stat-content > :deep(.sized-chart-host),
+.fullscreen-chart-container > :deep(.sized-chart-host) {
+  align-self: stretch;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+}
+
 .chart-fullscreen {
   width: 100%;
   height: 100%;
@@ -2209,7 +3061,16 @@ export default {
 .fullscreen-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* The dialog uses append-to-body, which teleports it to <body>. The
+     scoped :deep() rule that used to give .el-dialog__body a fixed
+     height could never match there (no ancestor carries this
+     component's data-v attribute), so the body collapsed to auto
+     height, this wrapper's height:100% resolved to 0 and the SizedChart
+     host stayed 0px tall — the chart never mounted. Set a
+     viewport-based height directly on the wrapper instead: 100vh minus
+     the dialog's own padding (16px top + 16px bottom) and the header
+     (24px title line + 16px padding-bottom). */
+  height: calc(100vh - 72px);
 }
 
 .fullscreen-toolbar {
@@ -2225,6 +3086,44 @@ export default {
   width: 100%;
   flex: 1;
   min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* SizedChart's host element must fill the whole flex container even
+   before its inner v-chart mounts; otherwise an empty host collapses
+   to 0x0 and the ResizeObserver inside SizedChart never fires. */
+.fullscreen-chart-container > .sized-chart-host {
+  align-self: stretch;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+}
+
+/* Enlarged dashboard ring shown when a gauge panel is opened in the
+   fullscreen dialog and the user keeps the "仪表盘" view. The container
+   centers the ring + caption column via the flex parent. */
+.fullscreen-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.fullscreen-gauge-desc {
+  font-size: 16px;
+  color: var(--el-text-color-secondary);
+  text-align: center;
+}
+
+.fullscreen-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 告警 tab */
@@ -2317,20 +3216,20 @@ export default {
   }
 }
 
-/* ===== Bigscreen tab ===== */
-.bigscreen-container {
+/* ===== Browser fullscreen tab ===== */
+.browser-fullscreen-container {
   background: var(--el-bg-color-page);
   padding: 4px 8px 8px;
   border-radius: 8px;
 }
 
-.bigscreen-container:fullscreen {
+.browser-fullscreen-container:fullscreen {
   background: var(--el-bg-color-page);
   padding: 8px 16px 16px;
   overflow: auto;
 }
 
-.bigscreen-toolbar {
+.browser-fullscreen-toolbar {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -2339,30 +3238,30 @@ export default {
   margin-top: -4px;
 }
 
-.bigscreen-endpoint {
+.browser-fullscreen-endpoint {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-right: auto;
 }
 
-.bigscreen-endpoint-label {
+.browser-fullscreen-endpoint-label {
   font-size: 13px;
   color: var(--el-text-color-regular);
   white-space: nowrap;
 }
 
-.bigscreen-endpoint-select {
+.browser-fullscreen-endpoint-select {
   min-width: 200px;
 }
 
 /* Mirror the sidebar EndpointSwitcher's option layout / status dot so the
-   bigscreen selector looks identical to the one in the left sidebar.
+   browser-fullscreen selector looks identical to the one in the left sidebar.
    These styles need :deep() because the el-select dropdown popper is
-   teleported inside the bigscreen container (:teleported="false") but
+   teleported inside the browser-fullscreen container (:teleported="false") but
    scoped CSS still doesn't reach the popper slot content reliably
    across Element Plus versions. */
-.bigscreen-endpoint-select :deep(.endpoint-option),
+.browser-fullscreen-endpoint-select :deep(.endpoint-option),
 :deep(.endpoint-switcher-popper .endpoint-option) {
   display: flex;
   align-items: center;
@@ -2370,7 +3269,7 @@ export default {
   gap: 8px;
 }
 
-.bigscreen-endpoint-select :deep(.endpoint-option-alias),
+.browser-fullscreen-endpoint-select :deep(.endpoint-option-alias),
 :deep(.endpoint-switcher-popper .endpoint-option-alias) {
   font-weight: 500;
   flex: 1;
@@ -2380,7 +3279,7 @@ export default {
   white-space: nowrap;
 }
 
-.bigscreen-endpoint-select :deep(.endpoint-option-meta),
+.browser-fullscreen-endpoint-select :deep(.endpoint-option-meta),
 :deep(.endpoint-switcher-popper .endpoint-option-meta) {
   display: inline-flex;
   align-items: center;
@@ -2389,7 +3288,7 @@ export default {
   margin-left: auto;
 }
 
-.bigscreen-endpoint-select :deep(.endpoint-option-version),
+.browser-fullscreen-endpoint-select :deep(.endpoint-option-version),
 :deep(.endpoint-switcher-popper .endpoint-option-version) {
   color: var(--el-text-color-secondary);
   font-size: 12px;
@@ -2423,6 +3322,32 @@ export default {
   min-height: 480px;
 }
 
+/* Overview logs group: the embedded LogsPanel ships a 480px min-height
+   designed for the standalone logs tab; inside the compact overview
+   grid cell the cell must fully control the height. */
+.logs-group .logs-group-body {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.logs-group :deep(.logs-panel) {
+  min-height: 0;
+  flex: 1;
+  border: none;
+  border-radius: 0;
+}
+
+/* tighten the logs toolbar / pagination inside the compact group */
+.logs-group :deep(.logs-toolbar) {
+  padding: 6px 8px;
+}
+
+.logs-group :deep(.logs-pagination) {
+  padding: 4px 8px;
+}
+
 /* Panels hosted inside a GridItem (overview / metrics tabs) must ignore
    the page-level min-height so the grid cell fully controls the size;
    otherwise a too-tall panel overflows and visually covers the panels
@@ -2431,7 +3356,8 @@ export default {
 .chart-grid-item .stat-panel,
 .chart-grid-item .gauge-panel,
 .chart-grid-item .chart-panel,
-.chart-grid-item .alert-panel {
+.chart-grid-item .alert-panel,
+.chart-grid-item .logs-group {
   min-height: 0;
   height: 100%;
 }
@@ -2444,10 +3370,213 @@ export default {
   padding: 60px 0;
 }
 
+/* ===== 总览 tab：三个分组边框（操作系统指标 / 节点信息 / 告警列表） ===== */
+.group-panel {
+  border: 1px solid var(--el-border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.group-panel .panel-header {
+  background: var(--el-fill-color-light);
+}
+
+.group-subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+.group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* --- 分组 1：操作系统指标 --- */
+.os-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.mini-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  background: var(--el-bg-color);
+  min-width: 0;
+}
+
+.mini-stat-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+
+.mini-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+  line-height: 1.1;
+}
+
+.mini-stat-value.primary {
+  color: #409eff;
+}
+
+.mini-stat-value.warning {
+  color: #e6a23c;
+}
+
+.mini-stat-value.success {
+  color: #67c23a;
+}
+
+.mini-stat-value.danger {
+  color: #f56c6c;
+}
+
+.os-proc-line {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.os-charts-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* Two rows of compact charts must share the space equally so the
+     2x2 grid looks uniform; cap the total height so the group stays
+     compact (each chart row is roughly half of ~300px). */
+  grid-template-rows: repeat(2, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.compact-chart-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.compact-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.compact-chart-header .panel-toolbar {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.compact-chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+}
+
+.compact-chart-body {
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+}
+
+.compact-chart-body > :deep(.sized-chart-host) {
+  width: 100%;
+  height: 100%;
+}
+
+/* 2x2 history line chart grid below the numeric chips; mirrors the OS
+   group's chart grid (equal row heights, compact). */
+.node-charts-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(2, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.node-host-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.host-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.host-chip-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+
+.host-chip-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.host-chip-value em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+}
+
+@media (max-width: 1200px) {
+  .os-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .os-charts-row {
+    grid-template-columns: 1fr;
+  }
+
+  .node-charts-row {
+    grid-template-columns: 1fr;
+  }
+
+  .node-host-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 </style>
 
 <!-- Global (non-scoped) overrides for the endpoint-switcher popper: the
-     dropdown is teleported into the fullscreen bigscreen container via
+     dropdown is teleported into the fullscreen browser-fullscreen container via
      :teleported="false", so scoped CSS rules above cannot reach it.
      Mirror the option layout / status dot styling used by the sidebar
      EndpointSwitcher so the two dropdowns look identical. -->
@@ -2482,7 +3611,7 @@ export default {
 }
 
 .endpoint-switcher-popper .endpoint-state-dot,
-.bigscreen-endpoint .endpoint-state-dot {
+.browser-fullscreen-endpoint .endpoint-state-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
@@ -2492,17 +3621,17 @@ export default {
 }
 
 .endpoint-switcher-popper .endpoint-state-dot.state-ok,
-.bigscreen-endpoint .endpoint-state-dot.state-ok {
+.browser-fullscreen-endpoint .endpoint-state-dot.state-ok {
   background: var(--el-color-success);
 }
 
 .endpoint-switcher-popper .endpoint-state-dot.state-fail,
-.bigscreen-endpoint .endpoint-state-dot.state-fail {
+.browser-fullscreen-endpoint .endpoint-state-dot.state-fail {
   background: var(--el-color-danger);
 }
 
 .endpoint-switcher-popper .endpoint-state-dot.state-probing,
-.bigscreen-endpoint .endpoint-state-dot.state-probing {
+.browser-fullscreen-endpoint .endpoint-state-dot.state-probing {
   background: var(--el-color-info);
 }
 </style>
