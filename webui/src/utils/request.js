@@ -67,8 +67,11 @@ service.interceptors.response.use(
       return Promise.reject(new Error('Error: http status != 200'))
     }
     const res = response.data
-    // if the custom code is not 20000, it is judged as an error.
-    if (res.error) {
+    // JSON-RPC responses have a top-level `error` field when something
+    // went wrong; plain REST responses (arrays, objects without `error`)
+    // pass through unchanged so AI / terminal / file APIs work without
+    // modification.
+    if (res && typeof res === 'object' && !Array.isArray(res) && res.error) {
       // build a human-readable error message; JSON-RPC errors may omit
       // `data` or `data.details` entirely (e.g. validation errors), so
       // fall back to just the message field instead of throwing

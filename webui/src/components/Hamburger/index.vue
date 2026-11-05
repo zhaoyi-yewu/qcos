@@ -48,7 +48,16 @@ export default {
 
 <style scoped>
 .hamburger-wrapper {
-  padding: 0 15px;
+  /*
+   * Horizontal padding positions the 20px-wide svg icon. Use 20px on the
+   * left so the icon's left edge aligns with the page content below the
+   * navbar (every page container uses padding: 20px, e.g.
+   * .system-info-container). With the sidebar collapsed the sidebar is
+   * display:none, so the navbar and the page share the same left edge
+   * coordinate system; the previous 15px padding left the hamburger 5px
+   * to the left of the content column and looked misaligned.
+   */
+  padding: 0 15px 0 20px;
   cursor: pointer;
   border-radius: 4px;
   transition: background-color 0.2s ease;

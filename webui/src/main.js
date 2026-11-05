@@ -25,6 +25,14 @@ import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import locale from 'element-plus/es/locale/lang/zh-cn' // lang i18n
 
+// TDesign (core + chat). Vite's resolver honours each package's
+// `module: es/index.mjs` field, so the bare specifier works. The
+// core library registers <t-button> / <t-drawer> / <t-textarea> / ...
+// and is required as a peer of @tdesign-vue-next/chat.
+import TDesign from 'tdesign-vue-next'
+import 'tdesign-vue-next/es/style/index.css'
+import TDesignChat from '@tdesign-vue-next/chat'
+
 import '@/styles/index.scss' // global css
 import '@/styles/font.css'
 
@@ -37,6 +45,7 @@ import '@/permission' // permission control
 import { useSettingsStore } from '@/store/modules/settings'
 import { useConfigStore } from '@/store/modules/config'
 import { useUserStore } from '@/store/modules/user'
+import { useComponentsStore } from '@/store/modules/components'
 
 async function bootstrap() {
   const app = createApp(App)
@@ -45,6 +54,13 @@ async function bootstrap() {
 
   // set ElementPlus lang to EN
   app.use(ElementPlus, { locale })
+
+  // Register TDesign core + chat components globally. The chat bundle
+  // re-exports some primitives internally but we also need <t-drawer>
+  // / <t-textarea> / <t-button> etc. in the AI agent shell, so install
+  // the core library first.
+  app.use(TDesign)
+  app.use(TDesignChat)
 
   const pinia = createPinia()
   app.use(pinia)
@@ -63,6 +79,12 @@ async function bootstrap() {
   // restore session for the active endpoint from localStorage
   const userStore = useUserStore(pinia)
   userStore.loadSessionForActiveEndpoint()
+
+  // load optional component switch states once at startup; the result is
+  // cached in the components store and consumed by feature-gated UI
+  // elements (AI agent, terminal, monitor dashboards, logs, etc.)
+  const componentsStore = useComponentsStore(pinia)
+  await componentsStore.load()
 
   // probe all endpoints in the background; results are written to healthMap
   // and consumed by the login page / sidebar dropdowns
