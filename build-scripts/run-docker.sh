@@ -36,6 +36,12 @@ rm -rf /etc/qcos/prefect/profiles.toml
 if [ ! -f /etc/qcos/postgres/postgresql.conf ]; then
   cp -r ${QCOS_LOCAL_SRC_DIR}/etc/postgres/postgresql.conf /etc/qcos/postgres/
 fi
+# copy the first-boot initdb scripts (pgvector extension) that
+# docker-compose-postgres.yaml mounts into /docker-entrypoint-initdb.d.
+# Always refresh so updated SQL reaches existing deployments; the
+# postgres entrypoint only runs them when PGDATA is empty.
+mkdir -p /etc/qcos/postgres/initdb
+cp -f ${QCOS_LOCAL_SRC_DIR}/etc/postgres/initdb/*.sql /etc/qcos/postgres/initdb/
 
 cd ${build_scripts_dir}
 
@@ -97,6 +103,16 @@ if [ "${DB_BACKEND,,}" = "postgres" ]; then
   # setup qcos
   echo "Setting up qcos user and database..."
   setup_db_user "qcos" "${QCOS_DATABASE_PASSWORD}" "qcos"
+
+  # Initialize pgvector extension for AI Agent RAG (requires superuser).
+  # CREATE EXTENSION is per-database: register it in the "qcos" database
+  # (where ai_document_chunks.embedding lives), not just the default
+  # "postgres" maintenance database the bare `psql -U postgres` connects
+  # to. The i8j9k0l1m2n3 alembic migration also issues this statement,
+  # so this is a pre-migration convenience, not the only safety net.
+  echo "Initializing pgvector extension..."
+  docker exec postgres psql -U postgres -d qcos -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || \
+    echo "  Note: pgvector extension may already exist or image does not include it"
 
   echo "PostgreSQL setup completed successfully"
 fi

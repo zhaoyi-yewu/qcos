@@ -1,0 +1,50 @@
+# ----------------------------------------------------------------------
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
+#
+# qcos is licensed under Mulan PSL v2.
+# You can use this software according to the terms and conditions
+# of the Mulan PSL v2.
+# You may obtain a copy of Mulan PSL v2 at:
+#         http://license.coscl.org.cn/MulanPSL2
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+# See the Mulan PSL v2 for more details.
+# ----------------------------------------------------------------------
+
+version: '3'
+services:
+  qcos-text-embeddings:
+    image: ${REGISTRY}${TEI_IMAGE_NAME}:${TEI_IMAGE_VERSION}
+    container_name: qcos-text-embeddings
+    restart: unless-stopped
+    network_mode: "host"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    environment:
+      - TZ=Asia/Shanghai
+      - OMP_NUM_THREADS=${TEI_OMP_NUM_THREADS:-8}
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+    volumes:
+      - tei-cache:/root/.cache/huggingface
+      - /apps/ai/models/bge-m3:/models/bge-m3:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    command:
+      - '--model-id'
+      - '${TEI_MODEL_ID:-BAAI/bge-m3}'
+      - '--port'
+      - '${TEI_LISTEN_PORT:-8080}'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  tei-cache:
+    driver: local

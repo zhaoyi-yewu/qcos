@@ -66,15 +66,18 @@ RUN set -e && \
     if [ -n "${NODE_BIN_MIRROR}" ]; then \
       echo "Installing nodejs: ${NODE_BIN_MIRROR}" ; \
       node_tar_file=$(basename ${NODE_BIN_MIRROR}) ; \
-      wget -q ${NODE_BIN_MIRROR} -O /tmp/${node_tar_file} && \
-      tar xzf /tmp/${node_tar_file} -C /usr/local --strip-components=1 && \
+      wget --progress=dot:giga ${NODE_BIN_MIRROR} -O /tmp/${node_tar_file} && \
+      # The nodejs dist tarball is .tar.xz (XZ-compressed), so use -J
+      # (xz) instead of -z (gzip). GNU tar auto-detects with plain
+      # 'tar xf' but being explicit avoids surprises on older tars.
+      tar xJf /tmp/${node_tar_file} -C /usr/local --strip-components=1 && \
       rm -f /tmp/${node_tar_file} && \
       node --version && \
       npm --version ; \
     fi \
     && \
 # install npm packages
-    rm -rf ${app_dir}/dist ${app_dir}/node_modules ${app_dir}/package-lock.json && \
+    rm -rf ${app_dir}/dist ${app_dir}/node_modules && \
     npm cache clean --force && \
     if [ -n "${NPM_MIRROR}" ]; then npm config set registry ${NPM_MIRROR}; fi && \
     # install packages: dev build needs devDependencies
