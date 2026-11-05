@@ -674,7 +674,7 @@ def _qiskit_circuit_signature(circuit) -> tuple:
     )
 
 
-def _qiskit_to_lqcloud_circuit(quantum_circuit_type, source):
+def _qiskit_to_lqcloud_circuit(quantum_circuit_type: type, source) -> object:
     """Translate a topology-routed, terminally measured Qiskit circuit."""
     circuit = quantum_circuit_type(source.num_qubits, source.num_clbits)
     measurements: list[tuple[int, int]] = []

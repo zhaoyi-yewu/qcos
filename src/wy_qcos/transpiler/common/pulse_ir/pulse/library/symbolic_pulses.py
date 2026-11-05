@@ -198,7 +198,7 @@ class LambdifiedExpression:
 
         return self.lambda_funcs[key]
 
-    def __set__(self, instance, value):
+    def __set__(self, instance, value) -> None:
         key = hash(value)
         if key not in self.lambda_funcs:
             params: list[Any] = []

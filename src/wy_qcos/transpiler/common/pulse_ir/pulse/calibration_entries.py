@@ -270,7 +270,7 @@ class CallableDef(CalibrationEntry):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Define an empty entry."""
         self._definition: Callable[..., Schedule | ScheduleBlock] | None = None
         self._signature: inspect.Signature | None = None

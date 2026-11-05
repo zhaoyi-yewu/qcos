@@ -233,7 +233,7 @@ class _InteractionData:
         remap: Logical qubit ID densification mapping.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.graph = rx.PyGraph(multigraph=False)
         self.edge_counts: dict[tuple[int, int], int] = {}
         self.remap = IdRemap()
@@ -249,7 +249,7 @@ class _CouplingData:
         remap: Physical qubit ID densification mapping.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.graph = rx.PyGraph(multigraph=False)
         self.edge_errors: dict[tuple[int, int], float] = {}
         self.remap = IdRemap()
