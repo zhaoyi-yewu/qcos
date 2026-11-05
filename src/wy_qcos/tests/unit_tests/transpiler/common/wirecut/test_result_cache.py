@@ -113,7 +113,12 @@ class TestSubcircuitResultCache:
     def test_cache_key(self):
         job_info = {"data": {"backend": "dev1"}}
         key = SubcircuitResultCache.cache_key("qasm_code", job_info)
-        assert key.startswith(f"{SUBCIRCUIT_RESULT_CACHE_PREFIX}:")
+        # The cache key format is "<prefix>/<sha256-hex>" - the
+        # separator is a forward slash (path-style), not a colon.
+        # The other test file at tests/unit_tests/transpiler/wirecut/
+        # test_result_cache.py:63 already asserts the slash form, so
+        # this assertion aligns with the implementation.
+        assert key.startswith(f"{SUBCIRCUIT_RESULT_CACHE_PREFIX}/")
         # Same input should produce same key
         key2 = SubcircuitResultCache.cache_key("qasm_code", job_info)
         assert key == key2

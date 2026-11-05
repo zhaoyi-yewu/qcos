@@ -163,8 +163,36 @@ class TestMetricsCrossCompare:
 
         RPC total_requests includes all requests since startup.
         Prometheus api_requests_total is a counter summed across all label
-        combinations. They should be equal.
+        combinations. They should track each other.
+
+        Strict equality is NOT achievable here because the two reads
+        happen sequentially, and the act of reading itself generates
+        new API traffic that lands in one source before the other:
+
+        1. ``_get_rpc_result(get_api_stats)`` increments the RPC
+           counter (this very RPC call counts as one API request).
+        2. ``_get_prometheus_metrics()`` then issues a GET /metrics
+           to the metrics server - this request is excluded from
+           Prometheus counter (see MetricsMiddleware.EXCLUDED_PATHS)
+           but DOES increment the RPC stats counter on the main API
+           server.
+
+        So we always see ``rpc_total >= prom_total`` with a small,
+        bounded drift. The test asserts that drift stays within a
+        tolerance window (default 8 requests) instead of requiring
+        strict equality, which would be flaky in any environment
+        where background heartbeats / health checks / concurrent
+        tests can squeeze extra API calls between the two reads.
         """
+        # Maximum tolerable drift between the two reads. Chosen to
+        # cover: 1) the get_api_stats RPC itself, 2) the /metrics
+        # scrape incrementing RPC but not Prometheus, 3) any
+        # background healthcheck / heartbeat that fires between the
+        # two reads. If drift grows beyond this, something else is
+        # wrong (e.g. a label cardinality leak) and the test should
+        # fail loudly.
+        MAX_ALLOWED_DRIFT = 8
+
         rpc_result = self._get_rpc_result(self.admin_client.get_api_stats)
         prom_metrics = self._get_prometheus_metrics()
 
@@ -175,8 +203,19 @@ class TestMetricsCrossCompare:
             for k, v in prom_metrics.items()
             if k.startswith(Constant.API_METRICS_REQUESTS_TOTAL + "{")
         )
-        assert rpc_total == prom_total, (
-            f"API total mismatch: RPC={rpc_total}, Prometheus sum={prom_total}"
+        drift = rpc_total - prom_total
+        # RPC must always be >= Prometheus: any reverse drift would
+        # indicate that some requests hit Prometheus but were not
+        # recorded in RPC stats, which is a real bug.
+        assert drift >= 0, (
+            f"Prometheus counted MORE requests than RPC: "
+            f"RPC={rpc_total}, Prometheus sum={prom_total}. "
+            "This indicates a counter leak in metrics_middleware."
+        )
+        assert drift <= MAX_ALLOWED_DRIFT, (
+            f"API total drift too large: RPC={rpc_total}, "
+            f"Prometheus sum={prom_total}, drift={drift} "
+            f"(max allowed {MAX_ALLOWED_DRIFT})"
         )
 
         assert (
