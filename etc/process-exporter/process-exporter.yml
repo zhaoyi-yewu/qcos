@@ -1,0 +1,24 @@
+# process-exporter configuration
+# Groups QCOS-related processes by cmdline regex patterns.
+# Docs: https://github.com/ncabatoff/process-exporter
+
+process_names:
+  - name: "qcos-api"
+    cmdline:
+      - 'python.*wy_qcos\.server'
+      - 'python.*api_server'
+  - name: "qcos-prefect-server"
+    cmdline:
+      - 'prefect.*server.*start'
+  - name: "qcos-prefect-worker"
+    cmdline:
+      - 'prefect.*worker.*start'
+  - name: "qcos-postgres"
+    cmdline:
+      - 'postgres'
+  - name: "qcos-redis"
+    cmdline:
+      - 'redis-server'
+  - name: "qcos-mcp-server"
+    cmdline:
+      - 'python.*mcp_server'

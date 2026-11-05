@@ -25,3 +25,15 @@ scrape_configs:
       - targets: ["${PROMETHEUS_TARGETS}"]
         labels:
           instance: "prometheus-server"
+
+  - job_name: "node"
+    static_configs:
+      - targets: ["${NODE_EXPORTER_TARGETS}"]
+        labels:
+          service: "host"
+
+  - job_name: "process"
+    static_configs:
+      - targets: ["${PROCESS_EXPORTER_TARGETS}"]
+        labels:
+          service: "qcos-processes"
