@@ -10,6 +10,7 @@
    build-run-k8s
    build-run-wheel
    config-run-webui
+   config-run-metrics
    build-docs
    security
    network-ports

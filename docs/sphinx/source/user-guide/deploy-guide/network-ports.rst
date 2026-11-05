@@ -56,6 +56,22 @@
      - 3000
      - HTTP
      - 监控可视化仪表盘，从 Prometheus 数据源展示 QCOS 运行指标与告警。
+   * - Node Exporter
+     - 9100
+     - HTTP
+     - 宿主机硬件 / 操作系统指标（CPU、内存、磁盘、网络、文件系统），供 Prometheus 抓取。
+   * - Process Exporter
+     - 9256
+     - HTTP
+     - 进程级指标（每个进程的 CPU / 内存 / IO），按 ``/etc/qcos/process-exporter/process-exporter.yml`` 匹配规则采集 QCOS 关键进程。
+   * - VictoriaLogs
+     - 9428
+     - HTTP
+     - 日志聚合存储与 LogsQL 查询接口；接收 Fluent Bit 推送的 QCOS 应用日志，默认保留 30 天。
+   * - Fluent Bit
+     - （无监听）
+     - TCP（出站）
+     - 日志采集与转发 agent；不监听入站端口，主动 tail ``/var/log/qcos`` 下日志并推送至 VictoriaLogs。
 
 .. note::
 
@@ -108,10 +124,17 @@ PostgreSQL
 监控组件
 ~~~~~~~~~
 
+监控栈通过 ``build-scripts/run-docker-metrics.sh`` 一键部署，详细说明见 :doc:`config-run-metrics`。
+
 - QCOS Metrics： ``etc/qcos/qcos.toml`` 的 ``[METRICS_SERVER]`` 段，``METRICS_SERVER_LISTEN_PORT`` 默认 ``19400``。
 - Prometheus： ``.env`` 的 ``PROMETHEUS_LISTEN_PORT``，默认 ``9090``，抓取目标为 QCOS Metrics 端点。
 - Alertmanager： ``.env`` 的 ``ALERTMANAGER_LISTEN_PORT``，默认 ``9093``。
 - Grafana： ``.env`` 的 ``GRAFANA_LISTEN_PORT``，默认 ``3000``，默认管理员密码由 ``GRAFANA_ADMIN_PASSWORD`` 配置。
+- Node Exporter： ``.env`` 的 ``NODE_EXPORTER_LISTEN_PORT``，默认 ``9100``，采集宿主机硬件 / 操作系统指标。
+- Process Exporter： ``.env`` 的 ``PROCESS_EXPORTER_LISTEN_PORT``，默认 ``9256``，采集进程级 CPU / 内存 / IO 指标。
+- VictoriaLogs： ``.env`` 的 ``VICTORIALOGS_LISTEN_PORT``，默认 ``9428``，
+  存储日志数据；保留期由 ``VICTORIALOGS_RETENTION`` 控制，默认 ``30d``。
+- Fluent Bit： 不监听入站端口，作为出站 agent 把 ``/var/log/qcos`` 下的日志推送给 VictoriaLogs。
 
 驱动 Mock API Server 端口
 -------------------------
@@ -173,5 +196,8 @@ QCOS 的系统测试（ ``src/wy_qcos/tests/system_tests/`` ）为每个驱动�
 
 - **API 与 WebUI**：对外暴露 ``18400``、``18401``，建议在生产环境启用 HTTPS 并通过反向代理或防火墙限制来源 IP。
 - **内部服务**：Prefect（``4200``）、Redis（``6379``）、PostgreSQL（``5432``）为内部组件，建议仅监听 ``127.0.0.1`` 或内网地址，禁止对公网开放。
-- **监控组件**：Prometheus（``9090``）、Alertmanager（``9093``）、Grafana（``3000``）建议仅在内网开放，Grafana 如需对外访问应配置强密码并启用 HTTPS。
+- **监控组件**：Prometheus（``9090``）、Alertmanager（``9093``）、
+  Grafana（``3000``）、Node Exporter（``9100``）、Process Exporter
+  （``9256``）、VictoriaLogs（``9428``）建议仅在内网开放；Grafana
+  如需对外访问应配置强密码并启用 HTTPS。
 - **SSL 配置**：API 服务启用 HTTPS 的证书生成与配置步骤详见 :doc:`security`。

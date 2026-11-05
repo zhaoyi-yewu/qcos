@@ -1,7 +1,7 @@
-反向代理（Reverse Proxy）
-====================================
+反向代理
+=====================
 
-本章节介绍 QCOS 操作系统中反向代理模块的设计与实现。
+本章节介绍 QCOS 操作系统中反向代理（Reverse Proxy）模块的设计与实现。
 
 概述
 --------------------
@@ -36,6 +36,9 @@ QCOS 在运维侧依赖若干独立部署的组件（Prometheus、Alertmanager �
    * - ``/v1/proxy/alertmanager/*``
      - ``http://127.0.0.1:9093``
      - Alertmanager HTTP API（``/api/v2/alerts``、``/api/v2/silences``、``/api/v2/status`` 等）
+   * - ``/v1/proxy/victorialogs/*``
+     - ``http://127.0.0.1:9428``
+     - VictoriaLogs HTTP API（``/select/logsql/query`` 等 LogsQL 查询入口）
 
 **路径剥离规则**：FastAPI 的 ``app.mount("/v1/proxy/<service>", sub_app)``
 会自动剥掉挂载前缀，子应用收到的 ``path`` 即为上游所需的相对路径。例如：
@@ -60,6 +63,8 @@ QCOS 在运维侧依赖若干独立部署的组件（Prometheus、Alertmanager �
    PROMETHEUS_BASE_URL = "http://127.0.0.1:9090"
    # Alertmanager base URL. Empty string disables the proxy endpoint.
    ALERTMANAGER_BASE_URL = "http://127.0.0.1:9093"
+   # VictoriaLogs base URL. Empty string disables the proxy endpoint.
+   VICTORIALOGS_BASE_URL = "http://127.0.0.1:9428"
 
 配置模型
 ~~~~~~~~~~~~~~~~~~~~
@@ -82,6 +87,10 @@ QCOS 在运维侧依赖若干独立部署的组件（Prometheus、Alertmanager �
      - ``str``
      - ``http://127.0.0.1:9093``
      - Alertmanager 上游地址
+   * - ``VICTORIALOGS_BASE_URL``
+     - ``str``
+     - ``http://127.0.0.1:9428``
+     - VictoriaLogs 上游地址
 
 空字符串语义：**该上游不启用**，对应的 mount 逻辑跳过，不影响其他路由。
 
@@ -131,7 +140,7 @@ QCOS 在运维侧依赖若干独立部署的组件（Prometheus、Alertmanager �
 - **方法**：原样透传（GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS）
 - **路径**：剥离 ``/v1/proxy/<service>`` 前缀后透传
 - **Query string**：原样透传
-- **Body**：流式透传（不缓冲、不改写）
+- **Body**：在内存中缓冲后透传（上限 10 MB，见下文"请求体上限"）
 - **Headers**：
 
   - **剔除**\ （hop-by-hop，RFC 2616 §13.5.1 + Host）：
@@ -152,8 +161,31 @@ QCOS 在运维侧依赖若干独立部署的组件（Prometheus、Alertmanager �
 ~~~~~~~~~~~~~~~~~~~~
 
 - **Status code**：原样返回
-- **Headers**：剔除 hop-by-hop 头后原样返回；``Content-Length`` 由 ASGI 服务器根据 body 重新计算
-- **Body**：流式返回（不缓冲、不改写）
+- **Headers**：剔除 hop-by-hop 头后原样返回；额外剔除
+  ``Content-Length`` 与 ``Content-Encoding``
+
+  - ``Content-Length``：代理以 ASGI chunked 流重新分帧（直到最后一个空
+    chunk 才置 ``more_body=False``），原始长度不再适用，改由 uvicorn
+    对下游连接输出 ``Transfer-Encoding: chunked``
+  - ``Content-Encoding``：httpx 迭代
+    ``httpx.Response.aiter_bytes`` 时会透明解压 gzip / deflate /
+    br 响应体；若保留上游的 ``Content-Encoding: gzip`` 头而发送
+    *已解压* 的内容，浏览器会把纯 JSON 当 gzip 解压而报错
+    （Firefox ``NS_ERROR_INVALID_CONTENT_ENCODING`` / Chrome 白屏），
+    因此必须一并剔除
+
+- **Body**：以 64 KiB chunk 流式返回（不缓冲、不改写）。使用
+  ``client.stream()`` 避免将上游大响应（如 Prometheus
+  ``query_range`` 的多序列结果，可达数 MB）整体缓冲在代理内存中，
+  高并发下防止内存尖峰
+
+请求体上限
+~~~~~~~~~~~~~~~~~~~~
+
+入站请求体在内存中缓冲，硬上限 **10 MB**
+（``_MAX_BODY_SIZE``）。超限返回 **413** + JSON 错误体。
+Prometheus / Alertmanager 请求体（静默定义、告警 POST 等）通常远小于
+1 MB，10 MB 足够宽松；该上限同时防御无界 body 的 DoS 攻击。
 
 错误处理
 ~~~~~~~~~~~~~~~~~~~~
@@ -171,6 +203,9 @@ QCOS 在运维侧依赖若干独立部署的组件（Prometheus、Alertmanager �
    * - 未通过 JWT 校验
      - 401
      - ``{"jsonrpc":"2.0","error":{"code":-32001,...}}``
+   * - 请求体超过 10 MB
+     - 413
+     - ``{"detail":"Request body exceeds ... bytes"}``
    * - 上游连接失败 / DNS 失败 / 拒绝连接
      - 502
      - ``{"detail":"Bad gateway: <reason>"}``
@@ -307,6 +342,8 @@ QCOS 在 JSON-RPC 入口暴露 ``get_proxy_health`` 方法。
      - ``/-/healthy``
    * - alertmanager
      - ``/-/healthy``
+   * - victorialogs
+     - ``/health``
 
 **探测策略**
 
@@ -332,28 +369,65 @@ QCOS 在 JSON-RPC 入口暴露 ``get_proxy_health`` 方法。
    ├── proxy_auth.py         # ProxyJwtMiddleware
    └── proxy_registry.py     # PROXY_TARGETS 注册表
 
-``PROXY_TARGETS`` 是一个列表，元素为 ``(path_segment, config_getter)``：
+``PROXY_TARGETS`` 是 ``ProxyTarget`` frozen dataclass 的列表，每个元素
+含三个字段：
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - 字段
+     - 说明
+   * - ``path_segment``
+     - 挂载路径段（如 ``"prometheus"`` → ``/v1/proxy/prometheus``）
+   * - ``config_getter``
+     - 零参 callable，返回配置的上游 base URL；返回空串即禁用挂载。
+       getter 在调用期解析，便于单元测试 monkeypatch ``Config.PROXY``
+       属性而无需重新 import 模块
+   * - ``health_path``
+     - 上游轻量探测路径，供 ``get_proxy_health`` RPC 探活
 
 .. code-block:: python
 
-   PROXY_TARGETS = [
-       ("prometheus",   lambda: Config.PROXY.PROMETHEUS_BASE_URL),
-       ("alertmanager", lambda: Config.PROXY.ALERTMANAGER_BASE_URL),
+   @dataclass(frozen=True)
+   class ProxyTarget:
+       path_segment: str
+       config_getter: Callable[[], str]
+       health_path: str
+
+   PROXY_TARGETS: list[ProxyTarget] = [
+       ProxyTarget("prometheus",
+                   lambda: Config.PROXY.PROMETHEUS_BASE_URL,
+                   "/-/healthy"),
+       ProxyTarget("alertmanager",
+                   lambda: Config.PROXY.ALERTMANAGER_BASE_URL,
+                   "/-/healthy"),
+       ProxyTarget("victorialogs",
+                   lambda: Config.PROXY.VICTORIALOGS_BASE_URL,
+                   "/health"),
    ]
 
 ``fastapi_server.py`` 启动时遍历该注册表，对每个 **非空** base_url 调用：
 
 .. code-block:: python
 
-   app.mount(
-       f"/v1/proxy/{path_segment}",
-       ProxyJwtMiddleware(create_reverse_proxy_app(path_segment, base_url)),
-   )
+   for _target in PROXY_TARGETS:
+       _base_url = _target.config_getter()
+       if not _base_url:
+           continue  # empty URL -> endpoint disabled
+       app.mount(
+           f"/v1/proxy/{_target.path_segment}",
+           ProxyJwtMiddleware(
+               create_reverse_proxy_app(_target.path_segment, _base_url)
+           ),
+       )
+
+单个目标 mount 失败只记录 warning 并跳过，不影响其余路由。
 
 新增一个被代理服务只需两步：
 
 1. 在 ``Config.PROXY`` 添加对应 ``XXX_BASE_URL`` 字段（默认 ``""``）
-2. 在 ``PROXY_TARGETS`` 追加一条 ``(path_segment, getter)``
+2. 在 ``PROXY_TARGETS`` 追加一条 ``ProxyTarget``
 
 无需改动 ``fastapi_server.py``。
 
@@ -372,6 +446,12 @@ QCOS 在 JSON-RPC 入口暴露 ``get_proxy_health`` 方法。
      - QCOS 自身暴露给 Prometheus 抓取的指标端点，独立 HTTP 服务（默认 :19400），**与本代理无关**
    * - MCP ``/v1/ai/mcp``
      - 与本代理同级的另一个 REST 风格挂载点，鉴权模式相同
+   * - MCP proxy 工具 / AI Agent
+     - MCP server 在 ``/v1/proxy/<service>`` 之上封装了
+       ``qcos_proxy_query_metrics`` / ``qcos_proxy_list_alerts`` /
+       ``qcos_proxy_query_logs`` 等工具（见 mcp_server.py），并经
+       in-process 桥接暴露给内置 AI Agent，使 AI 助手可直接回答
+       指标 / 告警 / 日志类问题
 
 使用示例
 --------------------
@@ -404,6 +484,11 @@ QCOS 在 JSON-RPC 入口暴露 ``get_proxy_health`` 方法。
        "comment":  "maintenance window"
      }' \
      'http://192.168.0.1:18400/v1/proxy/alertmanager/api/v2/silences'
+
+   # 5. VictoriaLogs LogsQL 查询（最近 1 小时含 error 的日志）
+   curl -G -H "Authorization: Bearer $TOKEN" \
+     --data-urlencode "query=_time:1h AND error" \
+     'http://192.168.0.1:18400/v1/proxy/victorialogs/select/logsql/query'
 
 限制与注意事项
 --------------------
