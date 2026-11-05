@@ -61,16 +61,17 @@
                       </div>
                     </template>
                     <div v-show="!isSourceCollapsed(index)" class="source-code-body">
-                      <!-- Highlighted HTML produced by monaco.editor.colorize
-                           and sanitized through sanitizeHighlightedHtml() (only
-                           mtk* spans survive; every other node is stripped or
-                           unwrapped), so v-html has no XSS surface. Falls back
-                           to v-text plain rendering before colorize resolves. -->
-                      <pre
-                        v-if="highlightedHtmlMap[index]"
-                        class="code-block"
-                      ><code v-html="highlightedHtmlMap[index]" /></pre>
-                      <pre v-else class="code-block"><code v-text="item.code" /></pre>
+                      <!-- Read-only Monaco viewer, the same MonacoEditor
+                           component used by qasm.vue / qubo.vue. Monaco renders
+                           tokenized code itself, so this page uses no v-html. -->
+                      <monaco-editor
+                        :value="item.code"
+                        :language="item.language"
+                        :theme="item.language === 'json' ? 'vs' : 'qasm-light'"
+                        :options="sourceEditorOptions"
+                        :model-path="'job-' + jobId + '-source-' + index"
+                        :show-status-bar="false"
+                      />
                     </div>
                   </el-card>
                   <br>
@@ -145,76 +146,17 @@ import {
   getQuboPrettyPrint
 } from '@/common/library'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
-// Register the OpenQASM monarch tokenizer (guarded against double
-// registration inside) so colorize() can tokenize qasm sources.
-import { registerQasmLanguage } from '@/components/MonacoEditor/qasm-language'
+import MonacoEditor from '@/components/MonacoEditor/index.vue'
 // editor.api keeps the bundle lean and does NOT include language
 // contributions; pull the JSON contribution so qubo/json sources get
-// highlighted too.
+// highlighted too. The QASM monarch tokenizer and its themes are
+// registered by the MonacoEditor component itself on import.
 import 'monaco-editor/esm/vs/language/json/monaco.contribution'
-
-registerQasmLanguage(monaco)
-
-/**
- * Sanitize HTML produced by monaco.editor.colorize.
- *
- * colorize() only emits <span class="mtk*"> wrappers around escaped text,
- * but this is a defensive allow-list pass so v-html keeps zero XSS
- * surface even if monaco's output ever changes: only <span> elements
- * whose class matches /^mtk[\w-]*$/ survive; every other element is
- * unwrapped (children preserved, tags/attributes dropped); text nodes
- * and <br> pass through; comments are removed.
- *
- * @param {string} html - raw colorize() output
- * @returns {string} sanitized html safe for v-html
- */
-function sanitizeHighlightedHtml(html) {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const walk = node => {
-    // Iterate over a static copy: the loop below mutates childNodes.
-    const children = Array.from(node.childNodes)
-    for (const child of children) {
-      if (child.nodeType === Node.COMMENT_NODE) {
-        child.remove()
-        continue
-      }
-      if (child.nodeType === Node.TEXT_NODE) {
-        continue
-      }
-      if (child.nodeType !== Node.ELEMENT_NODE) {
-        child.remove()
-        continue
-      }
-      // Recurse first so nested allow-listed spans stay intact while
-      // nested disallowed nodes are unwrapped by the parent walk.
-      walk(child)
-      const cls = child.getAttribute('class') || ''
-      if (child.tagName === 'SPAN' && /^mtk[\w-]*$/.test(cls)) {
-        // Keep the span but strip every attribute except the class.
-        for (const attr of Array.from(child.attributes)) {
-          if (attr.name !== 'class') {
-            child.removeAttribute(attr.name)
-          }
-        }
-      } else if (child.tagName === 'BR') {
-        // <br> is emitted by colorize for line breaks; keep it bare.
-        for (const attr of Array.from(child.attributes)) {
-          child.removeAttribute(attr.name)
-        }
-      } else {
-        // Disallowed element: unwrap (replace with its children).
-        child.replaceWith(...child.childNodes)
-      }
-    }
-  }
-  walk(doc.body)
-  return doc.body.innerHTML
-}
 
 export default {
   name: 'TaskDetail',
   components: {
+    MonacoEditor,
     ArrowUp,
     ArrowDown
   },
@@ -246,11 +188,7 @@ export default {
       rightItems: [],
       // collapse state for source code / result cards (expanded by default)
       collapsedSource: {},
-      collapsedResult: {},
-      // Sanitized highlight HTML per source-code index, produced by
-      // monaco.editor.colorize (see watch on sourceCodeList). Keyed by
-      // index into sourceCodeList so template lookups are cheap.
-      highlightedHtmlMap: {}
+      collapsedResult: {}
     }
   },
   computed: {
@@ -264,7 +202,7 @@ export default {
       if (typeof sourceCode === 'string') {
         try {
           sourceCode = JSON.parse(sourceCode)
-        } catch (e) {
+        } catch {
           return [{
             name: '代码[0]',
             code: sourceCode,
@@ -290,6 +228,16 @@ export default {
         })
       }
       return list
+    },
+    // Read-only options for the source-code Monaco viewers, merged over
+    // the MonacoEditor component's defaults. alwaysConsumeMouseWheel:
+    // false lets the page keep scrolling once the viewer viewport
+    // reaches its end.
+    sourceEditorOptions() {
+      return {
+        readOnly: true,
+        scrollbar: { alwaysConsumeMouseWheel: false }
+      }
     }
   },
   watch: {
@@ -297,26 +245,6 @@ export default {
       if (newVal !== this.jobId) {
         this.jobId = newVal
         this.fetchTaskDetails()
-      }
-    },
-    // Regenerate the sanitized highlight HTML whenever the source list
-    // changes (initial load, route switch). colorize() is async; the
-    // template falls back to v-text plain rendering until each result
-    // lands in highlightedHtmlMap.
-    sourceCodeList: {
-      immediate: true,
-      handler(list) {
-        this.highlightedHtmlMap = {}
-        if (!Array.isArray(list)) return
-        list.forEach((item, index) => {
-          monaco.editor.colorize(item.code, item.language, {})
-            .then(html => {
-              this.highlightedHtmlMap[index] = sanitizeHighlightedHtml(html)
-            })
-            .catch(() => {
-              // Leave the slot empty: the template renders plain text.
-            })
-        })
       }
     }
   },
@@ -463,9 +391,8 @@ export default {
       return 'qasm'
     },
 
-    // Source code is rendered via `v-text`, which escapes HTML natively.
-    // The previous monaco.editor.colorize + v-html pipeline was removed
-    // to eliminate the v-html XSS surface flagged by static analysis.
+    // Source code is rendered by the read-only MonacoEditor viewer (see
+    // template); no v-html is used anywhere on this page.
 
     // Collapse toggles for source code and result cards (expanded by default)
     isSourceCollapsed(index) {
@@ -631,8 +558,11 @@ export default {
 :deep(.source-code-card .el-card__body) {
   padding: 0;
 }
+/* fixed height so the monaco viewer can lay out; the viewer scrolls
+   internally and releases the wheel to the page at the viewport end */
 .source-code-body {
-  overflow-x: auto;
+  height: 420px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 /* result card */
@@ -646,19 +576,4 @@ export default {
   padding: 12px 15px;
 }
 
-/* code block rendered by monaco.editor.colorize (mtk* classes are styled
-   by monaco's injected theme CSS) */
-.code-block {
-  background-color: #f8f9fa;
-  padding: 12px 15px;
-  margin: 0;
-  font-family: 'Consolas', 'Courier New', Courier, monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-x: auto;
-}
-.code-block code {
-  white-space: pre;
-  font-family: inherit;
-}
 </style>

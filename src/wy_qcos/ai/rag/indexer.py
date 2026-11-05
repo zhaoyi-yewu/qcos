@@ -27,7 +27,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from wy_qcos.ai.db import get_async_session_factory
@@ -44,7 +44,18 @@ async def index_directory(
     batch_size: int = 32,
     recreate: bool = False,
 ):
-    """Index all documentation files under one or more directories."""
+    """Index all documentation files under one or more directories.
+
+    Args:
+        docs_dirs: One or more Sphinx documentation source directories.
+        batch_size: Number of chunks to embed per batch.
+        recreate: When True, delete all existing rows from
+            ``ai_document_chunks`` before re-indexing (a full
+            refresh). The table structure itself is untouched -
+            schema is owned by Alembic migrations. When False
+            (default), rows are upserted by ``chunk_id`` and stale
+            entries from removed source files are left in place.
+    """
     factory = get_async_session_factory()
     async with factory() as session:
         # The ai_document_chunks table is created via Alembic migration.
@@ -57,6 +68,14 @@ async def index_directory(
                 "Run 'alembic upgrade head' first."
             )
             raise RuntimeError("ai_document_chunks table missing") from exc
+
+        if recreate:
+            logger.info(
+                "recreate=True: deleting all existing rows from "
+                "ai_document_chunks before re-indexing"
+            )
+            await session.execute(delete(AiDocumentChunk))
+            await session.commit()
 
         # Collect all .md and .rst files from every docs dir
         files = []
@@ -160,7 +179,9 @@ def parse_args(argv: list[str] | None = None):
     parser.add_argument(
         "--recreate",
         action="store_true",
-        help="Drop and recreate the ai_document_chunks table",
+        help="Delete all existing rows from ai_document_chunks and "
+        "rebuild the index from scratch. The table structure is "
+        "unchanged (schema is owned by Alembic migrations).",
     )
     parser.add_argument(
         "--batch-size",

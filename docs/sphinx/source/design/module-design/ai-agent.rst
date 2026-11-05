@@ -239,7 +239,9 @@ RAG 设计
   warning 并返回空上下文，对话降级为无 RAG 继续进行，**不中断聊天**
 - **图片消息跳过 RAG**：vision 分支不检索文档
 - **离线索引**：``bin/qcos-ai-indexer.py`` 独立脚本一次性入库，
-  不占用 FastAPI 进程
+  不占用 FastAPI 进程；``--recreate`` 可先 ``DELETE`` 清空
+  ``ai_document_chunks`` 再走 embedding+upsert 全量重建（表结构
+  由 Alembic 迁移管理，本函数不动 schema）
 
 会话管理
 --------------------
@@ -535,6 +537,7 @@ AI.AGENT 配置项
    │   ├── chunker.py      # Markdown / RST 文档切分
    │   ├── embedder.py     # OpenAI 兼容 embedding 客户端
    │   ├── indexer.py      # 离线批量入库（bin/qcos-ai-indexer.py）
+   │   │                   # --recreate 可先清空再全量重建
    │   └── retriever.py    # pgvector top-K 检索
    └── tools/
        └── mcp_tools.py    # MCP 工具桥接 + qcos_read_file
