@@ -1867,6 +1867,249 @@ async def qcos_restart_worker(worker_name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Reverse-proxy (observability) tools
+#
+# These tools proxy to upstream observability services mounted under
+# ``/v1/proxy/<name>`` (Prometheus / Alertmanager / VictoriaLogs). They
+# bypass the JSON-RPC layer and speak plain HTTP to the same FastAPI
+# process, reusing the JWT token via ``_get_auth_headers``.
+# ---------------------------------------------------------------------------
+
+
+async def _proxy_get(
+    service: str,
+    path: str,
+    params: dict | None = None,
+    timeout: float = 30.0,
+) -> dict | str:
+    """Send a GET request to a proxy upstream via the QCOS API server.
+
+    Args:
+        service: Proxy mount name (``prometheus`` / ``alertmanager`` /
+            ``victorialogs``).
+        path: Upstream path, e.g. ``/api/v1/query``.
+        params: Optional URL query parameters.
+        timeout: Total request timeout in seconds.
+
+    Returns:
+        Parsed JSON dict when the response is JSON, otherwise the raw
+        text body.
+
+    Raises:
+        RuntimeError: On network error or non-2xx response.
+    """
+    url = f"{_QCOS_BASE_URL}/v1/proxy/{service}{path}"
+    headers = _get_auth_headers()
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.get(url, params=params, headers=headers)
+        if resp.status_code >= 400:
+            raise RuntimeError(
+                f"Proxy upstream '{service}' returned HTTP "
+                f"{resp.status_code}: {resp.text[:500]}"
+            )
+        ctype = resp.headers.get("content-type", "")
+        if "application/json" in ctype:
+            return resp.json()
+        return resp.text
+    except httpx.RequestError as e:
+        raise RuntimeError(
+            f"Failed to reach proxy upstream '{service}': {e}"
+        ) from e
+
+
+@mcp.tool()
+async def qcos_proxy_get_health() -> str:
+    """Get health status of all reverse-proxy upstream services.
+
+    Probes every registered upstream (Prometheus / Alertmanager /
+    VictoriaLogs) via its lightweight health endpoint and returns a
+    per-target status summary. Equivalent to ``qcos-cli
+    get-proxy-health``.
+
+    Returns:
+        JSON string with a ``targets`` array. Each item has: name,
+        status (online/offline/disabled), enabled, healthy, latency_ms,
+        base_url, path, detail.
+    """
+    result = await _jsonrpc_call("/v1/metrics", "get_proxy_health", None)
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool()
+async def qcos_proxy_query_metrics(
+    query: str,
+    time: str = "",
+    timeout: str = "",
+) -> str:
+    """Run an instant PromQL query against the proxied Prometheus.
+
+    Args:
+        query: PromQL expression, e.g. ``up`` or
+            ``rate(http_requests_total[5m])``.
+        time: Optional RFC3339 or Unix timestamp evaluation time.
+            Empty means "now".
+        timeout: Optional evaluation timeout (e.g. ``30s``).
+
+    Returns:
+        JSON string with the raw Prometheus ``/api/v1/query`` response
+        (``status`` + ``data.resultType`` + ``data.result``).
+    """
+    params: dict[str, str] = {"query": query}
+    if time:
+        params["time"] = time
+    if timeout:
+        params["timeout"] = timeout
+    result = await _proxy_get("prometheus", "/api/v1/query", params)
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool()
+async def qcos_proxy_query_metrics_range(
+    query: str,
+    start: str,
+    end: str,
+    step: str = "60s",
+) -> str:
+    """Run a range PromQL query against the proxied Prometheus.
+
+    Useful for trend / chart data.
+
+    Args:
+        query: PromQL expression, e.g. ``rate(cpu_usage[5m])``.
+        start: Start timestamp (RFC3339 or Unix seconds).
+        end: End timestamp (RFC3339 or Unix seconds).
+        step: Query resolution step (e.g. ``15s``, ``1m``, ``5m``).
+
+    Returns:
+        JSON string with the raw Prometheus ``/api/v1/query_range``
+        response (matrix result type).
+    """
+    params = {
+        "query": query,
+        "start": start,
+        "end": end,
+        "step": step,
+    }
+    result = await _proxy_get(
+        "prometheus", "/api/v1/query_range", params, timeout=60.0
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool()
+async def qcos_proxy_list_metric_names() -> str:
+    """List all metric names known to the proxied Prometheus.
+
+    Returns:
+        JSON string with the label-values response for ``__name__``;
+        the ``data`` field is a list of metric name strings.
+    """
+    result = await _proxy_get("prometheus", "/api/v1/label/__name__/values")
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool()
+async def qcos_proxy_list_alerts(
+    status: str = "",
+    silenced: bool | None = None,
+    inhibited: bool | None = None,
+) -> str:
+    """List current alerts from the proxied Alertmanager.
+
+    Args:
+        status: Optional filter: ``firing`` / ``pending`` / ``resolved``.
+            Empty means no filter.
+        silenced: Optional filter by silenced state. None means no filter.
+        inhibited: Optional filter by inhibited state. None means no filter.
+
+    Returns:
+        JSON string with the Alertmanager ``/api/v2/alerts`` response
+        (a list of alert objects with labels/annotations/status).
+    """
+    params: dict[str, str] = {}
+    if status:
+        params["filter"] = f'status="{status}"'
+    if silenced is not None:
+        params["silenced"] = "true" if silenced else "false"
+    if inhibited is not None:
+        params["inhibited"] = "true" if inhibited else "false"
+    result = await _proxy_get("alertmanager", "/api/v2/alerts", params)
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool()
+async def qcos_proxy_list_silences() -> str:
+    """List silence rules from the proxied Alertmanager.
+
+    Returns:
+        JSON string with the Alertmanager ``/api/v2/silences`` response
+        (a list of silence objects with matchers, startsAt, endsAt,
+        createdBy, comment).
+    """
+    result = await _proxy_get("alertmanager", "/api/v2/silences")
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool()
+async def qcos_proxy_query_logs(
+    query: str,
+    limit: int = 100,
+    start: str = "",
+    end: str = "",
+) -> str:
+    """Run a LogsQL query against the proxied VictoriaLogs.
+
+    Args:
+        query: LogsQL expression, e.g. ``_time:1h AND error`` or
+            ``log.level:ERROR``.
+        limit: Max number of log entries to return (default 100).
+        start: Optional RFC3339 start timestamp.
+        end: Optional RFC3339 end timestamp.
+
+    Returns:
+        JSON or NDJSON string with the VictoriaLogs query response.
+        Each entry contains ``_msg``, ``_time``, ``_stream`` and any
+        additional fields captured by the ingester.
+    """
+    params: dict[str, str | int] = {"query": query, "limit": limit}
+    if start:
+        params["start"] = start
+    if end:
+        params["end"] = end
+    result = await _proxy_get(
+        "victorialogs", "/select/logsql/query", params, timeout=60.0
+    )
+    if isinstance(result, str):
+        return result
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+@mcp.tool()
+async def qcos_proxy_log_tail(lines: int = 100) -> str:
+    """Fetch the most recent log lines from the proxied VictoriaLogs.
+
+    A convenience wrapper around :func:`qcos_proxy_query_logs` that
+    selects everything and asks for the latest ``lines`` entries.
+
+    Args:
+        lines: Number of most-recent log lines to return
+            (default 100, max 1000).
+
+    Returns:
+        Log entries as a JSON / NDJSON string, newest first.
+    """
+    capped = max(1, min(int(lines), 1000))
+    params: dict[str, str | int] = {"query": "*", "limit": capped}
+    result = await _proxy_get(
+        "victorialogs", "/select/logsql/query", params, timeout=60.0
+    )
+    if isinstance(result, str):
+        return result
+    return json.dumps(result, ensure_ascii=False, indent=2, default=str)
+
+
+# ---------------------------------------------------------------------------
 # Resources
 # ---------------------------------------------------------------------------
 
