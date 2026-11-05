@@ -15,7 +15,7 @@ device_log_file = "/var/log/qcos/device_spinq_gemini.log"
 # mgr_log_file = /var/log/qcos/device_mgr_spinq_gemini.log
 
 # [Optional] log format string
-# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s | %(message)s"
 
 # [Optional] log rotate, max size (MB). default: 10MB
 # log_rotate_max_size_mb = 10
