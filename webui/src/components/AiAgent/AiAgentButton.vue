@@ -14,24 +14,40 @@
 -->
 
 <template>
-  <el-tooltip content="AI 智能体" placement="bottom" :show-after="200">
-    <span class="ai-agent-button" @click="onClick">
+  <t-tooltip
+    :content="enabled ? 'AI 助手 (Ctrl+/)' : '功能未开启'"
+    placement="bottom"
+    :show-after="200"
+  >
+    <span
+      class="ai-agent-button"
+      :class="{ 'is-disabled': !enabled }"
+      @click="onClick"
+    >
       <svg-icon icon-class="ai-robot" class="ai-agent-icon" />
     </span>
-  </el-tooltip>
+  </t-tooltip>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useAiAgentStore } from '@/store/modules/aiAgent'
+import { useComponentsStore } from '@/store/modules/components'
 
 defineOptions({ name: 'AiAgentButton' })
 
+const store = useAiAgentStore()
+const componentsStore = useComponentsStore()
+
+const enabled = computed(() => componentsStore.aiAgentEnabled)
+
 function onClick() {
-  ElMessage({
-    message: '开发中，敬请期待',
-    type: 'info',
-    grouping: true
-  })
+  if (!enabled.value) {
+    ElMessage.warning('AI 助手功能未开启')
+    return
+  }
+  store.open()
 }
 </script>
 
@@ -51,12 +67,12 @@ function onClick() {
   padding: 0;
   cursor: pointer;
   border-radius: 4px;
-  color: var(--el-text-color-regular, #5a5e66);
+  color: var(--td-text-color-secondary, #5a5e66);
   transition: background 0.2s, color 0.2s;
 
   &:hover {
-    background: var(--el-fill-color-light, rgba(0, 0, 0, 0.04));
-    color: var(--el-color-primary);
+    background: var(--td-bg-color-container-hover, rgba(0, 0, 0, 0.04));
+    color: var(--td-brand-color);
   }
 
   /*
