@@ -100,6 +100,11 @@ class JobCleaner:
             await self._clean_orphaned_device_flows()
             await self._clean_prefect_flows()
             await self._clean_expired_job_flows()
+        except asyncio.CancelledError:
+            # Graceful shutdown: the scheduler is stopping and cancelled
+            # this run. Not an error - swallow so apscheduler's default
+            # executor does not log it as an ERROR traceback.
+            logger.debug("Job clean cancelled during shutdown")
         except Exception:
             logger.error("Job clean failed", exc_info=True)
 
