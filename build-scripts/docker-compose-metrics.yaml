@@ -25,8 +25,11 @@ services:
     tmpfs:
       - /tmp
     volumes:
-      - /etc/prometheus:/etc/prometheus
+      - /etc/qcos/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
+    environment:
+      - TZ=Asia/Shanghai
+      - METRICS_TARGET=${METRICS_TARGET:-host.docker.internal:19400}
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -35,8 +38,7 @@ services:
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.listen-address=:${PROMETHEUS_lPORT:-9090}'
-    environment:
-      - METRICS_TARGET=${METRICS_TARGET:-host.docker.internal:19400}
+
   alertmanager:
     image: ${REGISTRY}${ALERTMANAGER_IMAGE_NAME}:${ALERTMANAGER_IMAGE_VERSION}
     container_name: alertmanager
@@ -48,8 +50,10 @@ services:
     tmpfs:
       - /tmp
     volumes:
-      - /etc/alertmanager/:/etc/alertmanager/
+      - /etc/qcos/alertmanager/:/etc/alertmanager/
       - alertmanager-data:/alertmanager-data
+    environment:
+      - TZ=Asia/Shanghai
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager-data'
@@ -61,6 +65,7 @@ services:
       options:
         max-size: "50m"
         max-file: "10"
+
   grafana:
     image: ${REGISTRY}${GRAFANA_IMAGE_NAME}:${GRAFANA_IMAGE_VERSION}
     container_name: grafana
@@ -73,7 +78,7 @@ services:
       - /tmp
     volumes:
       - grafana-data:/var/lib/grafana
-      - /etc/grafana/provisioning:/etc/grafana/provisioning
+      - /etc/qcos/grafana/provisioning:/etc/grafana/provisioning
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-123456}
       - GF_USERS_ALLOW_SIGN_UP=false
@@ -82,10 +87,118 @@ services:
     depends_on:
       - prometheus
 
+  node-exporter:
+    image: ${REGISTRY}${NODE_EXPORTER_IMAGE_NAME}:${NODE_EXPORTER_IMAGE_VERSION}
+    container_name: node-exporter
+    restart: unless-stopped
+    network_mode: "host"
+    pid: "host"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      # The bind is recursive (docker default for -v), so host sub-mounts
+      # (/var, /boot, /home, /apps ...) are copied into /rootfs; rslave
+      # additionally propagates host mounts created after start, keeping
+      # the exporter's view in sync with the host `df` over time.
+      - /:/rootfs:ro,rslave
+    environment:
+      - TZ=Asia/Shanghai
+    command:
+      # The three --path.* flags are what align the filesystem view with
+      # the host `df`: the collector reads the HOST mount table from
+      # <procfs>/1/mounts and runs statfs() on <rootfs>/<mountpoint>.
+      # Without --path.rootfs statfs() hits the container's own
+      # overlayfs, so the exporter published a single '/' series whose
+      # labels (device=/dev/mapper/vg0-lv_root, fstype=xfs) came from the
+      # host mount table but whose size/avail were the container
+      # overlay's numbers (the 2.8T docker disk) - host filesystems such
+      # as the 100G root (91% full) and /boot never showed up. With the
+      # flags enabled, mountpoints, fstypes, sizes and avail bytes all
+      # match the host `df` exactly.
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      # The mount table now comes from the host: hide pseudo mount points
+      # and container-runtime internals only (upstream defaults); docker /
+      # kubelet data roots themselves stay visible, like in `df`.
+      - '--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+|var/lib/containers/storage/.+)($$|/)'
+      # Filesystem TYPE filtering relies on the built-in default of
+      # --collector.filesystem.fs-types-exclude. Note the exact flag
+      # spelling: "fstype-exclude" does NOT exist in v1.12.1 and crashes
+      # the exporter ("unknown long flag"). The default regex already
+      # drops every pseudo fs type (tmpfs/cgroup/devtmpfs/...) while
+      # never matching vfat/ext4/xfs, so the reported series match the
+      # host `df` exactly, including the vfat /boot/efi.
+      - '--web.listen-address=:9100'
+
+  process-exporter:
+    image: ${REGISTRY}${PROCESS_EXPORTER_IMAGE_NAME}:${PROCESS_EXPORTER_IMAGE_VERSION}
+    container_name: process-exporter
+    restart: unless-stopped
+    network_mode: "host"
+    pid: "host"
+    volumes:
+      - /etc/qcos/process-exporter:/config:ro
+    environment:
+      - TZ=Asia/Shanghai
+    command:
+      - '-config.path=/config/process-exporter.yml'
+      - '-web.listen-address=:9256'
+
+  victorialogs:
+    image: ${REGISTRY}${VICTORIALOGS_IMAGE_NAME}:${VICTORIALOGS_IMAGE_VERSION}
+    container_name: victorialogs
+    restart: unless-stopped
+    network_mode: "host"
+    command:
+      - '-storageDataPath=/victoria-logs-data'
+      - '-httpListenAddr=:${VICTORIALOGS_LISTEN_PORT:-9428}'
+      # 30-day retention, matching Prometheus. Override via the
+      # VICTORIALOGS_RETENTION env var (e.g. 90d) if needed.
+      - '-retentionPeriod=${VICTORIALOGS_RETENTION:-30d}'
+    volumes:
+      - victorialogs-data:/victoria-logs-data
+    environment:
+      - TZ=Asia/Shanghai
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  fluentbit:
+    image: ${REGISTRY}${FLUENTBIT_IMAGE_NAME}:${FLUENTBIT_IMAGE_VERSION}
+    container_name: fluentbit
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - /etc/qcos/fluent-bit:/fluent-bit/etc:ro
+      - /var/log/qcos:/var/log/qcos:ro
+    # fluent-bit parses naive timestamps in the container's local
+    # timezone. The image defaults to UTC, which re-labels Beijing
+    # wall-clock times as UTC and stamps events 8 hours ahead of real
+    # time - the WebUI time-window query then finds nothing. The
+    # container-level TZ env is authoritative (the [SERVICE] TZ
+    # directive only works on fluent-bit >= 2.0 with tzdata present).
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      - victorialogs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
 volumes:
   prometheus-data:
     driver: local
   alertmanager-data:
     driver: local
   grafana-data:
+    driver: local
+  victorialogs-data:
     driver: local

@@ -34,3 +34,11 @@ services:
       - /var/log/qcos:/var/log/qcos
       - /var/qcos/db/postgresql:/var/lib/postgresql
       - /var/qcos/backup/database:/var/qcos/backup/database
+      # First-boot initialization scripts. The postgres docker entrypoint
+      # executes everything in /docker-entrypoint-initdb.d/ exactly once,
+      # when PGDATA is still empty. 01-enable-pgvector.sql registers the
+      # pgvector extension (image pgvector/pgvector ships the binaries);
+      # IF NOT EXISTS makes reruns harmless. Deployments whose data
+      # directory predates this file also get the extension via the
+      # `docker exec` statement in run-docker.sh.
+      - /etc/qcos/postgres/initdb:/docker-entrypoint-initdb.d:ro

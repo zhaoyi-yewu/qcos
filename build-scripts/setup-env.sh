@@ -72,3 +72,8 @@ if [ "${DEV,,}" = "true" ]; then
   export SANDBOX_IMAGE_VERSION="dev"
   export QCOS_WEBUI_IMAGE_NAME="${QCOS_WEBUI_IMAGE_NAME}-dev"
 fi
+
+# Node.js binary mirror default value
+if [ -z "${NODE_BIN_MIRROR}" ]; then
+  export NODE_BIN_MIRROR="https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.xz"
+fi
