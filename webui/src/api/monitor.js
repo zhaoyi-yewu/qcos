@@ -16,6 +16,33 @@
 import { jsonrpcRequest, httpRequest } from '@/api/jsonrpc'
 import request from '@/utils/request'
 import { useConfigStore } from '@/store/modules/config'
+import { useComponentsStore } from '@/store/modules/components'
+
+/**
+ * Guard that rejects when the Prometheus reverse proxy is disabled.
+ *
+ * @returns {Promise|null} rejected promise when disabled, null when enabled
+ */
+function ensurePrometheusEnabled() {
+  const componentsStore = useComponentsStore()
+  if (!componentsStore.proxyPrometheusEnabled) {
+    return Promise.reject(new Error('Prometheus 监控功能未开启'))
+  }
+  return null
+}
+
+/**
+ * Guard that rejects when the Alertmanager reverse proxy is disabled.
+ *
+ * @returns {Promise|null} rejected promise when disabled, null when enabled
+ */
+function ensureAlertmanagerEnabled() {
+  const componentsStore = useComponentsStore()
+  if (!componentsStore.proxyAlertmanagerEnabled) {
+    return Promise.reject(new Error('Alertmanager 告警功能未开启'))
+  }
+  return null
+}
 
 /**
  * Query health status of reverse-proxy upstream services
@@ -103,6 +130,8 @@ function httpRequestAbsolute(url, params = null) {
  * @returns {Promise} axios response promise
  */
 export function queryPrometheus(query, time = null) {
+  const rejected = ensurePrometheusEnabled()
+  if (rejected) return rejected
   const params = { query }
   if (time !== null) {
     params.time = time
@@ -127,6 +156,8 @@ export function queryPrometheus(query, time = null) {
  * @returns {Promise} axios response promise
  */
 export function queryPrometheusRange(query, start, end, step = '15s') {
+  const rejected = ensurePrometheusEnabled()
+  if (rejected) return rejected
   const params = { query, start, end, step }
   const direct = resolvePrometheusUrl('/api/v1/query_range')
   if (direct) {
@@ -149,6 +180,8 @@ export function queryPrometheusRange(query, start, end, step = '15s') {
  * @returns {Promise} axios response promise
  */
 export function getAlerts(filter = {}) {
+  const rejected = ensureAlertmanagerEnabled()
+  if (rejected) return rejected
   const params = {
     active: filter.active !== undefined ? filter.active : true,
     silenced: filter.silenced !== undefined ? filter.silenced : false,
@@ -171,6 +204,8 @@ export function getAlerts(filter = {}) {
  * @returns {Promise} axios response promise
  */
 export function getAlertGroups() {
+  const rejected = ensureAlertmanagerEnabled()
+  if (rejected) return rejected
   const direct = resolveAlertmanagerUrl('/api/v2/alerts/groups')
   if (direct) {
     return httpRequestAbsolute(direct, {})
@@ -201,7 +236,9 @@ export const PROMQL = {
   apiDurationP95: 'histogram_quantile(0.95, sum(rate(api_request_duration_bucket[5m])) by (le))',
   apiDurationP50: 'histogram_quantile(0.50, sum(rate(api_request_duration_bucket[5m])) by (le))',
   apiInProgress: 'api_requests_in_progress',
-  apiEndpointCalls: 'sum by (endpoint) (increase(api_requests_total[1h]))'
+  apiEndpointCalls: 'sum by (endpoint) (increase(api_requests_total[1h]))',
+  // API 总请求数（范围查询，用于总览折线图）
+  apiTotalRequests: 'sum(api_requests_total) or vector(0)'
 }
 
 // ==================== 数据解析工具 ====================
