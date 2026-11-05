@@ -15,120 +15,491 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import json
-import pytest
-from unittest.mock import patch
+import sys
+from types import ModuleType
+from unittest.mock import patch, Mock
 
-from wy_qcos.common.library import Library
+import pytest
+
+from wy_qcos.common.constant import Constant
+from wy_qcos.device.device import Device
+from wy_qcos.driver.driver_base import DriverBase
+from wy_qcos.driver.spinq import driver_spinq_base
+from wy_qcos.driver.spinq.driver_spinq_base import DriverSpinqBase
 from wy_qcos.driver.spinq.spinq_nmr.driver_spinq_gemini import (
     DriverSpinQGemini,
 )
 
-spinq_gemini = DriverSpinQGemini()
-spinq_gemini._nmr_conn_str = (
-    f"http://{spinq_gemini.default_nmr_host}:{spinq_gemini.default_nmr_port}"
-)
+
+# -- helpers (duplicated from test_driver_spinq_base for isolation) -----
+
+
+class MockOp:
+    def __init__(self, name, targets, arg_value=None):
+        self.name = name
+        self.targets = list(targets)
+        self.arg_value = list(arg_value) if arg_value else []
+
+
+class MockPlatform:
+    def __init__(
+        self,
+        code="gemini_vp",
+        max_bitnum=2,
+        coupling_map=None,
+        available=True,
+    ):
+        self.code = code
+        self.max_bitnum = max_bitnum
+        self.coupling_map = coupling_map or [(0, 1), (1, 0)]
+        self.machine_count = 1 if available else 0
+        self.active_qubits = [0, 1] if available else []
+
+    def available(self):
+        return self.machine_count > 0
+
+
+class MockSpinQCloudResult:
+    def __init__(self, counts=None, probabilities=None, shots=None):
+        self.counts = counts
+        self.probabilities = probabilities
+        self._shots = shots
+
+
+class MockSession:
+    def __init__(self, status_code=200, json_data=None):
+        self._json_data = json_data or {}
+        self._response = Mock()
+        self._response.status_code = status_code
+        if status_code >= 400:
+            self._response.raise_for_status.side_effect = Exception(
+                f"HTTP {status_code}"
+            )
+        else:
+            self._response.raise_for_status = Mock()
+        self._response.json = Mock(return_value=self._json_data)
+
+    def get(self, url):
+        return self._response
+
+
+class MockApiClient:
+    def __init__(self, session=None):
+        self._session = session or MockSession()
+
+
+class MockCloudBackend:
+    def __init__(self, platforms=None, session=None, execute_result=None):
+        self.platforms = platforms or [MockPlatform()]
+        self._api_client = MockApiClient(session=session)
+        self._execute_result = execute_result
+
+    def refresh_remote_platforms(self):
+        pass
+
+    def get_platform(self, code):
+        for p in self.platforms:
+            if p.code == code:
+                return p
+        raise ValueError(f"Platform '{code}' not found")
+
+    def execute(self, ir, config):
+        if self._execute_result is not None:
+            return self._execute_result
+        return MockSpinQCloudResult(counts={"00": 512, "11": 512})
+
+
+def _make_mock_spinqit_modules():
+    class GateObj:
+        def __init__(self, name):
+            self.name = name
+
+    gate_names = [
+        "I",
+        "H",
+        "X",
+        "Y",
+        "Z",
+        "Rx",
+        "Ry",
+        "Rz",
+        "P",
+        "T",
+        "Td",
+        "S",
+        "Sd",
+        "CX",
+        "CY",
+        "CZ",
+        "SWAP",
+        "CCX",
+        "U",
+    ]
+    gates = {n: GateObj(n) for n in gate_names}
+
+    class MockCircuit:
+        def __init__(self):
+            self.gates = []
+            self.num_qubits = 0
+
+        def allocateQubits(self, n):
+            self.num_qubits = n
+
+        def __lshift__(self, item):
+            self.gates.append(item)
+
+    class MockCompiler:
+        def compile(self, circ, mode=0):
+            return Mock()
+
+    class MockSpinQCloudConfig:
+        def configure_platform(self, code):
+            pass
+
+        def configure_task(self, name, desc):
+            pass
+
+        def configure_shots(self, shots):
+            pass
+
+    spinqit_mod = ModuleType("spinqit")
+    for k, v in gates.items():
+        setattr(spinqit_mod, k, v)
+    spinqit_mod.get_compiler = Mock(return_value=MockCompiler())
+    model_mod = ModuleType("spinqit.model")
+    model_mod.Circuit = MockCircuit
+    backend_mod = ModuleType("spinqit.backend")
+    backend_mod.get_spinq_cloud = Mock()
+    backend_mod.SpinQCloudConfig = MockSpinQCloudConfig
+    client_mod = ModuleType("spinqit.backend.client")
+    client_mod.__path__ = []
+    spinq_client_mod = ModuleType("spinqit.backend.client.spinq_client")
+    spinq_client_mod.HOST = "http://cloud.spinq.com"
+    spinq_session_mod = ModuleType("spinqit.backend.client.spinq_session")
+
+    class MockSpinQSession:
+        def __init__(self):
+            pass
+
+    spinq_session_mod.SpinQSession = MockSpinQSession
+    client_mod.spinq_client = spinq_client_mod
+    spinq_backend_mod = ModuleType("spinqit.backend.spinq_backend")
+    spinq_backend_mod.SpinQCloudConfig = MockSpinQCloudConfig
+    return {
+        "spinqit": spinqit_mod,
+        "spinqit.model": model_mod,
+        "spinqit.backend": backend_mod,
+        "spinqit.backend.client": client_mod,
+        "spinqit.backend.client.spinq_client": spinq_client_mod,
+        "spinqit.backend.client.spinq_session": spinq_session_mod,
+        "spinqit.backend.spinq_backend": spinq_backend_mod,
+    }
+
+
+_MOCK_SPINQIT = _make_mock_spinqit_modules()
+
+
+# -- module-level fixtures -------------------------------------------------
+
+driver_gemini = DriverSpinQGemini()
+job_id = "00000000-0000-4000-8000-000000000003"
+num_qubits = 2
+data_type = DriverBase.DATA_TYPE_GATE_SEQUENCE
+shots = 1024
 
 
 @pytest.mark.driver
 class TestDriverSpinQGemini:
+    """Unit tests for DriverSpinQGemini (platform=gemini_vp, max_qubits=2)."""
+
+    # -- subclass defaults ------------------------------------------------
+
+    def test_inherits_from_base(self):
+        assert isinstance(driver_gemini, DriverSpinqBase)
+
+    def test_default_platform(self):
+        assert driver_gemini._platform == "gemini_vp"
+
+    def test_max_qubits(self):
+        assert driver_gemini.max_qubits == 2
+
+    def test_tech_type(self):
+        assert driver_gemini.tech_type == Constant.TECH_TYPE_NMR
+
+    def test_supported_basis_gates(self):
+        expected = [
+            Constant.SINGLE_QUBIT_GATE_H,
+            Constant.SINGLE_QUBIT_GATE_I,
+            Constant.SINGLE_QUBIT_GATE_X,
+            Constant.SINGLE_QUBIT_GATE_Y,
+            Constant.SINGLE_QUBIT_GATE_Z,
+            Constant.SINGLE_QUBIT_GATE_U,
+            Constant.SINGLE_QUBIT_GATE_RX,
+            Constant.SINGLE_QUBIT_GATE_RY,
+            Constant.SINGLE_QUBIT_GATE_RZ,
+            Constant.TWO_QUBIT_GATE_CX,
+            Constant.TWO_QUBIT_GATE_CZ,
+        ]
+        assert driver_gemini.supported_basis_gates == expected
+
+    def test_supported_transpilers(self):
+        assert Constant.TRANSPILER_CMSS in driver_gemini.supported_transpilers
+        assert (
+            Constant.TRANSPILER_HIGH_PERFORMANCE_CMSS
+            in driver_gemini.supported_transpilers
+        )
+
+    def test_enable_circuit_aggregation(self):
+        assert driver_gemini.enable_circuit_aggregation is True
+
+    # -- lifecycle --------------------------------------------------------
+
     def test_init_driver(self):
-        assert spinq_gemini.init_driver() is None
+        assert driver_gemini.init_driver() is None
+
+    def test_close_driver(self):
+        driver_gemini._cloud_backend = Mock()
+        assert driver_gemini.close_driver() is None
+        assert driver_gemini._cloud_backend is None
+
+    def test_cancel(self):
+        assert driver_gemini.cancel("job-1") is None
+
+    # -- convert_results (inherited) -------------------------------------
+
+    def test_convert_results_with_counts(self):
+        result = MockSpinQCloudResult(counts={"00": 512, "11": 512})
+        results = driver_gemini.convert_results(result)
+        assert results == {"00": 512, "11": 512}
+
+    def test_convert_results_with_probabilities(self):
+        result = MockSpinQCloudResult(
+            probabilities={"00": 0.5, "11": 0.5}, shots=1024
+        )
+        results = driver_gemini.convert_results(result)
+        assert results == {"00": 512, "11": 512}
+
+    def test_convert_results_none(self):
+        with pytest.raises(ValueError, match="no result"):
+            driver_gemini.convert_results(None)
+
+    def test_convert_results_empty(self):
+        result = MockSpinQCloudResult()
+        with pytest.raises(ValueError, match="no counts or probabilities"):
+            driver_gemini.convert_results(result)
+
+    # -- convert_to_spinqit_circuit (inherited) --------------------------
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    def test_convert_circuit_h_and_cx(self):
+        ops = [MockOp("h", [0]), MockOp("cx", [0, 1])]
+        circ = driver_gemini.convert_to_spinqit_circuit(ops, 2)
+        assert circ.num_qubits == 2
+        assert len(circ.gates) == 2
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    def test_convert_circuit_with_params(self):
+        ops = [MockOp("rx", [0], [3.14])]
+        circ = driver_gemini.convert_to_spinqit_circuit(ops, 1)
+        assert len(circ.gates) == 1
+        assert len(circ.gates[0]) == 3
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    def test_convert_circuit_skip_measure(self):
+        ops = [MockOp("h", [0]), MockOp("measure", [0])]
+        circ = driver_gemini.convert_to_spinqit_circuit(ops, 1)
+        assert len(circ.gates) == 1
+
+    # -- fetch_running_info ----------------------------------------------
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "fetch_configs")
+    def test_fetch_running_info_online(self, mock_fetch):
+        """Gemini online with null specs.
+
+        Gemini API returns singleQubitSpec=null, dualQubitsSpec=null,
+        curCouplingMap=null.  qubit_metrics should be generated from
+        maxBitNum; coupler_metrics from designedCouplingMap.
+        """
+        mock_fetch.return_value = {"qpu_configs": {"qubits": 2}}
+        session = MockSession(
+            json_data={
+                "status": 200,
+                "item": {
+                    "maxBitNum": 2,
+                    "designedCouplingMap": {"1": [2], "2": [1]},
+                    "curCouplingMap": None,
+                    "singleQubitSpec": None,
+                    "dualQubitsSpec": None,
+                    "latestReviseTime": "2026-11-02T03:16:59",
+                },
+            }
+        )
+        mock_backend = MockCloudBackend(
+            platforms=[MockPlatform(code="gemini_vp", available=True)],
+            session=session,
+        )
+        driver_gemini._cloud_backend = mock_backend
+        driver_gemini._platform = "gemini_vp"
+        driver_gemini._machine_code = "Gemini-pro-1"
+        driver_gemini._host = "https://example.com/api"
+
+        info = driver_gemini.fetch_running_info()
+
+        assert info["status"] == Device.DEVICE_STATUS_ONLINE
+        assert info["available_qubits"] == 2
+        calib = info["details"]["calibration"]
+        assert calib["last_updated_at"] == "2026-11-02T03:16:59"
+        assert len(calib["qubit_metrics"]) == 2
+        assert calib["qubit_metrics"][0]["qubit_id"] == 0
+        assert calib["qubit_metrics"][1]["qubit_id"] == 1
+        assert "t1" not in calib["qubit_metrics"][0]
+        assert "frequency" not in calib["qubit_metrics"][0]
+        assert len(calib["coupler_metrics"]) == 1
+        assert calib["coupler_metrics"][0]["qubits"] == [0, 1]
+        assert "cz_fidelity" not in calib["coupler_metrics"][0]
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "fetch_configs")
+    def test_fetch_running_info_offline(self, mock_fetch):
+        mock_fetch.return_value = {"qpu_configs": {"qubits": 2}}
+        mock_backend = MockCloudBackend(
+            platforms=[MockPlatform(code="gemini_vp", available=False)],
+        )
+        driver_gemini._cloud_backend = mock_backend
+        driver_gemini._platform = "gemini_vp"
+
+        info = driver_gemini.fetch_running_info()
+
+        assert info["status"] == Device.DEVICE_STATUS_OFFLINE
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "fetch_configs")
+    def test_fetch_running_info_cloud_backend_none(self, mock_fetch):
+        mock_fetch.return_value = {"qpu_configs": {"qubits": 2}}
+        mock_backend = MockCloudBackend(
+            platforms=[MockPlatform(code="gemini_vp", available=True)],
+        )
+        driver_gemini._cloud_backend = None
+
+        def side_effect():
+            driver_gemini._cloud_backend = mock_backend
+            return {"qpu_configs": {"qubits": 2}}
+
+        mock_fetch.side_effect = side_effect
+        driver_gemini._platform = "gemini_vp"
+        driver_gemini._machine_code = "Gemini-pro-1"
+        driver_gemini._host = "https://example.com/api"
+
+        info = driver_gemini.fetch_running_info()
+
+        assert info["status"] == Device.DEVICE_STATUS_ONLINE
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "fetch_configs")
+    def test_fetch_running_info_fetch_configs_fail(self, mock_fetch):
+        mock_fetch.side_effect = Exception("Connection refused")
+        driver_gemini._cloud_backend = None
+
+        info = driver_gemini.fetch_running_info()
+
+        assert info["status"] == Device.DEVICE_STATUS_OFFLINE
+        assert info["details"] == {}
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "fetch_configs")
+    def test_fetch_running_info_spec_api_error(self, mock_fetch):
+        mock_fetch.return_value = {"qpu_configs": {"qubits": 2}}
+        session = MockSession(
+            json_data={"status": 500, "msg": "internal error"}
+        )
+        mock_backend = MockCloudBackend(
+            platforms=[
+                MockPlatform(
+                    code="gemini_vp",
+                    available=True,
+                    coupling_map=[(0, 1)],
+                ),
+            ],
+            session=session,
+        )
+        driver_gemini._cloud_backend = mock_backend
+        driver_gemini._platform = "gemini_vp"
+        driver_gemini._machine_code = "Gemini-pro-1"
+        driver_gemini._host = "https://example.com/api"
+
+        info = driver_gemini.fetch_running_info()
+
+        assert info["status"] == Device.DEVICE_STATUS_ONLINE
+        assert info["available_qubits"] == 2
+        calib = info["details"]["calibration"]
+        assert len(calib["qubit_metrics"]) == 2
+        assert calib["qubit_metrics"][0]["qubit_id"] == 0
+        assert len(calib["coupler_metrics"]) == 1
+        assert calib["coupler_metrics"][0]["qubits"] == [0, 1]
+
+    # -- run (end-to-end with mocks) -------------------------------------
 
     @pytest.mark.smoke
-    @patch.object(DriverSpinQGemini, "send_request_and_process_response")
-    def test_fetch_running_info(self, mock_send_request_and_process_response):
-        mock_send_request_and_process_response.return_value = (
-            True,
-            None,
-            {
-                "status": "online",
-                "details": {
-                    "calibration": {
-                        "step": 0.1,
-                        "shot": 800,
-                    },
-                    "device_options_info": {"shot_gap": 0},
-                },
-            },
-        )
-        dev_running_info = spinq_gemini.fetch_running_info()
-        assert dev_running_info["status"] == "online"
-        assert "details" not in dev_running_info
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "convert_results")
+    @patch.object(DriverSpinQGemini, "convert_to_spinqit_circuit")
+    def test_run(self, mock_convert_circuit, mock_convert_results):
+        mock_convert_circuit.return_value = Mock()
+        mock_convert_results.return_value = {"00": 512, "11": 512}
 
-    @patch.object(DriverSpinQGemini, "send_request_and_process_response")
-    def test_calibrate_deivce(self, mock_send_request_and_process_response):
-        mock_send_request_and_process_response.return_value = (
-            True,
-            None,
-            "calibrate device request msg receved",
-        )
-        data = "calibrate"
-        succ, err_msgs, result = spinq_gemini.calibrate_device(data)
-        assert succ is True
-        assert err_msgs is None
-        assert result == "calibrate device request msg receved"
+        mock_backend = MockCloudBackend()
+        driver_gemini._cloud_backend = mock_backend
+        driver_gemini._platform = "gemini_vp"
 
-    @patch.object(DriverSpinQGemini, "send_request_and_process_response")
-    def test_set_device_options(self, mock_send_request_and_process_response):
-        mock_send_request_and_process_response.return_value = (
-            True,
-            None,
-            "set device options request msg receved",
-        )
-        data = "set device options"
-        succ, err_msgs, result = spinq_gemini.set_device_options(data)
-        assert succ is True
-        assert err_msgs is None
-        assert result == "set device options request msg receved"
+        data = {"index": 0, "source_code": "", "transpile_results": []}
+        driver_gemini.run(job_id, num_qubits, data, data_type, shots)
 
-    @patch.object(DriverSpinQGemini, "send_request_and_process_response")
-    def test_get_device_options(self, mock_send_request_and_process_response):
-        mock_send_request_and_process_response.return_value = (
-            True,
-            None,
-            "get device options request msg receved",
-        )
-        data = "set device options"
-        succ, err_msgs, result = spinq_gemini.get_device_options(data)
-        assert succ is True
-        assert err_msgs is None
-        assert result == "get device options request msg receved"
+        assert driver_gemini.get_progress() == 95
 
-    @patch.object(Library, "call_http_api")
-    def test_send_request_and_process_response(self, mock_call_http_api):
-        api_result = {
-            "status": 200,
-            "result": {
-                "status": "online",
-                "details": {
-                    "calibration": {
-                        "step": 0.1,
-                        "shot": 800,
-                    },
-                    "device_options_info": {"shot_gap": 0},
-                },
-            },
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "convert_to_spinqit_circuit")
+    def test_run_execute_returns_none(self, mock_convert_circuit):
+        mock_convert_circuit.return_value = Mock()
+        mock_backend = MockCloudBackend()
+        mock_backend.execute = Mock(return_value=None)
+        driver_gemini._cloud_backend = mock_backend
+        driver_gemini._platform = "gemini_vp"
+
+        data = {"index": 0, "source_code": "", "transpile_results": []}
+        with pytest.raises(ValueError, match="no result"):
+            driver_gemini.run(job_id, num_qubits, data, data_type, shots)
+
+    # -- fetch_configs with gemini defaults ------------------------------
+
+    @patch.dict(sys.modules, _MOCK_SPINQIT)
+    @patch.object(driver_spinq_base, "_spinqit_gates", None)
+    @patch.object(DriverSpinQGemini, "get_configs")
+    def test_fetch_configs_preserves_platform(self, mock_get_configs):
+        mock_get_configs.return_value = {
+            "username": "user",
+            "keyfile": "/path/to/key",
+            "host": "https://example.com/api",
         }
+        mock_backend = MockCloudBackend(
+            platforms=[MockPlatform(code="gemini_vp", max_bitnum=2)],
+        )
+        _MOCK_SPINQIT[
+            "spinqit.backend"
+        ].get_spinq_cloud.return_value = mock_backend
 
-        mock_call_http_api.return_value = (
-            200,
-            None,
-            json.dumps(api_result),
-            None,
-        )
-        data = "spinq_gemini"
-        url = f"{spinq_gemini._nmr_conn_str}/fetch_running_info"
-        func_name = "fetch_running_info"
-        succ, err_msgs, result = (
-            spinq_gemini.send_request_and_process_response(
-                data, url, func_name
-            )
-        )
-        assert succ is True
-        assert err_msgs == ""
-        assert "details" in result
-        assert result["details"]["calibration"]["step"] == 0.1
-        assert result["details"]["calibration"]["shot"] == 800
-        assert result["details"]["device_options_info"]["shot_gap"] == 0
-        assert result["status"] == "online"
+        configs = driver_gemini.fetch_configs()
+
+        assert configs["qpu_configs"]["qubits"] == 2
+        assert driver_gemini._platform == "gemini_vp"
+        assert driver_gemini._machine_code == "gemini_vp"
