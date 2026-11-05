@@ -133,7 +133,8 @@ const METRIC_LABELS = {
 
 export default {
   components: {
-    RefreshInterval
+    RefreshInterval,
+    DataLine
   },
   data() {
     return {
@@ -199,9 +200,13 @@ export default {
 .job-stats-container {
   display: flex;
   flex-direction: column;
-  background: var(--el-fill-color-light);
+  /* Match .app-main / PageTable background so no seam shows. */
+  background: var(--el-bg-color-page);
   padding: 20px;
   box-sizing: border-box;
+  /* Fill the scrollable area so the page background never peeks
+     through below short content. */
+  min-height: calc(100vh - 50px);
 }
 
 .header {

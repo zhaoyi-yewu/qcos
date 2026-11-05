@@ -453,6 +453,11 @@ export default {
   data() {
     return {
       loaded: false,
+      // remember the last selected file path, used to display the
+      // "上次选择" hint under the upload button and to power the
+      // copy-path button. This is UI state, not form data, so it
+      // lives at the data root instead of inside `taskData`.
+      lastFilePath: '',
       // expose CopyDocument icon to the template via data (markRaw); it is
       // only used as an :icon value, not as a component tag
       CopyDocument: markRaw(CopyDocument),
@@ -495,8 +500,6 @@ export default {
         circuitAggregation: 'none',
         quboTabs: [],
         activeQuboTab: 0,
-        // remember the last selected file name to display and copy
-        lastFilePath: '',
         profilingAll: false,
         profilingQueuing: false,
         profilingScheduling: false,
@@ -1269,7 +1272,7 @@ export default {
       if (!isEmptyStr(this.taskData.params)) {
         try {
           paramsObj = JSON.parse(this.taskData.params.trim())
-        } catch (error) {
+        } catch {
           this.$notify.error({
             title: '作业提交失败',
             message: '代码参数格式错误，请输入合法的 JSON',
@@ -1284,7 +1287,7 @@ export default {
       if (!isEmptyStr(this.taskData.options)) {
         try {
           optionsObj = JSON.parse(this.taskData.options.trim())
-        } catch (error) {
+        } catch {
           this.$notify.error({
             title: '作业提交失败',
             message: '作业选项格式错误，请输入合法的 JSON',
@@ -1303,7 +1306,7 @@ export default {
       if (this.taskData.scheduleMode === 'flavor' && !isEmptyStr(this.taskData.extraSpecs)) {
         try {
           extraSpecsObj = JSON.parse(normalizeJsonInput(this.taskData.extraSpecs))
-        } catch (error) {
+        } catch {
           this.$notify.error({
             title: '作业提交失败',
             message: '额外调度参数格式错误，请输入合法的 JSON',

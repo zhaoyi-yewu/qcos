@@ -61,9 +61,16 @@
                       </div>
                     </template>
                     <div v-show="!isSourceCollapsed(index)" class="source-code-body">
-                      <!-- v-text performs HTML escaping internally; pass the raw
-                           code so it renders as plain text (no XSS surface). -->
-                      <pre class="code-block"><code v-text="item.code" /></pre>
+                      <!-- Highlighted HTML produced by monaco.editor.colorize
+                           and sanitized through sanitizeHighlightedHtml() (only
+                           mtk* spans survive; every other node is stripped or
+                           unwrapped), so v-html has no XSS surface. Falls back
+                           to v-text plain rendering before colorize resolves. -->
+                      <pre
+                        v-if="highlightedHtmlMap[index]"
+                        class="code-block"
+                      ><code v-html="highlightedHtmlMap[index]" /></pre>
+                      <pre v-else class="code-block"><code v-text="item.code" /></pre>
                     </div>
                   </el-card>
                   <br>
@@ -138,6 +145,72 @@ import {
   getQuboPrettyPrint
 } from '@/common/library'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+// Register the OpenQASM monarch tokenizer (guarded against double
+// registration inside) so colorize() can tokenize qasm sources.
+import { registerQasmLanguage } from '@/components/MonacoEditor/qasm-language'
+// editor.api keeps the bundle lean and does NOT include language
+// contributions; pull the JSON contribution so qubo/json sources get
+// highlighted too.
+import 'monaco-editor/esm/vs/language/json/monaco.contribution'
+
+registerQasmLanguage(monaco)
+
+/**
+ * Sanitize HTML produced by monaco.editor.colorize.
+ *
+ * colorize() only emits <span class="mtk*"> wrappers around escaped text,
+ * but this is a defensive allow-list pass so v-html keeps zero XSS
+ * surface even if monaco's output ever changes: only <span> elements
+ * whose class matches /^mtk[\w-]*$/ survive; every other element is
+ * unwrapped (children preserved, tags/attributes dropped); text nodes
+ * and <br> pass through; comments are removed.
+ *
+ * @param {string} html - raw colorize() output
+ * @returns {string} sanitized html safe for v-html
+ */
+function sanitizeHighlightedHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const walk = node => {
+    // Iterate over a static copy: the loop below mutates childNodes.
+    const children = Array.from(node.childNodes)
+    for (const child of children) {
+      if (child.nodeType === Node.COMMENT_NODE) {
+        child.remove()
+        continue
+      }
+      if (child.nodeType === Node.TEXT_NODE) {
+        continue
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) {
+        child.remove()
+        continue
+      }
+      // Recurse first so nested allow-listed spans stay intact while
+      // nested disallowed nodes are unwrapped by the parent walk.
+      walk(child)
+      const cls = child.getAttribute('class') || ''
+      if (child.tagName === 'SPAN' && /^mtk[\w-]*$/.test(cls)) {
+        // Keep the span but strip every attribute except the class.
+        for (const attr of Array.from(child.attributes)) {
+          if (attr.name !== 'class') {
+            child.removeAttribute(attr.name)
+          }
+        }
+      } else if (child.tagName === 'BR') {
+        // <br> is emitted by colorize for line breaks; keep it bare.
+        for (const attr of Array.from(child.attributes)) {
+          child.removeAttribute(attr.name)
+        }
+      } else {
+        // Disallowed element: unwrap (replace with its children).
+        child.replaceWith(...child.childNodes)
+      }
+    }
+  }
+  walk(doc.body)
+  return doc.body.innerHTML
+}
 
 export default {
   name: 'TaskDetail',
@@ -173,7 +246,11 @@ export default {
       rightItems: [],
       // collapse state for source code / result cards (expanded by default)
       collapsedSource: {},
-      collapsedResult: {}
+      collapsedResult: {},
+      // Sanitized highlight HTML per source-code index, produced by
+      // monaco.editor.colorize (see watch on sourceCodeList). Keyed by
+      // index into sourceCodeList so template lookups are cheap.
+      highlightedHtmlMap: {}
     }
   },
   computed: {
@@ -220,6 +297,26 @@ export default {
       if (newVal !== this.jobId) {
         this.jobId = newVal
         this.fetchTaskDetails()
+      }
+    },
+    // Regenerate the sanitized highlight HTML whenever the source list
+    // changes (initial load, route switch). colorize() is async; the
+    // template falls back to v-text plain rendering until each result
+    // lands in highlightedHtmlMap.
+    sourceCodeList: {
+      immediate: true,
+      handler(list) {
+        this.highlightedHtmlMap = {}
+        if (!Array.isArray(list)) return
+        list.forEach((item, index) => {
+          monaco.editor.colorize(item.code, item.language, {})
+            .then(html => {
+              this.highlightedHtmlMap[index] = sanitizeHighlightedHtml(html)
+            })
+            .catch(() => {
+              // Leave the slot empty: the template renders plain text.
+            })
+        })
       }
     }
   },

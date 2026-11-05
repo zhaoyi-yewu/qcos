@@ -681,7 +681,8 @@ export default {
 .device-list-container {
   display: flex;
   flex-direction: column;
-  background: var(--el-fill-color-light);
+  /* Match .app-main / PageTable background so no seam shows. */
+  background: var(--el-bg-color-page);
   padding: 20px;
   box-sizing: border-box;
 }
