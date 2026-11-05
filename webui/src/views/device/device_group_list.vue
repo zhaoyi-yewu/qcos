@@ -83,7 +83,21 @@
         sortable="custom"
       >
         <template #default="scope">
-          {{ formatDeviceNames(scope.row.device_names) }}
+          <template v-if="Array.isArray(scope.row.device_names) && scope.row.device_names.length > 0">
+            <template v-for="(name, idx) in scope.row.device_names" :key="name">
+              <el-link
+                v-if="name !== DEVICE_ALL_VALUE"
+                type="primary"
+                underline="never"
+                @click="goToDeviceDetail(name)"
+              >
+                {{ name }}
+              </el-link>
+              <span v-else>{{ name }}</span>
+              <span v-if="idx < scope.row.device_names.length - 1">, </span>
+            </template>
+          </template>
+          <span v-else>-</span>
         </template>
       </filterable-table-column>
       <filterable-table-column
@@ -595,6 +609,13 @@ export default {
         return deviceNames.join(', ')
       }
       return String(deviceNames)
+    },
+
+    // Navigate to the device detail page for a concrete device name.
+    // The special "_all" sentinel is rendered as plain text and has no
+    // link target.
+    goToDeviceDetail(deviceName) {
+      this.$router.push({ name: 'DeviceDetails', params: { deviceName } })
     }
   }
 }
@@ -604,7 +625,8 @@ export default {
 .device-group-list-container {
   display: flex;
   flex-direction: column;
-  background: var(--el-fill-color-light);
+  /* Match .app-main / PageTable background so no seam shows. */
+  background: var(--el-bg-color-page);
   padding: 20px;
   box-sizing: border-box;
 }

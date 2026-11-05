@@ -43,7 +43,7 @@
         <p class="info-content">最大支持量子比特数目</p>
         <p class="info-content"><strong>100+</strong></p>
         <p class="info-content">支持多种量子硬件技术路线</p>
-        <p class="check-item">超导量子比特</p>
+        <p class="check-item">超导</p>
         <p class="check-item">中性原子</p>
         <p class="check-item">离子阱</p>
         <p class="check-item">光量子</p>
@@ -232,7 +232,7 @@ export default {
 
 .info-blocks {
   position: absolute;
-  top: calc(15vh + 40px);
+  top: calc(17vh + 60px);
   left: 50%;
   transform: translateX(-50%);
   width: 95%;
