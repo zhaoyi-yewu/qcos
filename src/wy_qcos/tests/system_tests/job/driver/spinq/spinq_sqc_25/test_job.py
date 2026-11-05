@@ -87,6 +87,11 @@ class TestJob:
             f"{cls.api_host}:{cls.api_port}"
         )
 
+        # Generate a test RSA keyfile for SpinQ Cloud auth if absent.
+        # The mock server does not verify the signature, so any valid
+        # RSA private key is sufficient.
+        StLibrary.ensure_spinq_test_keyfile()
+
         # Ensure the device is enabled and online so the scheduler
         # can pick up jobs.
         try:
