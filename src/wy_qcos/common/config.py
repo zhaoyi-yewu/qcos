@@ -16,6 +16,7 @@
 # ----------------------------------------------------------------------
 
 from collections import OrderedDict
+from pathlib import Path
 from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
@@ -101,6 +102,12 @@ class APIServerSection(BaseModel):
         le=65535,
         description="API server listen port (1024-65535)",
     )
+    CORS_ALLOWED_ORIGINS: list[str] = Field(
+        default=["*"],
+        description="Allowed CORS origins. Use ['*'] to allow any origin "
+        "(insecure, only for development). For production, list the exact "
+        "origins of the WebUI, e.g. ['https://qcos.example.com'].",
+    )
 
 
 class MetricsServerSection(BaseModel):
@@ -136,6 +143,10 @@ class ProxySection(BaseModel):
     ALERTMANAGER_BASE_URL: str = Field(
         default="http://127.0.0.1:9093",
         description="Alertmanager base URL ('' to disable proxy endpoint)",
+    )
+    VICTORIALOGS_BASE_URL: str = Field(
+        default="http://127.0.0.1:9428",
+        description="VictoriaLogs base URL ('' to disable proxy endpoint)",
     )
 
 
@@ -308,9 +319,9 @@ class LogSection(BaseModel):
         default="/var/log/qcos/qcos-api.log", description="API log file path"
     )
     LOG_FORMAT: str = Field(
-        default="%(asctime)s %(levelname)s %(filename)s:"
-        "%(lineno)s %(message)s",
-        description="Log message format",
+        default="%(asctime)s | %(levelname)s | "
+        "%(module)s:%(lineno)s | %(message)s",
+        description="Log message format (shared by all QCOS processes)",
     )
     LOG_ROTATE_MAX_SIZE_MB: int = Field(
         default=10, ge=1, description="Log file max size in MB before rotation"
@@ -490,6 +501,157 @@ class TerminalSection(BaseModel):
     )
 
 
+class AISection(BaseModel):
+    """AI global section (top-level [AI]).
+
+    Holds only the master switch that gates the whole AI feature
+    family. Per-subsystem settings live in dedicated nested sections:
+
+    - ``[AI.MCP_SERVER]`` -> :class:`AIMcpServerSection`
+    - ``[AI.AGENT]``      -> :class:`AIAgentSection`
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ENABLED: bool = Field(
+        default=True,
+        description="Global master switch for the AI feature family. "
+        "When false, both the MCP server endpoint (/v1/ai/mcp) and "
+        "the AI agent chat API (/v1/ai/) are disabled regardless of "
+        "their own ENABLED flags.",
+    )
+
+
+class AIMcpServerSection(BaseModel):
+    """AI MCP server section ([AI.MCP_SERVER]).
+
+    Controls exposure of the MCP endpoint that lets external LLM
+    clients (Claude Desktop, IDEs, ...) invoke QCOS tools.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ENABLED: bool = Field(
+        default=True,
+        description="Enable the MCP server endpoint (/v1/ai/mcp). "
+        "Effective only when [AI].ENABLED is also true.",
+    )
+
+
+class AIAgentSection(BaseModel):
+    """AI agent section ([AI.AGENT]) for QCOS AI chat assistant."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ENABLED: bool = Field(
+        default=True,
+        description="Master switch for the AI agent chat feature. "
+        "Effective only when [AI].ENABLED is also true.",
+    )
+    # LLM provider: openai_compatible | openai | anthropic
+    LLM_PROVIDER: str = Field(
+        default="openai_compatible",
+        description="LLM provider type",
+    )
+    LLM_BASE_URL: str = Field(
+        default="http://vllm:8000/v1",
+        description="LLM endpoint base URL (ignored for openai/anthropic)",
+    )
+    LLM_API_KEY: str = Field(
+        default="",
+        description="LLM API key (empty for unauthenticated endpoints)",
+        json_schema_extra={"sensitive": True},
+    )
+    LLM_MODEL: str = Field(
+        default="Qwen/Qwen2.5-72B-Instruct",
+        description="LLM model name passed to the provider",
+    )
+    LLM_TEMPERATURE: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=2.0,
+        description="LLM sampling temperature",
+    )
+    LLM_MAX_TOKENS: int = Field(
+        default=4096,
+        ge=1,
+        description="Max tokens for LLM response",
+    )
+    LLM_TIMEOUT: float = Field(
+        default=60.0,
+        gt=0,
+        description="LLM HTTP request timeout in seconds. Guards "
+        "against indefinitely hanging LLM endpoints; on expiry the "
+        "chat stream returns RUN_ERROR instead of spinning forever. "
+        "Applies to text and vision models.",
+    )
+    # Vision model (optional, falls back to LLM_* when empty)
+    VISION_PROVIDER: str = Field(
+        default="",
+        description="Vision model provider (falls back to LLM_PROVIDER)",
+    )
+    VISION_BASE_URL: str = Field(
+        default="",
+        description="Vision model endpoint (falls back to LLM_BASE_URL)",
+    )
+    VISION_API_KEY: str = Field(
+        default="",
+        description="Vision model API key (falls back to LLM_API_KEY)",
+        json_schema_extra={"sensitive": True},
+    )
+    VISION_MODEL: str = Field(
+        default="",
+        description="Vision model name (falls back to LLM_MODEL)",
+    )
+    # Image attachment limits
+    IMAGE_MAX_COUNT_PER_MESSAGE: int = Field(
+        default=4,
+        ge=1,
+        description="Max image attachments per message",
+    )
+    IMAGE_MAX_BYTES_PER_IMAGE: int = Field(
+        default=5242880,
+        ge=1024,
+        description="Max bytes per image after base64 encoding",
+    )
+    IMAGE_MAX_TOTAL_BYTES_PER_SESSION: int = Field(
+        default=52428800,
+        ge=1024,
+        description="Max total image bytes per session",
+    )
+    # Embedding
+    EMBEDDING_BASE_URL: str = Field(
+        default="http://127.0.0.1:8001/v1/embeddings",
+        description="Embedding endpoint base URL",
+    )
+    EMBEDDING_API_KEY: str = Field(
+        default="",
+        description="Embedding API key",
+        json_schema_extra={"sensitive": True},
+    )
+    EMBEDDING_MODEL: str = Field(
+        default="bge-m3",
+        description="Embedding model name",
+    )
+    EMBEDDING_DIM: int = Field(
+        default=1024,
+        ge=1,
+        description="Embedding vector dimension",
+    )
+    # Session
+    SESSION_TTL_SECONDS: int = Field(
+        default=604800,
+        ge=60,
+        description="AI session TTL in seconds (default 7 days)",
+    )
+    RAG_TOP_K: int = Field(
+        default=8,
+        ge=1,
+        le=100,
+        description="Number of RAG chunks to retrieve",
+    )
+
+
 class ConfigModel(BaseModel):
     """Complete QCOS configuration model."""
 
@@ -512,6 +674,11 @@ class ConfigModel(BaseModel):
     DEVICES: DevicesSection = Field(default_factory=DevicesSection)
     SCHEDULER: SchedulerSection = Field(default_factory=SchedulerSection)
     TERMINAL: TerminalSection = Field(default_factory=TerminalSection)
+    AI: AISection = Field(default_factory=AISection)
+    AI_MCP_SERVER: AIMcpServerSection = Field(
+        default_factory=AIMcpServerSection
+    )
+    AI_AGENT: AIAgentSection = Field(default_factory=AIAgentSection)
 
 
 # ==================== Config Manager ====================
@@ -538,7 +705,21 @@ class Config:
     # Driver env configs
     _DRIVER_ENV_CONFIGS: dict[str, Any] = {}
 
-    # Valid sections for configuration
+    # Project root directory for resolving relative paths
+    # (e.g. AI agent local file reading). Computed from this file's
+    # location: src/wy_qcos/common/config.py -> ../../../
+    PROJECT_ROOT: str = str(
+        Path(__file__).resolve().parent.parent.parent.parent
+    )
+
+    # Project source directory (src/wy_qcos/). Used by AI agent
+    # local file reading to restrict access to source code only.
+    PROJECT_SRC_DIR: str = str(Path(__file__).resolve().parent.parent.parent)
+
+    # Valid sections for configuration. Nested TOML sections are
+    # flattened with a "." separator (e.g. "[AI.MCP_SERVER]" appears
+    # here as "AI.MCP_SERVER"); the loader maps them onto ConfigModel
+    # attributes by replacing "." with "_" ("AI_MCP_SERVER").
     VALID_SECTIONS = [
         "DEFAULT",
         "API_SERVER",
@@ -554,7 +735,17 @@ class Config:
         "DEVICES",
         "SCHEDULER",
         "TERMINAL",
+        "AI",
+        "AI.MCP_SERVER",
+        "AI.AGENT",
     ]
+
+    # Mapping from nested TOML section name (dotted) to ConfigModel
+    # attribute name (pydantic does not allow "." in field names).
+    NESTED_SECTION_ATTR_MAP = {
+        "AI.MCP_SERVER": "AI_MCP_SERVER",
+        "AI.AGENT": "AI_AGENT",
+    }
 
     # Expose sections as class attributes for type hints and access
     DEFAULT: DefaultSection = DefaultSection()
@@ -572,6 +763,9 @@ class Config:
     DEVICES: DevicesSection = DevicesSection()
     SCHEDULER: SchedulerSection = SchedulerSection()
     TERMINAL: TerminalSection = TerminalSection()
+    AI: AISection = AISection()
+    AI_MCP_SERVER: AIMcpServerSection = AIMcpServerSection()
+    AI_AGENT: AIAgentSection = AIAgentSection()
 
     @classmethod
     def initialize(cls):
@@ -596,6 +790,9 @@ class Config:
         cls.SSL = cls._model.SSL
         cls.DEVICES = cls._model.DEVICES
         cls.TERMINAL = cls._model.TERMINAL
+        cls.AI = cls._model.AI
+        cls.AI_MCP_SERVER = cls._model.AI_MCP_SERVER
+        cls.AI_AGENT = cls._model.AI_AGENT
 
     @classmethod
     def load_config_file(cls, config_file: str, extra_config: bool = False):
@@ -645,36 +842,79 @@ class Config:
                         value, f"{section}:{key}"
                     )
         else:
-            # Load main configs
-            model_data = {}
-            for section, options in config_values.items():
-                if section in cls.VALID_SECTIONS:
-                    section_data = {}
+            # Load main configs. Nested TOML sections (e.g.
+            # "[AI.MCP_SERVER]") arrive as sub-dicts inside their parent
+            # section ("AI") and are hoisted out into their own flat
+            # model_data entries keyed by the dotted path; the dotted
+            # path is then mapped to the ConfigModel attribute name via
+            # NESTED_SECTION_ATTR_MAP ("." -> "_") so pydantic can
+            # consume it.
+            model_data: dict[str, dict[str, Any]] = {}
+
+            def _ingest_section(
+                dotted_name: str, options: dict[str, Any]
+            ) -> None:
+                """Merge one TOML section into model_data.
+
+                Splits nested sub-dicts out as their own dotted sections
+                and uppercases leaf keys to match pydantic field names.
+                """
+                if dotted_name not in cls.VALID_SECTIONS:
+                    # Store extra configs verbatim
+                    if dotted_name not in cls._EXTRA_CONFIGS:
+                        cls._EXTRA_CONFIGS[dotted_name] = {}
                     for key, value in options.items():
-                        # Normalize key to uppercase to match Pydantic
-                        # field names
-                        normalized_key = (
-                            key.upper() if isinstance(key, str) else key
+                        cls._EXTRA_CONFIGS[dotted_name][key] = decrypt_value(
+                            value, f"{dotted_name}:{key}"
                         )
-                        decrypted_val = decrypt_value(
-                            value, f"{section}:{key}"
-                        )
-                        section_data[normalized_key] = decrypted_val
-                    model_data[section] = section_data
+                    return
+                section_data: dict[str, Any] = {}
+                for key, value in options.items():
+                    if isinstance(value, dict):
+                        # Nested sub-section: recurse with dotted name
+                        _ingest_section(f"{dotted_name}.{key}", value)
+                        continue
+                    # Normalize key to uppercase to match Pydantic
+                    # field names
+                    normalized_key = (
+                        key.upper() if isinstance(key, str) else key
+                    )
+                    decrypted_val = decrypt_value(
+                        value, f"{dotted_name}:{key}"
+                    )
+                    section_data[normalized_key] = decrypted_val
+                if section_data:
+                    existing = model_data.setdefault(dotted_name, {})
+                    existing.update(section_data)
+
+            for section, options in config_values.items():
+                if isinstance(options, dict):
+                    _ingest_section(section, options)
                 else:
-                    # Store extra configs
+                    # Scalar top-level key (rare) - treat as extra
                     if section not in cls._EXTRA_CONFIGS:
                         cls._EXTRA_CONFIGS[section] = {}
-                    for key, value in options.items():
-                        cls._EXTRA_CONFIGS[section][key] = decrypt_value(
-                            value, f"{section}:{key}"
-                        )
+                    cls._EXTRA_CONFIGS[section]["__value__"] = decrypt_value(
+                        section, section
+                    )
+
+            # Remap dotted section names to ConfigModel attribute
+            # names ("." is not allowed in pydantic field names).
+            remapped_model_data: dict[str, dict[str, Any]] = {}
+            for dotted_name, section_data in model_data.items():
+                attr_name = cls.NESTED_SECTION_ATTR_MAP.get(
+                    dotted_name, dotted_name
+                )
+                remapped_model_data[attr_name] = section_data
 
             # Create pydantic model from loaded data
             try:
                 # If model already exists, merge data instead of replacing
                 if cls._model is not None:
-                    for section_name, section_data in model_data.items():
+                    for (
+                        section_name,
+                        section_data,
+                    ) in remapped_model_data.items():
                         existing_section = getattr(cls._model, section_name)
                         # Update existing section with new data
                         updated_data = existing_section.model_dump()
@@ -688,7 +928,7 @@ class Config:
                         )
                 else:
                     # First time loading, create new model
-                    cls._model = ConfigModel(**model_data)
+                    cls._model = ConfigModel(**remapped_model_data)
 
                 cls.initialize()  # Update section attributes
             except (ValueError, ValidationError) as e:
@@ -744,6 +984,131 @@ class Config:
             if "envs" not in driver_info:
                 raise Exception(f"[{driver_class}] 'envs' must be specified")
         cls._DRIVER_ENV_CONFIGS = configs
+
+    @classmethod
+    def is_ai_agent_enabled(cls) -> bool:
+        """Whether the AI agent chat feature is enabled.
+
+        Combines the global ``[AI].ENABLED`` master switch with the
+        per-subsystem ``[AI.AGENT].ENABLED`` flag; both must be true
+        for the feature to be exposed.
+        """
+        cls.initialize()
+        return bool(cls.AI.ENABLED and cls.AI_AGENT.ENABLED)
+
+    @classmethod
+    def is_ai_mcp_server_enabled(cls) -> bool:
+        """Whether the AI MCP server endpoint is enabled.
+
+        Combines the global ``[AI].ENABLED`` master switch with the
+        per-subsystem ``[AI.MCP_SERVER].ENABLED`` flag; both must be
+        true for the endpoint to be exposed.
+        """
+        cls.initialize()
+        return bool(cls.AI.ENABLED and cls.AI_MCP_SERVER.ENABLED)
+
+    @classmethod
+    def is_terminal_enabled(cls) -> bool:
+        """Whether the in-browser terminal feature is enabled."""
+        cls.initialize()
+        return bool(cls.TERMINAL.ENABLED)
+
+    @classmethod
+    def is_metrics_server_enabled(cls) -> bool:
+        """Whether the metrics server is enabled.
+
+        The metrics server is considered enabled when a non-empty
+        listen IP is configured.
+        """
+        cls.initialize()
+        return bool(cls.METRICS_SERVER.METRICS_SERVER_LISTEN_IP)
+
+    @classmethod
+    def is_proxy_prometheus_enabled(cls) -> bool:
+        """Whether the Prometheus reverse proxy is enabled."""
+        cls.initialize()
+        return bool(cls.PROXY.PROMETHEUS_BASE_URL)
+
+    @classmethod
+    def is_proxy_alertmanager_enabled(cls) -> bool:
+        """Whether the Alertmanager reverse proxy is enabled."""
+        cls.initialize()
+        return bool(cls.PROXY.ALERTMANAGER_BASE_URL)
+
+    @classmethod
+    def is_proxy_victorialogs_enabled(cls) -> bool:
+        """Whether the VictoriaLogs reverse proxy is enabled."""
+        cls.initialize()
+        return bool(cls.PROXY.VICTORIALOGS_BASE_URL)
+
+    @classmethod
+    def is_embedding_enabled(cls) -> bool:
+        """Whether the embedding service is enabled.
+
+        The embedding service is considered enabled when the AI agent
+        feature is enabled AND a non-empty embedding base URL is
+        configured.
+        """
+        cls.initialize()
+        return bool(
+            cls.is_ai_agent_enabled() and cls.AI_AGENT.EMBEDDING_BASE_URL
+        )
+
+    @classmethod
+    def is_vision_enabled(cls) -> bool:
+        """Whether the vision (image understanding) model is enabled.
+
+        The vision pipeline is considered enabled when the AI agent
+        feature is enabled AND either an explicit ``VISION_MODEL`` is
+        configured OR the configured ``VISION_PROVIDER`` is non-empty.
+        When neither is set, image attachments would only be passed
+        to the text-only model, which usually has no vision support
+        and would silently drop them - the UI must therefore disable
+        the image-attachment button.
+        """
+        cls.initialize()
+        if not cls.is_ai_agent_enabled():
+            return False
+        return bool(cls.AI_AGENT.VISION_MODEL or cls.AI_AGENT.VISION_PROVIDER)
+
+    @classmethod
+    def get_component_switch_status(cls) -> dict[str, bool | dict[str, bool]]:
+        """Get the enable status of all optional components.
+
+        Returns:
+            Dictionary mapping component name to its enabled status.
+            Top-level entries are either a plain ``bool`` (single
+            component) or a nested ``dict[str, bool]`` for component
+            groups (``ai`` / ``proxy``) that bundle related features.
+        """
+        cls.initialize()
+        return {
+            "ai": {
+                Constant.COMPONENT_NAME_AI_AGENT: cls.is_ai_agent_enabled(),
+                Constant.COMPONENT_NAME_AI_MCP_SERVER: (
+                    cls.is_ai_mcp_server_enabled()
+                ),
+                Constant.COMPONENT_NAME_EMBEDDING: (
+                    cls.is_embedding_enabled()
+                ),
+                Constant.COMPONENT_NAME_VISION: cls.is_vision_enabled(),
+            },
+            Constant.COMPONENT_NAME_TERMINAL: cls.is_terminal_enabled(),
+            Constant.COMPONENT_NAME_METRICS_SERVER: (
+                cls.is_metrics_server_enabled()
+            ),
+            "proxy": {
+                Constant.COMPONENT_NAME_PROXY_PROMETHEUS: (
+                    cls.is_proxy_prometheus_enabled()
+                ),
+                Constant.COMPONENT_NAME_PROXY_ALERTMANAGER: (
+                    cls.is_proxy_alertmanager_enabled()
+                ),
+                Constant.COMPONENT_NAME_PROXY_VICTORIALOGS: (
+                    cls.is_proxy_victorialogs_enabled()
+                ),
+            },
+        }
 
     @classmethod
     def validate(cls):
