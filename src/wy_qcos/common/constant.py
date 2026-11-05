@@ -71,6 +71,14 @@ class Constant:
     # "{REDIS_CHANNEL_JOB_PREFIX}/{job_id}/{flow_run_id}".
     REDIS_CHANNEL_JOB_PREFIX = f"{REDIS_CHANNEL_QCOS_PREFIX}/jobs"
 
+    # AI agent Redis key prefixes
+    REDIS_CHANNEL_AI_PREFIX = f"{REDIS_CHANNEL_QCOS_PREFIX}/ai"
+    REDIS_CHANNEL_AI_SESSION_PREFIX = f"{REDIS_CHANNEL_AI_PREFIX}/session"
+    REDIS_CHANNEL_AI_MESSAGES_PREFIX = f"{REDIS_CHANNEL_AI_PREFIX}/messages"
+    REDIS_CHANNEL_AI_USER_SESSIONS_PREFIX = (
+        f"{REDIS_CHANNEL_AI_PREFIX}/user_sessions"
+    )
+
     # Job results storage backends
     RESULTS_DB_STORAGE_SQL = "sql"
     RESULTS_DB_STORAGE_REDIS = "redis"
@@ -519,6 +527,17 @@ class Constant:
         JOB_STATUS_CANCELLED,
     }
 
+    # Non-terminal job statuses: jobs in these states are still
+    # considered in-flight and need startup synchronization with
+    # Prefect flow-run states.
+    JOB_NON_TERMINAL_STATUSES = {
+        JOB_STATUS_QUEUED,
+        JOB_STATUS_RUNNING,
+        JOB_STATUS_CANCELLING,
+        JOB_STATUS_DELETING,
+        JOB_STATUS_UNKNOWN,
+    }
+
     # Prefect flow state
     PREFECT_STATE_RUNNING = "RUNNING"
     PREFECT_STATE_SCHEDULED = "SCHEDULED"
@@ -535,6 +554,16 @@ class Constant:
         PREFECT_STATE_CANCELLING,
     ]
     PREFECT_WAIT_STATES = [PREFECT_STATE_SCHEDULED, PREFECT_STATE_PENDING]
+
+    # Prefect terminal state -> QCOS job status mapping (used by
+    # startup job synchronization to align DB with Prefect truth).
+    # NOTE: defined AFTER the PREFECT_STATE_* constants above.
+    PREFECT_TO_QCOS_TERMINAL_STATE = {
+        PREFECT_STATE_COMPLETED: JOB_STATUS_COMPLETED,
+        PREFECT_STATE_FAILED: JOB_STATUS_FAILED,
+        PREFECT_STATE_CRASHED: JOB_STATUS_FAILED,
+        PREFECT_STATE_CANCELLED: JOB_STATUS_CANCELLED,
+    }
 
     VID_TAGS_PREFIX = "VIRTUAL_INSTANCE_ID"
 
@@ -586,6 +615,29 @@ class Constant:
         COMPONENT_NAME_REDIS,
         COMPONENT_NAME_PREFECT,
         COMPONENT_NAME_WORKER,
+    ]
+
+    # Optional component names (feature flags)
+    COMPONENT_NAME_AI_AGENT = "agent"
+    COMPONENT_NAME_AI_MCP_SERVER = "mcp_server"
+    COMPONENT_NAME_TERMINAL = "terminal"
+    COMPONENT_NAME_METRICS_SERVER = "metrics_server"
+    COMPONENT_NAME_PROXY_PROMETHEUS = "prometheus"
+    COMPONENT_NAME_PROXY_ALERTMANAGER = "alertmanager"
+    COMPONENT_NAME_PROXY_VICTORIALOGS = "victorialogs"
+    COMPONENT_NAME_EMBEDDING = "embedding"
+    COMPONENT_NAME_VISION = "vision"
+
+    OPTIONAL_COMPONENT_NAMES = [
+        COMPONENT_NAME_AI_AGENT,
+        COMPONENT_NAME_AI_MCP_SERVER,
+        COMPONENT_NAME_TERMINAL,
+        COMPONENT_NAME_METRICS_SERVER,
+        COMPONENT_NAME_PROXY_PROMETHEUS,
+        COMPONENT_NAME_PROXY_ALERTMANAGER,
+        COMPONENT_NAME_PROXY_VICTORIALOGS,
+        COMPONENT_NAME_EMBEDDING,
+        COMPONENT_NAME_VISION,
     ]
 
     # Component status
