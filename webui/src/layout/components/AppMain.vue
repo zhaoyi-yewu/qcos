@@ -38,6 +38,14 @@ const key = computed(() => route.path)
   width: 100%;
   position: relative;
   overflow: hidden;
+  /* Page background that matches the page-level containers rendered on
+     top of it. PageTable (used by every list page) fills itself with
+     --el-bg-color-page, so use the SAME variable here: without this,
+     short pages expose the plain white .main-container below, and any
+     other value would produce a visible color seam between the page
+     container and the exposed area. The variable also keeps dark mode
+     correct automatically. */
+  background: var(--el-bg-color-page);
 }
 .fixed-header+.app-main {
   padding-top: 50px;

@@ -31,10 +31,14 @@
     <breadcrumb class="breadcrumb-container" />
 
     <div class="right-menu">
-      <!-- terminal launcher, moved here from the sidebar endpoint switcher -->
-      <terminal-button class="right-menu-icon navbar-terminal-btn" tooltip-placement="bottom" />
-      <!-- AI agent entry: placeholder that shows a "coming soon" message -->
-      <ai-agent-button class="right-menu-icon" />
+      <!-- terminal + AI agent pair: wrapped in their own container so the
+           two buttons can be spaced independently from the rest of the
+           right-menu icons (collapse toggle, avatar) -->
+      <div class="navbar-action-group">
+        <terminal-button class="right-menu-icon navbar-terminal-btn" tooltip-placement="bottom" />
+        <ai-agent-button class="right-menu-icon" />
+      </div>
+      <ai-agent-container />
       <el-tooltip
         :content="navbarCollapsed ? '展开导航栏' : '向上折叠导航栏'"
         placement="bottom"
@@ -87,6 +91,7 @@ import Breadcrumb from '@/components/Breadcrumb'
 import Hamburger from '@/components/Hamburger'
 import TerminalButton from '@/components/Terminal/TerminalButton.vue'
 import AiAgentButton from '@/components/AiAgent/AiAgentButton.vue'
+import AiAgentContainer from '@/components/AiAgent/AiAgentContainer.vue'
 import { useAppStore } from '@/store/modules/app'
 import { useUserStore } from '@/store/modules/user'
 import { useSettingsStore } from '@/store/modules/settings'
@@ -179,6 +184,9 @@ async function logout() {
     display: flex;
     align-items: center;
     line-height: 50px;
+    /* Pull the whole right-menu icon group slightly left so the terminal
+       and AI agent buttons don't feel cramped against the avatar. */
+    margin-right: 8px;
 
     &:focus {
       outline: none;
@@ -206,7 +214,22 @@ async function logout() {
     // the wider right margin pulls the whole icon group towards the left,
     // away from the avatar dropdown
     .right-menu-icon {
-      margin-right: 16px;
+      margin-right: 24px;
+    }
+
+    // terminal + AI agent pair wrapper: sits between the breadcrumb and
+    // the collapse/avatar icons; the wider right margin on the wrapper
+    // pushes the whole pair left, away from the avatar, and the inner
+    // gap spaces the two buttons apart from each other.
+    .navbar-action-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 24px;
+
+      .right-menu-icon {
+        margin-right: 0 !important;
+      }
     }
 
     /*

@@ -43,15 +43,19 @@ export default {
   },
   methods: {
     linkProps(to) {
+      // Guard against empty-string `to`: vue-router renders
+      // <router-link to=""> as <a href="">, which makes Firefox
+      // internally call getElementById('') and log a warning.
+      const safeTo = to === '' ? '/' : to
       if (this.isExternal) {
         return {
-          href: to,
+          href: safeTo,
           target: '_blank',
           rel: 'noopener'
         }
       }
       return {
-        to: to
+        to: safeTo
       }
     }
   }

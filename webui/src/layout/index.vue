@@ -226,8 +226,14 @@ ResizeHandler()
     transition: width 0.28s;
   }
 
+  /*
+   * Collapsed sidebar: sidebar.scss fully hides the sidebar with
+   * display:none (width: 0), so the fixed header must span the whole
+   * viewport. The legacy 54px subtraction was a leftover from when the
+   * collapsed el-menu still occupied a 54px-wide strip.
+   */
   .hideSidebar .fixed-header {
-    width: calc(100% - 54px)
+    width: 100%
   }
 
   .mobile .fixed-header {
@@ -324,15 +330,19 @@ ResizeHandler()
     padding: 0;
     border: none;
     border-radius: 0 4px 4px 0;
-    background: var(--qcos-menu-bg, #304156);
-    color: #bfcbd9;
+    /* Semi-transparent so the button doesn't visually compete with
+       the sidebar / page content underneath; full opacity on hover.
+       backdrop-filter adds a soft blur behind the button. */
+    background: rgba(0, 0, 0, 0.18);
+    color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
 
     display: inline-flex;
     align-items: center;
     justify-content: center;
 
-    box-shadow: 1px 0 4px rgba(0, 0, 0, 0.15);
+    box-shadow: 1px 0 4px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(4px);
     transition:
       left 0.28s,
       background-color 0.2s,

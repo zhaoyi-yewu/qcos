@@ -87,6 +87,13 @@ export const useConfigStore = defineStore('config', {
       const ctrl = new AbortController()
       const timer = setTimeout(() => ctrl.abort(), this.endpointProbeTimeoutMs)
       try {
+        // Probe the JSON-RPC `version` method. The backend exposes it at
+        // the HTTP path `/version` (fastapi_jsonrpc.Entrypoint("") maps
+        // each method name to a sub-path of the entrypoint root).
+        //
+        // NOTE: use `${ep.url}/version`, NOT `${ep.url}` or `${ep.url}/`.
+        // The trailing-slash form rewrites to `/` on the upstream, which
+        // returns 404 because the entrypoint root itself has no handler.
         const resp = await fetch(`${ep.url}/version`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

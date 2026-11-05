@@ -64,6 +64,73 @@ div:focus {
   padding: 20px;
 }
 
+// ---------------------------------------------------------------------------
+// Page-level container fill
+//
+// Every routed view wraps its content in a `*-container` div that paints its
+// own background (fill/page color) and 20px padding. When the content is
+// shorter than one viewport the container used to stop early and expose the
+// plain white .main-container below — visually a broken "white strip" at the
+// bottom. Make all known page containers fill the scrollable area (viewport
+// minus the 50px fixed navbar) so the painted background always reaches the
+// fold. Longer content simply grows the container as before.
+//
+// The .page-table-container entry covers PageTable-based list pages whose
+// root element is the component itself (no outer *-container div).
+// ---------------------------------------------------------------------------
+
+%page-fill {
+  min-height: calc(100vh - 50px);
+}
+
+.monitor-center-container,
+.system-info-container,
+.api-stats-container,
+.component-status-container,
+.job-stats-container,
+.device-list-container,
+.device-group-list-container,
+.driver-list-container,
+.worker-list-container,
+.transpiler-list-container,
+.project-list-container,
+.role-list-container,
+.user-list-container,
+.login-log-list-container,
+.flavor-list-container,
+.job-submit-container,
+.task-submit-container,
+.flavor-create-container,
+.device-detail-container,
+.device-group-detail-container,
+.driver-detail-container,
+.worker-detail-container,
+.transpiler-detail-container,
+.job-detail-container,
+.project-detail-container,
+.role-detail-container,
+.user-detail-container,
+.flavor-detail-container,
+.config-container {
+  @extend %page-fill;
+
+  // keep list pages aligned with .app-main's painted background so no seam
+  // is visible between a container and the exposed app-main area
+  background: var(--el-bg-color-page);
+}
+
+.page-table-container {
+  @extend %page-fill;
+}
+
+// job-submit / qasm / qubo can be embedded inside dialogs (embedded prop)
+// where a viewport-based min-height would blow up the dialog body; reset
+// it there — the dialog dictates the height.
+.job-submit-container.is-embedded,
+.task-submit-container.is-embedded {
+  min-height: 0;
+}
+
 // page-level h2 headers -- slightly smaller than the browser default and
 // with a touch of vertical padding so the header block breathes a little
 .header h2 {

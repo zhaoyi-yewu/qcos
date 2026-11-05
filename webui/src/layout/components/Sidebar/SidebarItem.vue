@@ -105,12 +105,16 @@ export default {
     },
     resolvePath(routePath) {
       if (isExternal(routePath)) {
-        return routePath
+        return routePath || '/'
       }
       if (isExternal(this.basePath)) {
-        return this.basePath
+        return this.basePath || '/'
       }
-      return resolvePath(this.basePath, routePath)
+      const result = resolvePath(this.basePath, routePath)
+      // Element Plus el-menu-item with empty-string index triggers
+      // Firefox internal "getElementById() called with empty string"
+      // warning. Fall back to '/' so index is never empty.
+      return result === '' ? '/' : result
     }
   }
 }
