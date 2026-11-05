@@ -61,5 +61,8 @@ class TestVersion:
             "supported_api_versions": "0.1.0",
             "platform_version": "1.0.0",
             "auth_mode": "no",
+            # The shell's ``take_action`` prints ``json_results['components']``
+            # unconditionally, so the mock payload must include the key.
+            "components": {},
         }
         assert version.take_action(mock_client) is None
