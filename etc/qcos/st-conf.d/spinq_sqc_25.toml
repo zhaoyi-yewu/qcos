@@ -1,4 +1,4 @@
-[spinq_sqc_25]
+﻿[spinq_sqc_25]
 alias_name = "量旋科技 SQC-25 云平台超导驱动"
 driver = "DriverSpinqSqc25"
 description = "量旋科技 SQC-25 云平台超导驱动"
@@ -42,7 +42,7 @@ job_query_interval = 5
 username = "spinq_st_test"
 
 # [Required] path to RSA private key file for authentication
-keyfile = "/etc/qcos/conf.d/spinq_pri.key"
+keyfile = "/etc/qcos/st-conf.d/spinq/spinq_pri.key"
 
 # [Required] SpinQ Cloud API host
 host = "http://127.0.0.1:18625"

@@ -17,6 +17,7 @@
 
 import json
 import logging
+import os
 import time
 
 import wy_qcos.api.posiq.routes_jsonrpc.errors as jsonrpc_errors
@@ -28,6 +29,47 @@ logger = logging.getLogger(__name__)
 
 class StLibrary:
     """ST Library."""
+
+    # Default keyfile path used by the spinq st-conf.d configs.
+    SPINQ_TEST_KEYFILE = "/etc/qcos/st-conf.d/spinq/spinq_pri.key"
+
+    @staticmethod
+    def ensure_spinq_test_keyfile(keyfile=SPINQ_TEST_KEYFILE):
+        """Generate a test RSA keyfile for SpinQ Cloud auth if absent.
+
+        The spinqit SDK reads the keyfile and signs the username with
+        RSA/SHA256 during login (SpinQCloudBackend.__init__).  The ST
+        mock server does not verify the signature, so any valid RSA
+        private key in PEM format is sufficient.  An existing keyfile
+        is never overwritten.
+
+        Args:
+            keyfile: path to the RSA private key file
+
+        Returns:
+            path of the keyfile
+        """
+        if os.path.exists(keyfile):
+            return keyfile
+        # Lazy import: cryptography is a direct QCOS dependency.  It
+        # generates a standard PKCS#1 PEM that the spinqit SDK
+        # (PyCryptodome RSA.importKey) parses without issue.
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        pem = key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        dirname = os.path.dirname(keyfile)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
+        with open(keyfile, "wb") as f:
+            f.write(pem)
+        logger.info(f"Generated test RSA keyfile: {keyfile}")
+        return keyfile
 
     @staticmethod
     def is_response_success(status_code, text):

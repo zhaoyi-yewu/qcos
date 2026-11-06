@@ -39,7 +39,7 @@ job_query_interval = 5
 username = "spinq_st_test"
 
 # [Required] path to RSA private key file for authentication
-keyfile = "/etc/qcos/conf.d/spinq_pri.key"
+keyfile = "/etc/qcos/st-conf.d/spinq/spinq_pri.key"
 
 # [Required] SpinQ Cloud API host
 # System test: points to the mock aiohttp server started by
