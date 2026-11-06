@@ -15,3 +15,4 @@
 
    auto-schedule
    auto-wirecut-multi-devices
+   qem
