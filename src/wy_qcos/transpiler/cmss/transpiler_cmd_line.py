@@ -222,6 +222,7 @@ class CMSSTranspilerPerf:
         "DriverHanyuan1": Constant.TECH_TYPE_NEUTRAL_ATOM,
         "DriverHanyuan1-36": Constant.TECH_TYPE_NEUTRAL_ATOM,
         "DriverHanyuan1-100": Constant.TECH_TYPE_NEUTRAL_ATOM,
+        "DriverHanyuan1-100-new": Constant.TECH_TYPE_NEUTRAL_ATOM,
     }
 
     def _infer_tech_type_from_config(self, config_file):
@@ -259,6 +260,7 @@ class CMSSTranspilerPerf:
             "default": "default",
             "zap": "ZAP",
             "zac": "ZAC",
+            "multi": "multi",
         }
         key = (value or "default").strip().lower()
         if key not in canonical:
@@ -1302,7 +1304,7 @@ class CMSSTranspilerPerf:
             )
             is_na = (
                 tech_type == Constant.TECH_TYPE_NEUTRAL_ATOM
-                and self.na_mapping_type in ("default", "ZAP")
+                and self.na_mapping_type in ("default", "ZAP", "multi")
             )
             is_sc_sabre = (
                 tech_type == Constant.TECH_TYPE_SUPERCONDUCTING

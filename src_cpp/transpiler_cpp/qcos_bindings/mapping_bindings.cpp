@@ -15,14 +15,14 @@
  * ----------------------------------------------------------------------
  */
 
+#include <stdexcept>
+
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/unordered_map.h>
 #include <nanobind/stl/vector.h>
-
-#include <stdexcept>
 
 #include "circuit/gate_operation.h"
 #include "mapping/chip_data.h"
@@ -183,6 +183,129 @@ nb::tuple bind_cpp_na_routing(
   return bind_na_routing(gates_list_raw, qpu_cfg, qbit_num,
                          /*na_support_move=*/true,
                          /*na_mapping_type=*/na_mapping_type, optimize);
+}
+
+/**
+ * @brief Parse NAMultiQpuConfig from a Python dict (grid-coordinate format).
+ *
+ * Supports the operate_area formats used in hanyuan1_100_new.toml:
+ *   - int: direct grid index
+ *   - [row, col]: converted to grid index
+ *   - {row: [r1, r2], col: [c1, c2]}: expanded to range
+ */
+NAMultiQpuConfig parse_na_multi_qpu_config(const nb::dict& qpu_cfg) {
+  NAMultiQpuConfig cfg;
+  cfg.row = nb::cast<int>(qpu_cfg["row"]);
+  cfg.column = nb::cast<int>(qpu_cfg["column"]);
+  int total = cfg.row * cfg.column;
+
+  nb::list operate_area = nb::cast<nb::list>(qpu_cfg["operate_area"]);
+  for (auto atom : operate_area) {
+    bool parsed = false;
+    try {
+      int val = nb::cast<int>(atom);
+      if (val >= 0 && val < total) {
+        cfg.operate_area.push_back(val);
+        parsed = true;
+      }
+    } catch (...) {}
+    if (parsed) continue;
+
+    try {
+      auto lst = nb::cast<nb::list>(atom);
+      if (lst.size() == 2) {
+        int r = nb::cast<int>(lst[0]);
+        int c = nb::cast<int>(lst[1]);
+        if (r >= 0 && r < cfg.row && c >= 0 && c < cfg.column) {
+          cfg.operate_area.push_back(r * cfg.column + c);
+          parsed = true;
+        }
+      }
+    } catch (...) {}
+    if (parsed) continue;
+
+    try {
+      auto d = nb::cast<nb::dict>(atom);
+      auto r_list = nb::cast<nb::list>(d["row"]);
+      auto c_list = nb::cast<nb::list>(d["col"]);
+      if (r_list.size() == 2 && c_list.size() == 2) {
+        int r0 = nb::cast<int>(r_list[0]);
+        int r1 = nb::cast<int>(r_list[1]);
+        int c0 = nb::cast<int>(c_list[0]);
+        int c1 = nb::cast<int>(c_list[1]);
+        for (int i = r0; i < r1; ++i) {
+          for (int j = c0; j < c1; ++j) {
+            cfg.operate_area.push_back(i * cfg.column + j);
+          }
+        }
+        parsed = true;
+      }
+    } catch (...) {}
+  }
+
+  nb::dict coupler_map = nb::cast<nb::dict>(qpu_cfg["coupler_map"]);
+  for (auto item : coupler_map) {
+    auto endpoints = nb::cast<std::vector<int>>(item.second);
+    if (endpoints.size() == 2) {
+      cfg.coupler_map.emplace_back(std::string(""),
+                                   std::make_pair(endpoints[0], endpoints[1]));
+    }
+  }
+
+  nb::dict readout_error = nb::cast<nb::dict>(qpu_cfg["readout_error"]);
+  for (auto item : readout_error) {
+    std::string key = nb::cast<std::string>(item.first);
+    int site = std::stoi(key);
+    double err = nb::cast<double>(item.second);
+    cfg.readout_error[site] = err;
+  }
+
+  return cfg;
+}
+
+/**
+ * @brief Python entry point for NA multi-route mapping.
+ *
+ * @param gates_list_raw Python-side BaseOperation list.
+ * @param qpu_cfg Grid-coordinate QPU config dict (row/column/operate_area/
+ *        coupler_map/readout_error).
+ * @param qbit_num Number of logical qubits.
+ * @return nb::tuple (mapped_ops, final_layout)
+ */
+nb::tuple bind_na_multi_routing(
+    const std::vector<qcos::BaseOperation*>& gates_list_raw,
+    const nb::dict& qpu_cfg, int qbit_num) {
+  std::vector<std::shared_ptr<qcos::BaseOperation>> gates_list;
+  gates_list.reserve(gates_list_raw.size());
+  for (auto* op : gates_list_raw) {
+    if (op == nullptr) {
+      throw std::invalid_argument(
+          "na_multi_routing received a null BaseOperation");
+    }
+    gates_list.push_back(op->clone());
+  }
+
+  auto cfg = parse_na_multi_qpu_config(qpu_cfg);
+
+  auto res = qcos::na_multi_mapping(gates_list, cfg, qbit_num);
+
+  nb::module_ gate_module =
+      nb::module_::import_("wy_qcos.common.cmss.gate_operation");
+  nb::object create_gate = gate_module.attr("create_gate");
+  nb::module_ base_op_module =
+      nb::module_::import_("wy_qcos.common.cmss.base_operation");
+  nb::object base_op_cls = base_op_module.attr("BaseOperation");
+
+  nb::list mapped_ir;
+  for (auto& op : res) {
+    if (op->targets.empty()) {
+      // Global pulse (e.g. cz with no targets) -> BaseOperation
+      mapped_ir.append(base_op_cls(op->name, op->targets, op->arg_value));
+    } else {
+      mapped_ir.append(create_gate(op->name, op->targets, op->arg_value));
+    }
+  }
+  return nb::make_tuple(mapped_ir, nb::dict());
 }
 
 }  // namespace
@@ -481,6 +604,31 @@ Returns:
                 to "default".
             optimize (bool, optional): Whether to enable the overlap
                 optimization (``execute_with_opt``). Defaults to False.
+
+        Returns:
+            tuple[list[BaseOperation], dict]: The mapped operation sequence
+            (with MOVE operations and physical qubit targets) and an empty
+            final layout dict.
+        )");
+
+  m.def("cpp_na_multi_routing", &bind_na_multi_routing,
+        nb::arg("gates_list"), nb::arg("qpu_cfg"), nb::arg("qbit_num"),
+        R"(
+        Execute neutral-atom multi-route mapping (NAMultiRoute).
+
+        Uses a grid-coordinate QPU config (e.g. hanyuan1_100_new.toml) where
+        positions are plain integers (p = row * column + col). Single-qubit
+        gates execute in-place; two-qubit gates move atoms to operate-area
+        coupler edges, disperse inactive atoms, then emit a global cz pulse.
+
+        Args:
+            gates_list (list[BaseOperation]): Logical operation sequence.
+                Each operation's targets are logical qubit indices.
+            qpu_cfg (dict): Grid-coordinate QPU configuration with keys
+                ``row``, ``column``, ``operate_area``, ``coupler_map`` and
+                ``readout_error``. ``operate_area`` entries may be ints,
+                [row, col] pairs, or {row: [r1, r2], col: [c1, c2]} ranges.
+            qbit_num (int): Number of logical qubits.
 
         Returns:
             tuple[list[BaseOperation], dict]: The mapped operation sequence

@@ -2642,6 +2642,33 @@ def cpp_na_routing(
     """
     ...
 
+def cpp_na_multi_routing(
+    gates_list: collections.abc.Sequence[high_performance.BaseOperation],
+    qpu_cfg: dict,
+    qbit_num: int,
+) -> tuple[list[high_performance.BaseOperation], dict]:
+    """Execute neutral-atom multi-route mapping (NAMultiRoute).
+
+    Uses a grid-coordinate QPU config (e.g. hanyuan1_100_new.toml) where
+    positions are plain integers (p = row * column + col). Single-qubit
+    gates execute in-place; two-qubit gates move atoms to operate-area
+    coupler edges, disperse inactive atoms, then emit a global cz pulse.
+
+    Args:
+    gates_list (list[BaseOperation]): Logical operation sequence.
+        Each operation's targets are logical qubit indices.
+    qpu_cfg (dict): Grid-coordinate QPU configuration with keys
+        ``row``, ``column``, ``operate_area``, ``coupler_map`` and
+        ``readout_error``.
+    qbit_num (int): Number of logical qubits.
+
+    Returns:
+        tuple[list[BaseOperation], dict]: The mapped operation sequence
+        (with MOVE operations and physical qubit targets) and an empty
+        final layout dict.
+    """
+    ...
+
 class TranspileTimings:
     """Timing breakdown for each transpile stage."""
 
@@ -2731,18 +2758,24 @@ def transpile_na_from_qasm(
     inserting MOVE operations between the storage and operate areas so that
     two-qubit gates act on adjacent sites.
 
+    When ``na_mapping_type="multi"``, the grid-coordinate NAMultiRoute is
+    used (expects a QPU config like hanyuan1_100_new.toml).
+
     Args:
     qasm_string (str): QASM circuit string.
     supp_basis_gates (list[str]): Supported basis gate names.
-    qpu_cfg (dict): Neutral-atom QPU configuration with keys
-        ``storage_area``, ``operate_area``, ``coupler_map`` and
-        ``readout_error``.
+    qpu_cfg (dict): Neutral-atom QPU configuration. For "default"/"ZAP" the
+        keys are ``storage_area``, ``operate_area``, ``coupler_map`` and
+        ``readout_error`` (string positions). For "multi" the keys are
+        ``row``, ``column``, ``operate_area``, ``coupler_map`` and
+        ``readout_error`` (integer positions).
     opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-    na_mapping_type (str, optional): NA mapping algorithm type; only
-        "default" is supported by the C++ backend. Defaults to "default".
+    na_mapping_type (str, optional): NA mapping algorithm type; "default",
+        "ZAP", or "multi" are supported by the C++ backend. Defaults to
+        "default".
 
     Returns:
-    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+        TranspileResult: Contains basis_gate_list, num_qubits, and timings.
     """
 
 def transpile_na_from_ir(
@@ -2759,19 +2792,25 @@ def transpile_na_from_ir(
     The caller supplies the already-parsed operation list and the logical
     qubit count directly.
 
+    When ``na_mapping_type="multi"``, the grid-coordinate NAMultiRoute is
+    used (expects a QPU config like hanyuan1_100_new.toml).
+
     Args:
     ir_ops (list[BaseOperation]): Pre-parsed operation list (IR).
     num_qubits (int): Number of logical qubits in the circuit.
     supp_basis_gates (list[str]): Supported basis gate names.
-    qpu_cfg (dict): Neutral-atom QPU configuration with keys
-        ``storage_area``, ``operate_area``, ``coupler_map`` and
-        ``readout_error``.
+    qpu_cfg (dict): Neutral-atom QPU configuration. For "default"/"ZAP" the
+        keys are ``storage_area``, ``operate_area``, ``coupler_map`` and
+        ``readout_error`` (string positions). For "multi" the keys are
+        ``row``, ``column``, ``operate_area``, ``coupler_map`` and
+        ``readout_error`` (integer positions).
     opt_level (int, optional): Optimization level (0-3). Defaults to 1.
-    na_mapping_type (str, optional): NA mapping algorithm type; only
-        "default" is supported by the C++ backend. Defaults to "default".
+    na_mapping_type (str, optional): NA mapping algorithm type; "default",
+        "ZAP", or "multi" are supported by the C++ backend. Defaults to
+        "default".
 
     Returns:
-    TranspileResult: Contains basis_gate_list, num_qubits, and timings.
+        TranspileResult: Contains basis_gate_list, num_qubits, and timings.
         parse_time is always 0.
     """
     ...

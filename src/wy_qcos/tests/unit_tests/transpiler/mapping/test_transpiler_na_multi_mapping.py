@@ -65,7 +65,7 @@ class TestNAMultiRoute:
         assert na.qpu_config is not None
         assert na.qbit_num == num_qubits
         assert na.gates == ops
-        assert len(na.operate_area) == 80
+        assert len(na.operate_area) == 105
         assert na.ag.num_edges() == 4
         assert na.pg.num_nodes() == 220
         assert na.rows == 11
@@ -80,8 +80,13 @@ class TestNAMultiRoute:
         assert na.get_operate_area([{"row": [3, 5], "col": [0, 2]}]) == [
             60,
             61,
+            62,
             80,
             81,
+            82,
+            100,
+            101,
+            102,
         ]
 
     def _validate_mapped_ir(self, na, mapping_res, num_qubits):

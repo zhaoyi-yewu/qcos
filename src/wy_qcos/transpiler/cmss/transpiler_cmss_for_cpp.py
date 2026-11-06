@@ -51,6 +51,7 @@ from wy_qcos.transpiler.high_performance import (
     transpile_na_from_qasm as cpp_transpile_na_from_qasm,
     transpile_na_from_ir as cpp_transpile_na_from_ir,
     cpp_na_routing,
+    cpp_na_multi_routing,
 )
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     DEFAULT_SC_MAPPING_OPTIONS,
@@ -219,14 +220,21 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                 trans_cfg_inst.get_tech_type()
                 == Constant.TECH_TYPE_NEUTRAL_ATOM
                 and enable_na_move
-                and routing_algorithm.lower() in ("default", "zap")
+                and routing_algorithm.lower() in ("default", "zap", "multi")
             ):
-                mapping_res, final_layout = cpp_na_routing(
-                    gates_list=value[1],
-                    qpu_cfg=qpu_cfg,
-                    qbit_num=value[0],
-                    na_mapping_type=routing_algorithm,
-                )
+                if routing_algorithm.lower() == "multi":
+                    mapping_res, final_layout = cpp_na_multi_routing(
+                        gates_list=value[1],
+                        qpu_cfg=qpu_cfg,
+                        qbit_num=value[0],
+                    )
+                else:
+                    mapping_res, final_layout = cpp_na_routing(
+                        gates_list=value[1],
+                        qpu_cfg=qpu_cfg,
+                        qbit_num=value[0],
+                        na_mapping_type=routing_algorithm,
+                    )
                 final_layout_dict[key] = final_layout
                 return (
                     mapping_res,

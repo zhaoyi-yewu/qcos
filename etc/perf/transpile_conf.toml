@@ -56,9 +56,10 @@ tech_type = ["superconducting"]
 # config_file = ["./etc/topology/spinq_rpc_156.toml"]
 
 # 拓扑类型选择中性原子（neutral_atom）时，支持配置选择mapping算法
-# 支持的算法："default"、"ZAP"、"ZAC"（大小写不敏感）
+# 支持的算法："default"、"ZAP"、"ZAC"、"multi"（大小写不敏感）
 # - default / ZAP：走 C++ 一体化 transpile 路径（enable_transpile_single）
 # - ZAC：走 Python mapping 路径
+# - multi：走 C++ 一体化 transpile 路径，使用行列网格坐标配置（如 hanyuan1_100_new.toml）
 # na_mapping_type = "default"
 
 # 超导（superconducting）时，支持配置选择mapping算法

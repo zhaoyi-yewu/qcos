@@ -113,6 +113,7 @@ class TestSubcircuitResultCache:
     def test_cache_key(self):
         job_info = {"data": {"backend": "dev1"}}
         key = SubcircuitResultCache.cache_key("qasm_code", job_info)
+
         # The cache key format is "<prefix>/<sha256-hex>" - the
         # separator is a forward slash (path-style), not a colon.
         # The other test file at tests/unit_tests/transpiler/wirecut/
