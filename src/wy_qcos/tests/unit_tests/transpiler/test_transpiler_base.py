@@ -36,6 +36,14 @@ class TestTranspilerBase:
         obj.update_transpiler_options({1: 1, 2: 2, 3: 3, 4: 4})
         assert obj.transpiler_options == {1: 1, 2: 2, 3: 3, 4: 4}
 
+    def test_metadata_getter_does_not_change_schema(self):
+        original_schema = obj.get_transpiler_options_schema()
+        metadata = obj.get_transpiler_options_metadata()
+        metadata["new"] = {"alias_name": "新字段"}
+
+        assert obj.get_transpiler_options_schema() is original_schema
+        assert obj.get_transpiler_options_metadata() == {}
+
     def test_get_transpiler_info(self):
         assert obj.get_transpiler_info() == (
             f"[{obj.__class__.__name__}]"

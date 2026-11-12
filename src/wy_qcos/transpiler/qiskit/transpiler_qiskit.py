@@ -76,6 +76,16 @@ class TranspilerQiskit(TranspilerBase):
         }
         # transpiler_options schema used in submit-job from user
         self.transpiler_options_schema = {Optional("optimization_level"): int}
+        self.transpiler_options_metadata = {
+            "optimization_level": {
+                "alias_name": "优化级别",
+                "description": (
+                    "控制 Qiskit 转译优化级别，运行时接受 0 到 3，"
+                    "级别越高优化开销越大。"
+                ),
+                "field_constraints": {"runtime": {"minimum": 0, "maximum": 3}},
+            }
+        }
 
     def init_transpiler(self):
         """Init transpiler."""

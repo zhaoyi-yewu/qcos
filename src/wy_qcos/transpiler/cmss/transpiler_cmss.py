@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import logging
 
 from wy_qcos.log.logger import log_perf
@@ -43,6 +44,7 @@ from wy_qcos.transpiler.cmss.mapping.empty_mapping import (
 from wy_qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     SCRoute,
+    SC_MAPPING_OPTIONS_METADATA,
     SC_MAPPING_OPTIONS_SCHEMA,
 )
 
@@ -109,6 +111,46 @@ class TranspilerCmss(TranspilerBase):
             Optional("na_mapping_type"): str,
             Optional("enable_mapping"): bool,
             Optional("sc_mapping_options"): SC_MAPPING_OPTIONS_SCHEMA,
+        }
+        self.transpiler_options_metadata = {
+            "optimization_level": {
+                "alias_name": "优化级别",
+                "description": (
+                    "控制 CMSS 转译优化级别，运行时接受 0 到 3，"
+                    "级别越高优化开销越大。"
+                ),
+                "field_constraints": {"runtime": {"minimum": 0, "maximum": 3}},
+            },
+            "enable_na_move": {
+                "alias_name": "启用中性原子移动",
+                "description": (
+                    "是否为支持 MOVE 的中性原子设备启用相应映射与门分解流程。"
+                ),
+            },
+            "na_mapping_type": {
+                "alias_name": "中性原子映射类型",
+                "description": (
+                    "选择 Python CMSS 主路径使用的中性原子映射算法，"
+                    "仅在启用中性原子移动时生效。"
+                ),
+                "field_constraints": {
+                    "runtime": {"enum": ["default", "ZAC", "ZAP", "multi"]}
+                },
+            },
+            "enable_mapping": {
+                "alias_name": "启用比特映射",
+                "description": (
+                    "是否根据设备拓扑执行逻辑比特到物理比特的映射。"
+                ),
+            },
+            "sc_mapping_options": {
+                "alias_name": "超导映射参数",
+                "description": (
+                    "配置 Python CMSS 主路径的超导映射算法参数，"
+                    "仅在超导映射流程中生效。"
+                ),
+                **copy.deepcopy(SC_MAPPING_OPTIONS_METADATA),
+            },
         }
         # qpu_config
         self.qpu_config = None

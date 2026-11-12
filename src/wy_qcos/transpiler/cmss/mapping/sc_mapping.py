@@ -87,6 +87,75 @@ SC_MAPPING_OPTIONS_SCHEMA = {
     Optional("sabre_decay"): And(Or(int, float), lambda x: 0 <= x <= 1),
 }
 
+SC_MAPPING_OPTIONS_METADATA = {
+    "routing_algorithm": {
+        "alias_name": "路由算法",
+        "description": (
+            "选择超导比特映射使用的路由算法，支持 MCT、SC 和 SABRE。"
+        ),
+    },
+    "select_mode": {
+        "alias_name": "节点选择模式",
+        "description": (
+            "设置 MCTS 节点选择模式及对应参数，数组必须恰好包含两个元素。"
+        ),
+        "field_constraints": {"schema": {"exact_items": 2}},
+    },
+    "use_prune": {
+        "alias_name": "启用剪枝",
+        "description": "以 0 或 1 控制 MCTS 搜索过程中是否启用剪枝。",
+    },
+    "use_hash": {
+        "alias_name": "启用哈希",
+        "description": "以 0 或 1 控制 MCTS 搜索过程中是否启用哈希复用。",
+    },
+    "score_layer": {
+        "alias_name": "评分层数",
+        "description": (
+            "控制 MCTS 评分计算的层数，必须大于 0，值越大计算开销越高。"
+        ),
+        "field_constraints": {"schema": {"exclusive_minimum": 0}},
+    },
+    "mode_sim": {
+        "alias_name": "模拟模式",
+        "description": (
+            "设置 MCTS 模拟模式及对应参数，数组必须恰好包含两个元素。"
+        ),
+        "field_constraints": {"schema": {"exact_items": 2}},
+    },
+    "score_decay_rate_size": {
+        "alias_name": "大小评分衰减率",
+        "description": (
+            "控制按线路大小计算评分时的衰减比例，取值范围为 0 到 1。"
+        ),
+        "field_constraints": {"schema": {"minimum": 0, "maximum": 1}},
+    },
+    "score_decay_rate_depth": {
+        "alias_name": "深度评分衰减率",
+        "description": (
+            "控制按线路深度计算评分时的衰减比例，取值范围为 0 到 1。"
+        ),
+        "field_constraints": {"schema": {"minimum": 0, "maximum": 1}},
+    },
+    "sabre_extension_size": {
+        "alias_name": "SABRE 扩展规模",
+        "description": "控制 SABRE 路由前向扩展集合的规模，必须大于 0。",
+        "field_constraints": {"schema": {"exclusive_minimum": 0}},
+    },
+    "sabre_weight": {
+        "alias_name": "SABRE 权重",
+        "description": "控制 SABRE 启发式评分的权重，取值范围为 0 到 1。",
+        "field_constraints": {"schema": {"minimum": 0, "maximum": 1}},
+    },
+    "sabre_decay": {
+        "alias_name": "SABRE 衰减系数",
+        "description": (
+            "控制 SABRE 启发式评分的衰减系数，取值范围为 0 到 1。"
+        ),
+        "field_constraints": {"schema": {"minimum": 0, "maximum": 1}},
+    },
+}
+
 
 class SCRoute(ABC):
     """超导设备路由映射类.

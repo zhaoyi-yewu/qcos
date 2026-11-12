@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import logging
 from schema import Optional
 
@@ -35,6 +36,7 @@ from wy_qcos.transpiler.cmss.mapping.empty_mapping import (
 from wy_qcos.transpiler.cmss.mapping.mapping_factory import MappingFactory
 from wy_qcos.transpiler.cmss.mapping.sc_mapping import (
     SCRoute,
+    SC_MAPPING_OPTIONS_METADATA,
     SC_MAPPING_OPTIONS_SCHEMA,
 )
 from wy_qcos.transpiler.common.errors import TranspilerException
@@ -114,6 +116,68 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
             Optional("enable_mapping"): bool,
             Optional("sc_mapping_options"): SC_MAPPING_OPTIONS_SCHEMA,
             Optional("target_bits"): [int],
+        }
+        self.transpiler_options_metadata = {
+            "optimization_level": {
+                "alias_name": "优化级别",
+                "description": (
+                    "控制高性能 CMSS 转译优化级别，运行时接受 0 到 3，"
+                    "级别越高优化开销越大。"
+                ),
+                "field_constraints": {"runtime": {"minimum": 0, "maximum": 3}},
+            },
+            "enable_na_move": {
+                "alias_name": "启用中性原子移动",
+                "description": (
+                    "是否为支持 MOVE 的中性原子设备启用高性能映射"
+                    "与门分解流程。"
+                ),
+            },
+            "na_mapping_type": {
+                "alias_name": "中性原子映射类型",
+                "description": (
+                    "选择高性能 C++ 主路径支持的中性原子映射算法，"
+                    "仅在启用中性原子移动时生效。"
+                ),
+                "field_constraints": {
+                    "runtime": {"enum": ["default", "ZAP", "multi"]}
+                },
+            },
+            "enable_mapping": {
+                "alias_name": "启用比特映射",
+                "description": (
+                    "是否根据设备拓扑执行逻辑比特到物理比特的映射。"
+                ),
+            },
+            "sc_mapping_options": {
+                "alias_name": "超导映射参数",
+                "description": (
+                    "保留的超导映射配置；高性能 C++ 标准主路径不消费这些参数，"
+                    "仅在回退到 Python SCRoute 时可能生效。"
+                ),
+                **copy.deepcopy(SC_MAPPING_OPTIONS_METADATA),
+            },
+            "target_bits": {
+                "alias_name": "目标物理比特",
+                "description": (
+                    "限制高性能超导映射可使用的物理比特索引列表，"
+                    "仅在启用映射时生效。"
+                ),
+                "field_constraints": {
+                    "runtime": {
+                        "custom": [
+                            {
+                                "when": "高性能超导映射指定 target_bits",
+                                "rule": (
+                                    "索引必须位于设备有效范围内，"
+                                    "数量需容纳线路比特，不得重复，"
+                                    "并满足设备连通性要求。"
+                                ),
+                            }
+                        ]
+                    }
+                },
+            },
         }
         # qpu_config
         self.qpu_config = None
