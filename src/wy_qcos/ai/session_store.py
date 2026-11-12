@@ -28,11 +28,20 @@ import uuid
 from dataclasses import dataclass
 
 from redis import asyncio as async_redis
+from redis.exceptions import WatchError
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 
 logger = logging.getLogger(__name__)
+
+
+class SessionNotFoundError(Exception):
+    """Raised when the requested AI session does not exist."""
+
+
+class SessionMessageConflictError(Exception):
+    """Raised when the message being edited no longer matches Redis."""
 
 
 @dataclass
@@ -43,6 +52,10 @@ class SessionInfo:
     created_at: float
     title: str
     message_count: int
+    # Currently selected model for this session. ``None`` means the
+    # session predates multi-model support (or never pinned a model)
+    # and the configured default should be used.
+    model_id: str | None = None
 
 
 class RedisSessionStore:
@@ -91,7 +104,9 @@ class RedisSessionStore:
     def _ttl(self) -> int:
         return Config.AI_AGENT.SESSION_TTL_SECONDS
 
-    async def create_session(self, title: str = "新的会话") -> str:
+    async def create_session(
+        self, title: str = "新的会话", model_id: str | None = None
+    ) -> str:
         """Create a new session record."""
         client = await self._get_client()
         now = time.time()
@@ -100,6 +115,7 @@ class RedisSessionStore:
             "created_at": now,
             "title": title,
             "message_count": 0,
+            "model_id": model_id,
         }
         pipe = client.pipeline()
         pipe.set(self._session_key, json.dumps(session_data), ex=self._ttl)
@@ -113,8 +129,16 @@ class RedisSessionStore:
         role: str,
         content: str,
         attachments: list[dict] | None = None,
+        model_id: str | None = None,
+        model: str | None = None,
     ) -> None:
-        """Append a message to the session history."""
+        """Append a message to the session history.
+
+        ``model_id`` records the configured model selected for this
+        turn; ``model`` records the actual upstream model name. The
+        session's current ``model_id`` is updated on every append so
+        later turns (and session restores) inherit the latest choice.
+        """
         client = await self._get_client()
         now = time.time()
 
@@ -125,6 +149,10 @@ class RedisSessionStore:
         }
         if attachments:
             message["attachments"] = attachments
+        if model_id:
+            message["model_id"] = model_id
+        if model:
+            message["model"] = model
 
         pipe = client.pipeline()
         pipe.rpush(self._messages_key, json.dumps(message))
@@ -138,10 +166,16 @@ class RedisSessionStore:
             # Auto-generate title from first user message
             if role == "user" and session.get("message_count") == 1:
                 session["title"] = content[:50]
+            if model_id:
+                # Also repairs metadata for sessions whose saved model
+                # was removed from the configuration (the orchestrator
+                # already fell back to a valid model for this turn).
+                session["model_id"] = model_id
             pipe.set(self._session_key, json.dumps(session), ex=self._ttl)
         else:
             await self.create_session(
-                title=(content[:50] if role == "user" else "新的会话")
+                title=(content[:50] if role == "user" else "新的会话"),
+                model_id=model_id,
             )
 
         # Trim old messages if over cap
@@ -155,6 +189,53 @@ class RedisSessionStore:
         raw_messages = await client.lrange(self._messages_key, 0, -1)
         return [json.loads(m) for m in raw_messages]
 
+    async def truncate_from(
+        self,
+        from_index: int,
+        expected_content: str,
+    ) -> list[dict]:
+        """Remove a user message and all following messages atomically.
+
+        The expected content prevents a stale browser from truncating a
+        history that has already changed. Returns the retained prefix.
+        """
+        client = await self._get_client()
+        async with client.pipeline() as pipe:
+            while True:
+                try:
+                    await pipe.watch(self._messages_key, self._session_key)
+                    session_raw = await pipe.get(self._session_key)
+                    if not session_raw:
+                        raise SessionNotFoundError(self.session_id)
+                    raw_messages = await pipe.lrange(self._messages_key, 0, -1)
+                    if from_index < 0 or from_index >= len(raw_messages):
+                        raise ValueError("Message index out of range")
+                    target = json.loads(raw_messages[from_index])
+                    if target.get("role") != "user":
+                        raise ValueError("Only user messages can be edited")
+                    if target.get("content") != expected_content:
+                        raise SessionMessageConflictError(self.session_id)
+
+                    retained = raw_messages[:from_index]
+                    session = json.loads(session_raw)
+                    session["message_count"] = len(retained)
+                    pipe.multi()
+                    pipe.delete(self._messages_key)
+                    if retained:
+                        pipe.rpush(self._messages_key, *retained)
+                        pipe.expire(self._messages_key, self._ttl)
+                    pipe.set(
+                        self._session_key,
+                        json.dumps(session),
+                        ex=self._ttl,
+                    )
+                    await pipe.execute()
+                    return [json.loads(message) for message in retained]
+                except WatchError:
+                    # Another writer changed the history; validate the
+                    # latest Redis state again before truncating.
+                    continue
+
     async def get_session_info(self) -> SessionInfo | None:
         """Retrieve session metadata."""
         client = await self._get_client()
@@ -167,6 +248,9 @@ class RedisSessionStore:
             created_at=data["created_at"],
             title=data.get("title", ""),
             message_count=data.get("message_count", 0),
+            # Older session records have no model_id; they fall back
+            # to the configured default model.
+            model_id=data.get("model_id"),
         )
 
     async def list_sessions(self) -> list[SessionInfo]:
