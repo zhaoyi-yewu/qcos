@@ -33,6 +33,13 @@ from wy_qcos.common import errors
 config = Config()
 
 
+@pytest.fixture(autouse=True)
+def _disable_ai_agent():
+    """Isolate unrelated tests from required AI model configuration."""
+    with patch.object(Config, "is_ai_agent_enabled", return_value=False):
+        yield
+
+
 class TestConfig:
     @patch.object(Library, "read_toml_file")
     def test_parse_toml_file(self, mock_read_toml_file):

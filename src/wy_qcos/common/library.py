@@ -50,6 +50,7 @@ from cryptography.fernet import Fernet
 from datetime import datetime
 from http import HTTPStatus
 from pathlib import Path
+from pydantic import BaseModel
 from schema import Schema
 from urllib.parse import urlparse
 
@@ -1973,6 +1974,29 @@ class Library:
                     if field_name not in masked_data:
                         continue
                     value = masked_data[field_name]
+                    # Recurse into nested models / model lists so
+                    # `sensitive` metadata on nested entries (e.g.
+                    # AI.AGENT.MODELS[i].API_KEY) is honoured too.
+                    original_value = getattr(data_obj, field_name, None)
+                    if isinstance(original_value, BaseModel):
+                        masked_data[field_name] = (
+                            Library.mask_password_from_pydantic(
+                                original_value, mask_value
+                            )
+                        )
+                        continue
+                    if isinstance(original_value, (list, tuple)) and any(
+                        isinstance(item, BaseModel) for item in original_value
+                    ):
+                        masked_data[field_name] = [
+                            Library.mask_password_from_pydantic(
+                                item, mask_value
+                            )
+                            if isinstance(item, BaseModel)
+                            else item
+                            for item in original_value
+                        ]
+                        continue
                     # Check if extra metadata exists before accessing it
                     if extra is None:
                         continue
