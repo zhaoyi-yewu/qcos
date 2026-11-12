@@ -37,7 +37,7 @@ from wy_qcos.common.constant import (
 )
 from wy_qcos.db.models import Job
 from wy_qcos.db.repositories.job import JobRepository
-from wy_qcos.metrics import metrics_collector
+from wy_qcos.metrics import get_metrics_collector
 from wy_qcos.task_manager import scheduler
 
 
@@ -284,7 +284,8 @@ async def update_job_metrics():
             job_status=Constant.JOB_STATUS_COMPLETED,
         )
 
-        data = metrics_collector.job_metrics.JobMetricsData(
+        job_metrics = get_metrics_collector().job_metrics
+        data = job_metrics.JobMetricsData(
             total=total,
             completed=completed,
             failed=failed,
@@ -299,7 +300,7 @@ async def update_job_metrics():
             completed_job_rate_min=float(completed_job_count),
         )
 
-        metrics_collector.update_job_metrics(data=data)
+        get_metrics_collector().update_job_metrics(data=data)
     except Exception as e:
         logger.error(f"Error updating job metrics from database: {e}")
     finally:
@@ -496,14 +497,15 @@ async def update_system_health_metrics():
         fastapi_healthy, fastapi_error = unpack_result(results[2])
         redis_healthy, redis_error = unpack_result(results[3])
 
-        data = metrics_collector.system_health_metrics.SystemHealthMetricsData(
+        health_metrics = get_metrics_collector().system_health_metrics
+        data = health_metrics.SystemHealthMetricsData(
             heartbeat_timestamp=timestamp_second,
             worker_healthy=worker_healthy,
             prefect_healthy=prefect_healthy,
             fastapi_healthy=fastapi_healthy,
             redis_healthy=redis_healthy,
         )
-        metrics_collector.update_system_health(data)
+        get_metrics_collector().update_system_health(data)
 
         logger.debug(
             f"System health component status: "
@@ -618,7 +620,8 @@ async def update_system_stats_metrics():
             disk_percent,
         ) = await loop.run_in_executor(None, _collect_system_stats_sync)
 
-        data = metrics_collector.system_stats_metrics.SystemStatsData(
+        stats_metrics = get_metrics_collector().system_stats_metrics
+        data = stats_metrics.SystemStatsData(
             rss_mb=rss_mb,
             vms_mb=vms_mb,
             thread_count=thread_count,
@@ -632,7 +635,7 @@ async def update_system_stats_metrics():
             disk_free_mb=disk_free_mb,
             disk_percent=disk_percent,
         )
-        metrics_collector.update_system_stats(data)
+        get_metrics_collector().update_system_stats(data)
     except asyncio.CancelledError:
         # Graceful shutdown: caller (update_metrics_task_async) was
         # cancelled while we were running in the executor. Swallow so the

@@ -26,7 +26,7 @@ from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
 from wy_qcos.api.posiq.routes_jsonrpc.routes import metrics_api_v1
 from wy_qcos.common.constant import Constant
-from wy_qcos.metrics import metrics_collector
+from wy_qcos.metrics import get_metrics_collector
 
 from .dependencies.authentication import auth
 
@@ -56,7 +56,9 @@ def get_system_health(
     logger.info(f"Call {func_name}")
 
     try:
-        system_stats = metrics_collector.system_health_metrics.get_values()
+        system_stats = (
+            get_metrics_collector().system_health_metrics.get_values()
+        )
         component_stats = {
             Constant.COMPONENT_NAME_FASTAPI: Constant.COMPONENT_STATUS_ONLINE
             if system_stats.fastapi_healthy
@@ -108,7 +110,7 @@ def get_api_stats(
     logger.info(f"Call {func_name}")
 
     try:
-        api_stats = metrics_collector.api_metrics.get_api_stats()
+        api_stats = get_metrics_collector().api_metrics.get_api_stats()
 
         _response_info = {
             Constant.API_TOTAL_REQUESTS: api_stats[
@@ -153,7 +155,7 @@ def get_job_stats(
     logger.info(f"Call {func_name}")
 
     try:
-        job_metrics_data = metrics_collector.job_metrics.get_values()
+        job_metrics_data = get_metrics_collector().job_metrics.get_values()
 
         _response_info = {
             Constant.JOB_METRICS_FIELD_TOTAL: job_metrics_data.total,
@@ -214,7 +216,7 @@ def get_system_stats(
         # concurrent WebUI polling does not repeatedly invoke psutil.
         # Fall back to a direct psutil snapshot when the collector has
         # not produced data yet (e.g. right after server start).
-        cached = metrics_collector.system_stats_metrics.get_values()
+        cached = get_metrics_collector().system_stats_metrics.get_values()
         if cached.cpu_count > 0:
             _response_info = {
                 "pid": os.getpid(),

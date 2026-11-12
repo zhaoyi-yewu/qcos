@@ -16,4 +16,40 @@
 # ----------------------------------------------------------------------
 from .metrics_collector import MetricsCollector
 
-metrics_collector = MetricsCollector()
+_metrics_collector: MetricsCollector | None = None
+
+
+def init_metrics_collector() -> MetricsCollector:
+    """Create the global MetricsCollector singleton.
+
+    Must be called explicitly from service startup code (the FastAPI
+    lifespan handler) instead of relying on import-time side effects,
+    so that merely importing this package in tooling contexts
+    (Sphinx apidoc builds, scripts, unit-test collection) neither
+    registers Prometheus metrics nor emits initialization logs.
+
+    Returns:
+        The initialized MetricsCollector singleton.
+    """
+    global _metrics_collector
+    if _metrics_collector is None:
+        _metrics_collector = MetricsCollector()
+    return _metrics_collector
+
+
+def get_metrics_collector() -> MetricsCollector:
+    """Return the initialized MetricsCollector singleton.
+
+    Returns:
+        The MetricsCollector singleton.
+
+    Raises:
+        RuntimeError: If init_metrics_collector() has not been called.
+    """
+    if _metrics_collector is None:
+        raise RuntimeError(
+            "MetricsCollector is not initialized. Call "
+            "wy_qcos.metrics.init_metrics_collector() during service "
+            "startup first."
+        )
+    return _metrics_collector

@@ -57,8 +57,10 @@ class TestPrometheusHandler:
         """Test do_GET with /metrics path returns metrics data."""
         mock_metrics_data = b"# HELP some metric\nsome_metric 42\n"
         with patch(
-            "wy_qcos.metrics.metrics_server.metrics_collector.get_metrics",
-            return_value=mock_metrics_data,
+            "wy_qcos.metrics.metrics_server.get_metrics_collector",
+            return_value=MagicMock(
+                get_metrics=MagicMock(return_value=mock_metrics_data)
+            ),
         ):
             handler.do_GET()
 
@@ -86,8 +88,10 @@ class TestPrometheusHandler:
             "Connection reset"
         )
         with patch(
-            "wy_qcos.metrics.metrics_server.metrics_collector.get_metrics",
-            return_value=b"data",
+            "wy_qcos.metrics.metrics_server.get_metrics_collector",
+            return_value=MagicMock(
+                get_metrics=MagicMock(return_value=b"data")
+            ),
         ):
             handler.do_GET()
         mock_logger.debug.assert_called_once()
@@ -101,8 +105,10 @@ class TestPrometheusHandler:
             "Connection aborted"
         )
         with patch(
-            "wy_qcos.metrics.metrics_server.metrics_collector.get_metrics",
-            return_value=b"data",
+            "wy_qcos.metrics.metrics_server.get_metrics_collector",
+            return_value=MagicMock(
+                get_metrics=MagicMock(return_value=b"data")
+            ),
         ):
             handler.do_GET()
         mock_logger.debug.assert_called_once()
@@ -111,8 +117,10 @@ class TestPrometheusHandler:
         """Test do_GET handles BrokenPipeError gracefully."""
         handler.wfile.write.side_effect = BrokenPipeError("Broken pipe")
         with patch(
-            "wy_qcos.metrics.metrics_server.metrics_collector.get_metrics",
-            return_value=b"data",
+            "wy_qcos.metrics.metrics_server.get_metrics_collector",
+            return_value=MagicMock(
+                get_metrics=MagicMock(return_value=b"data")
+            ),
         ):
             handler.do_GET()
         mock_logger.debug.assert_called_once()
@@ -122,8 +130,10 @@ class TestPrometheusHandler:
         handler.wfile.write.side_effect = RuntimeError("Unexpected error")
         with (
             patch(
-                "wy_qcos.metrics.metrics_server.metrics_collector.get_metrics",
-                return_value=b"data",
+                "wy_qcos.metrics.metrics_server.get_metrics_collector",
+                return_value=MagicMock(
+                    get_metrics=MagicMock(return_value=b"data")
+                ),
             ),
             pytest.raises(RuntimeError),
         ):

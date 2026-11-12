@@ -22,7 +22,11 @@ import pytest
 from prefect.client.schemas.objects import WorkerStatus
 
 from wy_qcos.common.constant import Constant, HttpCode
-from wy_qcos.metrics import metrics_collector, metrics_task
+from wy_qcos.metrics import (
+    get_metrics_collector,
+    init_metrics_collector,
+    metrics_task,
+)
 from wy_qcos.metrics.metrics_task import (
     call_sync_with_timeout,
     check_fastapi_health,
@@ -36,6 +40,11 @@ from wy_qcos.metrics.metrics_task import (
     update_metrics_task_async,
     update_system_health_metrics,
 )
+
+# Initialize the singleton once for the whole test module; patch.object
+# below replaces methods on this same instance.
+init_metrics_collector()
+metrics_collector = get_metrics_collector()
 
 
 def run_async(coro):

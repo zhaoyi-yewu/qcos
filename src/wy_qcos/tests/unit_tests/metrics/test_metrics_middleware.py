@@ -29,8 +29,16 @@ import pytest
 from fastapi import Response
 
 from wy_qcos.common.constant import HttpCode
-from wy_qcos.metrics import metrics_collector
+from wy_qcos.metrics import (
+    get_metrics_collector,
+    init_metrics_collector,
+)
 from wy_qcos.metrics.metrics_middleware import MetricsMiddleware
+
+# Initialize the singleton once for the whole test module; patch.object
+# below replaces methods on this same instance.
+init_metrics_collector()
+metrics_collector = get_metrics_collector()
 
 
 def create_mock_request(path: str, body: bytes = b"", method: str = "POST"):
