@@ -202,6 +202,9 @@ export default defineConfig(({ mode, command }) => {
       }
     },
     build: {
+      // 360 Secure Browser 10 commonly uses Chromium 63; this also
+      // keeps the production output compatible with Edge 85.
+      target: 'chrome63',
       outDir: 'dist',
       assetsDir: 'static',
       sourcemap: false,

@@ -6,6 +6,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link rel="icon" href="/favicon.ico">
     <title>QCOS</title>
+    <script>
+      // Mermaid uses Object.hasOwn, which is unavailable before Edge 93.
+      // Load the polyfill inline so it runs before any generated module chunk.
+      if (typeof Object.hasOwn !== 'function') {
+        Object.defineProperty(Object, 'hasOwn', {
+          configurable: true,
+          writable: true,
+          value: function hasOwn(object, property) {
+            return Object.prototype.hasOwnProperty.call(Object(object), property)
+          }
+        })
+      }
+
+      // xterm uses Element.replaceChildren, unavailable before Edge 86.
+      if (typeof Element.prototype.replaceChildren !== 'function') {
+        Object.defineProperty(Element.prototype, 'replaceChildren', {
+          configurable: true,
+          writable: true,
+          value: function replaceChildren(...nodes) {
+            while (this.firstChild) {
+              this.removeChild(this.firstChild)
+            }
+            this.append(...nodes)
+          }
+        })
+      }
+    </script>
   </head>
   <body>
     <noscript>
