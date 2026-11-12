@@ -66,6 +66,7 @@ from typing import Any
 from collections.abc import Sequence
 
 import numpy as np
+from schema import Optional, Or
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.base_operation import BaseOperation
@@ -609,6 +610,136 @@ class ZNEMitigation(MitigationBase):
     DEFAULT_METHOD: str = "polynomial"
     DEFAULT_POLYNOMIAL_DEGREE: int = 1
     DEFAULT_FOLDING_STRATEGY: str = "left"
+
+    qem_options_schema: dict[Any, Any] = {
+        Optional("enabled"): bool,
+        Optional("scale_factors"): Or([Or(int, float)], None),
+        Optional("extrapolation_method"): str,
+        Optional("polynomial_degree"): Or(int, None),
+        Optional("enable_fallback"): bool,
+        Optional("fallback_threshold"): Or(int, float),
+        Optional("scale_factor"): Or(int, float, None),
+        Optional("folding_strategy"): str,
+        Optional("folding_seed"): Or(int, None),
+        Optional("fold_gate_names"): Or([str], None),
+    }
+    qem_options_metadata = {
+        "enabled": {
+            "alias_name": "启用零噪声外推",
+            "description": "是否启用零噪声外推，未配置时默认为 false。",
+            "default": False,
+        },
+        "scale_factors": {
+            "alias_name": "噪声倍率列表",
+            "description": (
+                "设置生成折叠线路的噪声倍率序列；空列表会跳过有效倍率配置，"
+                "数组元素不能为 null。"
+            ),
+            "field_constraints": {
+                "schema": {"nullable": True},
+                "runtime": {
+                    "on_invalid": "skip_technique",
+                    "custom": [
+                        {
+                            "when": "执行 ZNE 线路折叠",
+                            "rule": (
+                                "每个噪声倍率必须至少为 1，"
+                                "空列表不产生有效外推点。"
+                            ),
+                        }
+                    ],
+                },
+            },
+        },
+        "extrapolation_method": {
+            "alias_name": "外推方法",
+            "description": (
+                "选择零噪声外推算法，运行时使用多项式、Richardson、"
+                "线性或指数外推。"
+            ),
+            "field_constraints": {
+                "runtime": {
+                    "enum": [
+                        "polynomial",
+                        "richardson",
+                        "linear",
+                        "exponential",
+                    ]
+                }
+            },
+        },
+        "polynomial_degree": {
+            "alias_name": "多项式阶数",
+            "description": (
+                "设置多项式外推阶数，null 表示按当前倍率点数量确定默认阶数。"
+            ),
+            "field_constraints": {
+                "schema": {"nullable": True},
+                "runtime": {
+                    "on_invalid": "clamp",
+                    "custom": [
+                        {
+                            "when": "执行多项式外推",
+                            "rule": (
+                                "阶数会被限制在 0 到有效倍率点数减 1 "
+                                "的范围内。"
+                            ),
+                        }
+                    ],
+                },
+            },
+        },
+        "enable_fallback": {
+            "alias_name": "启用稳定回退",
+            "description": (
+                "外推结果不稳定时是否回退到噪声倍率 1 的原始结果。"
+            ),
+        },
+        "fallback_threshold": {
+            "alias_name": "回退阈值",
+            "description": (
+                "设置概率外推允许的最大负概率质量，"
+                "超过阈值且启用回退时使用原始结果。"
+            ),
+            "field_constraints": {"runtime": {"on_invalid": "fallback"}},
+        },
+        "scale_factor": {
+            "alias_name": "单一噪声倍率",
+            "description": (
+                "使用兼容模式设置单个噪声倍率，"
+                "等价于倍率序列 [1, scale_factor]，允许 null。"
+            ),
+            "field_constraints": {
+                "schema": {"nullable": True},
+                "runtime": {"minimum": 1},
+            },
+        },
+        "folding_strategy": {
+            "alias_name": "门折叠策略",
+            "description": (
+                "选择部分折叠门的位置策略，运行时支持左侧、右侧或随机选择。"
+            ),
+            "field_constraints": {
+                "runtime": {"enum": ["left", "right", "random"]}
+            },
+        },
+        "folding_seed": {
+            "alias_name": "随机折叠种子",
+            "description": (
+                "设置随机门折叠使用的随机数种子，null 表示不固定随机序列。"
+            ),
+            "field_constraints": {"schema": {"nullable": True}},
+        },
+        "fold_gate_names": {
+            "alias_name": "可折叠门名称",
+            "description": (
+                "限制参与折叠的门名称；Factory 先构造再 set_config 时，"
+                "显式 null 表示使用全部内置自逆门，"
+                "而构造器缺省仅使用 CZ。"
+            ),
+            "field_constraints": {"schema": {"nullable": True}},
+        },
+    }
 
     _fold_gate_names: tuple[str, ...] | None
 
