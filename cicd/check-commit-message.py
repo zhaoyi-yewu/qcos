@@ -19,6 +19,7 @@
 Check git commit messages
 """
 
+import logging
 import os
 import re
 import subprocess
@@ -26,6 +27,8 @@ import sys
 
 
 MANDATORY_KEYWORDS = ["Code Source From:", "Jira:", "市场项目编号"]
+
+logger = logging.getLogger(__name__)
 
 
 def get_commit_messages():
@@ -49,14 +52,10 @@ def get_commit_messages():
             first_line = msg.split("\n")[0]
             return first_line
         except subprocess.CalledProcessError as e:
-            sys.stderr.write(
-                f"ERROR: Failed to run git command: {e}", file=sys.stderr
-            )
+            logger.error("Failed to run git command: %s", e)
             sys.exit(1)
         except FileNotFoundError:
-            sys.stderr.write(
-                "ERROR: Failed to find git command", file=sys.stderr
-            )
+            logger.error("Failed to find git command")
             sys.exit(1)
 
 
@@ -100,12 +99,10 @@ def get_commit_messages_summary(count=None, start_from_merge=True):
         for line in _commit_message_list:
             commit_message_list.append(tuple(line.split(" ", maxsplit=1)))
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(
-            f"ERROR: Failed to run git command: {e}", file=sys.stderr
-        )
+        logger.error("Failed to run git command: %s", e)
         sys.exit(1)
     except FileNotFoundError:
-        sys.stderr.write("ERROR: Failed to find git command", file=sys.stderr)
+        logger.error("Failed to find git command")
         sys.exit(1)
     return commit_message_list
 
@@ -117,28 +114,25 @@ def is_english_string(s):
 
 
 def main():
-    print("Checking commit messages")
+    logger.info("Checking commit messages")
     # get first line of commit messages
     first_line = get_commit_messages()
-    print(f"Commit message summary: {first_line}")
+    logger.info("Commit message summary: %s", first_line)
 
     if not first_line:
-        sys.stderr.write("ERROR: empty line of commit message\n")
+        logger.error("Empty line of commit message")
         sys.exit(1)
 
     # check leading characters
     if first_line != first_line.lstrip():
-        sys.stderr.write(
-            "ERROR: Leading characters of commit message cannot be blank\n"
-        )
+        logger.error("Leading characters of commit message cannot be blank")
         sys.exit(1)
 
     # check if is english
     if not is_english_string(first_line):
-        sys.stderr.write(
-            "ERROR: Commit message summary includes "
-            "non-English characters, which is not allowed. "
-            "Only English letters are allowed\n"
+        logger.error(
+            "Commit message summary includes non-English characters, "
+            "which is not allowed. Only English letters are allowed"
         )
         sys.exit(1)
 
@@ -148,11 +142,11 @@ def main():
         commit_summary = commit_summary.strip()
         for keyword in MANDATORY_KEYWORDS:
             if keyword.lower() in commit_summary.lower():
-                sys.stderr.write(
-                    "ERROR: keywords: '"
-                    f"{', '.join(MANDATORY_KEYWORDS)}' "
-                    "should not appear in commit message summary "
-                    f"(hash: {commit_hash})\n"
+                logger.error(
+                    "Keywords: '%s' should not appear in commit message "
+                    "summary (hash: %s)",
+                    ", ".join(MANDATORY_KEYWORDS),
+                    commit_hash,
                 )
                 sys.exit(1)
 
@@ -163,19 +157,25 @@ def main():
     for commit_hash, commit_summary in commit_message_list:
         commit_summary = commit_summary.strip()
         if commit_summary == last_commit_summary:
-            sys.stderr.write(
-                "ERROR: commit message summary "
-                f"(hash: {last_commit_hash}) is identical "
-                f"to another commit (hash: {commit_hash}). "
-                "Please squash them into one commit\n"
+            logger.error(
+                "Commit message summary (hash: %s) is identical "
+                "to another commit (hash: %s). "
+                "Please squash them into one commit",
+                last_commit_hash,
+                commit_hash,
             )
             sys.exit(1)
         if not last_commit_summary:
             last_commit_summary = commit_summary
             last_commit_hash = commit_hash
 
-    print("[SUCCESS]")
+    logger.info("[SUCCESS]")
 
 
 if __name__ == "__main__":
+    # configure logging only when executed as a script, so importing
+    # this module has no side effects on the caller's logging setup
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s: %(message)s"
+    )
     main()
