@@ -318,6 +318,48 @@ class TestAiChatStream:
         client.ai_chat_stream("hi", timeout=5)
         assert mock_post.call_args.kwargs["timeout"] == 5
 
+    @patch("wy_qcos_client.client.requests.post")
+    def test_chat_stream_omits_model_id_by_default(self, mock_post):
+        """Legacy request shape: no model_id key unless selected."""
+        mock_post.return_value = _mock_response(200, None, "ok")
+        client.ai_chat_stream("hi")
+        payload = mock_post.call_args.kwargs["json"]
+        assert "model_id" not in payload
+
+    @patch("wy_qcos_client.client.requests.post")
+    def test_chat_stream_includes_explicit_model_id(self, mock_post):
+        mock_post.return_value = _mock_response(200, None, "ok")
+        client.ai_chat_stream("hi", model_id="kimi-k3")
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["model_id"] == "kimi-k3"
+
+
+class TestAiModels:
+    @patch("wy_qcos_client.client.requests.get")
+    def test_list_models_success(self, mock_get):
+        data = {
+            "default_model_id": "a",
+            "models": [
+                {
+                    "id": "a",
+                    "display_name": "A",
+                    "model": "m-a",
+                    "supports_vision": True,
+                }
+            ],
+        }
+        mock_get.return_value = _mock_response(200, data, "")
+        ret = client.ai_list_models()
+        assert ret["default_model_id"] == "a"
+        assert ret["models"][0]["supports_vision"] is True
+        assert mock_get.call_args.args[0].endswith("/v1/ai/models")
+
+    @patch("wy_qcos_client.client.requests.get")
+    def test_list_models_failure(self, mock_get):
+        mock_get.return_value = _mock_response(404, None, "nf")
+        with pytest.raises(errors.GenericException, match="404"):
+            client.ai_list_models()
+
 
 class TestAiSessions:
     @patch("wy_qcos_client.client.requests.get")

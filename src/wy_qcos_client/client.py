@@ -2080,12 +2080,37 @@ class Client:
             return (SSL.cert_file, SSL.key_file)
         return None
 
+    def ai_list_models(self):
+        """List AI models configured on the server.
+
+        Returns:
+            dict with default_model_id and the non-sensitive model list
+
+        Raises:
+            errors.GenericException: on non-200 HTTP status (404 on
+                older servers without multi-model support)
+        """
+        response = requests.get(
+            f"{self.ai_url}/models",
+            headers=self._ai_headers(),
+            timeout=Client.timeout,
+            verify=self._ai_verify(),
+            cert=self._ai_cert(),
+        )
+        if response.status_code != 200:
+            raise errors.GenericException(
+                f"Failed to list AI models "
+                f"[status_code: {response.status_code}]: {response.text}"
+            )
+        return response.json()
+
     def ai_chat_stream(
         self,
         message,
         session_id=None,
         enable_rag=True,
         timeout=None,
+        model_id=None,
     ):
         """Send a chat message and return the raw streaming response.
 
@@ -2097,6 +2122,9 @@ class Client:
             session_id: existing session ID or None for a new session
             enable_rag: whether to enable RAG retrieval
             timeout: request timeout in seconds (None uses client default)
+            model_id: optional configured model ID; only included in
+                the payload when explicitly selected so older servers
+                keep receiving the legacy request shape
 
         Returns:
             requests.Response with stream=True
@@ -2112,6 +2140,8 @@ class Client:
             "enable_rag": enable_rag,
             "attachments": [],
         }
+        if model_id is not None:
+            payload["model_id"] = model_id
         headers = self._ai_headers(accept_sse=True)
         if Client.verbose:
             logger.info(
