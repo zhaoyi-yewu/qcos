@@ -85,6 +85,30 @@ class DriverCetcBase(DriverGateBase):
             Optional("url"): str,
             Optional("token"): str,
         })
+        self.driver_options_metadata.update({
+            "computer_type": {
+                "alias_name": "计算机类型",
+                "description": (
+                    "指定国基量子平台使用的计算机类型编号，"
+                    "可用编号由当前平台设备决定。"
+                ),
+            },
+            "url": {
+                "alias_name": "平台服务地址",
+                "description": (
+                    "指定国基量子平台 API 服务地址，"
+                    "不在能力响应中返回实际配置值。"
+                ),
+            },
+            "token": {
+                "alias_name": "访问令牌",
+                "description": (
+                    "用于国基量子平台认证的敏感令牌，"
+                    "仅用于提交且不会返回实际值。"
+                ),
+                "writeOnly": True,
+            },
+        })
         self.enable_device_monitor = True
         # transpiler_option schema for specific driver
         # enable_mapping: only false is allowed

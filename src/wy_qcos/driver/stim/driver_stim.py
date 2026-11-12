@@ -71,6 +71,69 @@ class DriverStim(DriverGateBase):
                 "noise_prob": float,
             },
         }
+        self.qec_options_metadata = {
+            "qec_code": {
+                "alias_name": "纠错码类型",
+                "description": (
+                    "选择 Stim 驱动使用的量子纠错码，"
+                    "当前运行时仅支持 Shor 码。"
+                ),
+                "field_constraints": {
+                    "runtime": {"min_length": 1, "enum": ["shor"]}
+                },
+            },
+            "distance": {
+                "alias_name": "纠错码距离",
+                "description": (
+                    "设置量子纠错码的码距，具体有效值由所选纠错码实现决定。"
+                ),
+            },
+            "phy_bit_num": {
+                "alias_name": "物理比特数",
+                "description": (
+                    "设置纠错编码使用的物理比特数量，"
+                    "应与线路和纠错码要求匹配。"
+                ),
+            },
+            "logical_bit_num": {
+                "alias_name": "逻辑比特数",
+                "description": (
+                    "设置纠错编码包含的逻辑比特数量，"
+                    "应与线路逻辑比特需求匹配。"
+                ),
+            },
+            "error_inject": {
+                "alias_name": "错误注入配置",
+                "description": (
+                    "配置编码线路中的错误类型和噪声概率；"
+                    "提供此对象时两个子字段均必填。"
+                ),
+                "error_type": {
+                    "alias_name": "错误类型",
+                    "description": (
+                        "指定注入线路的错误模型，"
+                        "运行时支持 X、Y、Z 和去极化错误。"
+                    ),
+                    "field_constraints": {
+                        "runtime": {
+                            "enum": [
+                                "x_error",
+                                "y_error",
+                                "z_error",
+                                "depolarize",
+                            ]
+                        }
+                    },
+                },
+                "noise_prob": {
+                    "alias_name": "噪声概率",
+                    "description": (
+                        "指定错误注入使用的噪声概率，"
+                        "当前提交校验未额外限制其数值范围。"
+                    ),
+                },
+            },
+        }
 
     def init_driver(self):
         """Init driver."""

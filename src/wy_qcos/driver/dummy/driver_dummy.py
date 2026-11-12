@@ -59,6 +59,15 @@ class DriverDummy(DriverGateBase):
             Optional("max_qubits"): int,
             Optional("wirecut_qubit_width"): int,
         })
+        self.driver_options_metadata.update({
+            "max_qubits": {
+                "alias_name": "最大比特数",
+                "description": (
+                    "声明空载测试驱动可接受的最大线路比特数，"
+                    "实际提交仍受设备配置限制。"
+                ),
+            }
+        })
         # transpiler_option schema for specific driver
         # enable_mapping: only true is allowed
         self.transpiler_options_schema["enable_mapping"] = (

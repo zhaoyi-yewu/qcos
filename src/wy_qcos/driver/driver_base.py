@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 import logging
 import tempfile
 
@@ -183,6 +184,125 @@ class DriverBase:
                 }
             },
         }
+        self.driver_options_metadata = {
+            "sleep": {
+                "alias_name": "执行休眠时间",
+                "description": (
+                    "控制驱动执行流程中的休眠时长，适用于支持该参数的驱动。"
+                ),
+            },
+            "enable_wirecut": {
+                "alias_name": "启用线路拆分",
+                "description": (
+                    "是否按驱动能力自动拆分量子线路，"
+                    "与作业通用选项同名时以驱动字段为准。"
+                ),
+            },
+            "wirecut_qubit_width": {
+                "alias_name": "拆分比特宽度",
+                "description": (
+                    "指定线路拆分后的目标比特宽度，"
+                    "实际可用范围受设备和线路规模限制。"
+                ),
+                "field_constraints": {
+                    "runtime": {
+                        "minimum": 2,
+                        "custom": [
+                            {
+                                "when": "启用线路拆分",
+                                "rule": (
+                                    "宽度必须非零且至少为 2，"
+                                    "并不能超过设备与线路可支持的范围。"
+                                ),
+                            }
+                        ],
+                    }
+                },
+            },
+            "max_job_wait_time": {
+                "alias_name": "作业最长等待时间",
+                "description": (
+                    "设置驱动等待作业结束的最长时间，"
+                    "时间单位沿用驱动任务管理配置。"
+                ),
+            },
+            "job_query_interval": {
+                "alias_name": "作业查询间隔",
+                "description": (
+                    "设置驱动轮询远端作业状态的时间间隔，"
+                    "适用于需要查询结果的设备。"
+                ),
+            },
+            "compute_fidelity": {
+                "alias_name": "计算保真度",
+                "description": (
+                    "是否在驱动支持的执行流程中计算并返回线路保真度信息。"
+                ),
+            },
+            "enable_raw_results": {
+                "alias_name": "返回原始结果",
+                "description": (
+                    "是否保留并返回设备原始执行结果，"
+                    "适用于支持原始结果输出的驱动。"
+                ),
+            },
+            "compiler": {
+                "alias_name": "编译器名称",
+                "description": (
+                    "指定驱动执行前使用的编译器名称，"
+                    "可用值由当前驱动实现决定。"
+                ),
+            },
+            "target_qubits": {
+                "alias_name": "目标物理比特",
+                "description": (
+                    "指定执行线路的目标物理比特列表，"
+                    "索引有效性和连通性由当前设备决定。"
+                ),
+                "field_constraints": {
+                    "runtime": {
+                        "custom": [
+                            {
+                                "when": "指定目标物理比特",
+                                "rule": (
+                                    "比特索引必须位于设备有效范围内，"
+                                    "不得重复，并满足设备连通性要求。"
+                                ),
+                            }
+                        ]
+                    }
+                },
+            },
+            "qes": {
+                "alias_name": "量子误差抑制",
+                "description": "集中配置驱动提供的量子误差抑制能力。",
+                "dynamical_decoupling": {
+                    "alias_name": "动态解耦配置",
+                    "description": "配置驱动内置的动态解耦误差抑制流程。",
+                    "enable": {
+                        "alias_name": "启用动态解耦",
+                        "description": (
+                            "是否在支持的驱动执行流程中启用动态解耦。"
+                        ),
+                    },
+                },
+            },
+            "qem": {
+                "alias_name": "量子误差缓解",
+                "description": "集中配置驱动内置的量子误差缓解能力。",
+                "readout_error": {
+                    "alias_name": "读出误差配置",
+                    "description": "配置驱动内置的读出误差缓解流程。",
+                    "enable": {
+                        "alias_name": "启用读出误差缓解",
+                        "description": (
+                            "是否在支持的驱动执行流程中启用读出误差缓解。"
+                        ),
+                    },
+                },
+            },
+        }
+        self.qec_options_metadata = {}
 
         # transpiler_option schema for specific driver
         self.transpiler_options_schema = {}
@@ -245,6 +365,10 @@ class DriverBase:
         """
         return self.driver_options_schema
 
+    def get_driver_options_metadata(self):
+        """Get display metadata without changing the validation schema."""
+        return copy.deepcopy(self.driver_options_metadata)
+
     def get_qec_options_schema(self):
         """Get QEC (quantum error correction) options schema.
 
@@ -259,6 +383,10 @@ class DriverBase:
             QEC-specific constraints
         """
         return None
+
+    def get_qec_options_metadata(self):
+        """Get QEC display metadata for the current driver."""
+        return copy.deepcopy(self.qec_options_metadata)
 
     def update_driver_options(self, driver_options):
         """Update driver options.
