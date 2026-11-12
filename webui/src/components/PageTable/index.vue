@@ -19,6 +19,7 @@
     <div class="table-toolbar">
       <el-input
         v-model="searchKeyword"
+        size="small"
         :placeholder="searchPlaceholder"
         clearable
         :prefix-icon="Search"
@@ -53,6 +54,7 @@
       <div class="pagination-left">
         <el-pagination
           background
+          size="small"
           layout="prev, pager, next"
           :total="total"
           :page-size="currentPageSize"
@@ -64,6 +66,7 @@
         <span class="total-count">共 {{ total }} 条</span>
         <el-select
           v-model="currentPageSize"
+          size="small"
           class="page-size-select"
           @change="handlePageSizeChange"
         >
@@ -354,29 +357,54 @@ export default {
 .page-table-container {
   display: flex;
   flex-direction: column;
-  /* use element-plus variables so the background follows the active
-     color mode (light: #f5f7fa-ish, dark: dark page bg) */
-  background: var(--el-bg-color-page);
-  padding: 20px;
+  height: 100%;
+  min-height: 0;
+  /* Card look mirrors LogsPanel .logs-panel: white card with rounded
+     corners, so the toolbar and the table below visually read as one
+     fused block instead of a grey strip floating above the table. */
+  background: var(--el-bg-color);
+  border-radius: 8px;
+  overflow: hidden;
+  /* Toolbar carries its own 12px padding + bottom border, so the
+     container does not pad again - otherwise the toolbar sits
+     20px+12px away from the table below. */
+  padding: 0;
   box-sizing: border-box;
 }
 
 .table-toolbar {
   display: flex;
+  /* Keep in lockstep with LogsPanel .logs-toolbar (same padding,
+     border, gap, wrap behaviour) so every list page shares one
+     toolbar rhythm with the logs panel. toolbar-actions replaces
+     the old justify-content: space-between. No explicit background
+     here so it blends with the card body. */
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--el-border-color-light);
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
-.global-search {
-  max-width: 380px;
+/* Rounded input corners inside the toolbar, mirroring the search
+   box / time-range select in LogsPanel. */
+.global-search :deep(.el-input__wrapper) {
+  border-radius: var(--el-border-radius-base);
 }
 
 .toolbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* push to the right edge, replacing the toolbar's old
+     justify-content: space-between */
+  margin-left: auto;
+}
+
+.global-search {
+  flex: 1;
+  min-width: 240px;
+  max-width: 380px;
 }
 
 .pagination-right {
@@ -386,30 +414,29 @@ export default {
 }
 
 /* unify font size between left pagination buttons, the total-count text
-   and the page-size el-select so the whole row looks visually consistent */
+   and the page-size el-select so the whole row looks visually consistent
+   with LogsPanel's pagination-right (13px + secondary text color). */
 .total-count {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-regular);
   white-space: nowrap;
 }
 
+/* page-size-select uses size="small", so the inner text inherits the
+   compact font size from Element Plus automatically — no need to
+   force 13px overrides here (mirrors LogsPanel). */
 .page-size-select {
   width: 110px;
 }
 
-.page-size-select :deep(.el-input__inner),
-.page-size-select :deep(.el-select__placeholder),
-.page-size-select :deep(.el-select__selected-item) {
-  font-size: 13px;
-}
-
 .table-container {
   flex: 1;
-  /* var(--el-bg-color) is white in light mode and dark panel bg in dark mode */
+  min-height: 0;
+  /* Drop the nested card look (padding + radius + shadow) so the table
+     sits flush against the toolbar above and the card edges, matching
+     LogsPanel .logs-table-wrapper where the table fills the panel. */
   background: var(--el-bg-color);
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  padding: 0;
   overflow: auto;
 }
 
@@ -417,21 +444,26 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
-  padding: 0 20px 50px;
+  /* Compact pagination matching LogsPanel: smaller vertical padding
+     and no fixed row height, so the bar follows the table content
+     instead of leaving a tall 32px strip at the bottom. No top
+     margin so the bar fuses with the table above (single border
+     separator). */
+  padding: 6px 12px;
+  border-top: 1px solid var(--el-border-color-light);
 }
 
 .pagination-left {
   display: flex;
   align-items: center;
-  height: 32px;
 }
 
 .pagination-right {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 32px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
 }
 
 /* keep total-count text vertically aligned with the page-size select */
@@ -471,7 +503,8 @@ export default {
 
 /* center pagination vertically; the default margin-top: 20px pushes the
    left pagination down and breaks the horizontal alignment with the
-   right page-size selector */
+   right page-size selector. size="small" already yields 24px buttons
+   matching LogsPanel's pagination, no extra height overrides needed. */
 :deep(.el-pagination) {
   margin-top: 0;
   display: flex;

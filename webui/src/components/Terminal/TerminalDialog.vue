@@ -22,7 +22,7 @@
       @click="restoreFromMinimize"
     >
       <el-icon><Monitor /></el-icon>
-      <span class="pill-text">终端</span>
+      <span class="pill-text">操作系统终端</span>
       <!--
         Use a single class per state instead of "pill-dot pill-dot-on".
         The previous stacked form compiled to a selector whose
@@ -715,8 +715,13 @@ watch(activeSessionId, async() => {
   z-index: 1999;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 8px 14px;
+  // Fixed width (border-box) shared with the AI-agent minimized pill
+  // so both docked pills keep the same width on the bottom-right.
+  box-sizing: border-box;
+  width: 160px;
   background: #2b2f3a;
   color: #fff;
   border-radius: 18px;
