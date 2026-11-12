@@ -24,4 +24,6 @@
    system
    metrics
    mcp
+   ai
+   proxy
    error
