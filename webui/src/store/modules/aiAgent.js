@@ -14,10 +14,24 @@
  */
 
 import { defineStore } from 'pinia'
-import { streamChatAgui, listSessions, getSession, deleteSession, createSession, clearSessionMessages } from '@/api/aiAgent'
+import { streamChatAgui, listModels, listSessions, getSession, deleteSession, createSession, clearSessionMessages, truncateSessionMessages } from '@/api/aiAgent'
 import { useComponentsStore } from '@/store/modules/components'
 
 const STORAGE_KEY = 'qcos-ai-agent'
+
+/**
+ * Normalise diagram code-fence language tags so the chat markdown
+ * renderer recognises them. Cherry-markdown's PlantUML plugin only
+ * registers a renderer for the `plantuml` language, while models
+ * frequently emit ```puml instead. Rewrite the fence info string on
+ * the full accumulated text (safe during streaming: every render
+ * passes the whole string, so a partial fence simply stays a plain
+ * code block until its info line completes).
+ */
+function normalizeDiagramLang(text) {
+  if (!text) return text
+  return text.replace(/^([ \t]*)```puml([ \t]*)$/gim, '$1```plantuml')
+}
 
 function loadPersisted() {
   try {
@@ -84,6 +98,9 @@ export const useAiAgentStore = defineStore('aiAgent', {
       chatItems: [],
       streaming: false,
       waitingForResponse: false,
+      // True while an edited question is being truncated on the backend.
+      // Blocks concurrent sends until the retained prefix is restored.
+      historyMutating: false,
       enableRag: persisted.enableRag !== undefined ? persisted.enableRag : true,
       pendingToolCall: null,
       pendingAttachments: [],
@@ -104,6 +121,21 @@ export const useAiAgentStore = defineStore('aiAgent', {
       // (zoo-code style sequential queue).
       messageQueue: [],
 
+      // ===== Model selection =====
+      // Non-sensitive model list from GET /v1/ai/models. Empty on
+      // older servers (modelsUnavailable=true) where the menu is
+      // disabled and chat simply uses the server-side default.
+      availableModels: [],
+      defaultModelId: null,
+      // Explicitly selected model id; null means "follow the session
+      // / server default" and no model_id is sent with requests.
+      selectedModelId: null,
+      modelsLoaded: false,
+      modelsUnavailable: false,
+      // In-flight fetch promise so the panel open and session restore
+      // paths share one request instead of racing each other.
+      _modelsFetchPromise: null,
+
       // ===== Input draft =====
       draft: '',
 
@@ -116,6 +148,30 @@ export const useAiAgentStore = defineStore('aiAgent', {
     }
   },
 
+  getters: {
+    /**
+     * Effective model for the NEXT message: the explicit selection
+     * when present, otherwise the server default. Null when the model
+     * list is unavailable (legacy server) or not loaded yet.
+     */
+    currentModel(state) {
+      const id = state.selectedModelId || state.defaultModelId
+      if (!id) return null
+      return state.availableModels.find(m => m.id === id) || null
+    },
+    /**
+     * Whether the CURRENT model accepts image attachments. Falls back
+     * to true when no model info is available so the legacy
+     * components.vision flag stays authoritative on old servers.
+     */
+    currentModelSupportsVision(state) {
+      const id = state.selectedModelId || state.defaultModelId
+      if (!id) return null
+      const model = state.availableModels.find(m => m.id === id)
+      return model ? model.supports_vision : null
+    }
+  },
+
   actions: {
     open(mode) {
       if (mode) {
@@ -123,20 +179,18 @@ export const useAiAgentStore = defineStore('aiAgent', {
       }
       this.visible = true
       this.minimized = false
+      // Load the model list when the panel opens; safe to call
+      // repeatedly (in-flight requests are shared).
+      this.fetchModels()
       // Restore the previous conversation when the panel re-opens and
       // we still have a session id from a prior visit (persisted in
-      // localStorage). Messages are loaded lazily only when empty so
-      // we don't clobber an in-progress draft conversation.
+      // localStorage). Validate the id against the current user's
+      // session list first so an expired id never triggers a 404 GET.
       if (
         this.activeSessionId
         && this.messages.length === 0
       ) {
-        this.loadSession(this.activeSessionId).catch(() => {
-          // Session may have expired on the backend - clear the
-          // stale id so the next send starts a fresh conversation.
-          this.activeSessionId = null
-          persist(this)
-        })
+        this._restoreActiveSession(this.activeSessionId)
       }
     },
 
@@ -216,13 +270,86 @@ export const useAiAgentStore = defineStore('aiAgent', {
       persist(this)
     },
 
+    /**
+     * Fetch the configured model list. Older servers answer 404: the
+     * menu is then disabled ("默认模型") and chat requests omit the
+     * model_id field entirely, so default conversations keep working.
+     */
+    async fetchModels() {
+      if (this.modelsLoaded || this.modelsUnavailable) return
+      if (this._modelsFetchPromise) return this._modelsFetchPromise
+      this._modelsFetchPromise = (async() => {
+        try {
+          const res = await listModels()
+          this.availableModels = res?.models || []
+          this.defaultModelId = res?.default_model_id || null
+          this.modelsLoaded = true
+          this.modelsUnavailable = false
+          // A previously selected model may have been removed from the
+          // server configuration; fall back to the default entry.
+          if (
+            this.selectedModelId &&
+            !this.availableModels.some(m => m.id === this.selectedModelId)
+          ) {
+            this.selectedModelId = this.defaultModelId
+          }
+        } catch (e) {
+          console.warn('AI model list unavailable; using server default:', e)
+          this.availableModels = []
+          this.defaultModelId = null
+          this.selectedModelId = null
+          this.modelsLoaded = false
+          this.modelsUnavailable = true
+        } finally {
+          this._modelsFetchPromise = null
+        }
+      })()
+      return this._modelsFetchPromise
+    },
+
+    /**
+     * Select a model for subsequent messages. Unknown ids are rejected
+     * against the fetched whitelist; the change never affects
+     * in-flight or already-queued messages (they keep their snapshot).
+     */
+    setSelectedModel(modelId) {
+      if (!this.modelsLoaded) return
+      const target = modelId || this.defaultModelId
+      if (!target) return
+      if (!this.availableModels.some(m => m.id === target)) return
+      this.selectedModelId = target
+    },
+
+    async _restoreActiveSession(sessionId) {
+      const fetched = await this.fetchSessions()
+      // The user may have selected another session or started a new
+      // message while the list request was in flight. Do not overwrite
+      // that newer state with this stale restoration request.
+      if (
+        !fetched ||
+        this.activeSessionId !== sessionId ||
+        this.messages.length > 0
+      ) {
+        return
+      }
+      const exists = this.sessions.some(s => s.session_id === sessionId)
+      if (!exists) {
+        this.activeSessionId = null
+        persist(this)
+        return
+      }
+      await this.loadSession(sessionId)
+    },
+
     async fetchSessions() {
       try {
         const res = await listSessions()
         this.sessions = res || []
+        return true
       } catch (e) {
         console.error('Failed to fetch AI sessions:', e)
         this.sessions = []
+        return false
       }
     },
 
@@ -237,13 +364,44 @@ export const useAiAgentStore = defineStore('aiAgent', {
           role: m.role,
           content: m.content,
           createdAt: m.created_at,
-          attachments: m.attachments || []
+          attachments: m.attachments || [],
+          modelId: m.model_id || null,
+          model: m.model || null
         }))
         this._rebuildChatItems()
+        // Restore the session's saved model. Wait for the model list
+        // first so a session restore and the list fetch cannot race
+        // each other into an inconsistent selection.
+        await this.fetchModels()
+        const savedModelId = res.session?.model_id || null
+        if (this.modelsLoaded) {
+          if (savedModelId && this.availableModels.some(m => m.id === savedModelId)) {
+            this.selectedModelId = savedModelId
+          } else {
+            // Deleted / unknown model: fall back to the default entry.
+            // The backend repairs its session metadata on next append;
+            // we repair the local value here.
+            this.selectedModelId = this.defaultModelId
+          }
+        }
       } catch (e) {
-        console.error('Failed to load session:', e)
+        const isMissingSession = e?.response?.status === 404
+        if (!isMissingSession) {
+          console.error('Failed to load session:', e)
+        }
         this.messages = []
         this.chatItems = []
+        if (isMissingSession) {
+          // The session expired, was deleted, or belongs to another
+          // user. Forget it so reopening the panel does not request the
+          // same missing id again; the next send starts a fresh session.
+          this.activeSessionId = null
+          this.sessions = this.sessions.filter(
+            s => s.session_id !== sessionId
+          )
+          this.tokenUsage = { inputTokens: 0, outputTokens: 0, contextWindow: 0 }
+          persist(this)
+        }
       }
     },
 
@@ -257,6 +415,8 @@ export const useAiAgentStore = defineStore('aiAgent', {
         this.tokenUsage = { inputTokens: 0, outputTokens: 0, contextWindow: 0 }
         this.messages = []
         this.chatItems = []
+        // New sessions start on the configured default model.
+        this.selectedModelId = this.defaultModelId
         return res.session_id
       } catch (e) {
         console.error('Failed to create session:', e)
@@ -320,7 +480,7 @@ export const useAiAgentStore = defineStore('aiAgent', {
       // Main answer content block.
       blocks.push({
         type: isAssistant ? 'markdown' : 'text',
-        data: text
+        data: isAssistant ? normalizeDiagramLang(text) : text
       })
       // Image attachments (base64 data URLs).
       if (Array.isArray(m.attachments) && m.attachments.length > 0) {
@@ -343,14 +503,14 @@ export const useAiAgentStore = defineStore('aiAgent', {
         name: meta.name,
         avatar: meta.avatar,
         datetime: meta.datetime,
-        // TDesign Chat 0.7.0 bug: any truthy item.status is coerced
-        // to "pending" by t-chat-list's status expression, causing
-        // the loading spinner to show forever. Use '' for normal
-        ///streaming states so the textLoading prop on t-chat-list
-        // controls the pending animation instead.
-        status: m.error ? 'error'
-              : m.aborted ? 'stop'
-              : '',
+        // Error answers are rendered as NORMAL markdown content (the
+        // backend already prefixes them with a human-readable failure
+        // message). Do NOT map them to the TDesign 'error' status:
+        // that status is meant for an empty-error placeholder and can
+        // hide the actual failure text from the bubble, which is
+        // exactly what users reported (log shows the error, the chat
+        // bubble shows nothing).
+        status: m.aborted ? 'stop' : '',
         _raw: m
       }
     },
@@ -414,6 +574,7 @@ export const useAiAgentStore = defineStore('aiAgent', {
      * delete button in the chat action bar.
      */
     deleteMessage(raw) {
+      if (this.streaming || this.historyMutating) return
       const idx = this.messages.indexOf(raw)
       if (idx < 0) return
       // If the message is an assistant reply, drop the preceding
@@ -425,21 +586,79 @@ export const useAiAgentStore = defineStore('aiAgent', {
     },
 
     /**
-     * Retry an assistant message: drop the assistant reply, then
-     * re-send the preceding user message. Used by the per-message
-     * retry button.
+     * Edit a user question and regenerate from that point. The backend
+     * truncates the old branch first so Redis and the browser retain the
+     * same history after a reload.
+     */
+    async editAndRetryMessage(rawUserMessage, newText) {
+      const idx = this.messages.indexOf(rawUserMessage)
+      if (idx < 0 || rawUserMessage.role !== 'user') {
+        throw new Error('找不到要修改的问题')
+      }
+      if (!newText.trim() && !(rawUserMessage.attachments || []).length) {
+        throw new Error('修改后的问题不能为空')
+      }
+      if (this.streaming || this.historyMutating || this.messageQueue.length) {
+        throw new Error('请等待当前回答完成后再修改问题')
+      }
+      const sessionId = this.activeSessionId
+      if (!sessionId) {
+        throw new Error('当前会话尚未保存，请刷新后重试')
+      }
+
+      this.historyMutating = true
+      try {
+        const res = await truncateSessionMessages(
+          sessionId,
+          idx,
+          rawUserMessage.content
+        )
+        if (this.activeSessionId !== sessionId) {
+          throw new Error('会话已切换，请重新选择后再修改')
+        }
+        this.messages = (res.messages || []).map(m => ({
+          role: m.role,
+          content: m.content,
+          createdAt: m.created_at,
+          attachments: m.attachments || [],
+          modelId: m.model_id || null,
+          model: m.model || null
+        }))
+        this._rebuildChatItems()
+        this.tokenUsage = { inputTokens: 0, outputTokens: 0, contextWindow: 0 }
+
+        // sendMessage consumes pendingAttachments synchronously. Swap in
+        // the original question's attachments, start the stream, then
+        // immediately restore any attachments the user was drafting.
+        const previousPending = this.pendingAttachments
+        this.pendingAttachments = [...(rawUserMessage.attachments || [])]
+        this.historyMutating = false
+        let sendPromise
+        try {
+          sendPromise = this.sendMessage(newText)
+        } finally {
+          this.pendingAttachments = previousPending
+        }
+        sendPromise.catch(err => {
+          // Stream errors are rendered by the assistant bubble, just as
+          // they are for a normal send. Do not reopen the edit dialog.
+          console.error('Edited question retry failed:', err)
+        })
+      } finally {
+        this.historyMutating = false
+      }
+    },
+
+    /**
+     * Retry an assistant message using the same branch-truncation path
+     * as question editing, including the original image attachments.
      */
     async retryMessage(raw) {
       const idx = this.messages.indexOf(raw)
       if (idx < 0 || raw.role !== 'assistant') return
-      // Find the user message that prompted this reply.
       const userMsg = this.messages[idx - 1]
       if (!userMsg || userMsg.role !== 'user') return
-      const text = userMsg.content
-      // Drop both messages (assistant + user prompt) and re-send.
-      this.messages.splice(idx - 1, 2)
-      this._rebuildChatItems()
-      await this.sendMessage(text)
+      await this.editAndRetryMessage(userMsg, userMsg.content)
     },
 
     /**
@@ -458,8 +677,10 @@ export const useAiAgentStore = defineStore('aiAgent', {
         this.pendingAttachments = next.attachments
       }
       // Fire-and-forget: errors are surfaced via the message stream
-      // (the in-flight assistant bubble shows the failure).
-      this.sendMessage(next.text).catch(err => {
+      // (the in-flight assistant bubble shows the failure). The
+      // queued model snapshot is passed explicitly so a later model
+      // switch cannot rewrite already-queued messages.
+      this.sendMessage(next.text, { modelId: next.modelId }).catch(err => {
         console.error('Failed to flush queued message:', err)
       })
     },
@@ -473,8 +694,39 @@ export const useAiAgentStore = defineStore('aiAgent', {
       if (idx >= 0) this.messageQueue.splice(idx, 1)
     },
 
-    async sendMessage(text) {
+    async sendMessage(text, options = {}) {
+      if (this.historyMutating) {
+        throw new Error('正在更新对话历史，请稍候')
+      }
       if (!text && this.pendingAttachments.length === 0) return
+
+      // Snapshot the model for THIS message at entry. The snapshot is
+      // stored on queued items and passed back on dequeue, so switching
+      // models after enqueueing never rewrites pending messages.
+      //
+      // Fall back to the DEFAULT model when nothing is explicitly
+      // selected: the selector button shows the default model in that
+      // case, so the request must name that same model. Sending no
+      // model_id here would let the backend silently restore the
+      // SESSION's saved model (e.g. kimi) while the button displays
+      // the default (e.g. GLM) - the exact "selector shows GLM but the
+      // answer still comes from kimi" mismatch.
+      const requestModelId = options.modelId !== undefined
+        ? options.modelId
+        : (this.selectedModelId || this.defaultModelId)
+
+      // Block image attachments for vision-less models. The pending
+      // attachments are intentionally NOT dropped: the user can switch
+      // to a vision-capable model and send again.
+      if (this.pendingAttachments.length > 0 && this.modelsLoaded) {
+        const model = this.currentModel
+        if (model && !model.supports_vision) {
+          throw new Error(
+            `当前模型「${model.display_name}」不支持图片分析，` +
+            '请切换到支持视觉的模型或先移除图片'
+          )
+        }
+      }
 
       // Sequential send queue: while a previous stream is still in
       // flight, append the message to the queue instead of starting
@@ -487,7 +739,8 @@ export const useAiAgentStore = defineStore('aiAgent', {
         this.messageQueue.push({
           id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           text,
-          attachments: [...this.pendingAttachments]
+          attachments: [...this.pendingAttachments],
+          modelId: requestModelId
         })
         this.clearPendingAttachments()
         return
@@ -511,7 +764,10 @@ export const useAiAgentStore = defineStore('aiAgent', {
         thinkingContent: '',
         createdAt: Date.now() / 1000,
         streaming: true,
-        thinking: true // Mark as waiting for first chunk
+        thinking: true, // Mark as waiting for first chunk
+        // Wall-clock start time so the action bar can show "X.Xs"
+        // after the run finishes.
+        startedAt: Date.now()
       }
       this.addMessage(assistantMsg)
       this.streaming = true
@@ -563,7 +819,7 @@ export const useAiAgentStore = defineStore('aiAgent', {
           const answerBlock = lastItem.content.find(
             b => b.type === 'markdown'
           )
-          if (answerBlock) answerBlock.data = last.content
+          if (answerBlock) answerBlock.data = normalizeDiagramLang(last.content)
 
           // NOTE: do NOT mark the reasoning block as 'complete' here.
           // The reasoning stream (thinking deltas) can outlive the
@@ -601,6 +857,7 @@ export const useAiAgentStore = defineStore('aiAgent', {
           message: text,
           enableRag: effectiveEnableRag,
           attachments,
+          modelId: requestModelId,
           signal: abortController.signal,
           onChunk: (delta) => {
             this.waitingForResponse = false
@@ -656,8 +913,21 @@ export const useAiAgentStore = defineStore('aiAgent', {
           onToolResult: () => {
             this.pendingToolCall = null
           },
-          onDone: (messageId, usage) => {
+          onDone: (messageId, usage, responseSessionId) => {
             stopTypewriter()
+            // Wall-clock elapsed time from message creation to
+            // RUN_FINISHED; attached to the last assistant message so
+            // the action bar can display it (e.g. "8.2s").
+            const lastForDuration = this.messages[this.messages.length - 1]
+            if (
+              lastForDuration
+              && lastForDuration.role === 'assistant'
+              && lastForDuration.startedAt
+            ) {
+              lastForDuration.durationMs =
+                Date.now() - lastForDuration.startedAt
+              delete lastForDuration.startedAt
+            }
             // Accumulate token usage reported by the backend (when
             // present). Counters reset on session switch.
             if (usage) {
@@ -700,7 +970,7 @@ export const useAiAgentStore = defineStore('aiAgent', {
                 const answerBlock = lastItem.content.find(
                   b => b.type === 'markdown'
                 )
-                if (answerBlock) answerBlock.data = last.content
+                if (answerBlock) answerBlock.data = normalizeDiagramLang(last.content)
                 // Mark reasoning as complete if present.
                 const reasoningBlock = lastItem.content.find(
                   b => b.type === 'reasoning'
@@ -711,7 +981,15 @@ export const useAiAgentStore = defineStore('aiAgent', {
             this.streaming = false
             this.waitingForResponse = false
             this.currentAbortController = null
-            if (!this.activeSessionId && messageId) {
+            // Prefer the real sessionId reported by RUN_STARTED /
+            // RUN_FINISHED. Only legacy servers (which omit it) use
+            // the old messageId-as-sessionId compatibility fallback.
+            if (responseSessionId) {
+              if (this.activeSessionId !== responseSessionId) {
+                this.activeSessionId = responseSessionId
+                persist(this)
+              }
+            } else if (!this.activeSessionId && messageId) {
               this.activeSessionId = messageId
               persist(this)
             }
@@ -731,18 +1009,27 @@ export const useAiAgentStore = defineStore('aiAgent', {
             const lastItem = this.chatItems[this.chatItems.length - 1]
             if (last && last.role === 'assistant') {
               const errorDetail = err.message || '未知错误'
+              const failureMessage = `抱歉，AI 智能体思考失败：${errorDetail}`
               last.streaming = false
               last.thinking = false
               last.error = true
-              if (!last.content) {
-                last.content = `抱歉，AI 助手请求失败: ${errorDetail}`
+              // The backend sends the failure as normal answer content
+              // before RUN_ERROR. Append it here only when the stream did
+              // not already provide it (for example, a network failure).
+              if (!last.content.endsWith(failureMessage)) {
+                last.content = last.content
+                  ? `${last.content}\n\n${failureMessage}`
+                  : failureMessage
               }
               if (lastItem) {
-                lastItem.status = 'error'
+                // Keep the bubble in the NORMAL status so the failure
+                // text stays visible as regular markdown content; the
+                // TDesign 'error' status can hide the answer body.
+                lastItem.status = ''
                 const answerBlock = lastItem.content.find(
                   b => b.type === 'markdown'
                 )
-                if (answerBlock) answerBlock.data = last.content
+                if (answerBlock) answerBlock.data = normalizeDiagramLang(last.content)
               }
             }
             this.waitingForResponse = false
@@ -750,6 +1037,10 @@ export const useAiAgentStore = defineStore('aiAgent', {
             this.currentAbortController = null
             // Force Vue re-render on error so the error state is visible.
             this.chatItems = [...this.chatItems]
+            // Mark the error as already rendered inside the assistant
+            // bubble (e.g. provider quota exhaustion) so callers can
+            // skip a duplicate global error toast.
+            err.shownInBubble = true
             reject(err)
           }
         })
@@ -780,7 +1071,7 @@ export const useAiAgentStore = defineStore('aiAgent', {
           const answerBlock = lastItem.content.find(
             b => b.type === 'markdown'
           )
-          if (answerBlock) answerBlock.data = last.content
+          if (answerBlock) answerBlock.data = normalizeDiagramLang(last.content)
         }
       }
       this.streaming = false

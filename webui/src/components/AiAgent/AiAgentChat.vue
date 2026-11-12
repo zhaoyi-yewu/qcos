@@ -63,12 +63,15 @@
       </div>
       <!-- Let <t-chat-list> render bubbles itself. We feed it typed
            content blocks (markdown / text / image), so no #content
-           slot is needed - TDesign picks the right renderer per block. -->
+           slot is needed - TDesign picks the right renderer per block.
+           Pending is disabled because it replaces the whole bubble with
+           a skeleton; chatData supplies the waiting text beside the
+           avatar instead. -->
       <t-chat-list
         v-else
         ref="chatListRef"
         :data="chatData"
-        :text-loading="waitingForResponse"
+        :text-loading="false"
         :clear-history="false"
         animation="skeleton"
         layout="both"
@@ -78,10 +81,14 @@
              Subtle grey icons that highlight on hover. -->
         <template #actions="{ item }">
           <!-- Two-container layout: left = icon buttons, right =
-               disclaimer + token chip. The outer flex uses
+               duration + token chip. The outer flex uses
                justify-content: space-between so the right block is
                pinned to the far edge regardless of the icon count. -->
-          <div class="message-actions" :class="`is-${item.role}`">
+          <div
+            v-if="!(waitingForResponse && item._raw?.thinking)"
+            class="message-actions"
+            :class="`is-${item.role}`"
+          >
             <div class="message-actions-left">
               <t-tooltip content="复制" placement="top">
                 <t-button
@@ -100,10 +107,22 @@
                   variant="text"
                   shape="square"
                   class="action-btn"
-                  :disabled="streaming"
+                  :disabled="streaming || historyMutating"
                   @click="onRetryMessage(item)"
                 >
                   <template #icon><RefreshIcon /></template>
+                </t-button>
+              </t-tooltip>
+              <t-tooltip v-if="item.role === 'user'" content="修改问题" placement="top">
+                <t-button
+                  size="small"
+                  variant="text"
+                  shape="square"
+                  class="action-btn"
+                  :disabled="streaming || historyMutating"
+                  @click="onEditMessage(item)"
+                >
+                  <template #icon><EditIcon /></template>
                 </t-button>
               </t-tooltip>
               <t-tooltip content="删除" placement="top">
@@ -112,28 +131,61 @@
                   variant="text"
                   shape="square"
                   class="action-btn action-btn-danger"
+                  :disabled="streaming || historyMutating"
                   @click="onDeleteMessage(item)"
                 >
                   <template #icon><DeleteIcon /></template>
                 </t-button>
               </t-tooltip>
             </div>
+             <!-- Center placeholder: reserves three icon-button slots so the
+                  action bar has a consistent left/center/right layout even
+                  when a role lacks some actions (e.g. user messages have no
+                  retry). Keeps the right-side token/duration pinned to
+                  the far edge without floating. -->
+            <div class="message-actions-center" aria-hidden="true">
+              <span class="action-btn-placeholder" />
+              <span class="action-btn-placeholder" />
+              <span class="action-btn-placeholder" />
+            </div>
             <div class="message-actions-right">
-              <span class="message-token-usage">
-                <template v-if="item.role === 'assistant'">
-                  ↑ {{ formatTokens(getMessageInputTokens(item)) }}
-                  ↓ {{ formatTokens(getMessageOutputTokens(item)) }}
+              <!-- Duration chip: the WHOLE tooltip is v-if'd out when no
+                   timing metadata exists. Previously only the inner span
+                   was conditional, which left an empty tooltip trigger
+                   behind; that orphan trigger overlapped the neighbouring
+                   token chip and fired its "耗时" popup on token hover. -->
+              <t-tooltip v-if="getMessageDurationText(item)" placement="top">
+                <template #content>
+                  <div class="duration-tooltip">
+                    <div>本回答思考与生成耗时: {{ getMessageDurationText(item) }}</div>
+                  </div>
                 </template>
-                <template v-else>
-                  ↑ {{ formatTokens(getMessageInputTokens(item)) }}
+                <span class="message-duration">
+                  {{ getMessageDurationText(item) }}
+                </span>
+              </t-tooltip>
+              <t-tooltip placement="top">
+                <template #content>
+                  <div class="token-usage-tooltip">
+                    <template v-if="item.role === 'assistant'">
+                      <div>输入 token（用户问题 + 上下文）: {{ formatTokens(getMessageInputTokens(item)) }}</div>
+                      <div>输出 token（AI 回答）: {{ formatTokens(getMessageOutputTokens(item)) }}</div>
+                    </template>
+                    <template v-else>
+                      <div>本次提问的输入 token: {{ formatTokens(getMessageInputTokens(item)) }}</div>
+                    </template>
+                  </div>
                 </template>
-              </span>
-              <span
-                v-if="item.role === 'assistant'"
-                class="message-disclaimer"
-              >
-                本回答由AI生成，仅供参考
-              </span>
+                <span class="message-token-usage">
+                  <template v-if="item.role === 'assistant'">
+                    ↑ {{ formatTokens(getMessageInputTokens(item)) }}
+                    ↓ {{ formatTokens(getMessageOutputTokens(item)) }}
+                  </template>
+                  <template v-else>
+                    ↑ {{ formatTokens(getMessageInputTokens(item)) }}
+                  </template>
+                </span>
+              </t-tooltip>
             </div>
           </div>
         </template>
@@ -142,9 +194,6 @@
         <t-tag theme="default" variant="light" size="small">
           正在调用工具: {{ pendingToolCall.tool }}
         </t-tag>
-      </div>
-      <div v-if="waitingForResponse" class="ai-agent-waiting">
-        <t-loading size="small" text="AI 助手正在思考中..." />
       </div>
       <!-- Custom scroll controls: stack "回到顶部" + "回到底部"
            on the right edge of the messages area. TDesign only
@@ -216,6 +265,11 @@
       </div>
     </div>
 
+    <!-- Single AI disclaimer fixed between the message list and input. -->
+    <div class="ai-agent-disclaimer">
+      本回答由AI生成，仅供参考
+    </div>
+
     <!-- Input area: text input on top, toolbar at bottom (like Cherry Studio) -->
     <div class="ai-agent-input-area">
       <t-textarea
@@ -223,10 +277,15 @@
         placeholder="输入消息... (Ctrl+Enter 发送)"
         :autosize="{ minRows: 3, maxRows: 12 }"
         class="ai-agent-textarea"
+        :maxcharacter="MAX_MESSAGE_CHARS"
         :on-keydown="onKeydown"
         :on-paste="onPaste"
       />
-      <div class="ai-agent-input-toolbar">
+      <div
+        class="ai-agent-input-toolbar"
+        :class="{ 'is-draggable': store.displayMode === 'floating' && !store.floatingFullscreen }"
+        @mousedown="startFloatingDrag"
+      >
         <div class="toolbar-left">
           <!-- RAG toggle as icon button. Disabled (with explanatory
                tooltip) when the backend embedding service is not
@@ -248,13 +307,13 @@
               <template #icon><BookIcon /></template>
             </t-button>
           </t-tooltip>
-          <!-- Image upload as icon button. Disabled when the backend
-               has no vision model configured (the LLM would silently
+          <!-- Image upload as icon button. Disabled when the CURRENT
+               model has no vision support (the LLM would silently
                drop the attachment without analysing it). -->
           <t-tooltip
             :content="visionEnabled
               ? '粘贴 / 拖拽 / 点击上传图片'
-              : '后端AI大模型不具备图片分析功能'"
+              : '当前模型不具备图片分析功能'"
             placement="top"
           >
             <t-button
@@ -282,6 +341,43 @@
               <template #icon><ClearIcon /></template>
             </t-button>
           </t-tooltip>
+          <!-- Model selector, right after the clear-session button.
+               Disabled on legacy servers (no /v1/ai/models) where
+               chat simply uses the server-side default. Opens on
+               CLICK (not hover); the selection applies to subsequent
+               messages only - queued messages keep their own model
+               snapshot. -->
+          <t-dropdown
+            class="model-dropdown"
+            :options="modelOptions"
+            :disabled="!store.modelsLoaded"
+            trigger="click"
+            placement="top-left"
+            :popup-props="{
+              overlayClassName: 'model-dropdown-popup',
+              overlayInnerStyle: {
+                width: 'max-content',
+                maxWidth: '480px'
+              }
+            }"
+            @click="onModelSelect"
+          >
+            <t-button
+              size="small"
+              variant="text"
+              class="model-selector"
+              :disabled="!store.modelsLoaded"
+            >
+              <template #icon><CpuIcon /></template>
+              <t-tooltip
+                :content="currentModelTooltip"
+                placement="top"
+              >
+                <span class="model-name">{{ currentModelDisplayName }}</span>
+              </t-tooltip>
+              <ChevronDownIcon class="model-chevron" />
+            </t-button>
+          </t-dropdown>
           <!-- Queued-send indicator: visible only while messages are
                waiting in the store's sequential send queue. -->
           <t-tooltip content="排队中的消息会按顺序在 AI 回答完成后发送" placement="top">
@@ -371,7 +467,7 @@
             size="small"
             theme="primary"
             shape="square"
-            :disabled="!draft && pendingAttachments.length === 0"
+            :disabled="historyMutating || (!draft && pendingAttachments.length === 0)"
             @click="onSend"
           >
             <template #icon><SendIcon /></template>
@@ -386,6 +482,31 @@
         style="display: none"
         @change="onFileSelect"
       >
+
+      <!-- Edit a historical user question and regenerate its branch. -->
+      <t-dialog
+        v-model:visible="showEditDialog"
+        header="修改问题并重新生成"
+        :confirm-btn="{ content: '重新生成', loading: editingSubmitting }"
+        cancel-btn="取消"
+        @confirm="onConfirmEdit"
+        @close="onEditDialogClose"
+      >
+        <div class="edit-question-tip">
+          将删除此问题及其后续回答，并以修改后的问题重新生成。
+        </div>
+        <div
+          v-if="editingMessage?.attachments?.length"
+          class="edit-question-attachments"
+        >
+          已保留原问题中的 {{ editingMessage.attachments.length }} 张图片
+        </div>
+        <t-textarea
+          v-model="editingText"
+          placeholder="请输入修改后的问题"
+          :autosize="{ minRows: 4, maxRows: 12 }"
+        />
+      </t-dialog>
 
       <!-- Confirmation dialog for "clear current session". Using a
            t-dialog (rather than popconfirm) because the button lives
@@ -407,9 +528,9 @@
 </template>
 
 <script setup>
-import { ref, computed, inject } from 'vue'
-import { MessagePlugin } from 'tdesign-vue-next'
-import { CloseIcon, ImageIcon, CopyIcon, BookIcon, SendIcon, StopIcon, ClearIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, RefreshIcon, ArrowUpIcon, ArrowDownIcon } from 'tdesign-icons-vue-next'
+import { ref, computed, inject, onMounted, onUnmounted, watch, h } from 'vue'
+import { MessagePlugin, Tooltip as TTooltip } from 'tdesign-vue-next'
+import { CloseIcon, ImageIcon, CopyIcon, EditIcon, BookIcon, SendIcon, StopIcon, ClearIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, DeleteIcon, RefreshIcon, ArrowUpIcon, ArrowDownIcon, CpuIcon } from 'tdesign-icons-vue-next'
 import { useAiAgentStore } from '@/store/modules/aiAgent'
 import { useUserStore } from '@/store/modules/user'
 import { useComponentsStore } from '@/store/modules/components'
@@ -432,9 +553,21 @@ const componentsStore = useComponentsStore()
 const userAvatar = computed(() => userStore.avatar || defaultUserAvatar)
 
 const fileInputRef = ref(null)
+// Per-message character cap for the question input. TDesign textarea
+// renders the "current/max" counter at the bottom-right automatically
+// once `maxcharacter` is set. 8000 chars (~8K tokens for Chinese) takes
+// only ~6% of the default 128K context window, leaving plenty of room
+// for RAG excerpts (topK 8 x 2000 chars), history and the 4096-token
+// completion budget.
+const MAX_MESSAGE_CHARS = 8000
 const draft = ref('')
 // Controls the visibility of the "clear current session" t-dialog.
 const showClearConfirm = ref(false)
+// State for editing a historical user question in a dialog.
+const showEditDialog = ref(false)
+const editingMessage = ref(null)
+const editingText = ref('')
+const editingSubmitting = ref(false)
 
 // Input history for up/down arrow navigation
 const inputHistory = ref([])
@@ -442,8 +575,169 @@ const historyIndex = ref(-1)
 const draftBackup = ref('')
 
 const streaming = computed(() => store.streaming)
+const historyMutating = computed(() => store.historyMutating)
 const waitingForResponse = computed(() => store.waitingForResponse)
 const pendingToolCall = computed(() => store.pendingToolCall)
+
+// Elapsed-time display next to "思考中" while a request is in flight.
+// A 100ms interval ticks a reactive ref; the computed below formats it
+// as "X.Xs" (or "Xm Ys" for runs over a minute). The store writes
+// `startedAt` onto the assistant placeholder when the send begins, so
+// we can derive elapsed time without waiting for the backend.
+const _thinkingTick = ref(0)
+const _thinkingTimer = ref(null)
+
+const _thinkingStartedAt = computed(() => {
+  const last = store.messages[store.messages.length - 1]
+  return last && last.role === 'assistant' ? last.startedAt : null
+})
+
+const thinkingElapsedText = computed(() => {
+  // Touch _thinkingTick so the computed re-evaluates on every tick.
+  void _thinkingTick.value
+  const startedAt = _thinkingStartedAt.value
+  if (!startedAt) return ''
+  const sec = (Date.now() - startedAt) / 1000
+  if (sec < 60) return `${sec.toFixed(1)}s`
+  const m = Math.floor(sec / 60)
+  return `${m}m ${Math.round(sec % 60)}s`
+})
+
+const waitingText = computed(() => {
+  // Cycle through one to three dots without introducing HTML into the
+  // markdown renderer used by the assistant bubble.
+  const dotCount = (Math.floor(_thinkingTick.value / 5) % 3) + 1
+  const dots = '.'.repeat(dotCount)
+  return `💡 思考中（用时 ${thinkingElapsedText.value}）${dots}`
+})
+
+function _startThinkingTimer() {
+  if (_thinkingTimer.value) return
+  _thinkingTimer.value = setInterval(() => {
+    _thinkingTick.value += 1
+  }, 100)
+}
+
+function _stopThinkingTimer() {
+  if (_thinkingTimer.value) {
+    clearInterval(_thinkingTimer.value)
+    _thinkingTimer.value = null
+  }
+}
+
+watch(
+  () => store.waitingForResponse,
+  (waiting) => {
+    if (waiting) {
+      _startThinkingTimer()
+    } else {
+      _stopThinkingTimer()
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  if (store.waitingForResponse) _startThinkingTimer()
+  _initActionbarSync()
+})
+
+onUnmounted(() => {
+  _stopThinkingTimer()
+  _teardownActionbarSync()
+})
+
+/*
+ * Actionbar width synchronisation.
+ *
+ * Each message row is a <t-chat-item> web component (omi, OPEN shadow
+ * root). Its shadow tree lays out the bubble
+ * (.t-chat__item__content--base, sized fit-content) and, as a sibling,
+ * the <slot name="actionbar"> whose assigned node is our light-DOM
+ * div[slot="actionbar"]. CSS alone cannot size a light-DOM element to
+ * a shadow-DOM sibling, so we measure the bubble and write its pixel
+ * width onto the actionbar element:
+ *
+ *   - ResizeObserver on every bubble keeps the width in sync while
+ *     the answer streams in (the bubble grows with its content).
+ *   - MutationObserver on the messages host AND on each item's shadow
+ *     root re-runs the scan when rows are added/removed or when the
+ *     pending -> rendered transition creates the bubble element.
+ */
+const _bubbleBarMap = new WeakMap()
+const _observedShadows = new WeakSet()
+let _actionbarRO = null
+let _actionbarMO = null
+let _actionbarSyncScheduled = false
+
+function _updateActionbarWidth(bubble, bar) {
+  const bubbleWidth = bubble.getBoundingClientRect().width
+  const actions = bar.matches('.message-actions')
+    ? bar
+    : bar.querySelector('.message-actions')
+  // A short user bubble can be narrower than its action row, clipping
+  // the right-hand token chip. Expand only user action bars to fit
+  // their content; assistant bars keep tracking the answer bubble.
+  const contentWidth = actions?.classList.contains('is-user')
+    ? actions.scrollWidth
+    : 0
+  bar.style.width = `${Math.max(bubbleWidth, contentWidth)}px`
+}
+
+function _syncActionbarWidths() {
+  const host = document.querySelector('.ai-agent-messages')
+  if (!host) return
+  host.querySelectorAll('t-chat-item').forEach(item => {
+    // Watch the shadow tree too: the bubble is created only after the
+    // pending (loading) state ends, which is invisible to light-DOM
+    // mutation observers.
+    if (item.shadowRoot && !_observedShadows.has(item.shadowRoot)) {
+      _observedShadows.add(item.shadowRoot)
+      _actionbarMO?.observe(item.shadowRoot, { childList: true, subtree: true })
+    }
+    const bubble = item.shadowRoot?.querySelector('.t-chat__item__content--base')
+    const bar = item.querySelector('[slot="actionbar"]')
+    if (!bubble || !bar) return
+    _bubbleBarMap.set(bubble, bar)
+    _updateActionbarWidth(bubble, bar)
+    _actionbarRO?.observe(bubble)
+  })
+}
+
+function _scheduleActionbarSync() {
+  if (_actionbarSyncScheduled) return
+  _actionbarSyncScheduled = true
+  // Batch bursts of mutations/streaming frames into one scan.
+  requestAnimationFrame(() => {
+    _actionbarSyncScheduled = false
+    _syncActionbarWidths()
+  })
+}
+
+function _initActionbarSync() {
+  _actionbarRO = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      const bar = _bubbleBarMap.get(entry.target)
+      if (bar) {
+        _updateActionbarWidth(entry.target, bar)
+      }
+    }
+  })
+  _actionbarMO = new MutationObserver(_scheduleActionbarSync)
+  const host = document.querySelector('.ai-agent-messages')
+  if (host) {
+    _actionbarMO.observe(host, { childList: true, subtree: true })
+  }
+  _syncActionbarWidths()
+}
+
+function _teardownActionbarSync() {
+  _actionbarRO?.disconnect()
+  _actionbarMO?.disconnect()
+  _actionbarRO = null
+  _actionbarMO = null
+}
+
 const pendingAttachments = computed(() => store.pendingAttachments)
 const messageQueue = computed(() => store.messageQueue)
 const embeddingEnabled = computed(() => componentsStore.embeddingEnabled)
@@ -499,10 +793,61 @@ function formatTokens(n) {
   if (n < 1000) return String(n)
   return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
 }
-// Mirrors the backend `is_vision_enabled()` flag exposed via /version's
-// `components.vision` field; when false the image-attachment button is
-// disabled with a tooltip explaining the backend has no vision support.
-const visionEnabled = computed(() => componentsStore.visionEnabled)
+// Vision support is per model: once the model list is loaded, the
+// CURRENTLY selected model decides whether images may be attached.
+// On legacy servers (no model list) the backend `is_vision_enabled()`
+// flag exposed via /version's `components.vision` field stays
+// authoritative.
+const visionEnabled = computed(() => {
+  const perModel = store.currentModelSupportsVision
+  if (perModel !== null && perModel !== undefined) return perModel
+  return componentsStore.visionEnabled
+})
+
+// ===== Model selector =====
+const currentModelDisplayName = computed(() => {
+  if (!store.modelsLoaded) return '默认模型'
+  const model = store.currentModel
+  return model ? model.display_name : '默认模型'
+})
+
+const currentModelTooltip = computed(() => {
+  if (!store.modelsLoaded) return '使用服务端默认模型'
+  const model = store.currentModel
+  if (!model) return '使用服务端默认模型'
+  return `${model.id} (${model.model})`
+})
+
+// Dropdown items show only the display name; hovering an item shows
+// a tooltip with the full `id (model)` so similarly-named entries
+// stay distinguishable. The button tooltip uses the same format.
+const modelOptions = computed(() => store.availableModels.map(m => ({
+  content: () => h(
+    TTooltip,
+    {
+      content: `${m.id} (${m.model})`,
+      placement: 'right',
+      showArrow: false
+    },
+    {
+      default: () => h(
+        'span',
+        { class: 'model-option-label' },
+        m.display_name
+      )
+    }
+  ),
+  value: m.id,
+  // Mark the active entry in the menu.
+  active: m.id === (store.selectedModelId || store.defaultModelId)
+})))
+
+function onModelSelect(item) {
+  // TDesign Dropdown passes the clicked option object; tolerate a
+  // plain value too so a shape mismatch can never silently reset the
+  // selection back to the default model.
+  store.setSelectedModel(item?.value ?? item)
+}
 const enableRag = computed({
   get: () => store.enableRag && embeddingEnabled.value,
   set: v => store.setEnableRag(v)
@@ -511,6 +856,12 @@ const enableRag = computed({
 // Inject the session-list toggle from the parent AiAgentContainer so
 // the toolbar history button can open the panel without prop drilling.
 const showSessionList = inject('showSessionList', ref(false))
+
+// Drag starter injected by AiAgentContainer: lets the input toolbar
+// (status bar below the textarea) move the whole floating panel, same
+// as dragging the floating header. No-op default keeps the chat usable
+// standalone; the container itself guards drawer mode / fullscreen.
+const startFloatingDrag = inject('startFloatingDrag', () => {})
 
 /**
  * Toggle the session-history panel. Bound to the History icon in the
@@ -521,11 +872,12 @@ function onToggleSessionList() {
 }
 
 /**
- * The chat list is bound directly to `store.chatItems`, which the
- * store maintains imperatively alongside `messages`. Each item
- * keeps stable object identity across SSE chunks (and its content
- * blocks keep stable references too), which is what TDesign Chat's
- * internal typewriter animation needs to recognise deltas.
+ * The chat list normally renders `store.chatItems`, which the store
+ * maintains imperatively alongside `messages`. Each item keeps stable
+ * object identity across SSE chunks (and its content blocks keep stable
+ * references too), which is what TDesign Chat's internal typewriter
+ * animation needs to recognise deltas. Only the waiting placeholder is
+ * replaced with a derived bubble so its timer can update in the view.
  *
  * We register a meta-resolver on the store so it can call back
  * into this view for user-specific data (name, avatar, formatted
@@ -534,23 +886,37 @@ function onToggleSessionList() {
 store._chatItemMetaResolver = (m) => {
   const isAssistant = m.role === 'assistant'
   return {
-    name: isAssistant ? 'AI 助手' : (userStore.name || '我'),
+    name: isAssistant ? '量子AI智能体' : (userStore.name || '我'),
     avatar: isAssistant ? AI_AVATAR_SVG : userAvatar.value,
     datetime: m.createdAt ? formatDatetime(m.createdAt) : ''
   }
 }
 
-const chatData = computed(() => store.chatItems)
+const chatData = computed(() => {
+  const items = store.chatItems
+  if (!waitingForResponse.value || items.length === 0) return items
+  const last = items[items.length - 1]
+  if (last.role !== 'assistant') return items
+  const waitingItem = {
+    ...last,
+    status: '',
+    content: [{ type: 'markdown', data: waitingText.value }]
+  }
+  return [...items.slice(0, -1), waitingItem]
+})
 
 function formatDatetime(unixSeconds) {
-  // Show only HH:MM for intraday; full date for older messages.
+  // Prefix the time with MM/DD (e.g. "11/06 14:32") for intraday
+  // messages, and "YYYY-MM-DD HH:MM" for older ones. The month/day
+  // prefix keeps the timestamp readable in the header while staying
+  // one step smaller than the name font.
   const d = new Date(unixSeconds * 1000)
   const now = new Date()
+  const pad = n => String(n).padStart(2, '0')
   const sameDay = d.toDateString() === now.toDateString()
   if (sameDay) {
-    return d.toTimeString().slice(0, 5)
+    return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
-  const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
@@ -607,6 +973,10 @@ function handleStop() {
 }
 
 async function onSend() {
+  if (historyMutating.value) {
+    MessagePlugin.warning('正在更新对话历史，请稍候')
+    return
+  }
   const text = draft.value.trim()
   if (!text && pendingAttachments.value.length === 0) return
   // Save to input history for up/down navigation
@@ -623,7 +993,14 @@ async function onSend() {
   try {
     await store.sendMessage(text)
   } catch (err) {
-    MessagePlugin.error(`发送失败: ${err.message || 'AI 助手暂时不可用'}`)
+    // Stream failures (e.g. insufficient provider quota) are already
+    // rendered inside the assistant bubble by the store, so only
+    // pre-flight errors without a bubble still need a global toast.
+    if (err?.shownInBubble) {
+      console.error('AI send failed:', err)
+    } else {
+      MessagePlugin.error(`发送失败: ${err.message || 'AI 智能体暂时不可用'}`)
+    }
   }
 }
 
@@ -780,6 +1157,24 @@ function getMessageOutputTokens(item) {
   return Math.ceil((raw.content || '').length / 2)
 }
 
+/**
+ * Wall-clock thinking + generation time for a message, formatted as
+ * "X.Xs" (or "Xm Ys" for runs over a minute). Written by the store
+ * onto assistant messages on RUN_FINISHED; absent for history items
+ * loaded from the backend (no timing metadata persisted server-side).
+ */
+function getMessageDurationText(item) {
+  const ms = item?._raw?.durationMs
+  if (!ms || ms <= 0) return ''
+  const sec = ms / 1000
+  if (sec < 60) {
+    return `${sec.toFixed(1)}s`
+  }
+  const m = Math.floor(sec / 60)
+  const s = Math.round(sec % 60)
+  return `${m}m ${s}s`
+}
+
 const chatListRef = ref(null)
 
 /**
@@ -860,9 +1255,42 @@ function scrollToTop() {
   }
 }
 
+function onEditMessage(item) {
+  editingMessage.value = item._raw
+  editingText.value = item._raw?.content || ''
+  showEditDialog.value = true
+}
+
+function onEditDialogClose() {
+  if (editingSubmitting.value) return
+  editingMessage.value = null
+  editingText.value = ''
+}
+
+async function onConfirmEdit() {
+  const raw = editingMessage.value
+  if (!raw) return
+  const text = editingText.value.trim()
+  if (!text && !(raw.attachments || []).length) {
+    MessagePlugin.warning('修改后的问题不能为空')
+    return
+  }
+  editingSubmitting.value = true
+  try {
+    await store.editAndRetryMessage(raw, text)
+    showEditDialog.value = false
+    editingMessage.value = null
+    editingText.value = ''
+  } catch (err) {
+    // Keep the dialog content intact so the user can retry or cancel.
+    MessagePlugin.error(`修改并重试失败: ${err.message || '未知错误'}`)
+  } finally {
+    editingSubmitting.value = false
+  }
+}
+
 /**
- * Retry the assistant's reply: drop the assistant + user message
- * pair, then re-send the user prompt.
+ * Retry the assistant's reply by truncating and resending its branch.
  */
 async function onRetryMessage(item) {
   try {
@@ -918,7 +1346,7 @@ async function onCopyMessage(item) {
     "PingFang SC", "Hiragino Sans GB", "Source Han Sans SC",
     "Noto Sans CJK SC", sans-serif;
   --font-size-sm: 14px;
-  --line-height-normal: 1.6;
+  --line-height-normal: 1.5;
   /* Match the global TDesign text color. Hard-coding `red` here was a
      debugging leftover that turned every chat bubble bright red. */
   --base-font-color: var(--td-text-color-primary, rgba(0, 0, 0, 0.9));
@@ -931,6 +1359,15 @@ async function onCopyMessage(item) {
   --td-chat-md-font: var(--td-text-color-primary);
   --td-chat-font-family: "SimHei", "Heiti SC", "Microsoft YaHei",
     "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+/* Give both assistant and user messages the same subtle block bubble.
+   TDesign renders the bubble inside t-chat-item's Shadow DOM, so the
+   public content part is the reliable override point in text mode. */
+.ai-agent-messages t-chat-item::part(t-chat__item__content) {
+  padding: 8px 12px;
+  background-color: var(--td-bg-color-secondarycontainer, #f3f4f6);
+  border-radius: 12px;
 }
 
 /* TDesign Chat 0.7.0 chat-bubble font overrides. Only target the
@@ -949,8 +1386,18 @@ async function onCopyMessage(item) {
 .t-chat__datetime {
   font-family: "SimHei", "Heiti SC", "Microsoft YaHei",
     "PingFang SC", "Hiragino Sans GB", sans-serif !important;
-  font-size: 14px !important;
-  line-height: 1.6 !important;
+  line-height: 1.5 !important;
+}
+
+/* Chat header (name + datetime) sits one step smaller than the
+   message body so the bubble content dominates the row. */
+.t-chat__header {
+  font-size: 12px !important;
+}
+
+.t-chat__datetime {
+  font-size: 11px !important;
+  color: var(--td-text-color-placeholder);
 }
 
 /* AI markdown content - the .cherry class is inside Shadow DOM
@@ -961,7 +1408,47 @@ async function onCopyMessage(item) {
   font-family: "SimHei", "Heiti SC", "Microsoft YaHei",
     "PingFang SC", "Hiragino Sans GB", sans-serif !important;
   font-size: 14px !important;
-  line-height: 1.6 !important;
+  line-height: 1.5 !important;
+}
+
+/* Tighten the vertical rhythm INSIDE each bubble: cherry-markdown
+   defaults leave generous gaps between paragraphs, list items and
+   headings; compress them so wrapped lines sit closer together. */
+.t-chat__text .cherry p,
+.t-chat__text__markdown .cherry p {
+  margin: 4px 0 !important;
+}
+
+.t-chat__text .cherry ul,
+.t-chat__text .cherry ol,
+.t-chat__text__markdown .cherry ul,
+.t-chat__text__markdown .cherry ol {
+  margin: 4px 0 !important;
+}
+
+.t-chat__text .cherry li,
+.t-chat__text__markdown .cherry li {
+  margin: 2px 0 !important;
+}
+
+.t-chat__text .cherry h1,
+.t-chat__text .cherry h2,
+.t-chat__text .cherry h3,
+.t-chat__text .cherry h4,
+.t-chat__text .cherry h5,
+.t-chat__text .cherry h6,
+.t-chat__text__markdown .cherry h1,
+.t-chat__text__markdown .cherry h2,
+.t-chat__text__markdown .cherry h3,
+.t-chat__text__markdown .cherry h4,
+.t-chat__text__markdown .cherry h5,
+.t-chat__text__markdown .cherry h6 {
+  margin: 8px 0 4px !important;
+}
+
+.t-chat__text .cherry pre,
+.t-chat__text__markdown .cherry pre {
+  margin: 6px 0 !important;
 }
 
 /* Reasoning panel font - keep one step smaller than the answer. */
@@ -1002,6 +1489,7 @@ async function onCopyMessage(item) {
    fact that t-chat-list sets status="pending" on the last item
    while textLoading=true. When textLoading goes false, the
    pending status is removed and the cursor disappears. */
+
 .t-chat__item--assistant:not([data-status="pending"]) .t-chat__text__markdown::after {
   display: none;
 }
@@ -1039,12 +1527,12 @@ async function onCopyMessage(item) {
  *
  * The fix is two-fold:
  *
- * 1. Make the actionbar wrapper `width: fit-content` so it shrinks
- *    to the bubble width. Because both content and actionbar are
- *    siblings inside __main, they share the same alignment context
- *    (left for assistant, right for user) - so `fit-content` makes
- *    the actionbar track the bubble width AND follow its left /
- *    right alignment.
+ * 1. Make the actionbar wrapper match the bubble's width exactly.
+ *    Because both content and actionbar are siblings inside __main,
+ *    they share the same alignment context (left for assistant, right
+ *    for user). `width: fit-content` would shrink the bar to its
+ *    buttons; using `width: auto` + `align-self: inherit` lets the
+ *    bar inherit the bubble's width instead.
  *
  * 2. Force `align-self: inherit` on the actionbar so it copies the
  *    bubble's cross-axis alignment (flex-start for assistant rows,
@@ -1055,12 +1543,20 @@ async function onCopyMessage(item) {
 :deep([slot="actionbar"]),
 :deep(.t-chat__actions),
 :deep(.t-chat__actionbar) {
+  /* The exact pixel width is written inline by _syncActionbarWidths()
+     (ResizeObserver on the bubble), because the bubble lives in the
+     t-chat-item shadow root and CSS cannot reference its width from
+     out here. `fit-content` is only the pre-JS fallback. The bar stays
+     a sibling of the bubble inside .t-chat__item__main, so with
+     align-self: inherit it also copies the bubble's left/right
+     alignment (assistant left, user right). */
   width: fit-content;
   max-width: 100%;
   box-sizing: border-box;
   display: block;
   align-self: inherit;
 }
+
 
 /*
  * The inner .message-actions row uses justify-content: space-between
@@ -1081,7 +1577,25 @@ async function onCopyMessage(item) {
   flex-shrink: 0;
 }
 
-/* Right container: AI disclaimer + token-usage chip. */
+/* Center placeholder: three invisible icon-button slots keep the
+   left/center/right layout stable across user and assistant rows.
+   They are pure spacers (no interactivity, no content). */
+.message-actions-center {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+
+.action-btn-placeholder {
+  width: 24px;
+  height: 24px;
+  visibility: hidden;
+  flex-shrink: 0;
+}
+
+/* Right container: duration + token-usage chip. */
 .message-actions-right {
   display: inline-flex;
   align-items: center;
@@ -1103,6 +1617,28 @@ async function onCopyMessage(item) {
   white-space: nowrap;
 }
 
+/*
+ * Per-message wall-clock duration chip ("8.2s"), sits next to the
+ * token usage. Same muted styling as the token chip so the action bar
+ * reads as one continuous metadata strip.
+ */
+.message-actions .message-duration {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--td-text-color-placeholder);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Tooltip content blocks: compact, left-aligned, one line per fact. */
+.token-usage-tooltip,
+.duration-tooltip {
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: left;
+  white-space: nowrap;
+}
+
 .ai-agent-chat {
   display: flex;
   flex-direction: column;
@@ -1119,7 +1655,10 @@ async function onCopyMessage(item) {
  */
 .ai-agent-drag-overlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -1228,6 +1767,21 @@ async function onCopyMessage(item) {
   min-height: 0;
   overflow-y: auto;
   padding: 16px;
+  /* Shrink the gap BETWEEN turns: these variables drive
+     t-chat__inner's margin-bottom and the content--base
+     padding-top inside the chat Shadow DOM (CSS variables
+     pierce the shadow boundary). */
+  --td-comp-margin-l: 8px;
+  --td-comp-paddingTB-xl: 8px;
+}
+
+/* Explicit fallback for the light-DOM copies of the same rules. */
+.ai-agent-messages :deep(.t-chat__inner) {
+  margin-bottom: 8px;
+}
+
+.ai-agent-messages :deep(.t-chat__inner .t-chat__content--base) {
+  padding-top: 8px;
 }
 
 /*
@@ -1316,14 +1870,6 @@ async function onCopyMessage(item) {
 .ai-agent-tool-call {
   padding: 8px 16px;
   text-align: center;
-  border-top: 1px dashed var(--td-component-border);
-}
-
-.ai-agent-waiting {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 16px;
   border-top: 1px dashed var(--td-component-border);
 }
 
@@ -1441,6 +1987,17 @@ async function onCopyMessage(item) {
 }
 
 /*
+ * Floating mode only: the input toolbar doubles as a drag handle for
+ * moving the whole panel (same behaviour as the floating header).
+ * Buttons inside keep their own pointer cursor; the move cursor and
+ * no-select apply to the toolbar's empty areas.
+ */
+.ai-agent-input-toolbar.is-draggable {
+  cursor: move;
+  user-select: none;
+}
+
+/*
  * Force the message textarea to a usable minimum height. TDesign's
  * default rows=8 should be enough for ~6 lines, but the line-height
  * inside the chat bubble styles can end up smaller than expected, so
@@ -1459,6 +2016,28 @@ async function onCopyMessage(item) {
   min-height: 84px !important;
   font-size: 14px;
   line-height: 1.6;
+}
+
+/*
+ * Character counter ("0/8000") overlaid INSIDE the textarea's bottom-
+ * right corner instead of occupying its own row below the input. The
+ * absolute positioning frees that row's height for the message input;
+ * the translucent, non-interactive style keeps the typed text and the
+ * caret usable underneath the counter.
+ */
+.ai-agent-textarea {
+  position: relative;
+}
+
+.ai-agent-textarea :deep(.t-textarea__info_wrapper) {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  pointer-events: none;
+}
+
+.ai-agent-textarea :deep(.t-textarea__limit) {
+  opacity: 0.5;
 }
 
 /*
@@ -1553,6 +2132,59 @@ async function onCopyMessage(item) {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Model selector in the left toolbar, right after the clear-session
+   button. The dropdown opens on click, never on hover. */
+.model-dropdown {
+  flex-shrink: 0;
+}
+
+.model-selector {
+  max-width: 220px;
+  color: var(--td-text-color-secondary);
+}
+
+.model-selector .model-name {
+  display: inline-block;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  font-size: 12px;
+}
+
+.model-selector .model-chevron {
+  margin-left: 2px;
+  font-size: 12px;
+}
+
+/* The dropdown popup is teleported to <body>, so its rules must be
+   global. The popup width adapts to its content only (capped at
+   480px) - no forced minimum width - and every option label is
+   shown in full without wrapping or ellipsis. */
+:global(.model-dropdown-popup .t-dropdown__menu) {
+  width: max-content;
+  max-width: 480px;
+}
+
+:global(.model-dropdown-popup .t-dropdown__item) {
+  white-space: nowrap;
+}
+
+:global(.model-dropdown-popup .t-dropdown__item-text) {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: nowrap;
+}
+
+/* Stretch the label so the tooltip hover area covers the whole
+   option row, not just the text width. */
+:global(.model-dropdown-popup .model-option-label) {
+  display: inline-block;
+  min-width: 100%;
 }
 
 .toolbar-right {
@@ -1586,15 +2218,29 @@ async function onCopyMessage(item) {
   cursor: not-allowed;
 }
 
+.edit-question-tip,
+.edit-question-attachments {
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--td-text-color-secondary);
+}
+
+.edit-question-attachments {
+  color: var(--td-brand-color);
+}
+
 /*
- * Per-message AI disclaimer: tiny grey text rendered inside the
- * right-aligned actions container. Deliberately low-contrast and
- * non-interactive.
+ * Single AI disclaimer between the message list and input area.
+ * Deliberately low-contrast, centered and non-interactive.
  */
-.message-disclaimer {
+.ai-agent-disclaimer {
+  flex-shrink: 0;
+  padding: 6px 12px;
   font-size: 11px;
   line-height: 1.4;
   color: var(--td-text-color-placeholder);
+  text-align: center;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;

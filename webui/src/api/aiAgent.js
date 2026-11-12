@@ -48,7 +48,7 @@ function getAguiChatUrl() {
 function ensureAiAgentEnabled() {
   const componentsStore = useComponentsStore()
   if (!componentsStore.aiAgentEnabled) {
-    return Promise.reject(new Error('AI 助手功能未开启'))
+    return Promise.reject(new Error('AI 智能体功能未开启'))
   }
   return null
 }
@@ -64,6 +64,7 @@ function ensureAiAgentEnabled() {
  * @param {string} opts.message - User message text
  * @param {boolean} [opts.enableRag] - Whether to enable RAG retrieval
  * @param {Array} [opts.attachments] - Image attachments [{kind, media_type, data}]
+ * @param {string} [opts.modelId] - Configured model ID (omitted when unset)
  * @param {function} opts.onChunk - Called for each text chunk: (delta)
  * @param {function} opts.onToolCall - Called when a tool is invoked: (tool, args)
  * @param {function} opts.onToolResult - Called when a tool returns: (tool, result)
@@ -75,6 +76,7 @@ export function streamChat({
   message,
   enableRag = true,
   attachments = [],
+  modelId = null,
   onChunk,
   onToolCall,
   onToolResult,
@@ -100,7 +102,10 @@ export function streamChat({
       session_id: sessionId || null,
       message,
       enable_rag: enableRag,
-      attachments
+      attachments,
+      // Only send model_id when explicitly selected so older servers
+      // keep receiving the legacy request shape.
+      ...(modelId ? { model_id: modelId } : {})
     })
   })
     .then(response => {
@@ -150,6 +155,40 @@ export function streamChat({
 }
 
 /**
+ * Extract a human-readable error detail from a non-2xx response.
+ *
+ * FastAPI errors carry ``{"detail": "..."}`` while LLM gateways
+ * usually return ``{"error": {"message": "..."}}``. Surfacing the
+ * body (e.g. quota exhaustion) lets the assistant bubble show the
+ * actual cause instead of a bare HTTP status line.
+ *
+ * @param {Response} response - failed fetch response
+ * @returns {Promise<string>} error detail, empty when unavailable
+ */
+async function readErrorDetail(response) {
+  let text
+  try {
+    text = (await response.text()).trim()
+  } catch {
+    return ''
+  }
+  if (!text) return ''
+  try {
+    const data = JSON.parse(text)
+    if (typeof data.detail === 'string') return data.detail
+    if (typeof data.error === 'string') return data.error
+    if (data.error && typeof data.error.message === 'string') {
+      return data.error.message
+    }
+  } catch {
+    // Not JSON: fall through to the bounded raw body below.
+  }
+  // Bound non-JSON bodies (proxy HTML error pages) so the bubble
+  // stays readable.
+  return text.length > 300 ? `${text.slice(0, 300)}...` : text
+}
+
+/**
  * Stream a chat message to the AI agent via AG-UI protocol SSE.
  *
  * Uses @tdesign/ai-chat-engine for standardized AG-UI protocol
@@ -160,10 +199,11 @@ export function streamChat({
  * @param {string} opts.message - User message text
  * @param {boolean} [opts.enableRag] - Whether to enable RAG retrieval
  * @param {Array} [opts.attachments] - Image attachments [{kind, media_type, data}]
+ * @param {string} [opts.modelId] - Configured model ID (omitted when unset)
  * @param {function} opts.onChunk - Called for each text chunk: (delta)
  * @param {function} opts.onToolCall - Called when a tool is invoked: (tool, args)
  * @param {function} opts.onToolResult - Called when a tool returns: (tool, result)
- * @param {function} opts.onDone - Called when stream ends: (messageId)
+ * @param {function} opts.onDone - Called when stream ends: (messageId, usage, sessionId)
  * @param {function} opts.onError - Called on error: (error)
  * @param {function} opts.onMessageUpdate - Called when message content updates
  */
@@ -172,6 +212,7 @@ export function streamChatAgui({
   message,
   enableRag = true,
   attachments = [],
+  modelId = null,
   onChunk,
   onThinking,
   onToolCall,
@@ -201,13 +242,19 @@ export function streamChatAgui({
       session_id: sessionId || null,
       message,
       enable_rag: enableRag,
-      attachments
+      attachments,
+      // Only send model_id when explicitly selected so older servers
+      // keep receiving the legacy request shape.
+      ...(modelId ? { model_id: modelId } : {})
     }),
     signal // Attach abort signal
   })
-    .then(response => {
+    .then(async response => {
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        const detail = await readErrorDetail(response)
+        throw new Error(
+          detail || `HTTP ${response.status}: ${response.statusText}`
+        )
       }
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -219,6 +266,11 @@ export function streamChatAgui({
       // successful stream; without this guard the store's onDone was
       // called twice, which raced with the streaming-state cleanup.
       let runFinished = false
+      // Real session id reported by RUN_STARTED / RUN_FINISHED. The
+      // frontend keys sessions off this value; only legacy servers
+      // (which omit it) fall back to the messageId-as-sessionId
+      // compatibility path.
+      let responseSessionId = null
 
       function processBuffer() {
         // Parse SSE events from buffer. AG-UI uses standard SSE with
@@ -265,13 +317,17 @@ export function streamChatAgui({
               // Message-level framing event: no store callback needed,
               // the bubble content is already up to date. Acknowledge
               // it so it does not fall into the unknown-type branch.
-            } else if (type === 'RUN_STARTED' || type === 'TEXT_MESSAGE_START') {
-              // Run/message framing events: no-op for our store.
+            } else if (type === 'RUN_STARTED') {
+              // Run-level framing event: carries the real session id.
+              if (data.sessionId) responseSessionId = data.sessionId
+            } else if (type === 'TEXT_MESSAGE_START') {
+              // Message-level framing event: no-op for our store.
             } else if (type === 'RUN_FINISHED') {
               runFinished = true
+              if (data.sessionId) responseSessionId = data.sessionId
               // Forward token-usage stats (when present) so the
               // status bar can accumulate input/output counters.
-              if (onDone) onDone(data.messageId, data.usage || null)
+              if (onDone) onDone(data.messageId, data.usage || null, responseSessionId)
             } else if (type === 'RUN_ERROR') {
               runFinished = true
               if (onError) onError(new Error(data.error || 'Unknown error'))
@@ -333,6 +389,26 @@ function getAiApiUrl(path) {
 }
 
 /**
+ * List AI models configured on the server.
+ *
+ * Older servers respond 404; the store treats that as "model menu
+ * unavailable" and keeps chatting with the server-side default.
+ *
+ * @returns {Promise} axios response promise ({default_model_id, models})
+ */
+export function listModels() {
+  const rejected = ensureAiAgentEnabled()
+  if (rejected) return rejected
+  return request({
+    url: getAiApiUrl('/v1/ai/models'),
+    method: 'get',
+    // A 404 here just means the server predates multi-model support;
+    // the store degrades gracefully without a global error toast.
+    skipErrorStatuses: [404]
+  })
+}
+
+/**
  * List all AI chat sessions for the current user.
  *
  * @returns {Promise} axios response promise
@@ -357,7 +433,10 @@ export function getSession(sessionId) {
   if (rejected) return rejected
   return request({
     url: getAiApiUrl(`/v1/ai/sessions/${sessionId}`),
-    method: 'get'
+    method: 'get',
+    // A locally persisted session may have expired on the backend.
+    // The store clears that stale id without surfacing a global error.
+    skipErrorStatuses: [404]
   })
 }
 
@@ -389,6 +468,27 @@ export function createSession(title = 'New conversation') {
     url: getAiApiUrl('/v1/ai/sessions'),
     method: 'post',
     data: { title }
+  })
+}
+
+/**
+ * Truncate a session from an edited user message onwards.
+ *
+ * @param {string} sessionId - Session ID
+ * @param {number} fromIndex - Zero-based user-message index
+ * @param {string} expectedContent - Original text used for conflict checks
+ * @returns {Promise} retained message prefix
+ */
+export function truncateSessionMessages(sessionId, fromIndex, expectedContent) {
+  const rejected = ensureAiAgentEnabled()
+  if (rejected) return rejected
+  return request({
+    url: getAiApiUrl(`/v1/ai/sessions/${sessionId}/messages/truncate`),
+    method: 'post',
+    data: {
+      from_index: fromIndex,
+      expected_content: expectedContent
+    }
   })
 }
 

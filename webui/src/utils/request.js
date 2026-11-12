@@ -107,12 +107,20 @@ service.interceptors.response.use(
     }
   },
   error => {
-    console.log('err' + error) // for debug
-    Message({
-      message: error.message,
-      type: 'error',
-      duration: 5 * 1000
-    })
+    // Some endpoints treat specific HTTP errors as expected control
+    // flow (for example, restoring an expired AI session). Allow those
+    // callers to suppress only the listed global error messages.
+    const skipStatuses = error.config?.skipErrorStatuses || []
+    const status = error.response?.status
+    const skipMessage = status && skipStatuses.includes(status)
+    if (!skipMessage) {
+      console.log('err' + error) // for debug
+      Message({
+        message: error.message,
+        type: 'error',
+        duration: 5 * 1000
+      })
+    }
     return Promise.reject(error)
   }
 )
