@@ -159,10 +159,6 @@ QCOS 的系统测试（ ``src/wy_qcos/tests/system_tests/`` ）为每个驱动�
      - 18601
      - HTTP
      - ``etc/qcos/conf.d/tiangong100.toml``，模拟玻色量子-天工旧版接口。
-   * - SpinQ NMR（Gemini/Triangulum）
-     - 18602
-     - HTTP
-     - ``etc/qcos/conf.d/spinq_gemini.toml``、``spinq_triangulum.toml``，基于aiohttp + Socket.IO模拟量旋科技云接口。
    * - CIQTek Ion-1
      - 18605
      - HTTP
@@ -187,9 +183,25 @@ QCOS 的系统测试（ ``src/wy_qcos/tests/system_tests/`` ）为每个驱动�
      - 18611
      - HTTP
      - ``etc/qcos/conf.d/cetc_baihua.toml``，模拟国基量子平台接口。
+   * - SpinQ SQC-25
+     - 18625
+     - HTTP
+     - ``etc/qcos/st-conf.d/spinq_sqc_25.toml``，模拟量旋科技 SQC-25 云平台接口。
+   * - SpinQ NMR Gemini
+     - 18626
+     - HTTP
+     - ``etc/qcos/st-conf.d/spinq_gemini.toml``，模拟量旋科技双子座核磁设备云平台接口。
+   * - SpinQ NMR Triangulum
+     - 18627
+     - HTTP
+     - ``etc/qcos/st-conf.d/spinq_triangulum.toml``，模拟量旋科技三角座核磁设备云平台接口。
+   * - SpinQ 大熊座-S25（RPC）
+     - 4242
+     - ZeroRPC / TCP
+     - ``etc/qcos/st-conf.d/spinq_rpc.toml``，模拟量旋科技大熊座-S25 超导设备 RPC 接口。
 .. note::
 
-   以上 Mock API Server 仅在系统测试中由 ``test_job.py`` 通过 ``multiprocessing.Process`` 临时启动，监听 ``127.0.0.1``，测试结束后自动终止，**不会在生产部署中常驻**。生产环境中各驱动连接的是真实量子设备的远端 API 地址，具体由对应 ``conf.d/*.toml`` 配置文件中的 ``url`` / ``host`` / ``port`` 等字段指定。
+   以上 Mock API Server 仅在系统测试中由 ``test_job.py`` 通过 ``multiprocessing.Process`` 临时启动，ST 配置通过 ``127.0.0.1`` 连接，测试结束后自动终止，**不会在生产部署中常驻**。生产环境中各驱动连接的是真实量子设备的远端 API 地址，具体由对应 ``conf.d/*.toml`` 配置文件中的 ``url`` / ``host`` / ``port`` / ``rpc_port`` 等字段指定。
 
 端口访问建议
 ------------

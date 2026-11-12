@@ -1,4 +1,4 @@
-﻿[spinq_sqc_25]
+[spinq_sqc_25]
 alias_name = "量旋科技 SQC-25 云平台超导驱动"
 driver = "DriverSpinqSqc25"
 description = "量旋科技 SQC-25 云平台超导驱动"
