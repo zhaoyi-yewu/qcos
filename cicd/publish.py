@@ -23,6 +23,7 @@ publish.py images [---dry-run] [--docker-registry DOCKER_REGISTRY]
 """
 
 import pathlib
+import shlex
 import subprocess
 import sys
 
@@ -71,7 +72,6 @@ def get_config_value(file_path, key):
 
 def run_command(
     command,
-    shell=True,
     check=True,
     capture_output=True,
     text=True,
@@ -81,8 +81,7 @@ def run_command(
     """Run command.
 
     Args:
-        command: command
-        shell: If true, the command will be executed through the shell
+        command: command as a list of arguments (no shell involved)
         check: check exit code
         capture_output: capture output
         text: print text
@@ -95,7 +94,7 @@ def run_command(
     try:
         results = subprocess.run(
             command,
-            shell=shell,
+            shell=False,
             check=check,
             capture_output=capture_output,
             text=text,
@@ -105,7 +104,8 @@ def run_command(
         return results
     except subprocess.CalledProcessError as e:
         err_msgs = (
-            f"Command failed: {command}\nError output:\n{e.stdout}\n{e.stderr}"
+            f"Command failed: {shlex.join(command)}\n"
+            f"Error output:\n{e.stdout}\n{e.stderr}"
         )
         raise PublishException(err_msgs)
 
@@ -121,26 +121,36 @@ def publish_packages(qcos_version, repository="testpypi", dry_run=False):
     dry_run_str = "(dry-run)" if dry_run else ""
     print(f"Publishing packages {dry_run_str}...")
 
-    qcos_dist_dir = f"{top_dir}/build-scripts/output/dist"
-    qcos_client_dist_dir = f"{top_dir}/build-scripts/cli/output/dist"
-    repository_args = f"--repository {repository}" if dry_run else ""
+    qcos_dist_dir = pathlib.Path(top_dir) / "build-scripts/output/dist"
+    qcos_client_dist_dir = (
+        pathlib.Path(top_dir) / "build-scripts/cli/output/dist"
+    )
+    repository_args = ["--repository", repository] if dry_run else []
     action = "check" if dry_run else "upload"
-    cmds = [
-        # upload wy-qcos packages
-        f"twine {action} --verbose {repository_args} "
-        f"{qcos_dist_dir}/wy_qcos-{qcos_version}-*.whl "
-        f"{qcos_dist_dir}/wy_qcos-{qcos_version}.tar.gz",
-        # upload wy-qcos-client packages
-        f"twine {action} --verbose {repository_args} "
-        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}-*.whl "
-        f"{qcos_client_dist_dir}/wy_qcos_client-{qcos_version}.tar.gz",
-    ]
-    results = run_command(";".join(cmds))
-    print(results.stdout)
-    ret_code = results.returncode
-    if ret_code != 0:
-        err_msg = f"Failed to run cmds: {cmds}. Reason: {results.stderr}"
-        raise PublishException(err_msg)
+
+    # expand artifacts with glob instead of relying on shell wildcards
+    cmds = []
+    for package, dist_dir in (
+        ("wy_qcos", qcos_dist_dir),
+        ("wy_qcos_client", qcos_client_dist_dir),
+    ):
+        wheel_pattern = f"{package}-{qcos_version}-*.whl"
+        artifacts = sorted(str(path) for path in dist_dir.glob(wheel_pattern))
+        tar_gz = dist_dir / f"{package}-{qcos_version}.tar.gz"
+        if tar_gz.is_file():
+            artifacts.append(str(tar_gz))
+        if not artifacts:
+            raise PublishException(
+                f"No artifacts found for {package} {qcos_version} "
+                f"under {dist_dir}"
+            )
+        cmds.append(
+            ["twine", action, "--verbose", *repository_args, *artifacts]
+        )
+
+    for cmd in cmds:
+        results = run_command(cmd)
+        print(results.stdout)
 
     return
 
@@ -185,24 +195,21 @@ def publish_images(qcos_version, docker_registry=None, dry_run=False):
     for image, target_image in target_images:
         if image != target_image:
             # remove existing target docker image
-            cmds.append(f"docker rmi -f {target_image}")
+            cmds.append(["docker", "rmi", "-f", target_image])
 
         # tag docker image
-        cmds.append(f"docker tag {image} {target_image}")
+        cmds.append(["docker", "tag", image, target_image])
 
         # push image to registry
-        cmds.append(f"docker push {target_image}")
+        cmds.append(["docker", "push", target_image])
 
     if dry_run:
         print("dry-run:")
-        print("\n".join(cmds))
+        print("\n".join(shlex.join(cmd) for cmd in cmds))
         return
 
-    results = run_command(";".join(cmds))
-    ret_code = results.returncode
-    if ret_code != 0:
-        err_msg = f"Failed to run cmds: {cmds}. Reason: {results.stderr}"
-        raise PublishException(err_msg)
+    for cmd in cmds:
+        run_command(cmd)
 
     return
 
