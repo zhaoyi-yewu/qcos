@@ -119,8 +119,10 @@ def global_configs(request):
     load_configs()
 
     # print configs for debug purpose when test fails
+    # mask sensitive values (password, salt, token, etc.) before printing
     print("\nGLOBAL_CONFIGS:")
-    pprint.PrettyPrinter().pprint(GLOBAL_CONFIGS)
+    masked_configs = Library.mask_password(GLOBAL_CONFIGS)
+    pprint.PrettyPrinter().pprint(masked_configs)
 
 
 def get_client(api_host, api_port, admin_user, admin_password):
