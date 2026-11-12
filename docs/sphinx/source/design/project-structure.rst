@@ -52,6 +52,12 @@
      - 北向JSON-RPC接口，主要是fast-api框架相关的资源定义
    * - src/wy_qcos/api/schemas
      - 北向接口中各资源和参数的数据模板、数据结构定义
+   * - src/wy_qcos/ai
+     - AI Agent模块，包括：
+        - llm: 大模型客户端、模型接入与提示词管理
+        - rag: 文档切分、向量嵌入、知识库索引与检索
+        - tools: MCP工具接入与调用
+        - agent.py: AI Agent编排，db.py和session_store.py: 会话数据持久化
    * - src/wy_qcos/common
      - 公共定义。包括：配置、常量定义、错误码定义、通用库等
    * - src/wy_qcos/db
@@ -106,4 +112,4 @@
    * - src_cpp/transpiler_cpp
      - C++实现的转译器模块，提供Python接口
    * - webui
-     - Web前端界面（Vue.js）
+     - Web前端界面（Vue3）
