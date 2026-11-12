@@ -1,7 +1,7 @@
 MCP服务接口
 ================
 
-MCP（Model Context Protocol）服务接口用于 AI 助手与 QCOS 系统交互，
+MCP（Model Context Protocol）服务接口用于 AI 智能体与 QCOS 系统交互，
 通过自然语言对话完成设备查询、作业提交、用户管理等操作。
 
 MCP 服务挂载在 FastAPI 应用上，端点路径为 ``/v1/ai/mcp``，与常规

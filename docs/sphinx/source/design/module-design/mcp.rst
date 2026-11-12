@@ -6,8 +6,8 @@ MCP服务
 概述
 --------------------
 
-MCP（Model Context Protocol）是一种开放协议，用于在 AI 助手与外部系统之间建立标准化的上下文交互通道。
-QCOS 通过集成 MCP 服务，将量子计算操作系统的设备管理、作业提交、资源调度等核心能力暴露给 AI 助手，
+MCP（Model Context Protocol）是一种开放协议，用于在 AI 智能体与外部系统之间建立标准化的上下文交互通道。
+QCOS 通过集成 MCP 服务，将量子计算操作系统的设备管理、作业提交、资源调度等核心能力暴露给 AI 智能体，
 使用户可以通过自然语言指令完成量子计算相关操作。
 
 MCP 服务挂载在 QCOS 现有的 FastAPI 应用之上，与 JSON-RPC API 共享同一 HTTP 端口，
@@ -18,7 +18,7 @@ MCP 服务挂载在 QCOS 现有的 FastAPI 应用之上，与 JSON-RPC API 共�
 
 MCP 服务采用分层架构设计，从上到下依次为：
 
-1. **AI 客户端层**：支持 MCP 协议的 AI 助手（如 Claude、GPT 等）
+1. **AI 客户端层**：支持 MCP 协议的 AI 智能体（如 Claude、GPT 等）
 2. **MCP 协议层**：基于 MCP Python SDK 实现的服务端，处理协议解析与路由
 3. **工具适配层**：将 MCP 工具调用转换为 QCOS 内部 JSON-RPC API 调用
 4. **业务逻辑层**：QCOS 现有的设备管理、作业调度、用户管理等模块
@@ -26,7 +26,7 @@ MCP 服务采用分层架构设计，从上到下依次为：
 .. code-block:: text
 
    +---------------------+
-   |   AI Assistant      |
+   |      AI Agent       |
    |  (Claude / GPT / ...)|
    +----------+----------+
               | MCP Protocol (HTTP/SSE)
@@ -318,7 +318,7 @@ MCP 服务提供丰富的工具（Tools），覆盖 QCOS 主要功能领域：
 MCP 资源
 --------------------
 
-除工具外，MCP 服务还提供两个资源（Resources），供 AI 助手直接读取：
+除工具外，MCP 服务还提供两个资源（Resources），供 AI 智能体直接读取：
 
 .. list-table::
    :header-rows: 1
