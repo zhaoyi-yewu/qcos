@@ -55,3 +55,22 @@ class TestVersion:
         assert not result["capabilities"]["drivers"]["DriverDummy"][
             "driver_options"
         ]["enable_wirecut"]
+        schemas = result["capabilities"]["schemas"]
+        assert set(schemas) == {
+            "driver_options",
+            "transpiler_options",
+            "options",
+            "qem_options",
+            "qec_options",
+            "extra_specs",
+        }
+        dummy_schema = schemas["driver_options"]["DriverDummy"]
+        assert dummy_schema["$schema"] == (
+            "http://json-schema.org/draft-07/schema#"
+        )
+        assert dummy_schema["properties"]["qes"]["alias_name"]
+        assert (
+            schemas["qec_options"]["DriverDummy"]["additionalProperties"]
+            is True
+        )
+        json.dumps(schemas, ensure_ascii=False)

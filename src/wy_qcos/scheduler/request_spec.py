@@ -17,7 +17,109 @@
 
 from dataclasses import dataclass, field
 
+from schema import Optional, Or
+
 from wy_qcos.common.flavor_constant import FlavorConstant
+
+
+EXTRA_SPECS_VALUE_SCHEMAS = {
+    FlavorConstant.FS_KEY_MIN_QUBITS: Or(int, None),
+    FlavorConstant.FS_KEY_MAX_QUBITS: Or(int, None),
+    FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN: Or(int, float, None),
+    FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN: Or(int, float, None),
+    FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: Or(str, list, None),
+    FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: Or(int, float, None),
+    FlavorConstant.FS_KEY_TECH_TYPES: Or(str, list, None),
+    FlavorConstant.FS_KEY_CODE_TYPES: Or(str, list, None),
+    FlavorConstant.FS_KEY_DEVICES: Or(str, list, None),
+    FlavorConstant.FS_KEY_EXCLUDE_DEVICES: Or(str, list, None),
+}
+EXTRA_SPECS_SCHEMA = {
+    Optional(key): value_schema
+    for key, value_schema in EXTRA_SPECS_VALUE_SCHEMAS.items()
+}
+EXTRA_SPECS_METADATA = {
+    FlavorConstant.FS_KEY_MIN_QUBITS: {
+        "alias_name": "最小比特数",
+        "description": (
+            "要求设备至少支持的线路比特数；缺省回退 Flavor，"
+            "显式 null 清除该有效调度约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_MAX_QUBITS: {
+        "alias_name": "最大比特数",
+        "description": (
+            "限制设备可接受的线路比特数上限；缺省回退 Flavor，"
+            "显式 null 清除该有效调度约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN: {
+        "alias_name": "单比特门最低保真度",
+        "description": (
+            "声明单比特门保真度阈值；当前该 extra_specs 字段不生效，"
+            "仅读取 Flavor，显式值或 null 均不会覆盖。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN: {
+        "alias_name": "双比特门最低保真度",
+        "description": (
+            "声明双比特门保真度阈值；当前该 extra_specs 字段不生效，"
+            "仅读取 Flavor，显式值或 null 均不会覆盖。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS: {
+        "alias_name": "设备组",
+        "description": (
+            "以 CSV 字符串或数组指定设备组引用；缺省回退 Flavor，"
+            "显式 null 清除该有效调度约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_DEVICE_AVAILABILITY: {
+        "alias_name": "设备可用率",
+        "description": (
+            "设置调度要求的设备可用率，当前代码未额外强制数值范围；"
+            "显式 null 清除该有效调度约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_TECH_TYPES: {
+        "alias_name": "量子技术类型",
+        "description": (
+            "以 CSV 字符串或数组筛选技术类型，推荐使用系统 tech_types "
+            "中的代码；显式 null 清除该有效调度约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_CODE_TYPES: {
+        "alias_name": "代码类型",
+        "description": (
+            "以 CSV 字符串或数组限制可提交代码类型，推荐使用 qasm、"
+            "qasm2、qasm3 或 qubo；显式 null 清除约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_DEVICES: {
+        "alias_name": "设备白名单",
+        "description": (
+            "以 CSV 字符串或数组限定可调度设备，all 表示不限制；"
+            "缺省回退 Flavor，显式 null 清除约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+    FlavorConstant.FS_KEY_EXCLUDE_DEVICES: {
+        "alias_name": "设备排除名单",
+        "description": (
+            "以 CSV 字符串或数组排除不参与调度的设备；"
+            "缺省回退 Flavor，显式 null 清除该有效调度约束。"
+        ),
+        "field_constraints": {"schema": {"nullable": True}},
+    },
+}
 
 
 def _parse_csv(value) -> list:
@@ -199,18 +301,7 @@ class RequestSpec:
         """
         if not extra_specs:
             return True, None
-        allowed = {
-            FlavorConstant.FS_KEY_MIN_QUBITS,
-            FlavorConstant.FS_KEY_MAX_QUBITS,
-            FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN,
-            FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN,
-            FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS,
-            FlavorConstant.FS_KEY_DEVICE_AVAILABILITY,
-            FlavorConstant.FS_KEY_TECH_TYPES,
-            FlavorConstant.FS_KEY_CODE_TYPES,
-            FlavorConstant.FS_KEY_DEVICES,
-            FlavorConstant.FS_KEY_EXCLUDE_DEVICES,
-        }
+        allowed = set(EXTRA_SPECS_VALUE_SCHEMAS)
         for key in extra_specs:
             if key not in allowed:
                 return (

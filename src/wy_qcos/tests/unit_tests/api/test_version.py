@@ -67,6 +67,23 @@ class TestVersion:
         # capabilities is a dict, not an object
         assert "driver1" in result.capabilities["drivers"]
         assert "transpiler1" in result.capabilities["transpilers"]
+        assert result.capabilities["drivers"]["driver1"]["driver_options"] == {
+            "option1": "value1"
+        }
+        assert set(result.capabilities["schemas"]) == {
+            "driver_options",
+            "transpiler_options",
+            "options",
+            "qem_options",
+            "qec_options",
+            "extra_specs",
+        }
+        assert set(result.capabilities["schemas"]["driver_options"]) == {
+            "driver1"
+        }
+        assert set(result.capabilities["schemas"]["transpiler_options"]) == {
+            "transpiler1"
+        }
 
     @patch("wy_qcos.api.posiq.routes_jsonrpc.version.scheduler")
     @patch("wy_qcos.api.posiq.routes_jsonrpc.version.QcosVersion")
@@ -231,3 +248,64 @@ class TestVersion:
         assert result.capabilities is None
         # auth_mode should be present
         assert result.auth_mode is not None
+
+    @patch("wy_qcos.api.posiq.routes_jsonrpc.version.scheduler")
+    def test_version_plugin_failure_and_missing_metadata_degrade(
+        self, mock_scheduler
+    ):
+        """Test schema export failures do not break the version response."""
+        broken_driver = Mock()
+        broken_driver.get_transpiler.return_value = None
+        broken_driver.get_supported_transpilers.return_value = []
+        broken_driver.get_supported_code_types.return_value = []
+        broken_driver.get_description.return_value = "Broken driver"
+        broken_driver.get_driver_options.return_value = {}
+        broken_driver.get_alias_name.return_value = "故障驱动"
+        broken_driver.get_driver_options_schema.side_effect = RuntimeError(
+            "connection values must not be exposed"
+        )
+        broken_driver.get_qec_options_schema.return_value = None
+        broken_driver.get_qec_options_metadata.return_value = {}
+
+        missing_driver = Mock()
+        missing_driver.get_transpiler.return_value = None
+        missing_driver.get_supported_transpilers.return_value = []
+        missing_driver.get_supported_code_types.return_value = []
+        missing_driver.get_description.return_value = "Missing metadata"
+        missing_driver.get_driver_options.return_value = {"safe": "default"}
+        missing_driver.get_alias_name.return_value = "缺失元数据驱动"
+        missing_driver.get_driver_options_schema.return_value = {
+            "required_value": int
+        }
+        missing_driver.get_driver_options_metadata.return_value = {}
+        missing_driver.get_qec_options_schema.return_value = None
+        missing_driver.get_qec_options_metadata.return_value = {}
+
+        mock_driver_manager = Mock()
+        mock_driver_manager.get_drivers.return_value = {
+            "broken": broken_driver,
+            "missing": missing_driver,
+        }
+        mock_scheduler.get_driver_manager.return_value = mock_driver_manager
+        mock_scheduler.get_transpiler_manager.return_value = Mock()
+
+        result = version(GetVersionRequest(details=True))
+        schemas = result.capabilities["schemas"]["driver_options"]
+        assert schemas["broken"]["x-qcos-schema-status"] == "unavailable"
+        required = schemas["missing"]["properties"]["required_value"]
+        assert required["alias_name"] == "未命名（required_value）"
+        assert result.capabilities["drivers"]["missing"]["driver_options"] == {
+            "safe": "default"
+        }
+
+    @patch(
+        "wy_qcos.api.posiq.routes_jsonrpc.version.build_capabilities_schemas"
+    )
+    def test_version_without_details_does_not_build_schemas(
+        self, mock_build_schemas
+    ):
+        """Test details=False skips all schema construction."""
+        result = version(GetVersionRequest(details=False))
+
+        assert result.capabilities is None
+        mock_build_schemas.assert_not_called()
