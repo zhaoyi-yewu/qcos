@@ -61,12 +61,19 @@ class StLibrary:
         pem = key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
+            # The spinqit SDK reads the keyfile without a passphrase
+            # (RSA.importKey), so the PEM itself must stay unencrypted;
+            # file permissions below restrict access instead.
             encryption_algorithm=serialization.NoEncryption(),
         )
         dirname = os.path.dirname(keyfile)
         if dirname:
             os.makedirs(dirname, exist_ok=True)
-        with open(keyfile, "wb") as f:
+        # Create with 0o600 so the key is only readable by the current
+        # user from the start (no write-then-chmod race window).  On
+        # Windows os.open mode is approximated and stays harmless.
+        fd = os.open(keyfile, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "wb") as f:
             f.write(pem)
         logger.info(f"Generated test RSA keyfile: {keyfile}")
         return keyfile
