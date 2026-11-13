@@ -624,6 +624,8 @@ class TestTaskFlowManager(unittest.TestCase):
 
         assert result == ["flow"]
         mock_client.read_flow_runs.assert_called_once()
+        call_kwargs = mock_client.read_flow_runs.call_args.kwargs
+        assert call_kwargs["work_pool_filter"].name.any_ == ["pool1"]
 
     def test_read_all_flow_runs_single_page(self):
         """Fewer than page_size returns after a single request."""
@@ -665,7 +667,10 @@ class TestTaskFlowManager(unittest.TestCase):
             sync_client, flow_run_filter=flow_run_filter, page_size=200
         )
         sync_client.read_flow_runs.assert_called_once_with(
-            flow_run_filter=flow_run_filter, limit=200, offset=0
+            flow_run_filter=flow_run_filter,
+            work_pool_filter=None,
+            limit=200,
+            offset=0,
         )
 
     # --- Aggregation-related test cases ---

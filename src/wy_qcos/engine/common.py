@@ -17,10 +17,24 @@
 
 import logging
 import sys
+from functools import partial
 
 from loguru import logger
 
 from wy_qcos.common.config import Config
+from wy_qcos.log import (
+    compress_log_file,
+    sanitize_log_message,
+    secure_file_opener,
+)
+
+
+def _allow_log_record(record):
+    """Return whether a Loguru record should reach configured sinks."""
+    name = record["name"] or ""
+    if record["level"].no < logging.INFO:
+        return name.partition(".")[0] not in ("websockets", "httpcore")
+    return True
 
 
 class InterceptHandler(logging.Handler):
@@ -35,6 +49,14 @@ class InterceptHandler(logging.Handler):
     """
 
     def emit(self, record):
+        # Third-party configuration may reset logger levels at runtime.
+        # Filter noisy records at the final bridge as a second safeguard.
+        if record.levelno < logging.INFO and record.name.partition(".")[0] in (
+            "websockets",
+            "httpcore",
+        ):
+            return
+
         # Loguru expects a level name; fall back to the numeric
         # level when the name is not recognised.
         try:
@@ -51,8 +73,14 @@ class InterceptHandler(logging.Handler):
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
+            level, sanitize_log_message(record.getMessage())
         )
+
+
+def secure_loguru_format(record, log_format):
+    """Sanitize a Loguru message and retain exception formatting."""
+    record["message"] = sanitize_log_message(record["message"])
+    return f"{log_format}\n{{exception}}"
 
 
 def convert_log_format_to_loguru(log_format):
@@ -117,6 +145,17 @@ def convert_log_format_to_loguru(log_format):
     return result
 
 
+def _configure_third_party_log_levels():
+    """Keep third-party DEBUG chatter out of application debug logs."""
+    for name in (
+        "websockets",
+        "websockets.client",
+        "httpcore",
+        "httpcore.http11",
+    ):
+        logging.getLogger(name).setLevel(logging.INFO)
+
+
 def init_logger(
     log_file_path,
     debug=False,
@@ -148,6 +187,7 @@ def init_logger(
 
     # Convert standard log format to loguru format
     loguru_format = convert_log_format_to_loguru(log_format)
+    loguru_formatter = partial(secure_loguru_format, log_format=loguru_format)
 
     # Config Loguru
     # pylint: disable=duplicate-code
@@ -158,7 +198,8 @@ def init_logger(
     logger.add(
         sys.stdout,
         level="DEBUG" if debug else "INFO",
-        format=loguru_format,
+        format=loguru_formatter,
+        filter=_allow_log_record,
         colorize=True,
     )
 
@@ -167,9 +208,13 @@ def init_logger(
         log_file_path,
         level="DEBUG" if debug else "INFO",
         rotation=f"{log_rotate_max_size_mb} MB",
-        compression="gz" if log_rotate_compression else None,
+        compression=compress_log_file if log_rotate_compression else None,
         retention=log_rotate_backup_count,
-        format=loguru_format,
+        format=loguru_formatter,
+        filter=_allow_log_record,
+        encoding="utf-8",
+        errors="backslashreplace",
+        opener=secure_file_opener,
     )
 
     # Bridge the standard logging module into loguru so that
@@ -197,8 +242,7 @@ def init_logger(
     # Also install InterceptHandler on the root as a catch-all for
     # any other library; if Prefect later resets the root handlers the
     # per-library handlers above still keep working.
-    logging.basicConfig(
-        level=level,
-        handlers=[intercept],
-    )
-    logging.getLogger().handlers = [intercept]
+    root_logger = logging.getLogger()
+    root_logger.handlers = [intercept]
+    root_logger.setLevel(level)
+    _configure_third_party_log_levels()

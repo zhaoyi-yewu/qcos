@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for project management."""
+
 import pytest
 
 from wy_qcos.tests.system_tests.common.library import StLibrary

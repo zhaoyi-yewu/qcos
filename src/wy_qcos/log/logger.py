@@ -16,14 +16,17 @@
 # ----------------------------------------------------------------------
 
 import logging
-import sys
 import os
-import shutil
-import gzip
+import sys
 
 from logging.handlers import RotatingFileHandler
 
 from wy_qcos.common.config import Config
+from wy_qcos.log import (
+    SecureFormatter,
+    compress_log_file,
+    secure_file_opener,
+)
 
 PERF_LEVEL = 15
 logging.addLevelName(PERF_LEVEL, "PERF")
@@ -35,7 +38,7 @@ def log_perf(logger: logging.Logger, msg, *args, **kwargs):
         logger._log(PERF_LEVEL, msg, args, **kwargs)
 
 
-class ColouredFormatter(logging.Formatter):
+class ColouredFormatter(SecureFormatter):
     """Coloured Formatter for logger module."""
 
     RESET = "\x1b[0m"
@@ -104,7 +107,41 @@ class ColouredStreamHandler(logging.StreamHandler):
             self.handleError(record)
 
 
-class LogFilter(logging.Filter):
+class ThirdPartyDebugFilter:
+    """Drop noisy third-party records from console output only."""
+
+    def filter(self, record):
+        """Allow application logs and useful third-party records."""
+        name = record.name.partition(".")[0]
+        if name == "httpx":
+            return record.levelno >= logging.WARNING
+        if record.levelno >= logging.INFO:
+            return 1
+        return name not in ("websockets", "httpcore")
+
+
+def suppress_prefect_third_party_debug():
+    """Suppress third-party DEBUG in QCOS's Prefect console output."""
+    for name in (
+        "websockets",
+        "websockets.client",
+        "httpcore",
+        "httpcore.http11",
+    ):
+        logging.getLogger(name).setLevel(logging.INFO)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    for handler in logging.getLogger().handlers:
+        if handler.__class__.__name__ != "PrefectConsoleHandler":
+            continue
+        if not any(
+            isinstance(handler_filter, ThirdPartyDebugFilter)
+            for handler_filter in handler.filters
+        ):
+            handler.addFilter(ThirdPartyDebugFilter())
+
+
+class LogFilter:
     """This filter some noise from the logs."""
 
     def filter(self, record):
@@ -122,7 +159,7 @@ class LogFilter(logging.Filter):
         return 1
 
 
-class PerfFilter(logging.Filter):
+class PerfFilter:
     """Allows PERF level and WARNING+ records through."""
 
     def filter(self, record):
@@ -134,7 +171,20 @@ class PerfFilter(logging.Filter):
         )
 
 
-class CompressedRotatingFileHandler(RotatingFileHandler):
+class SecureRotatingFileHandler(RotatingFileHandler):
+    """Rotate logs opened with restrictive permissions and UTF-8."""
+
+    def _open(self):
+        return open(
+            self.baseFilename,
+            self.mode,
+            encoding=self.encoding or "utf-8",
+            errors=self.errors or "backslashreplace",
+            opener=secure_file_opener,
+        )
+
+
+class CompressedRotatingFileHandler(SecureRotatingFileHandler):
     """Custom rotating file handler with compression support."""
 
     def doRollover(self):
@@ -151,11 +201,7 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
             dfn = self.baseFilename + ".1.gz"
             if os.path.exists(dfn):
                 os.remove(dfn)
-            with (
-                open(self.baseFilename, "rb") as f_in,
-                gzip.open(dfn, "wb") as f_out,
-            ):
-                shutil.copyfileobj(f_in, f_out)
+            compress_log_file(self.baseFilename, dfn)
         self.mode = "w"
         self.stream = self._open()
 
@@ -177,11 +223,19 @@ def init_logger(
     if logfile and len(logfile) > 0:
         if compression:
             file_stream_handler = CompressedRotatingFileHandler(
-                logfile, maxBytes=max_bytes, backupCount=backup_count
+                logfile,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+                errors="backslashreplace",
             )
         else:
-            file_stream_handler = RotatingFileHandler(
-                logfile, maxBytes=max_bytes, backupCount=backup_count
+            file_stream_handler = SecureRotatingFileHandler(
+                logfile,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+                errors="backslashreplace",
             )
         file_stream_handler.formatter = ColouredFormatter(
             Config.LOG.LOG_FORMAT
@@ -191,16 +245,22 @@ def init_logger(
         console_stream_handler.formatter = ColouredFormatter(
             Config.LOG.LOG_FORMAT
         )
+        console_stream_handler.addFilter(ThirdPartyDebugFilter())
+    handlers = [
+        handler
+        for handler in (file_stream_handler, console_stream_handler)
+        if handler is not None
+    ]
     if quiet:
-        file_stream_handler.addFilter(logging.Filter(name="user_facing"))
-        console_stream_handler.addFilter(logging.Filter(name="user_facing"))
+        for handler in handlers:
+            handler.addFilter(logging.Filter(name="user_facing"))
         logging.getLogger("user_facing").propagate = False
     if level > logging.DEBUG:
-        file_stream_handler.addFilter(LogFilter())
-        console_stream_handler.addFilter(LogFilter())
-    if file_stream_handler:
-        handlers.append(file_stream_handler)
-    if console_stream_handler:
-        handlers.append(console_stream_handler)
-    logging.basicConfig(level=level, handlers=handlers)
+        for handler in handlers:
+            handler.addFilter(LogFilter())
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        for handler in handlers:
+            root_logger.addHandler(handler)
+    root_logger.setLevel(level)
     return handlers

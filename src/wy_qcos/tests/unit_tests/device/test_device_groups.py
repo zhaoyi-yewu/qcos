@@ -14,8 +14,12 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for device group management and filtering."""
 
 import uuid
+from contextlib import ExitStack
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -111,18 +115,22 @@ class TestDeviceGroupManagerGet:
     """Tests for DeviceGroupManager get methods."""
 
     def test_get_device_group_empty_id(self):
+        """Return None for an empty device group ID."""
         mgr = make_dg_manager()
         assert mgr.get_device_group("") is None
 
     def test_get_device_group_by_name_empty(self):
+        """Return None for an empty device group name."""
         mgr = make_dg_manager()
         assert mgr.get_device_group_by_name("") is None
 
     def test_get_visible_device_group_empty_id(self):
+        """Return None for an empty visible device group ID."""
         mgr = make_dg_manager()
         assert mgr.get_visible_device_group("") is None
 
     def test_get_device_group_found(self):
+        """Return a device group found by ID."""
         mgr = make_dg_manager()
         group = make_group()
         with patch(
@@ -138,6 +146,7 @@ class TestDeviceGroupManagerGet:
             assert result is group
 
     def test_get_device_group_not_found(self):
+        """Return None when a device group ID is not found."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -151,6 +160,7 @@ class TestDeviceGroupManagerGet:
             assert mgr.get_device_group("missing") is None
 
     def test_get_device_group_repo_error(self):
+        """Return None when device group lookup fails."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -164,6 +174,7 @@ class TestDeviceGroupManagerGet:
             assert mgr.get_device_group("x") is None
 
     def test_get_device_group_by_name_found(self):
+        """Return a device group found by name."""
         mgr = make_dg_manager()
         group = make_group(name="my-group")
         with patch(
@@ -178,6 +189,7 @@ class TestDeviceGroupManagerGet:
             assert mgr.get_device_group_by_name("my-group") is group
 
     def test_get_device_group_by_name_not_found(self):
+        """Return None when a device group name is not found."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -191,6 +203,7 @@ class TestDeviceGroupManagerGet:
             assert mgr.get_device_group_by_name("missing") is None
 
     def test_get_device_group_by_name_repo_error(self):
+        """Return None when device group name lookup fails."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -204,6 +217,7 @@ class TestDeviceGroupManagerGet:
             assert mgr.get_device_group_by_name("err") is None
 
     def test_get_visible_device_group_found(self):
+        """Return a visible device group found by ID."""
         mgr = make_dg_manager()
         group = make_group(is_public=False)
         with patch(
@@ -221,6 +235,7 @@ class TestDeviceGroupManagerGet:
             assert result is group
 
     def test_get_visible_device_group_not_found(self):
+        """Return None when a visible device group is not found."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -234,6 +249,7 @@ class TestDeviceGroupManagerGet:
             assert mgr.get_visible_device_group("x", project_id="p") is None
 
     def test_get_visible_device_group_repo_error(self):
+        """Return None when visible device group lookup fails."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -254,6 +270,7 @@ class TestDeviceGroupManagerList:
     """Tests for DeviceGroupManager list methods."""
 
     def test_get_device_groups_no_filter(self):
+        """Return all device groups when no filter is provided."""
         mgr = make_dg_manager()
         g1 = make_group(name="a")
         g2 = make_group(name="b")
@@ -270,6 +287,7 @@ class TestDeviceGroupManagerList:
             assert len(result) == 2
 
     def test_get_device_groups_repo_failure(self):
+        """Return an empty list when device group listing fails."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -283,6 +301,7 @@ class TestDeviceGroupManagerList:
             assert mgr.get_device_groups() == []
 
     def test_get_device_groups_with_name_filter(self):
+        """Return only device groups matching the name filter."""
         mgr = make_dg_manager()
         g1 = make_group(name="a")
         g2 = make_group(name="b")
@@ -319,6 +338,7 @@ class TestDeviceGroupManagerList:
             assert call_kwargs["filters"] == {"id": [g1.id]}
 
     def test_get_visible_device_groups_no_filter(self):
+        """Return visible device groups when no filter is provided."""
         mgr = make_dg_manager()
         g1 = make_group(name="a")
         with patch(
@@ -334,6 +354,7 @@ class TestDeviceGroupManagerList:
             assert len(result) == 1
 
     def test_get_visible_device_groups_repo_failure(self):
+        """Return an empty list when visible group listing fails."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -347,6 +368,7 @@ class TestDeviceGroupManagerList:
             assert mgr.get_visible_device_groups(project_id="p") == []
 
     def test_get_visible_device_groups_with_name_filter(self):
+        """Return only visible groups matching the name filter."""
         mgr = make_dg_manager()
         g1 = make_group(name="a")
         g2 = make_group(name="b")
@@ -393,6 +415,7 @@ class TestDeviceGroupManagerMutations:
     """Tests for DeviceGroupManager create/update/delete."""
 
     def test_create_device_group(self):
+        """Create a device group through the repository."""
         mgr = make_dg_manager()
         group = make_group()
         with patch(
@@ -409,6 +432,7 @@ class TestDeviceGroupManagerMutations:
             assert result is group
 
     def test_update_device_group(self):
+        """Update a device group through the repository."""
         mgr = make_dg_manager()
         group = make_group()
         with patch(
@@ -427,6 +451,7 @@ class TestDeviceGroupManagerMutations:
             assert result is group
 
     def test_delete_device_group(self):
+        """Delete a device group through the repository."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -437,6 +462,7 @@ class TestDeviceGroupManagerMutations:
             assert ok is True
 
     def test_delete_device_group_failure(self):
+        """Return a failed result when device group deletion fails."""
         mgr = make_dg_manager()
         with patch(
             "wy_qcos.device.device_group_manager.DeviceGroupRepository"
@@ -557,10 +583,12 @@ class TestGetDeviceNamesByGroup:
     """Tests for get_device_names_by_group."""
 
     def test_empty_identifier(self):
+        """Return no device names for an empty group identifier."""
         mgr = make_dg_manager()
         assert mgr.get_device_names_by_group("") == []
 
     def test_by_name(self):
+        """Return device names for a group found by name."""
         mgr = make_dg_manager()
         group = make_group(device_names=["dev1", "dev2"])
         with patch.object(mgr, "get_device_group_by_name", return_value=group):
@@ -568,6 +596,7 @@ class TestGetDeviceNamesByGroup:
             assert result == ["dev1", "dev2"]
 
     def test_by_uuid(self):
+        """Return device names for a group found by UUID."""
         mgr = make_dg_manager()
         gid = str(uuid.uuid4())
         group = make_group(group_id=gid, device_names=["dev3"])
@@ -576,12 +605,14 @@ class TestGetDeviceNamesByGroup:
             assert result == ["dev3"]
 
     def test_group_not_found(self):
+        """Return no device names when a group name is not found."""
         mgr = make_dg_manager()
         with patch.object(mgr, "get_device_group_by_name", return_value=None):
             result = mgr.get_device_names_by_group("missing")
             assert result == []
 
     def test_group_not_found_uuid(self):
+        """Return no device names when a group UUID is not found."""
         mgr = make_dg_manager()
         gid = str(uuid.uuid4())
         with patch.object(mgr, "get_device_group", return_value=None):
@@ -589,6 +620,7 @@ class TestGetDeviceNamesByGroup:
             assert result == []
 
     def test_empty_device_names(self):
+        """Return an empty list for a group without devices."""
         mgr = make_dg_manager()
         group = make_group(device_names=[])
         with patch.object(mgr, "get_device_group_by_name", return_value=group):
@@ -603,11 +635,13 @@ class TestDeviceGroupFilter:
     """Tests for DeviceGroupFilter."""
 
     def test_is_enabled_no_group_ref(self):
+        """Disable the filter when no device group is referenced."""
         f = DeviceGroupFilter()
         spec = make_spec(flavor_specs={})
         assert f.is_enabled(spec) is False
 
     def test_is_enabled_with_group_ref(self):
+        """Enable the filter when a device group is referenced."""
         f = DeviceGroupFilter()
         key = FlavorConstant.FS_KEY_GATE_DEVICE_GROUPS
         spec = make_spec(flavor_specs={key: "my-group"})
@@ -630,6 +664,7 @@ class TestDeviceGroupFilter:
         assert f._filter_one(ds, spec) is True
 
     def test_filter_one_in_group(self):
+        """Accept a device included in the requested group."""
         mock_mgr = MagicMock()
         mock_mgr.get_device_names_by_group.return_value = [
             "dummy",
@@ -644,6 +679,7 @@ class TestDeviceGroupFilter:
         assert f._filter_one(ds, spec) is True
 
     def test_filter_one_not_in_group(self):
+        """Reject a device omitted from the requested group."""
         mock_mgr = MagicMock()
         mock_mgr.get_device_names_by_group.return_value = [
             "other",
@@ -657,6 +693,7 @@ class TestDeviceGroupFilter:
         assert f._filter_one(ds, spec) is False
 
     def test_filter_one_empty_device_list(self):
+        """Reject a device when the requested group is empty."""
         mock_mgr = MagicMock()
         mock_mgr.get_device_names_by_group.return_value = []
         f = DeviceGroupFilter()
@@ -668,6 +705,7 @@ class TestDeviceGroupFilter:
         assert f._filter_one(ds, spec) is False
 
     def test_set_device_group_manager(self):
+        """Store the device group manager used by the filter."""
         f = DeviceGroupFilter()
         mock_mgr = MagicMock()
         f.set_device_group_manager(mock_mgr)
@@ -691,6 +729,7 @@ class TestCreateDeviceGroupRoute:
         return schemas.CreateDeviceGroupRequest(**defaults)
 
     def test_create_success(self):
+        """Create a device group successfully through the API."""
         group = make_group(name="new-group")
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -701,21 +740,25 @@ class TestCreateDeviceGroupRoute:
         mock_request = MagicMock()
         mock_project_mgr = MagicMock()
         mock_project_mgr.get_project_by_id.return_value = MagicMock()
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group."
-                "get_project_manager",
-                return_value=mock_project_mgr,
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_project_manager",
+                    return_value=mock_project_mgr,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = create_device_group(body, mock_request, auth_data=None)
             assert result.name == "new-group"
 
     def test_create_no_manager(self):
+        """Raise an error when the device group manager is unavailable."""
         mock_sched = MagicMock()
         mock_sched.get_device_group_manager.return_value = None
         body = self._make_request()
@@ -727,6 +770,7 @@ class TestCreateDeviceGroupRoute:
                 create_device_group(body, MagicMock(), auth_data=None)
 
     def test_create_empty_name(self):
+        """Reject creation with an empty group name."""
         mock_sched = MagicMock()
         mgr = MagicMock()
         mgr.get_device_groups.return_value = []
@@ -735,21 +779,25 @@ class TestCreateDeviceGroupRoute:
         mock_request = MagicMock()
         mock_project_mgr = MagicMock()
         mock_project_mgr.get_project_by_id.return_value = MagicMock()
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group."
-                "get_project_manager",
-                return_value=mock_project_mgr,
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_project_manager",
+                    return_value=mock_project_mgr,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 create_device_group(body, mock_request, auth_data=None)
 
     def test_create_duplicate_name(self):
+        """Reject creation with a duplicate group name."""
         existing = make_group(name="dup")
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -759,21 +807,25 @@ class TestCreateDeviceGroupRoute:
         mock_request = MagicMock()
         mock_project_mgr = MagicMock()
         mock_project_mgr.get_project_by_id.return_value = MagicMock()
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group."
-                "get_project_manager",
-                return_value=mock_project_mgr,
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_project_manager",
+                    return_value=mock_project_mgr,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 create_device_group(body, mock_request, auth_data=None)
 
     def test_create_project_not_found(self):
+        """Reject creation when the project does not exist."""
         mock_sched = MagicMock()
         mgr = MagicMock()
         mgr.get_device_groups.return_value = []
@@ -784,21 +836,25 @@ class TestCreateDeviceGroupRoute:
         mock_request = MagicMock()
         mock_project_mgr = MagicMock()
         mock_project_mgr.get_project_by_id.return_value = None
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group."
-                "get_project_manager",
-                return_value=mock_project_mgr,
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_project_manager",
+                    return_value=mock_project_mgr,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 create_device_group(body, mock_request, auth_data=None)
 
     def test_create_repo_failure(self):
+        """Raise an error when group creation fails in the repository."""
         mock_sched = MagicMock()
         mgr = MagicMock()
         mgr.get_device_groups.return_value = []
@@ -812,21 +868,25 @@ class TestCreateDeviceGroupRoute:
         mock_request = MagicMock()
         mock_project_mgr = MagicMock()
         mock_project_mgr.get_project_by_id.return_value = MagicMock()
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group."
-                "get_project_manager",
-                return_value=mock_project_mgr,
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_project_manager",
+                    return_value=mock_project_mgr,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 create_device_group(body, mock_request, auth_data=None)
 
     def test_create_with_auth_project_id(self):
+        """Create a device group using the authenticated project ID."""
         group = make_group(name="new-group")
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -838,17 +898,20 @@ class TestCreateDeviceGroupRoute:
         mock_project_mgr = MagicMock()
         mock_project_mgr.get_project_by_id.return_value = MagicMock()
         auth_data = {"project_id": Constant.ADMIN_PROJECT_ID}
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group."
-                "get_project_manager",
-                return_value=mock_project_mgr,
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_project_manager",
+                    return_value=mock_project_mgr,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = create_device_group(
                 body, mock_request, auth_data=auth_data
             )
@@ -865,6 +928,7 @@ class TestUpdateDeviceGroupRoute:
         return schemas.UpdateDeviceGroupRequest(group_id=group_id, **kwargs)
 
     def test_update_success(self):
+        """Update a device group successfully through the API."""
         gid = str(uuid.uuid4())
         updated = make_group(group_id=gid, name="updated")
         mock_sched = MagicMock()
@@ -873,20 +937,25 @@ class TestUpdateDeviceGroupRoute:
         mgr.update_device_group.return_value = (True, None, updated)
         mock_sched.get_device_group_manager.return_value = mgr
         body = self._make_request(gid, name="updated")
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = update_device_group(body, MagicMock(), auth_data=None)
             assert result.name == "updated"
 
     def test_update_no_manager(self):
+        """Raise an error when the device group manager is unavailable."""
         mock_sched = MagicMock()
         mock_sched.get_device_group_manager.return_value = None
         body = self._make_request(str(uuid.uuid4()), name="x")
@@ -898,24 +967,30 @@ class TestUpdateDeviceGroupRoute:
                 update_device_group(body, MagicMock(), auth_data=None)
 
     def test_update_no_fields(self):
+        """Reject an update without any fields to change."""
         mock_sched = MagicMock()
         mgr = MagicMock()
         mock_sched.get_device_group_manager.return_value = mgr
         body = self._make_request(str(uuid.uuid4()))
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 update_device_group(body, MagicMock(), auth_data=None)
 
     def test_update_duplicate_name(self):
+        """Reject an update that uses a duplicate group name."""
         gid = str(uuid.uuid4())
         other = make_group(name="taken")
         mock_sched = MagicMock()
@@ -923,20 +998,25 @@ class TestUpdateDeviceGroupRoute:
         mgr.get_device_groups.return_value = [other]
         mock_sched.get_device_group_manager.return_value = mgr
         body = self._make_request(gid, name="taken")
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 update_device_group(body, MagicMock(), auth_data=None)
 
     def test_update_project_not_found(self):
+        """Reject an update when the project does not exist."""
         gid = str(uuid.uuid4())
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -946,25 +1026,32 @@ class TestUpdateDeviceGroupRoute:
             gid,
             project_id="00000000-0000-4000-8000-000000000099",
         )
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group."
-                "get_project_manager",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_project_manager",
+                    return_value=MagicMock(),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 update_device_group(body, MagicMock(), auth_data=None)
 
     def test_update_repo_failure(self):
+        """Raise an error when group updating fails in the repository."""
         gid = str(uuid.uuid4())
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -976,20 +1063,25 @@ class TestUpdateDeviceGroupRoute:
         )
         mock_sched.get_device_group_manager.return_value = mgr
         body = self._make_request(gid, name="x")
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             with pytest.raises(Exception):
                 update_device_group(body, MagicMock(), auth_data=None)
 
     def test_update_device_names(self):
+        """Update the device names assigned to a group."""
         gid = str(uuid.uuid4())
         updated = make_group(group_id=gid, device_names=["dev1", "dev2"])
         mock_sched = MagicMock()
@@ -998,16 +1090,20 @@ class TestUpdateDeviceGroupRoute:
         mgr.update_device_group.return_value = (True, None, updated)
         mock_sched.get_device_group_manager.return_value = mgr
         body = self._make_request(gid, device_names=["dev1", "dev2"])
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = update_device_group(body, MagicMock(), auth_data=None)
             assert result is not None
 
@@ -1021,16 +1117,20 @@ class TestUpdateDeviceGroupRoute:
         mgr.update_device_group.return_value = (True, None, updated)
         mock_sched.get_device_group_manager.return_value = mgr
         body = self._make_request(gid, description=None)
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = update_device_group(body, MagicMock(), auth_data=None)
             assert result is not None
             call_data = mgr.update_device_group.call_args[0][1]
@@ -1046,16 +1146,20 @@ class TestUpdateDeviceGroupRoute:
         mgr.update_device_group.return_value = (True, None, updated)
         mock_sched.get_device_group_manager.return_value = mgr
         body = self._make_request(gid, device_names=None)
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = update_device_group(body, MagicMock(), auth_data=None)
             assert result is not None
             call_data = mgr.update_device_group.call_args[0][1]
@@ -1069,6 +1173,7 @@ class TestGetDeviceGroupRoute:
     """Tests for get_device_group and get_device_groups routes."""
 
     def test_get_device_group_no_manager(self):
+        """Raise an error when getting a group without a manager."""
         mock_sched = MagicMock()
         mock_sched.get_device_group_manager.return_value = None
         body = schemas.GetDeviceGroupRequest(group_id=str(uuid.uuid4()))
@@ -1080,6 +1185,7 @@ class TestGetDeviceGroupRoute:
                 get_device_group(body, auth_data=None)
 
     def test_get_device_group_super_admin(self):
+        """Get any device group as a super administrator."""
         group = make_group()
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -1095,6 +1201,7 @@ class TestGetDeviceGroupRoute:
             assert result.name == group.name
 
     def test_get_device_group_non_admin_visible(self):
+        """Get a visible device group as a non-admin user."""
         group = make_group()
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -1110,6 +1217,7 @@ class TestGetDeviceGroupRoute:
             assert result.name == group.name
 
     def test_get_device_group_not_found(self):
+        """Raise an error when the requested device group is absent."""
         mock_sched = MagicMock()
         mgr = MagicMock()
         mgr.get_device_group.return_value = None
@@ -1124,6 +1232,7 @@ class TestGetDeviceGroupRoute:
                 get_device_group(body, auth_data=auth_data)
 
     def test_get_device_groups_no_manager(self):
+        """Raise an error when listing groups without a manager."""
         mock_sched = MagicMock()
         mock_sched.get_device_group_manager.return_value = None
         with patch(
@@ -1134,6 +1243,7 @@ class TestGetDeviceGroupRoute:
                 get_device_groups(body=None, auth_data=None)
 
     def test_get_device_groups_super_admin(self):
+        """List all device groups as a super administrator."""
         g1 = make_group(name="a")
         g2 = make_group(name="b")
         mock_sched = MagicMock()
@@ -1149,6 +1259,7 @@ class TestGetDeviceGroupRoute:
             assert len(result) == 2
 
     def test_get_device_groups_non_admin(self):
+        """List visible device groups as a non-admin user."""
         g1 = make_group(name="a")
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -1171,6 +1282,7 @@ class TestDeleteDeviceGroupsRoute:
     """Tests for delete_device_groups route."""
 
     def test_delete_no_manager(self):
+        """Raise an error when deleting groups without a manager."""
         mock_sched = MagicMock()
         mock_sched.get_device_group_manager.return_value = None
         body = schemas.DeleteDeviceGroupsRequest(group_ids=[str(uuid.uuid4())])
@@ -1182,6 +1294,7 @@ class TestDeleteDeviceGroupsRoute:
                 delete_device_groups(body, auth_data=None)
 
     def test_delete_success(self):
+        """Return a successful result for a deleted device group."""
         gid = str(uuid.uuid4())
         mock_sched = MagicMock()
         mgr = MagicMock()
@@ -1190,16 +1303,20 @@ class TestDeleteDeviceGroupsRoute:
         flavor_mgr = MagicMock()
         mock_sched.get_flavor_manager.return_value = flavor_mgr
         body = schemas.DeleteDeviceGroupsRequest(group_ids=[gid])
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = delete_device_groups(body, auth_data=None)
             assert len(result.results) == 1
             assert str(result.results[0].group_id) == gid
@@ -1217,16 +1334,20 @@ class TestDeleteDeviceGroupsRoute:
         flavor_mgr = MagicMock()
         mock_sched.get_flavor_manager.return_value = flavor_mgr
         body = schemas.DeleteDeviceGroupsRequest(group_ids=[gid])
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = delete_device_groups(body, auth_data=None)
             assert len(result.results) == 1
             assert result.results[0].success is False
@@ -1254,16 +1375,20 @@ class TestDeleteDeviceGroupsRoute:
         flavor_mgr = MagicMock()
         mock_sched.get_flavor_manager.return_value = flavor_mgr
         body = schemas.DeleteDeviceGroupsRequest(group_ids=[gid])
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = delete_device_groups(body, auth_data=None)
             assert len(result.results) == 1
             assert result.results[0].success is False
@@ -1288,16 +1413,20 @@ class TestDeleteDeviceGroupsRoute:
         mock_sched.get_flavor_manager.return_value = flavor_mgr
 
         body = schemas.DeleteDeviceGroupsRequest(group_ids=[gid1, gid2])
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = delete_device_groups(body, auth_data=None)
             assert len(result.results) == 2
             assert result.results[0].success is False
@@ -1312,16 +1441,20 @@ class TestDeleteDeviceGroupsRoute:
         mock_sched.get_device_group_manager.return_value = mgr
         mock_sched.get_flavor_manager.return_value = None
         body = schemas.DeleteDeviceGroupsRequest(group_ids=[gid])
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = delete_device_groups(body, auth_data=None)
             assert len(result.results) == 1
             assert str(result.results[0].group_id) == gid
@@ -1337,16 +1470,20 @@ class TestDeleteDeviceGroupsRoute:
         flavor_mgr = MagicMock()
         mock_sched.get_flavor_manager.return_value = flavor_mgr
         body = schemas.DeleteDeviceGroupsRequest(group_ids=[gid, gid])
-        with (
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.get_db_filters",
-                return_value={},
-            ),
-            patch(
-                "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
-                mock_sched,
-            ),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group."
+                    "get_db_filters",
+                    return_value={},
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "wy_qcos.api.posiq.routes_jsonrpc.device_group.scheduler",
+                    mock_sched,
+                )
+            )
             result = delete_device_groups(body, auth_data=None)
             assert len(result.results) == 1
         # manager's delete_device_groups should be called with
@@ -1363,6 +1500,7 @@ class TestDeviceGroupRepository:
 
     @pytest.fixture
     def repo_setup(self):
+        """Create a repository with a mocked database session."""
         from wy_qcos.db.repositories.device_group import (
             DeviceGroupRepository,
         )
@@ -1372,6 +1510,7 @@ class TestDeviceGroupRepository:
         return repo, mock_session
 
     def test_create_success(self, repo_setup):
+        """Create a device group and commit the session."""
         repo, session = repo_setup
         data = {
             "id": str(uuid.uuid4()),
@@ -1385,6 +1524,7 @@ class TestDeviceGroupRepository:
         session.refresh.assert_called_once()
 
     def test_create_failure(self, repo_setup):
+        """Roll back the session when device group creation fails."""
         repo, session = repo_setup
         session.commit.side_effect = Exception("db error")
         data = {
@@ -1398,6 +1538,7 @@ class TestDeviceGroupRepository:
         session.rollback.assert_called_once()
 
     def test_get_by_uuid(self, repo_setup):
+        """Return a device group retrieved by UUID."""
         repo, _ = repo_setup
         group = make_group()
         with patch.object(
@@ -1408,6 +1549,7 @@ class TestDeviceGroupRepository:
         assert result is group
 
     def test_get_by_uuid_not_found(self, repo_setup):
+        """Return None when a device group UUID is absent."""
         repo, _ = repo_setup
         with patch.object(
             repo, "get_by_uuid", return_value=(True, None, None)
@@ -1417,6 +1559,7 @@ class TestDeviceGroupRepository:
         assert result is None
 
     def test_get_by_name(self, repo_setup):
+        """Return a device group retrieved by name."""
         repo, _ = repo_setup
         group = make_group(name="by-name")
         with patch.object(
@@ -1427,6 +1570,7 @@ class TestDeviceGroupRepository:
         assert result is group
 
     def test_get_visible_by_uuid_found(self, repo_setup):
+        """Return a visible device group found by UUID."""
         repo, session = repo_setup
         group = make_group(is_public=True)
         mock_scalars = MagicMock()
@@ -1441,6 +1585,7 @@ class TestDeviceGroupRepository:
         assert result is group
 
     def test_get_visible_by_uuid_not_found(self, repo_setup):
+        """Return None when a visible device group UUID is absent."""
         repo, session = repo_setup
         mock_scalars = MagicMock()
         mock_scalars.first.return_value = None
@@ -1454,6 +1599,7 @@ class TestDeviceGroupRepository:
         assert result is None
 
     def test_get_visible_by_uuid_error(self, repo_setup):
+        """Return an error when visible group lookup fails."""
         repo, session = repo_setup
         session.execute.side_effect = Exception("db error")
         ok, err, result = repo.get_visible_device_group_by_uuid(
@@ -1463,6 +1609,7 @@ class TestDeviceGroupRepository:
         assert "db error" in err
 
     def test_get_visible_groups_success(self, repo_setup):
+        """Return all visible device groups."""
         repo, session = repo_setup
         g1 = make_group(name="a")
         g2 = make_group(name="b")
@@ -1476,12 +1623,14 @@ class TestDeviceGroupRepository:
         assert len(groups) == 2
 
     def test_get_visible_groups_error(self, repo_setup):
+        """Return an error when visible group listing fails."""
         repo, session = repo_setup
         session.execute.side_effect = Exception("db error")
         ok, err, groups = repo.get_visible_device_groups(project_id="p")
         assert ok is False
 
     def test_get_all(self, repo_setup):
+        """Return all device groups from the repository."""
         repo, _ = repo_setup
         g1 = make_group(name="all-1")
         with patch.object(repo, "get_all", return_value=(True, None, [g1])):
@@ -1490,6 +1639,7 @@ class TestDeviceGroupRepository:
         assert len(groups) == 1
 
     def test_delete_success(self, repo_setup):
+        """Delete an existing device group from the session."""
         repo, session = repo_setup
         group = make_group()
         with patch.object(
@@ -1500,6 +1650,7 @@ class TestDeviceGroupRepository:
         session.delete.assert_called_once_with(group)
 
     def test_delete_not_found(self, repo_setup):
+        """Return an error when deleting a missing device group."""
         repo, _ = repo_setup
         with patch.object(
             repo, "get_by_uuid", return_value=(True, None, None)
@@ -1509,6 +1660,7 @@ class TestDeviceGroupRepository:
         assert "not found" in err
 
     def test_delete_exception(self, repo_setup):
+        """Roll back the session when device group deletion fails."""
         repo, session = repo_setup
         group = make_group()
         with patch.object(
@@ -1520,6 +1672,7 @@ class TestDeviceGroupRepository:
         session.rollback.assert_called_once()
 
     def test_update_success(self, repo_setup):
+        """Update an existing device group and commit the session."""
         repo, session = repo_setup
         group = make_group(description="old")
         with patch.object(
@@ -1533,6 +1686,7 @@ class TestDeviceGroupRepository:
         session.commit.assert_called_once()
 
     def test_update_not_found(self, repo_setup):
+        """Return an error when updating a missing device group."""
         repo, _ = repo_setup
         with patch.object(
             repo, "get_by_uuid", return_value=(True, None, None)
@@ -1544,6 +1698,7 @@ class TestDeviceGroupRepository:
         assert "not found" in err
 
     def test_update_exception(self, repo_setup):
+        """Roll back the session when device group updating fails."""
         repo, session = repo_setup
         group = make_group()
         with patch.object(
@@ -1562,6 +1717,7 @@ class TestDeviceGroupNotFoundError:
     """Tests for DeviceGroupNotFoundError."""
 
     def test_error_attributes(self):
+        """Set the expected attributes on a device group error."""
         err = DeviceGroupNotFoundError("test message")
         assert err.module_name == "DeviceGroup"
         assert err.error_code == -301
@@ -1569,12 +1725,14 @@ class TestDeviceGroupNotFoundError:
         assert "test message" in err.message
 
     def test_error_get_msgs(self):
+        """Include device group details in formatted error messages."""
         err = DeviceGroupNotFoundError("not found")
         msgs = err.get_err_msgs()
         assert "[DeviceGroup]" in msgs
         assert "DeviceGroupNotFoundError" in msgs
 
     def test_error_is_base_exception(self):
+        """Derive device group errors from the QCOS base exception."""
         from wy_qcos.common.errors import BaseException
 
         err = DeviceGroupNotFoundError("x")
@@ -1589,9 +1747,11 @@ class TestDeviceGroupModel:
     """Tests for DeviceGroup model."""
 
     def test_table_name(self):
+        """Use the expected database table name."""
         assert DeviceGroup.__tablename__ == "device_groups"
 
     def test_columns(self):
+        """Define the expected device group table columns."""
         cols = {c.name for c in DeviceGroup.__table__.columns}
         expected = {
             "id",

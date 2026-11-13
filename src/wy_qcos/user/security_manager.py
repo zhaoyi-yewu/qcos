@@ -21,9 +21,10 @@ from datetime import datetime, timedelta
 from typing import Annotated
 
 import bcrypt
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+from jwt.exceptions import PyJWTError
 
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.common.config import Config
@@ -260,7 +261,7 @@ class SecurityManager:
                 algorithms=[Config.USERS.JWT_AUTH_ALGORITHM],
             )
             return payload
-        except JWTError as e:
+        except PyJWTError as e:
             logger.error(f"Token verification failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

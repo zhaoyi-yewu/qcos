@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for the SABRE routing wrapper."""
 
 import networkx as nx
 import pytest
@@ -26,25 +27,32 @@ from wy_qcos.transpiler.cmss.mapping.routing.sabre_routing_wrapper import (
 
 
 class TestSABRERoutingWrapper:
+    """Tests for SABRE routing wrapper behavior."""
+
     def test_layout_list_to_dict(self):
+        """Test converting a layout list to a dictionary."""
         routing = SABRERouting()
         assert routing._layout_list_to_dict([2, 1, 0]) == {0: 2, 1: 1, 2: 0}
 
     def test_layout_dict_to_list_invalid_type(self):
+        """Test rejecting a non-dictionary layout."""
         routing = SABRERouting()
         with pytest.raises(MappingException):
             routing._layout_dict_to_list([0, 1])
 
     def test_layout_dict_to_list_no_int_key(self):
+        """Test rejecting a layout without integer keys."""
         routing = SABRERouting()
         with pytest.raises(MappingException):
             routing._layout_dict_to_list({"a": 0})
 
     def test_layout_dict_to_list_basic(self):
+        """Test converting a layout dictionary to a list."""
         routing = SABRERouting()
         assert routing._layout_dict_to_list({0: 1, 1: 0}) == [1, 0]
 
     def test_dg_to_gates_list(self):
+        """Test converting a dependency graph to a gate list."""
         routing = SABRERouting()
         mock_dg = Mock()
         mock_dg.to_ir.return_value = ["g1", "g2"]
@@ -52,11 +60,13 @@ class TestSABRERoutingWrapper:
         mock_dg.to_ir.assert_called_once_with(decompose_swap=False)
 
     def test_execute_routing_requires_ag(self):
+        """Test that routing requires an architecture graph."""
         routing = SABRERouting()
         with pytest.raises(MappingException):
             routing.execute_routing(None, None, {0: 0}, 1, [])
 
     def test_execute_routing_requires_initial_layout(self):
+        """Test that routing requires an initial layout."""
         routing = SABRERouting()
         ag = nx.Graph()
         ag.add_edge(0, 1)
@@ -64,6 +74,7 @@ class TestSABRERoutingWrapper:
             routing.execute_routing(None, ag, None, 1, [])
 
     def test_execute_routing_requires_dg(self):
+        """Test that routing requires a dependency graph."""
         routing = SABRERouting()
         ag = nx.Graph()
         ag.add_edge(0, 1)
@@ -74,6 +85,7 @@ class TestSABRERoutingWrapper:
         "wy_qcos.transpiler.cmss.mapping.routing.sabre_routing_wrapper.SABRE"
     )
     def test_execute_routing_updates_measure_ops(self, mock_sabre):
+        """Test updating measurement targets after routing."""
         routing = SABRERouting()
         ag = nx.Graph()
         ag.add_edges_from([(0, 1), (1, 2)])
@@ -106,6 +118,7 @@ class TestSABRERoutingWrapper:
         "wy_qcos.transpiler.cmss.mapping.routing.sabre_routing_wrapper.SABRE"
     )
     def test_execute_routing_truncate_initial_layout(self, mock_sabre):
+        """Test truncating the initial layout to logical qubits."""
         routing = SABRERouting()
         ag = nx.Graph()
         ag.add_edge(0, 1)

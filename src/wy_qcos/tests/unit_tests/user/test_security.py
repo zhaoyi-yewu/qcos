@@ -19,14 +19,15 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 from uuid import uuid4
-from jose import JWTError
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
+from jwt.exceptions import PyJWTError
 
 from wy_qcos.api.schemas import user as schemas
 from wy_qcos.api.schemas.user import LoginLog
 from wy_qcos.api.posiq.routes_jsonrpc.routes import all_api
 from wy_qcos.common.library import _s
+from wy_qcos.tests.common import make_test_ip
 from wy_qcos.user.security_manager import SecurityManager
 from wy_qcos.user.user_manager import UserManager
 
@@ -160,7 +161,7 @@ class TestSecurityManager:
     ):
         """Test recording a successful login."""
         user_name = "testuser"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         # Add some failed attempts first
@@ -218,7 +219,7 @@ class TestSecurityManager:
     @patch("wy_qcos.user.security_manager.jwt.decode")
     def test_verify_token_failure(self, mock_decode, security_manager):
         """Test token verification failure."""
-        mock_decode.side_effect = JWTError("Invalid token")
+        mock_decode.side_effect = PyJWTError("Invalid token")
 
         with pytest.raises(HTTPException) as exc_info:
             security_manager.verify_token(_s("invalid_token"))
@@ -226,12 +227,23 @@ class TestSecurityManager:
         assert exc_info.value.status_code == 401
         assert "Could not validate credentials" in str(exc_info.value.detail)
 
+    def test_pyjwt_token_round_trip(self, security_manager):
+        """Test real PyJWT encoding, decoding, and tamper rejection."""
+        token = security_manager.create_access_token({"sub": "testuser"})
+
+        payload = security_manager.verify_token(token)
+
+        assert payload["sub"] == "testuser"
+        with pytest.raises(HTTPException) as exc_info:
+            security_manager.verify_token(f"{token}tampered")
+        assert exc_info.value.status_code == 401
+
     def test_authenticate_user_account_locked(
         self, security_manager, mock_user_manager
     ):
         """Test authentication when account is locked."""
         user_name = "testuser"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         # Simulate account lockout
@@ -252,7 +264,7 @@ class TestSecurityManager:
     ):
         """Test authentication with non-existent user."""
         user_name = "nonexistent"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         mock_user_manager.get_user.return_value = None
@@ -272,7 +284,7 @@ class TestSecurityManager:
     ):
         """Test authentication with disabled user."""
         user_name = "testuser"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         # User is disabled
@@ -294,7 +306,7 @@ class TestSecurityManager:
     ):
         """Test authentication with locked user."""
         user_name = "testuser"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         # User is locked with future lockout time
@@ -317,7 +329,7 @@ class TestSecurityManager:
     ):
         """Test authentication with invalid password."""
         user_name = "testuser"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         mock_user_manager.get_user.return_value = sample_user
@@ -340,7 +352,7 @@ class TestSecurityManager:
     ):
         """Test authentication with expired password."""
         user_name = "testuser"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         # Set password 100 days ago (expired if 90 days)
@@ -363,7 +375,7 @@ class TestSecurityManager:
     ):
         """Test successful authentication."""
         user_name = "testuser"
-        ip_address = "192.168.1.1"
+        ip_address = make_test_ip(1)
         user_agent = "Mozilla/5.0"
 
         mock_user_manager.get_user.return_value = sample_user
@@ -598,12 +610,12 @@ class TestLoginLogging:
         """Test logging of login attempts."""
         # Log successful login
         user_manager.log_login_attempt(
-            "testuser", "192.168.1.100", True, user_agent="Chrome/91.0"
+            "testuser", make_test_ip(100), True, user_agent="Chrome/91.0"
         )
 
         # Log failed login
         user_manager.log_login_attempt(
-            "testuser", "192.168.1.101", False, user_agent="Firefox/89.0"
+            "testuser", make_test_ip(101), False, user_agent="Firefox/89.0"
         )
 
         # Retrieve logs
@@ -615,7 +627,7 @@ class TestLoginLogging:
         # Log multiple attempts
         for i in range(3):
             user_manager.log_login_attempt(
-                f"user{i}", f"192.168.1.{100 + i}", True
+                f"user{i}", make_test_ip(100 + i), True
             )
 
         logs = user_manager.get_login_logs()

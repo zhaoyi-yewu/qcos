@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for the DriverPulseBase class."""
+
 from unittest.mock import patch
 
 import pytest
@@ -26,7 +28,10 @@ from wy_qcos.driver.driver_pulse_base import DriverPulseBase
 
 @pytest.mark.driver
 class TestDriverPulseBase:
+    """Test DriverPulseBase behavior."""
+
     def test_init(self):
+        """Test pulse driver default attributes."""
         driver = DriverPulseBase()
         assert driver.version == "0.0.1"
         assert driver.transpiler == Constant.TRANSPILER_CMSS
@@ -34,11 +39,13 @@ class TestDriverPulseBase:
 
     @patch.object(DriverPulseBase, "set_device_status")
     def test_init_driver(self, mock_set_status):
+        """Test pulse driver initialization."""
         driver = DriverPulseBase()
         driver.init_driver()
         mock_set_status.assert_called_once()
 
     def test_fetch_running_info(self):
+        """Test fetching pulse driver running information."""
         driver = DriverPulseBase()
         info = driver.fetch_running_info()
         assert info == {"status": Device.DEVICE_STATUS_ONLINE}

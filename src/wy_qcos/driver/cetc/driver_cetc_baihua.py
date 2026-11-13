@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define the CETC Baihua quantum device driver."""
+
 from wy_qcos.driver.cetc.driver_cetc_base import DriverCetcBase
 
 
@@ -26,6 +28,7 @@ class DriverCetcBaihua(DriverCetcBase):
     """
 
     def __init__(self):
+        """Initialize the CETC Baihua driver."""
         super().__init__()
         self.computer_type = 60  # baihua backend
         self.alias_name = "国基量子 百花 超导驱动"

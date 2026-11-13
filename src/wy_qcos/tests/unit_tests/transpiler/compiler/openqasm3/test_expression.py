@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for OpenQASM 3 expression parsing and value resolution."""
+
 import pytest
 from openqasm3 import ast
 
@@ -313,7 +315,7 @@ class TestExpression:
 
         # Create a dummy node that doesn't have a visitor method
         class DummyNode(ast.QASMNode):
-            pass
+            """Represent an AST node without a registered visitor."""
 
         dummy_node = DummyNode()
 

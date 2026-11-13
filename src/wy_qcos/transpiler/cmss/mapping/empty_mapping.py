@@ -15,12 +15,16 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Provide routing helpers for backends without physical mapping."""
 
 import copy
 
 
 class EmptyRoute:
+    """Represent a route with physical mapping disabled."""
+
     def __init__(self):
+        """Initialize an empty route."""
         self.enable_mapping = False
 
 

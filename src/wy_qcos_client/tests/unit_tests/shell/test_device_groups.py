@@ -449,7 +449,7 @@ class TestDeleteDeviceGroups:
         cmd.take_action(args)
         mock_delete.assert_called_once_with([GROUP_ID, GROUP_ID_2])
 
-    @patch("builtins.input", return_value="y")
+    @patch("click.termui.visible_prompt_func", return_value="y")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "resolve_device_group_id")
     @patch.object(Client, "delete_device_groups")
@@ -475,7 +475,7 @@ class TestDeleteDeviceGroups:
         mock_input.assert_called_once()
         mock_delete.assert_called_once()
 
-    @patch("builtins.input", return_value="n")
+    @patch("click.termui.visible_prompt_func", return_value="n")
     @patch.object(Client, "resolve_device_group_id")
     @patch.object(Client, "delete_device_groups")
     def test_take_action_confirm_no(

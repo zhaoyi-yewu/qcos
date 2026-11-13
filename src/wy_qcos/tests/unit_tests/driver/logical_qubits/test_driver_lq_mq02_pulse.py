@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for the MQ02 pulse logical-qubit driver."""
 
 # ruff: noqa: E402
 
@@ -39,7 +42,10 @@ from wy_qcos.driver.logical_qubit.driver_lq_mq02_pulse import (
 
 @pytest.mark.driver
 class TestDriverLqMQ02Pulse:
+    """Test the MQ02 pulse logical-qubit driver."""
+
     def test_supported_single_qubit_gates(self):
+        """Test supported single-qubit and two-qubit gates."""
         driver = DriverLqMQ02Pulse()
 
         assert set(driver.supported_basis_gates) == {
@@ -73,6 +79,7 @@ class TestDriverLqMQ02Pulse:
     )
     @patch("wy_qcos.driver.logical_qubit.driver_lq_mq02_pulse.gate.virtual_z")
     def test_u3_uses_one_physical_pulse(self, virtual_z, phased_x):
+        """Test U3 decomposition into one physical pulse."""
         driver = DriverLqMQ02Pulse()
         seq = Mock()
         qubit = {"id": 3}
@@ -111,6 +118,7 @@ class TestDriverLqMQ02Pulse:
     def test_phase_gates_are_zero_duration(
         self, virtual_z, gate_name, parameters, phase
     ):
+        """Test zero-duration virtual phase gates."""
         driver = DriverLqMQ02Pulse()
         seq = Mock()
         qubit = {"id": 1}
@@ -130,6 +138,7 @@ class TestDriverLqMQ02Pulse:
     def test_convert_code_parallelizes_drives_and_readout(
         self, sequence_cls, measure
     ):
+        """Test parallel scheduling of drives and readout."""
         driver = DriverLqMQ02Pulse()
         qpu_params = Mock()
         qpu_params.qubit.side_effect = lambda qid: {"id": qid}

@@ -23,6 +23,7 @@ import sys
 from datetime import datetime
 
 import argcomplete
+import click
 from cliff import help
 from cliff.app import App
 from cliff.command import Command
@@ -2548,9 +2549,10 @@ class GetJobResults(ShowOne):
                 f"{output_file} is a directory, please specify a file path"
             )
         if os.path.exists(output_file) and not assume_override:
-            confirm = input("File exists, need to override this file? (y/n) ")
-            _confirm = confirm.lower().strip()
-            if _confirm not in ("y", "yes"):
+            confirmed = click.confirm(
+                "File exists, need to override this file?", default=False
+            )
+            if not confirmed:
                 print(
                     "File exists and do not override it, "
                     f"abort saving result to {output_file}."
@@ -2936,9 +2938,10 @@ class CancelJobs(Command):
                     job_id = job_info["job_id"]
                     job_id_list.append(job_id)
             if not assume_yes:
-                confirm = input("Are you sure to delete all jobs ? (y/n) ")
-                _confirm = confirm.lower().strip()
-                if _confirm not in ("y", "yes"):
+                confirmed = click.confirm(
+                    "Are you sure to delete all jobs?", default=False
+                )
+                if not confirmed:
                     print("User cancelled operation, abort!")
                     sys.exit(0)
         else:
@@ -3038,9 +3041,10 @@ class DeleteJobs(Command):
                     job_id = job_info["job_id"]
                     job_id_list.append(job_id)
             if not assume_yes:
-                confirm = input("Are you sure to delete all jobs ? (y/n) ")
-                _confirm = confirm.lower().strip()
-                if _confirm not in ("y", "yes"):
+                confirmed = click.confirm(
+                    "Are you sure to delete all jobs?", default=False
+                )
+                if not confirmed:
                     print("User cancelled operation, abort!")
                     sys.exit(0)
         else:
@@ -4203,8 +4207,7 @@ class ClearLoginLogs(Command):
 
         # Confirmation
         if not force:
-            confirm = input(f"{msg} [y/N]: ")
-            if confirm.lower() != "y":
+            if not click.confirm(msg, default=False):
                 self.app.stdout.write("Operation cancelled\n")
                 return None
 
@@ -5481,8 +5484,10 @@ class DeleteFlavors(Command):
                 for flavor_info in json_results:
                     flavor_id_list.append(flavor_info["id"])
             if not assume_yes:
-                confirm = input("Are you sure to delete all flavors? (y/n) ")
-                if confirm.lower().strip() not in ("y", "yes"):
+                confirmed = click.confirm(
+                    "Are you sure to delete all flavors?", default=False
+                )
+                if not confirmed:
                     print("User cancelled operation, abort!")
                     return
         else:
@@ -5500,11 +5505,11 @@ class DeleteFlavors(Command):
             return
 
         if not assume_yes and flavor_ids_input.lower() != "all":
-            confirm = input(
-                f"Are you sure to delete {len(flavor_id_list)} "
-                f"flavor(s)? (y/n) "
+            confirmed = click.confirm(
+                f"Are you sure to delete {len(flavor_id_list)} flavor(s)?",
+                default=False,
             )
-            if confirm.lower().strip() not in ("y", "yes"):
+            if not confirmed:
                 print("User cancelled operation, abort!")
                 return
 
@@ -5966,10 +5971,10 @@ class DeleteDeviceGroups(Command):
                 for group_info in json_results:
                     group_id_list.append(group_info["id"])
             if not assume_yes:
-                confirm = input(
-                    "Are you sure to delete all device groups? (y/n) "
+                confirmed = click.confirm(
+                    "Are you sure to delete all device groups?", default=False
                 )
-                if confirm.lower().strip() not in ("y", "yes"):
+                if not confirmed:
                     print("User cancelled operation, abort!")
                     return
         else:
@@ -5989,11 +5994,12 @@ class DeleteDeviceGroups(Command):
             return
 
         if not assume_yes and group_ids_input.lower() != "all":
-            confirm = input(
+            confirmed = click.confirm(
                 f"Are you sure to delete {len(group_id_list)} "
-                f"device group(s)? (y/n) "
+                "device group(s)?",
+                default=False,
             )
-            if confirm.lower().strip() not in ("y", "yes"):
+            if not confirmed:
                 print("User cancelled operation, abort!")
                 return
 
@@ -6257,8 +6263,10 @@ class AiChat(Command):
                     prompt = f"ai[{session_id[:8]}]> "
                 else:
                     prompt = "ai> "
-                line = input(prompt).strip()
-            except (EOFError, KeyboardInterrupt):
+                line = click.prompt(
+                    prompt, default="", show_default=False, prompt_suffix=""
+                ).strip()
+            except (EOFError, KeyboardInterrupt, click.Abort):
                 print()
                 break
             if not line:

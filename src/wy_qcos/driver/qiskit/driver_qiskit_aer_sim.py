@@ -17,6 +17,7 @@
 
 import json
 import sys
+from pathlib import Path
 
 from loguru import logger
 from qiskit import qasm2
@@ -65,10 +66,11 @@ def simulate_qasm_probabilities(source_code):
     return probabilities
 
 
-def _run_ideal_simulation_cli():
-    """Run ideal simulation over a stdin/stdout JSON subprocess protocol."""
+def _run_ideal_simulation_cli(source_path):
+    """Read QASM from a file and emit ideal probabilities as JSON."""
     try:
-        probabilities = simulate_qasm_probabilities(sys.stdin.read())
+        source_code = Path(source_path).read_text(encoding="utf-8")
+        probabilities = simulate_qasm_probabilities(source_code)
     except Exception as error:
         print(str(error), file=sys.stderr)
         return 1
@@ -179,7 +181,7 @@ class DriverQiskitAerSim(DriverGateBase):
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--ideal-probabilities"]:
-        sys.exit(_run_ideal_simulation_cli())
+    if len(sys.argv) == 3 and sys.argv[1] == "--ideal-probabilities":
+        sys.exit(_run_ideal_simulation_cli(sys.argv[2]))
     print("unsupported command", file=sys.stderr)
     sys.exit(2)

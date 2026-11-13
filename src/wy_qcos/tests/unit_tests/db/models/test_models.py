@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for database models and custom types."""
+
 import pytest
 import uuid
 import json
@@ -26,6 +28,7 @@ from wy_qcos.db.models import (
     GUID,
 )
 from wy_qcos.db.models.base import MyEncoder
+from wy_qcos.tests.common import make_test_ip
 
 
 class TestBaseModel:
@@ -160,7 +163,7 @@ class TestLoginLogModel:
     def test_login_log_creation(self, sample_login_log):
         """Test login log creation."""
         assert sample_login_log.user_name == "testuser"
-        assert sample_login_log.ip_address == "192.168.1.1"
+        assert sample_login_log.ip_address == make_test_ip(1)
         assert sample_login_log.login_status is True
         assert sample_login_log.user_agent == "Mozilla/5.0"
 
@@ -169,7 +172,7 @@ class TestLoginLogModel:
         log = LoginLog(
             id=str(uuid.uuid4()),
             user_name="testuser",
-            ip_address="192.168.1.2",
+            ip_address=make_test_ip(2),
             login_time=datetime.now(),
             login_status=False,
             failure_reason="Invalid password",

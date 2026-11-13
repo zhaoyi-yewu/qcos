@@ -37,6 +37,7 @@ from wy_qcos.cloud.schemas import (
     CompileRequest,
     CompileResponse,
 )
+from wy_qcos.common.library import _s
 from wy_qcos.transpiler.high_performance import (
     CMSSVerifier,
     QuafuVerifier,
@@ -130,7 +131,10 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
-            r"^Topology error: target_bit (-?\d+) out of range \[0, (-?\d+)\)$"
+            _s(
+                r"^Topology error: target_bit (-?\d+) out of range "
+                r"\[0, (-?\d+)\)$"
+            )
         ),
         "拓扑校验错误：目标比特{}超出拓扑物理比特范围[0,{})",
     ),
@@ -146,15 +150,19 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
-            r"^Topology error: circuit requires (-?\d+) qubits, but chip "
-            r"only has (-?\d+)$"
+            _s(
+                r"^Topology error: circuit requires (-?\d+) qubits, but chip "
+                r"only has (-?\d+)$"
+            )
         ),
         "拓扑校验错误：线路需要{}个量子比特，超出芯片可用比特数{}",
     ),
     (
         re.compile(
-            r"^Topology error: circuit requires (-?\d+) qubits, but largest "
-            r"connected component only has (-?\d+)$"
+            _s(
+                r"^Topology error: circuit requires (-?\d+) qubits, but "
+                r"largest connected component only has (-?\d+)$"
+            )
         ),
         "拓扑校验错误：线路需要{}个量子比特，超出最大连通分量{}",
     ),
@@ -174,15 +182,19 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
     # --- gate count / depth errors ---
     (
         re.compile(
-            r"^Gate count error: (-?\d+) multi-qubit gates "
-            r"exceed limit (-?\d+)$"
+            _s(
+                r"^Gate count error: (-?\d+) multi-qubit gates "
+                r"exceed limit (-?\d+)$"
+            )
         ),
         "门数量校验错误：线路使用了{}个量子门，超过上限{}",
     ),
     (
         re.compile(
-            r"^Gate count error: (-?\d+) two-qubit gates after decomposition "
-            r"exceed limit (-?\d+)$"
+            _s(
+                r"^Gate count error: (-?\d+) two-qubit gates after "
+                r"decomposition exceed limit (-?\d+)$"
+            )
         ),
         "门数量校验错误：分解后使用了{}个双比特门，超过上限{}",
     ),
@@ -195,8 +207,10 @@ _VERIFIER_MSG_TRANSLATIONS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
-            r"^Depth error: circuit depth (-?\d+) "
-            r"exceeds limit (-?\d+)$"
+            _s(
+                r"^Depth error: circuit depth (-?\d+) "
+                r"exceeds limit (-?\d+)$"
+            )
         ),
         "深度校验错误：线路深度为{}，超过上限{}",
     ),

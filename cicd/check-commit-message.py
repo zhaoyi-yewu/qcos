@@ -26,7 +26,12 @@ import subprocess
 import sys
 
 
-MANDATORY_KEYWORDS = ["Code Source From:", "Jira:", "市场项目编号"]
+MANDATORY_KEYWORDS = [
+    "Code Source From:",
+    "Jira:",
+    "市场项目编号",
+    "Add #CMSS",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +122,8 @@ def main():
     logger.info("Checking commit messages")
     # get first line of commit messages
     first_line = get_commit_messages()
-    logger.info("Commit message summary: %s", first_line)
+    safe_first_line = first_line.replace("\r", "\\r").replace("\x1b", "\\x1b")
+    logger.info("Commit message summary: %s", safe_first_line)
 
     if not first_line:
         logger.error("Empty line of commit message")
@@ -175,7 +181,12 @@ def main():
 if __name__ == "__main__":
     # configure logging only when executed as a script, so importing
     # this module has no side effects on the caller's logging setup
-    logging.basicConfig(
-        level=logging.INFO, format="%(levelname)s: %(message)s"
-    )
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(
+            logging.Formatter("%(levelname)s: %(message)s")
+        )
+        root_logger.addHandler(console_handler)
+    root_logger.setLevel(logging.INFO)
     main()

@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for permission management."""
 
 import pytest
 from unittest.mock import Mock, patch
@@ -349,6 +352,7 @@ class TestAdvancedPermissionScenarios:
         mock_enforcer = Mock()
 
         def enforce_side_effect(user, resource, action):
+            """Return permission decisions for the requested resource."""
             allowed_perms = {
                 ("user", "/api/read", "call"): True,
                 ("user", "/api/write", "call"): False,
@@ -375,6 +379,7 @@ class TestAdvancedPermissionScenarios:
 
         # Setup role hierarchy: user -> developer -> admin
         def get_permissions_side_effect(role):
+            """Return permissions defined for the requested role."""
             hierarchy = {
                 "user": [["/api/read", "call"]],
                 "developer": [
@@ -411,6 +416,7 @@ class TestAdvancedPermissionScenarios:
         added_policies = []
 
         def add_policy_side_effect(*args):
+            """Record added policy arguments and report success."""
             added_policies.append(args)
             return True
 
@@ -447,6 +453,7 @@ class TestAdvancedPermissionScenarios:
         mock_enforcer = Mock()
 
         def enforce_scope(user, resource, action):
+            """Allow access only to the user's own profile."""
             # User can only access /api/profile/self resources
             if resource.startswith("/api/profile/self"):
                 return True
@@ -472,6 +479,7 @@ class TestAdvancedPermissionScenarios:
         mock_enforcer = Mock()
 
         def enforce_wildcard(user, resource, action):
+            """Evaluate resource access using simple wildcard prefixes."""
             # If permission has wildcard in path
             allowed = [
                 "/api/device/*",
@@ -503,6 +511,7 @@ class TestAdvancedPermissionScenarios:
         mock_enforcer = Mock()
 
         def get_aggregated_perms(user):
+            """Return the combined permissions for a multi-role user."""
             # User has multiple roles, aggregate all permissions
             # Return combined permissions
             return [["/api/read", "call"], ["/api/write", "call"]]
@@ -575,6 +584,7 @@ class TestPermissionCachingAndValidation:
         mock_enforcer = Mock()
 
         def enforce_edge_cases(user, resource, action):
+            """Reject requests with an empty user, resource, or action."""
             # Handle empty/null cases
             if not user or not resource or not action:
                 return False

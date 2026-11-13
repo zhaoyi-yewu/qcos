@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for OpenQASM 3 compiler state and symbol management."""
+
 import math
 import pytest
 
@@ -635,8 +637,8 @@ def test_builtin_constants():
 
     assert _BUILTINS["pi"].data == math.pi
     assert _BUILTINS["π"].data == math.pi
-    assert _BUILTINS["tau"].data == math.tau
-    assert _BUILTINS["τ"].data == math.tau
+    assert _BUILTINS["tau"].data == 2 * math.pi
+    assert _BUILTINS["τ"].data == 2 * math.pi
     assert _BUILTINS["euler"].data == math.e
     assert _BUILTINS["ℇ"].data == math.e
 

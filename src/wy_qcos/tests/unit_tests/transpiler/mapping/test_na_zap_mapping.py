@@ -14,6 +14,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for neutral-atom ZAP mapping."""
+
 import pytest
 
 from copy import deepcopy
@@ -28,8 +30,11 @@ from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 
 @pytest.mark.usefixtures("global_configs")
 class TestTranspilerNaZapMapping:
+    """Tests for neutral-atom ZAP mapping."""
+
     @classmethod
     def setup_class(cls):
+        """Set up ZAP mapping test fixtures."""
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
         cls.simple_data = """
         OPENQASM 2.0;
@@ -183,6 +188,7 @@ class TestTranspilerNaZapMapping:
         ]
 
     def test_na_zap_mapping_prepare_data(self):
+        """Test preparing data for ZAP mapping."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -212,6 +218,7 @@ class TestTranspilerNaZapMapping:
         assert len(na.res) == 0
 
     def test_na_zap_mapping_scheduling(self):
+        """Test scheduling gates for ZAP mapping."""
         src_code_info = {"000": self.task2_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -241,6 +248,7 @@ class TestTranspilerNaZapMapping:
         assert len(measure_op) == na.qbit_num
 
     def test_get_init_mapping_and_placing(self):
+        """Test generating the initial ZAP mapping and placement."""
         src_code_info = {"000": self.task3_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -294,6 +302,7 @@ class TestTranspilerNaZapMapping:
         assert init_mapping[4][3] in na.operate_area
 
     def test_get_cost(self):
+        """Test calculating the cost of a ZAP mapping."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -323,6 +332,7 @@ class TestTranspilerNaZapMapping:
         assert cost >= 0
 
     def test_find_ryd_pos(self):
+        """Test finding operating positions for a Rydberg gate."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -347,6 +357,7 @@ class TestTranspilerNaZapMapping:
         assert pos[1] in na.operate_area
 
     def test_find_pos(self):
+        """Test finding an available storage position."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -370,6 +381,7 @@ class TestTranspilerNaZapMapping:
         assert pos in na.storage_area
 
     def test_update_mapping(self):
+        """Test updating ZAP placements while preserving area assignments."""
         src_code_info = {"000": self.task3_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -487,6 +499,7 @@ class TestTranspilerNaZapMapping:
             _ = na.update_mapping(up_mapping)
 
     def test_update_storage_and_operate_area_oloc(self):
+        """Test updating storage and operating area occupancy maps."""
         src_code_info = {"000": self.task3_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -520,6 +533,7 @@ class TestTranspilerNaZapMapping:
         assert na.operate_area_oloc[-1][init_mapping[-1][0]] == 0
 
     def test_init_para(self):
+        """Test initializing simulated annealing parameters."""
         src_code_info = {"000": self.task3_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -543,6 +557,7 @@ class TestTranspilerNaZapMapping:
         assert markovlen == 200
 
     def test_sa_mapping_and_placing(self):
+        """Test optimizing ZAP placement with simulated annealing."""
         src_code_info = {"000": self.task2_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -572,6 +587,7 @@ class TestTranspilerNaZapMapping:
         assert sa_mapping[-1][3] in na.operate_area
 
     def test_routing_asap(self):
+        """Test generating as-soon-as-possible ZAP routing operations."""
         src_code_info = {"000": self.task2_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -598,6 +614,7 @@ class TestTranspilerNaZapMapping:
         assert res[-1].name == "measure"
 
     def test_execute_with_order(self):
+        """Test executing ZAP mapping in circuit order."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}

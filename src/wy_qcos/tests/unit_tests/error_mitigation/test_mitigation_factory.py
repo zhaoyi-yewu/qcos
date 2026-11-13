@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for MitigationFactory class."""
+
 import pytest
 
 from wy_qcos.qem.mitigation_factory import MitigationFactory
@@ -33,6 +35,7 @@ class TestMitigationFactory:
     """Test MitigationFactory class."""
 
     def test_default_registry(self):
+        """Test default registry contains built-in mitigations."""
         factory = MitigationFactory()
         available = factory.list_available()
         assert "readout" in available
@@ -40,38 +43,48 @@ class TestMitigationFactory:
         assert "zne" in available
 
     def test_create_readout(self):
+        """Test creating a readout mitigation instance."""
         factory = MitigationFactory()
         rem = factory.create("readout")
         assert isinstance(rem, ReadoutMitigation)
 
     def test_create_rem_alias(self):
+        """Test creating readout mitigation via the rem alias."""
         factory = MitigationFactory()
         rem = factory.create("rem")
         assert isinstance(rem, ReadoutMitigation)
 
     def test_create_zne(self):
+        """Test creating a ZNE mitigation instance."""
         factory = MitigationFactory()
         zne = factory.create("zne")
         assert isinstance(zne, ZNEMitigation)
 
     def test_create_unknown_raises(self):
+        """Test creating an unknown mitigation raises ValueError."""
         factory = MitigationFactory()
         with pytest.raises(ValueError, match="Unknown mitigation"):
             factory.create("nonexistent")
 
     def test_create_with_kwargs(self):
+        """Test creating a mitigation with keyword arguments."""
         factory = MitigationFactory()
         rem = factory.create("readout", calibration_shots=4096)
         assert rem._calibration_shots == 4096
 
     def test_register_custom(self):
+        """Test registering a custom mitigation class."""
         factory = MitigationFactory()
 
         class CustomMitigation(MitigationBase):
+            """Define a custom mitigation for registration testing."""
+
             def __init__(self):
+                """Initialize the custom mitigation with its registry name."""
                 super().__init__("custom")
 
             def postprocess(self, results, calibration=None, **kwargs):
+                """Return results with empty metadata."""
                 return {"results": results, "metadata": {}}
 
         factory.register("custom", CustomMitigation)
@@ -80,6 +93,7 @@ class TestMitigationFactory:
         assert isinstance(instance, CustomMitigation)
 
     def test_register_invalid_raises(self):
+        """Test registering an invalid class raises TypeError."""
         factory = MitigationFactory()
         with pytest.raises(TypeError, match="Invalid mitigation class"):
             factory.register("bad", NotAMitigation)

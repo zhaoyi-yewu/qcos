@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for Client project management methods."""
+
 from unittest.mock import patch
 
 from wy_qcos_client.client import Client
@@ -27,6 +29,7 @@ class TestClientProject:
 
     @classmethod
     def setup_class(cls):
+        """Set shared project test data and return values."""
         cls.project_id = "00000000-0000-4000-8000-000000000002"
         cls.return_values = (200, "OK", "text", "result")
 

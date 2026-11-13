@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for transpiler APIs."""
+
 import pytest
 
 from wy_qcos.common.constant import Constant
@@ -24,8 +26,11 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestTranspilers:
+    """Test transpiler API endpoints."""
+
     @classmethod
     def setup_class(cls):
+        """Set up the test class."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
@@ -33,14 +38,17 @@ class TestTranspilers:
 
     @classmethod
     def teardown_class(cls):
+        """Tear down the test class."""
         pass
 
     def test_get_transpilers(self):
+        """Test retrieving all transpilers."""
         transpilers = StLibrary.get_transpilers(self.admin_client)
         assert isinstance(transpilers, dict)
 
     @pytest.mark.smoke
     def test_get_transpiler(self):
+        """Test retrieving a transpiler by name."""
         transpiler_name = Constant.TRANSPILER_CMSS
         transpiler = StLibrary.get_transpiler(
             self.admin_client, transpiler_name

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for Client driver methods."""
+
 from unittest.mock import patch
 
 from wy_qcos_client.client import Client
@@ -23,18 +25,23 @@ client = Client()
 
 
 class TestClient:
+    """Test driver API methods in Client."""
+
     @classmethod
     def setup_class(cls):
+        """Set shared mocked API return values."""
         cls.return_values = [-1, "reason", "text", "result"]
 
     @patch.object(Client, "call_json_rpc")
     def test_get_drivers(self, mock_call_json_rpc):
+        """Test get_drivers method."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_drivers()
         assert text == "text"
 
     @patch.object(Client, "call_json_rpc")
     def test_get_driver(self, mock_call_json_rpc):
+        """Test get_driver method."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_driver("driver")
         assert result == "result"

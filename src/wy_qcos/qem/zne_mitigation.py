@@ -70,6 +70,7 @@ from schema import Optional, Or
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.base_operation import BaseOperation
+from wy_qcos.common.library import _s
 from wy_qcos.qem.mitigation_base import MitigationBase
 from wy_qcos.qem.utils import (
     counts_to_probabilities,
@@ -80,7 +81,7 @@ from wy_qcos.qem.utils import (
 logger = logging.getLogger(__name__)
 
 # Matches variant labels of the form "zne_s<scale>", e.g. zne_s1, zne_s1.5.
-_SCALE_LABEL_RE = re.compile(r"^zne_s(\d+(?:\.\d+)?)$")
+_SCALE_LABEL_RE = re.compile(_s(r"^zne_s(\d+(?:\.\d+)?)$"))
 
 # Supported extrapolation method names.
 _EXTRAPOLATION_METHODS = (

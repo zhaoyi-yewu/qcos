@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the DriverWuyueBase class."""
 
 import json
 import pytest
@@ -143,16 +146,12 @@ class TestDriverWuyueBase:
     def test_validate_driver_configs_invalid_port(self):
         """Test validate_driver_configs with invalid port."""
         test_configs = {
-            "ip_address": "100.100.100.2",
+            "ip_address": "localhost",
             "port": "invalid port",
             "client_id": "test_client_id",
             "eng_code": "test_eng_code",
             "password_secret": "test_password_secret",
-            "password_pub_key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/ktW/a"
-            "O0W1NM4QXb1TYo6SHQjTMt4cfhvh9a35VZ4QdKxP+HjZE"
-            "0ub94gzTIYagWSowLJcgXKuhUEueRIEoR1HiuK11DyPJN"
-            "Mn6J8Z3pk/7e8CPZwoCPZW+R1H384+AfUUZYZnqk7lvMP"
-            "RhAaDUGcTA+rAp9c4IVrJK2azYbI2wIDAQAB",
+            "password_pub_key": driver_wuyue_base.password_pub_key,
             "password_pri_key": "",
         }
 
@@ -165,16 +164,12 @@ class TestDriverWuyueBase:
     def test_validate_driver_configs_success(self):
         """Test validate_driver_configs with valid configs."""
         test_configs = {
-            "ip_address": "100.100.100.2",
+            "ip_address": "localhost",
             "port": 12345,
             "client_id": "test_client_id",
             "eng_code": "test_eng_code",
             "password_secret": "test_password_secret",
-            "password_pub_key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/ktW/a"
-            "O0W1NM4QXb1TYo6SHQjTMt4cfhvh9a35VZ4QdKxP+HjZE"
-            "0ub94gzTIYagWSowLJcgXKuhUEueRIEoR1HiuK11DyPJN"
-            "Mn6J8Z3pk/7e8CPZwoCPZW+R1H384+AfUUZYZnqk7lvMP"
-            "RhAaDUGcTA+rAp9c4IVrJK2azYbI2wIDAQAB",
+            "password_pub_key": driver_wuyue_base.password_pub_key,
             "password_pri_key": "",
             "max_job_wait_time": 10000,
             "job_query_interval": 10,
@@ -185,7 +180,7 @@ class TestDriverWuyueBase:
         )
         assert success is True
         assert err_msg is None
-        assert driver_wuyue_base.ip_addr == "100.100.100.2"
+        assert driver_wuyue_base.ip_addr == "localhost"
         assert driver_wuyue_base.port == 12345
         assert driver_wuyue_base.client_id == "test_client_id"
         assert driver_wuyue_base.eng_code == "test_eng_code"
@@ -630,6 +625,7 @@ class TestDriverWuyueBase:
 
     @patch.object(DriverWuyueBase, "get_device_info")
     def test_fetch_running_info_success(self, mock_get_device_info):
+        """Test fetching running information successfully."""
         driver = DriverWuyueBase()
         mock_get_device_info.return_value = (
             True,
@@ -662,6 +658,7 @@ class TestDriverWuyueBase:
 
     @patch.object(DriverWuyueBase, "get_device_info")
     def test_fetch_running_info_exception(self, mock_get_device_info):
+        """Test fetching running information when device query fails."""
         driver = DriverWuyueBase()
         mock_get_device_info.return_value = (False, "test error", None)
         result = driver.fetch_running_info()

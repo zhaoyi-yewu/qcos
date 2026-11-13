@@ -15,14 +15,19 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for operator shape handling."""
+
 import pytest
 
 from wy_qcos.transpiler.cmss.circuit.operators.op_shape import OpShape
 
 
 class TestOpShape:
+    """Tests for operator shape handling."""
+
     @pytest.mark.smoke
     def test_op_shape(self):
+        """Test operator shape properties and qubit counts."""
         op_shape = OpShape(
             dims_l=(2, 2), dims_r=(2, 2), num_qargs_r=2, num_qargs_l=2
         )
@@ -45,6 +50,7 @@ class TestOpShape:
         assert op_shape.num_qubits == 2
 
     def test_op_shape_compose(self):
+        """Test composing operator shapes and composition errors."""
         op_shape = OpShape()
         other_shape = OpShape()
         ret = op_shape.compose(other_shape)
@@ -98,6 +104,7 @@ class TestOpShape:
         assert "Subsystem dimension do not match on specified qargs" in err_msg
 
     def test_op_shape_auto(self):
+        """Test automatic operator shape construction and errors."""
         # Initialize the shape
         shape = OpShape.auto(shape=(4, 4))
         assert shape._dims_l is None
@@ -133,6 +140,7 @@ class TestOpShape:
         assert "num_qubits cannot be used" in err_msg
 
     def test_shape_validate(self):
+        """Test operator shape validation and validation errors."""
         with pytest.raises(Exception) as e:
             OpShape().validate_shape(shape=(2, 2, 2))
 

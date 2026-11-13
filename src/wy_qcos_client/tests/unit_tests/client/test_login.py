@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for Client authentication methods."""
+
 import os
 from unittest.mock import patch
 
@@ -29,6 +31,7 @@ class TestClientLogin:
 
     @classmethod
     def setup_class(cls):
+        """Set shared authentication test return values."""
         cls.return_values = (200, "OK", "text", "result")
 
     @patch.object(Client, "call_json_rpc")
@@ -43,7 +46,7 @@ class TestClientLogin:
         mock_call_json_rpc.assert_called_once_with(
             client.auth_url,
             "login",
-            {"username": "admin", "password": "admin123"},
+            {"username": _s("admin"), "password": _s("admin123")},
         )
 
     @patch.object(Client, "call_json_rpc")

@@ -1203,7 +1203,10 @@ def job_flow(job_info):
         log_rotate_compression=log_rotate_compression,
     )
     logger.info(f"Processing work flow: job_engine. job_id: {job_id}")
-    logger.debug(f"Job details: job_id: {job_id}, job_info: {job_info}")
+    logger.debug(
+        f"Job details: job_id: {job_id}, backend: {backend}, "
+        f"flow_run_id: {flow_run_id}"
+    )
 
     # init db engine based on results_db_storage: for the sql backend
     # a SQLAlchemy engine is created; for the redis backend a redis

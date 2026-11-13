@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for the base logical-qubit driver."""
 
 # ruff: noqa: E402
 # load driver venv
@@ -26,8 +29,10 @@ org_path = Library.set_driver_venv_path(
     "logical_qubit", Config.DEFAULT.VENV_DIR
 )
 
-import pytest
+from builtins import TimeoutError
 from unittest.mock import call, patch, Mock
+
+import pytest
 
 from wy_qcos.transpiler.high_performance import (
     H,
@@ -68,8 +73,11 @@ driver_configs = {
 
 @pytest.mark.driver
 class TestDriverLogicalQubit:
+    """Test the base logical-qubit driver."""
+
     # -- 1. init attributes --
     def test_init(self):
+        """Test default logical-qubit driver attributes."""
         assert driver_logical_qubit.version == "0.0.1"
         assert driver_logical_qubit.alias_name == "逻辑比特 QZ01 超导驱动"
         assert driver_logical_qubit.description == "逻辑比特 QZ01 超导驱动"
@@ -109,6 +117,7 @@ class TestDriverLogicalQubit:
     @patch.object(DriverLogicalQubitBase, "set_device_status")
     @patch("wy_qcos.driver.logical_qubit.driver_lq_base.LQCloudProvider")
     def test_init_driver(self, mock_provider_cls, mock_set_status):
+        """Test driver initialization and provider creation."""
         driver = DriverLogicalQubitBase()
         driver.set_configs(driver_configs)
         mock_provider = Mock()
@@ -129,6 +138,7 @@ class TestDriverLogicalQubit:
     # -- 3. fetch_configs --
     @patch("wy_qcos.driver.logical_qubit.driver_lq_base.LQCloudProvider")
     def test_fetch_configs_success(self, mock_provider_cls):
+        """Test successful backend configuration retrieval."""
         driver = DriverLogicalQubitBase()
         driver.set_configs(driver_configs)
         mock_provider = Mock()
@@ -147,6 +157,7 @@ class TestDriverLogicalQubit:
 
     @patch("wy_qcos.driver.logical_qubit.driver_lq_base.LQCloudProvider")
     def test_fetch_configs_failure(self, mock_provider_cls):
+        """Test configuration retrieval failure handling."""
         driver = DriverLogicalQubitBase()
         driver.set_configs(driver_configs)
         mock_provider_cls.side_effect = RuntimeError("conn refused")
@@ -160,6 +171,7 @@ class TestDriverLogicalQubit:
     # -- 4. validate_driver_configs --
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_success(self, mock_validate_schema):
+        """Test successful driver configuration validation."""
         mock_validate_schema.return_value = True, None
         configs = {
             "token": _s("t"),
@@ -182,6 +194,7 @@ class TestDriverLogicalQubit:
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_failure(self, mock_validate_schema):
+        """Test invalid driver configuration reporting."""
         mock_validate_schema.return_value = (
             False,
             ["token is required"],
@@ -192,6 +205,7 @@ class TestDriverLogicalQubit:
 
     # -- 5. submit_task --
     def test_submit_task_success(self):
+        """Test successful task submission."""
         driver = DriverLogicalQubitBase()
         driver.backend = Mock()
         expected_task = Mock(name="FakeTaskObject")
@@ -206,6 +220,7 @@ class TestDriverLogicalQubit:
         driver.backend.run.assert_called_once()
 
     def test_submit_task_failure(self):
+        """Test task submission failure handling."""
         driver = DriverLogicalQubitBase()
         driver.backend = Mock()
         driver.backend.run.side_effect = RuntimeError("backend down")
@@ -218,6 +233,7 @@ class TestDriverLogicalQubit:
         assert task is None
 
     def test_submit_task_batch_sets_dynamic_decoupling_per_circuit(self):
+        """Test per-circuit dynamic decoupling for batch submission."""
         driver = DriverLogicalQubitBase()
         driver.backend = Mock()
         driver.driver_options["qes"] = {
@@ -238,6 +254,7 @@ class TestDriverLogicalQubit:
 
     # -- 6. get_task_results --
     def test_get_task_results_success(self):
+        """Test successful task result retrieval."""
         driver = DriverLogicalQubitBase()
         mock_task = Mock()
         expected_data = {
@@ -253,18 +270,21 @@ class TestDriverLogicalQubit:
         assert result == expected_data
 
     def test_get_task_results_failure(self):
+        """Test task result retrieval failure handling."""
         driver = DriverLogicalQubitBase()
         mock_task = Mock()
-        mock_task.result.side_effect = TimeoutError("task timeout")
+        timeout_error = TimeoutError("task timeout")
+        mock_task.result.side_effect = timeout_error
 
         success, err_msg, result = driver.get_task_results(mock_task)
 
         assert success is False
-        assert isinstance(err_msg, TimeoutError)
+        assert err_msg is timeout_error
         assert result is None
 
     # -- 7. convert_results --
     def test_convert_results(self):
+        """Test conversion of a single task result."""
         driver = DriverLogicalQubitBase()
         mock_task = Mock()
         expected_data = {"00000": 9, "11111": 1}
@@ -275,6 +295,7 @@ class TestDriverLogicalQubit:
         assert result == {"00000": 9, "11111": 1}
 
     def test_convert_batch_results(self):
+        """Test conversion and filtering of batch results."""
         driver = DriverLogicalQubitBase()
         mock_task = Mock()
         mock_task.get_counts.return_value = [
@@ -310,6 +331,7 @@ class TestDriverLogicalQubit:
         mock_set_optimized_circuit,
         mock_set_results,
     ):
+        """Test the single-circuit driver run workflow."""
         mock_convert_code.return_value = Mock()
         mock_submit_task.return_value = (True, None, Mock())
         # _results must expose a ``.metadata`` attribute (accessed by
@@ -365,6 +387,7 @@ class TestDriverLogicalQubit:
         mock_set_optimized_circuit,
         mock_set_results,
     ):
+        """Test the batch driver run workflow."""
         driver = DriverLogicalQubitBase()
         circuits = [Mock(name="circuit-0"), Mock(name="circuit-1")]
         mock_convert_code.side_effect = circuits
@@ -427,24 +450,28 @@ class TestDriverLogicalQubit:
 
     # -- 9. convert_code_to_qasm --
     def test_convert_code_to_qasm_empty_transpile(self):
+        """Test QASM conversion with empty transpile results."""
         driver = DriverLogicalQubitBase()
         src = "OPENQASM 2.0;"
         result = driver.convert_code_to_qasm(num_qubits, src, [])
         assert result == src
 
     def test_convert_code_to_qasm_none_transpile(self):
+        """Test QASM conversion without transpile results."""
         driver = DriverLogicalQubitBase()
         src = "OPENQASM 2.0;"
         result = driver.convert_code_to_qasm(num_qubits, src, None)
         assert result == src
 
     def test_convert_code_to_qasm_non_list_transpile(self):
+        """Test QASM conversion with non-list transpile results."""
         driver = DriverLogicalQubitBase()
         src = "OPENQASM 2.0;"
         result = driver.convert_code_to_qasm(num_qubits, src, "not-a-list")
         assert result == src
 
     def test_convert_code_to_qasm_valid_operations(self):
+        """Test QASM conversion with valid operations."""
         driver = DriverLogicalQubitBase()
         ops = [
             H(targets=[0]),
@@ -460,6 +487,7 @@ class TestDriverLogicalQubit:
         assert "cz" in result
 
     def test_convert_code_to_qasm_non_baseoperation(self):
+        """Test QASM conversion with invalid operation objects."""
         driver = DriverLogicalQubitBase()
         src = "OPENQASM 2.0;"
         ops = [{"name": "h", "targets": [0]}]
@@ -468,6 +496,7 @@ class TestDriverLogicalQubit:
 
     # -- 10. get_device_info --
     def test_get_device_info_success(self):
+        """Test successful device information retrieval."""
         driver = DriverLogicalQubitBase()
         driver.provider = Mock()
         driver.backend = Mock()
@@ -482,6 +511,7 @@ class TestDriverLogicalQubit:
         assert result == cfg
 
     def test_get_device_info_failure(self):
+        """Test device information retrieval failure handling."""
         driver = DriverLogicalQubitBase()
         driver.provider = Mock()
         driver.provider.get_backend.side_effect = RuntimeError("network error")
@@ -498,6 +528,7 @@ class TestDriverLogicalQubit:
     def test_fetch_running_info_success(
         self, mock_get_device_info, mock_call_http
     ):
+        """Test retrieval of running device information."""
         driver = DriverLogicalQubitBase()
         driver.token = _s("tok")
         driver.url = "http://test.example.com"
@@ -552,6 +583,7 @@ class TestDriverLogicalQubit:
 
     @patch.object(DriverLogicalQubitBase, "get_device_info")
     def test_fetch_running_info_device_failure(self, mock_get_device_info):
+        """Test disconnected status when device retrieval fails."""
         driver = DriverLogicalQubitBase()
         mock_get_device_info.return_value = (
             False,
@@ -566,6 +598,7 @@ class TestDriverLogicalQubit:
 
     # -- 12. simple methods --
     def test_update_driver_options(self):
+        """Test merging new driver options with defaults."""
         driver = DriverLogicalQubitBase()
         original = dict(driver.driver_options)
         driver.update_driver_options({"qes": {"enable": True}})
@@ -574,15 +607,18 @@ class TestDriverLogicalQubit:
             assert key in driver.driver_options
 
     def test_set_and_get_optimized_circuit(self):
+        """Test setting and getting the optimized circuit."""
         driver = DriverLogicalQubitBase()
         assert driver.get_optimized_circuit() is None
         driver.set_optimized_circuit("circuit-data")
         assert driver.get_optimized_circuit() == "circuit-data"
 
     def test_close_driver(self):
+        """Test closing the logical-qubit driver."""
         driver = DriverLogicalQubitBase()
         assert driver.close_driver() is None
 
     def test_cancel(self):
+        """Test task cancellation."""
         driver = DriverLogicalQubitBase()
         assert driver.cancel("job-1") is None

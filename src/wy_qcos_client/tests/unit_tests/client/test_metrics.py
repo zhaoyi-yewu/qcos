@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for Client metrics methods."""
+
 from unittest.mock import patch
 
 from wy_qcos_client.client import Client
@@ -24,8 +26,11 @@ client = Client()
 
 
 class TestClient:
+    """Test metrics API methods in Client."""
+
     @classmethod
     def setup_class(cls):
+        """Set shared mocked API return values."""
         cls.return_values = [-1, "reason", "text", "result"]
 
     @patch.object(Client, "call_json_rpc")

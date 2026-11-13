@@ -58,14 +58,14 @@ if [ -f "/var/lib/qcos/venv/default/bin/activate" ]; then
 fi
 if [ "${fix}" = false ]; then
   if command -v pylint > /dev/null 2>&1; then
-    echo "Checking dir: src (pylint)"
+    echo -e "\nChecking dir: src (pylint)"
     pylint src
   fi
-  echo "Checking dir: src (ruff)"
+  echo -e "\nChecking dir: src (ruff)"
   ruff check --preview src
-  echo "Checking dir: src (mypy)"
+  echo -e "\nChecking dir: src (mypy)"
   mypy src
 else
-  echo "Fixing code errors in dir: src (ruff)"
+  echo -e "\nFixing code errors in dir: src (ruff)"
   ruff check --preview --unsafe-fixes --fix src
 fi

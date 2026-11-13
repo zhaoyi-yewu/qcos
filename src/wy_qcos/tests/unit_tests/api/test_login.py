@@ -28,6 +28,7 @@ from wy_qcos.api.schemas import user as user_schemas
 from wy_qcos.api.schemas import auth as auth_schemas
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import _s
+from wy_qcos.tests.common import make_test_ip
 from wy_qcos.user.user_manager import UserManager
 from wy_qcos.user.security_manager import SecurityManager
 
@@ -67,7 +68,7 @@ class TestLogin:
         """Create a mock request object."""
         mock = Mock()
         mock.client = Mock()
-        mock.client.host = "192.168.1.1"
+        mock.client.host = make_test_ip(1)
         mock.headers = {"user-agent": "Mozilla/5.0"}
         return mock
 
@@ -236,7 +237,7 @@ class TestLogin:
         mock_request.app.state._security_manager = Mock()
         mock_request.app.state._user_manager = mock_user_manager
         mock_request.client = Mock()
-        mock_request.client.host = "192.168.1.1"
+        mock_request.client.host = make_test_ip(1)
         mock_request.headers = {"user-agent": "Mozilla/5.0"}
 
         body = auth_schemas.LoginRequest(
@@ -279,7 +280,7 @@ class TestLogin:
         mock_request.app.state._security_manager = mock_security_manager
         mock_request.app.state._user_manager = mock_user_manager
         mock_request.client = Mock()
-        mock_request.client.host = "192.168.1.1"
+        mock_request.client.host = make_test_ip(1)
         mock_request.headers = {"user-agent": "Mozilla/5.0"}
         mock_user_manager.log_login_attempt = Mock()
 
@@ -345,7 +346,7 @@ class TestLogin:
         mock_request.app.state = Mock()
         mock_request.app.state._security_manager = Mock()
         mock_request.client = Mock()
-        mock_request.client.host = "192.168.1.1"
+        mock_request.client.host = make_test_ip(1)
         mock_request.headers = {"user-agent": "Mozilla/5.0"}
         mock_user_manager.log_login_attempt = Mock()
 
@@ -455,7 +456,7 @@ class TestLoginEnhanced:
         """Create a mock request object."""
         mock = Mock()
         mock.client = Mock()
-        mock.client.host = "192.168.1.1"
+        mock.client.host = make_test_ip(1)
         mock.headers = {"user-agent": "Mozilla/5.0"}
         mock.app = Mock()
         mock.app.state = Mock()
@@ -608,7 +609,7 @@ class TestLoginMissingScenarios:
         """Create a mock request object."""
         mock = Mock()
         mock.client = Mock()
-        mock.client.host = "192.168.1.1"
+        mock.client.host = make_test_ip(1)
         mock.headers = {"user-agent": "Mozilla/5.0"}
         mock.app = Mock()
         mock.app.state = Mock()

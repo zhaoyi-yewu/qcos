@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for job API routes."""
+
 import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
@@ -80,8 +82,11 @@ job_ids = [uuid4(), uuid4(), uuid4()]
 
 
 class TestJob:
+    """Test job API routes."""
+
     @classmethod
     def setup_class(cls):
+        """Initialize shared job identifiers."""
         cls.job_id = ConstantForTest.job_id
         cls.job_ids = ConstantForTest.job_ids
 
@@ -979,6 +984,7 @@ class TestJob:
         mock_validate_schema,
         mock_validate_values_range,
     ):
+        """Test submitting jobs with driver timing options."""
         mock_validate_schema.return_value = (True, None)
         mock_validate_values_range.return_value = (True, None)
         mock_get_transpiler_manager.return_value = TranspilerManager()
@@ -1427,6 +1433,7 @@ class TestJob:
 
         # Mock to return different flow_run_ids for different job_ids
         def get_job_side_effect(job_id, filters=None):
+            """Return jobs with distinct flow run identifiers."""
             if job_id == self.job_ids[0]:
                 return True, None, Mock(id=job_id, flow_run_id="flow-run-123")
             elif job_id == self.job_ids[1]:

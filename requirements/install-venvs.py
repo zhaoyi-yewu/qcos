@@ -29,6 +29,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 TOP_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_VENV_BASE_DIR = Path("/var/lib/qcos/venv")
 
 # Whitelist for config section names that are embedded into generated
 # shell scripts; anything else is rejected at config load time
@@ -36,6 +37,15 @@ SAFE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 # Command substitution vectors rejected in post_scripts entries: a
 # backtick or "$(" would let a tampered config inject arbitrary commands
 CMD_SUBSTITUTION_PATTERN = re.compile(r"`|\$\(")
+
+
+def resolve_path_within(path, root):
+    """Resolve a path and require it to stay within an allowed root."""
+    root_path = Path(root).resolve()
+    resolved_path = (root_path / path).resolve()
+    if not resolved_path.is_relative_to(root_path):
+        raise ValueError(f"path must be within {root_path}: {path}")
+    return resolved_path
 
 
 def load_pyproject_deps(pyproject_file, sections):
@@ -431,14 +441,14 @@ USAGE
             "--file",
             dest="file_path",
             default=f"{TOP_DIR}/requirements/venv-configs.toml",
-            help="Driver dependencies config file path",
+            help="Driver dependencies config file path within the project",
         )
         parser.add_argument(
             "-V",
             "--venv-dir",
             dest="venv_base_dir",
-            default="/var/lib/qcos/venv",
-            help="Driver venv base dir",
+            default=str(DEFAULT_VENV_BASE_DIR),
+            help="Driver venv base dir within /var/lib/qcos/venv",
         )
         parser.add_argument(
             "--default-python3",
@@ -490,8 +500,10 @@ USAGE
 
         # parse arguments
         args = parser.parse_args()
-        file_path = args.file_path
-        venv_base_dir = args.venv_base_dir
+        file_path = resolve_path_within(args.file_path, TOP_DIR)
+        venv_base_dir = resolve_path_within(
+            args.venv_base_dir, DEFAULT_VENV_BASE_DIR
+        )
         default_python3 = args.default_python3
         default_pypy3 = args.default_pypy3
         skip_envs = args.skip_envs

@@ -30,6 +30,7 @@ from wy_qcos.metrics.metrics_server import (
     MetricsServer,
     PrometheusHandler,
 )
+from wy_qcos.tests.common import make_test_ip
 
 
 class TestPrometheusHandler:
@@ -165,12 +166,12 @@ class TestMetricsServer:
 
     def test_init_explicit_ipv4(self):
         """Test initialization with explicit IPv4 address."""
-        server = MetricsServer(ip="192.168.1.1", port=8000)
-        assert server.ip == "192.168.1.1"
+        server = MetricsServer(ip=make_test_ip(1), port=8000)
+        assert server.ip == make_test_ip(1)
         assert server.port == 8000
         assert server.allow_dual_stack is False
         assert isinstance(server.ip_obj, ipaddress.IPv4Address)
-        assert server.ip_obj == ipaddress.ip_address("192.168.1.1")
+        assert server.ip_obj == ipaddress.ip_address(make_test_ip(1))
 
     def test_init_explicit_ipv6(self):
         """Test initialization with explicit IPv6 address."""

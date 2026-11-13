@@ -589,7 +589,7 @@ class TestDeleteFlavors:
         cmd.take_action(args)
         mock_delete.assert_called_once_with([FLAVOR_ID, FLAVOR_ID_2])
 
-    @patch("builtins.input", return_value="y")
+    @patch("click.termui.visible_prompt_func", return_value="y")
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "resolve_flavor_id")
     @patch.object(Client, "delete_flavors")
@@ -615,7 +615,7 @@ class TestDeleteFlavors:
         mock_input.assert_called_once()
         mock_delete.assert_called_once()
 
-    @patch("builtins.input", return_value="n")
+    @patch("click.termui.visible_prompt_func", return_value="n")
     @patch.object(Client, "resolve_flavor_id")
     @patch.object(Client, "delete_flavors")
     def test_take_action_confirm_no(

@@ -36,6 +36,7 @@ Examples:
 import os
 import shutil
 import sys
+import tempfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 import library as lib
@@ -54,8 +55,8 @@ gitee_forked_branch = "develop"
 # the actual repository name (same for origin and forked)
 gitee_repo_name = "qcos"
 
-# local temp working directory
-local_work_dir = "/tmp/sync-forked-repo"
+# Prefix for a private temporary working directory
+local_work_dir_prefix = "sync-forked-repo-"
 
 
 def clone_forked_repo(forked_owner, repo_name, branch, work_dir):
@@ -219,7 +220,9 @@ def main(argv=None):
         print(f"Origin:  {origin_owner}/{gitee_repo_name}, branch: {origin_branch}")
         print(f"Forked:  {forked_owner}/{gitee_repo_name}, branch: {forked_branch}")
 
-        # 1. clone forked repo
+        # 1. clone forked repo into a private temporary directory
+        work_root = tempfile.mkdtemp(prefix=local_work_dir_prefix)
+        local_work_dir = os.path.join(work_root, gitee_repo_name)
         clone_forked_repo(forked_owner, gitee_repo_name,
                            forked_branch, local_work_dir)
 

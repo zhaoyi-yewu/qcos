@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for the circuit dependency graph."""
 
 from unittest.mock import patch
 from wy_qcos.transpiler.cmss.mapping.utils.dg import DG
@@ -22,7 +23,10 @@ from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class TestDG:
+    """Tests for dependency graph operations."""
+
     def test_get_shared_qubits(self):
+        """Test finding qubits shared by two gate nodes."""
         dg = DG()
         gate1 = ("x", (0,), [])
         gate2 = ("h", (1,), [])
@@ -37,6 +41,7 @@ class TestDG:
         assert shared_1_3 == [0]
 
     def test_add_gate(self):
+        """Test adding one-qubit and two-qubit gates."""
         dg = DG()
         gate1 = ("x", (0,), [])
         assert dg.qubit_to_node[0] is None
@@ -53,6 +58,7 @@ class TestDG:
         assert dg.qubit_to_node[1] is node_id2
 
     def test_add_line(self):
+        """Test adding a dependency edge between gate nodes."""
         dg = DG()
         gate1 = ("cx", (0, 1), [])
         gate2 = ("cx", (1, 2), [])
@@ -63,6 +69,7 @@ class TestDG:
         assert dg.has_edge(node_id1, node_id2)
 
     def test_get_node_depth(self):
+        """Test getting the depth of an absorbed gate node."""
         dg = DG()
         gate1 = ("x", (0,), [])
         gate2 = ("cx", (0, 1), [])
@@ -73,6 +80,7 @@ class TestDG:
         assert node_id1 == node_id2
 
     def test_check_direct_dependency(self):
+        """Test checking direct dependencies between gate nodes."""
         dg = DG()
         gate1 = ("x", (0,), [])
         gate2 = ("h", (1,), [])
@@ -93,6 +101,7 @@ class TestDG:
 
     @patch.object(DG, "check_direct_dependency")
     def test_check_absorbable(self, mock_check_direct_dependency):
+        """Test checking whether gate nodes can be absorbed."""
         dg = DG()
         gate1 = ("x", (0,), [])
         gate2 = ("h", (1,), [])
@@ -107,6 +116,7 @@ class TestDG:
         assert mock_check_direct_dependency.call_count == 1
 
     def test_check_parallel(self):
+        """Test checking whether gate nodes can run in parallel."""
         dg = DG()
         gate1 = ("x", (0,), [])
         gate2 = ("h", (1,), [])
@@ -119,6 +129,7 @@ class TestDG:
         assert dg.check_parallel(node_id2, node_id3)
 
     def test_cascade_node_direct_dependency(self):
+        """Test cascading gate nodes with direct dependencies."""
         dg = DG()
         gate1 = ("x", (0,), [])
         gate2 = ("h", (1,), [])
@@ -144,6 +155,7 @@ class TestDG:
         assert dg.nodes[node_id2]["num_gate_2q"] == 1
 
     def test_cascade_node_parallel(self):
+        """Test cascading parallel gate nodes."""
         dg = DG()
         gate1 = ("cx", (0, 1), [])
         gate2 = ("x", (0,), [])
@@ -160,6 +172,7 @@ class TestDG:
         assert len(dg.nodes[node_id2]["qubits"]) == 2
 
     def test_add_gate_absorb(self):
+        """Test adding gates with absorption into existing nodes."""
         dg = DG()
         gate1 = ("x", (0,), [])
         node_id1 = dg.add_gate_absorb(gate1)
@@ -177,6 +190,7 @@ class TestDG:
         assert len(dg.nodes[node_id3]["gates"]) == 1
 
     def test_from_qasm_string(self):
+        """Test building a dependency graph from QASM."""
         qasm_str = """
         OPENQASM 2.0;
         include "qelib1.inc";
@@ -195,6 +209,7 @@ class TestDG:
         assert dg.num_gate_2q == 1
 
     def test_from_ir(self):
+        """Test building a dependency graph from circuit IR."""
         dg = DG()
         gate1 = X([0])
         gate2 = CX([0, 1])

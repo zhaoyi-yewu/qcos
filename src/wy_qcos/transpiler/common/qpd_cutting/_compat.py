@@ -50,6 +50,7 @@ from .wire_cutting_transforms import cut_wires as _cut_wires
 
 @wraps(_find_cuts)
 def find_cuts(*args, **kwargs):
+    """Dispatch cut finding to the native or upstream workflow."""
     circuit = args[0] if args else kwargs.get("circuit")
     if isinstance(circuit, Circuit):
         return _legacy.find_cuts(*args, **kwargs)
@@ -58,6 +59,7 @@ def find_cuts(*args, **kwargs):
 
 @wraps(_cut_wires)
 def cut_wires(*args, **kwargs):
+    """Dispatch wire cutting to the native or upstream workflow."""
     circuit = args[0] if args else kwargs.get("circuit")
     if isinstance(circuit, Circuit):
         return _legacy.cut_wires(*args, **kwargs)
@@ -66,6 +68,7 @@ def cut_wires(*args, **kwargs):
 
 @wraps(_partition_problem)
 def partition_problem(*args, **kwargs):
+    """Dispatch problem partitioning to the selected workflow."""
     circuit = args[0] if args else kwargs.get("circuit")
     if isinstance(circuit, Circuit):
         return _legacy.partition_problem(*args, **kwargs)
@@ -74,6 +77,7 @@ def partition_problem(*args, **kwargs):
 
 @wraps(_generate_cutting_experiments)
 def generate_cutting_experiments(*args, **kwargs):
+    """Dispatch cutting experiment generation to the selected workflow."""
     problem = args[0] if args else kwargs.get("problem")
     if isinstance(problem, _legacy.WireCuttingProblem):
         return _legacy.generate_cutting_experiments(*args, **kwargs)
@@ -82,6 +86,7 @@ def generate_cutting_experiments(*args, **kwargs):
 
 @wraps(_reconstruct_expectation_values)
 def reconstruct_expectation_values(*args, **kwargs):
+    """Dispatch expectation reconstruction to the selected workflow."""
     results = args[0] if args else kwargs.get("results")
     if isinstance(results, _legacy.CuttingExperimentResults):
         return _legacy.reconstruct_expectation_values(*args, **kwargs)

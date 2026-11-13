@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for the ping API."""
+
 import json
 import pytest
 
@@ -24,17 +26,22 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestPing:
+    """Test the ping API endpoint."""
+
     @classmethod
     def setup_class(cls):
+        """Set up the test class."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
 
     @classmethod
     def teardown_class(cls):
+        """Tear down the test class."""
         pass
 
     def test_version(self):
+        """Test ping message round-trip."""
         message = "123"
         status_code, reason, text, response = self.admin_client.ping(message)
         assert status_code == HttpCode.SUCCESS_OK

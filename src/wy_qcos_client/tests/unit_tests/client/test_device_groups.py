@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for Client device group management methods."""
+
 import uuid
 from unittest.mock import patch
 
@@ -32,6 +34,7 @@ class TestClientDeviceGroup:
 
     @classmethod
     def setup_class(cls):
+        """Provide shared device group response values."""
         cls.return_values = (200, "OK", "text", "result")
 
     # --------------------------------------------------------------- #
@@ -39,6 +42,7 @@ class TestClientDeviceGroup:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_create_device_group_basic(self, mock_call):
+        """Test creating a device group with basic parameters."""
         mock_call.return_value = self.return_values
         client.create_device_group(name="test-group", device_names=None)
         call_args = mock_call.call_args[0]
@@ -53,6 +57,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_create_device_group_all_params(self, mock_call):
+        """Test creating a device group with all parameters."""
         mock_call.return_value = self.return_values
         client.create_device_group(
             name="full-group",
@@ -76,6 +81,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_create_device_group_none_omitted(self, mock_call):
+        """Test omitting None device group creation parameters."""
         mock_call.return_value = self.return_values
         client.create_device_group(
             name="basic",
@@ -97,6 +103,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_create_device_group_empty_description(self, mock_call):
+        """Test omitting an empty device group description."""
         mock_call.return_value = self.return_values
         client.create_device_group(name="x", description="", device_names=[])
         call_args = mock_call.call_args[0]
@@ -113,6 +120,7 @@ class TestClientDeviceGroup:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_update_device_group_basic(self, mock_call):
+        """Test updating a device group with basic parameters."""
         mock_call.return_value = self.return_values
         client.update_device_group(group_id=GROUP_ID)
         call_args = mock_call.call_args[0]
@@ -122,6 +130,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_device_group_all_params(self, mock_call):
+        """Test updating a device group with all parameters."""
         mock_call.return_value = self.return_values
         client.update_device_group(
             group_id=GROUP_ID,
@@ -146,6 +155,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_device_group_none_clears(self, mock_call):
+        """Test clearing nullable device group fields with None."""
         mock_call.return_value = self.return_values
         client.update_device_group(
             group_id=GROUP_ID,
@@ -169,6 +179,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_device_group_omit_skips(self, mock_call):
+        """Test omitting unspecified device group update fields."""
         mock_call.return_value = self.return_values
         client.update_device_group(group_id=GROUP_ID, name="new")
         call_args = mock_call.call_args[0]
@@ -183,6 +194,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_device_group_returns_values(self, mock_call):
+        """Test returning device group update response values."""
         mock_call.return_value = (201, "Created", "resp", "data")
         sc, reason, text, result = client.update_device_group(GROUP_ID)
         assert sc == 201
@@ -193,6 +205,7 @@ class TestClientDeviceGroup:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_get_device_group(self, mock_call):
+        """Test getting a device group by ID."""
         mock_call.return_value = self.return_values
         client.get_device_group(GROUP_ID)
         mock_call.assert_called_once_with(
@@ -203,6 +216,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_get_device_group_uuid_object(self, mock_call):
+        """Test getting a device group identified by a UUID object."""
         mock_call.return_value = self.return_values
         uid = uuid.UUID(GROUP_ID)
         client.get_device_group(uid)
@@ -220,6 +234,7 @@ class TestClientDeviceGroup:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_get_device_groups_no_filter(self, mock_call):
+        """Test getting device groups without filters."""
         mock_call.return_value = self.return_values
         client.get_device_groups()
         mock_call.assert_called_once_with(
@@ -234,6 +249,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_get_device_groups_with_filter(self, mock_call):
+        """Test getting device groups with a name filter."""
         mock_call.return_value = self.return_values
         client.get_device_groups(filters={"group_name": "my-group"})
         call_args = mock_call.call_args[0]
@@ -249,6 +265,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_get_device_groups_none_filter(self, mock_call):
+        """Test getting device groups with a None filter."""
         mock_call.return_value = self.return_values
         client.get_device_groups(filters=None)
         call_args = mock_call.call_args[0]
@@ -265,6 +282,7 @@ class TestClientDeviceGroup:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_delete_device_groups_single(self, mock_call):
+        """Test deleting a single device group."""
         mock_call.return_value = self.return_values
         client.delete_device_groups([GROUP_ID])
         mock_call.assert_called_once_with(
@@ -275,6 +293,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_device_groups_multiple(self, mock_call):
+        """Test deleting multiple device groups."""
         mock_call.return_value = self.return_values
         second_id = "00000000-0000-4000-8000-000000000003"
         client.delete_device_groups([GROUP_ID, second_id])
@@ -289,6 +308,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_device_groups_uuid_object(self, mock_call):
+        """Test deleting a device group identified by a UUID object."""
         mock_call.return_value = self.return_values
         uid = uuid.UUID(GROUP_ID)
         client.delete_device_groups([uid])
@@ -303,6 +323,7 @@ class TestClientDeviceGroup:
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_device_groups_empty_list(self, mock_call):
+        """Test deleting device groups with an empty ID list."""
         mock_call.return_value = self.return_values
         client.delete_device_groups([])
         call_args = mock_call.call_args[0]

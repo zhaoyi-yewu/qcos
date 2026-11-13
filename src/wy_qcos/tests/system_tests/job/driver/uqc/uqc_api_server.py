@@ -18,7 +18,7 @@
 # ruff: noqa: E402
 # load driver venv
 from wy_qcos.common.config import Config
-from wy_qcos.common.library import Library
+from wy_qcos.common.library import _s, Library
 
 org_path = Library.set_driver_venv_path(
     "DriverUQCMatrix2", Config.DEFAULT.VENV_DIR
@@ -98,7 +98,7 @@ def get_task_result(task_id):
     """
     result = None
     logger.info(f"[get_task_result|request] task_id: {task_id}, ")
-    pattern = r"qubit\s*\[\s*(\d+)\s*\]"
+    pattern = _s(r"qubit\s*\[\s*(\d+)\s*\]")
     matches = re.findall(
         pattern, _tasks[task_id]["source_code"], re.IGNORECASE
     )

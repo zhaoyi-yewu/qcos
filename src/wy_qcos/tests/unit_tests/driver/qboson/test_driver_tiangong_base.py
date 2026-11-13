@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the qboson Tiangong base driver."""
 
 import json
 from unittest.mock import patch
@@ -36,10 +39,14 @@ passwd_sdk_code = _s("")
 
 @pytest.mark.driver
 class TestDriverTiangongBase:
+    """Test cases for the DriverTiangongBase driver."""
+
     def test_init_driver(self):
+        """Test driver initialization."""
         assert driver_tiangong_base.init_driver() is None
 
     def test_validate_driver_configs(self):
+        """Test driver configuration validation."""
         configs = {
             "domain_url_auth": "https://open-pre.qboson.com",
             "domain_url_task": "https://new-open-pre.qboson.com/",
@@ -72,6 +79,7 @@ class TestDriverTiangongBase:
         mock_loop_with_timeout,
         mock_get_task_status,
     ):
+        """Test the run workflow with mocked dependencies."""
         mock_is_valid_url.return_value = False
         with pytest.raises(ValueError) as context:
             driver_tiangong_base.run(job_id, num_qubits, data, data_type)
@@ -123,10 +131,12 @@ class TestDriverTiangongBase:
         )
 
     def test_cancel(self):
+        """Test job cancellation."""
         assert driver_tiangong_base.cancel(job_id) is None
 
     @patch.object(Library, "call_http_api")
     def test_user_auth(self, mock_call_http_api):
+        """Test user authentication."""
         json_dict = {
             "code": "",
             "msg": "",
@@ -156,6 +166,7 @@ class TestDriverTiangongBase:
 
     @patch.object(Library, "call_http_api")
     def test_submit_tasks(self, mock_call_http_api):
+        """Test task submission."""
         json_dict = {"code": "0", "msg": "", "data": {"task_id": "1"}}
         mock_call_http_api.return_value = iter([
             200,
@@ -171,6 +182,7 @@ class TestDriverTiangongBase:
 
     @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_check_task_status(self, mock_get_task_realtime_result):
+        """Test task status checking."""
         mock_get_task_realtime_result.return_value = iter([
             False,
             "",
@@ -191,6 +203,7 @@ class TestDriverTiangongBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_realtime_result(self, mock_call_http_api):
+        """Test fetching realtime task results."""
         json_dict = {
             "code": "0",
             "msg": "",
@@ -218,6 +231,7 @@ class TestDriverTiangongBase:
 
     @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_get_results(self, mock_get_task_realtime_result):
+        """Test getting results through the realtime API."""
         mock_get_task_realtime_result.return_value = iter([
             False,
             "",
@@ -241,6 +255,7 @@ class TestDriverTiangongBase:
 
     @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_get_task_results(self, mock_get_task_realtime_result):
+        """Test parsing complete task results."""
         mock_get_task_realtime_result.return_value = (
             True,
             "",
@@ -277,6 +292,7 @@ class TestDriverTiangongBase:
 
     @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_get_task_results_empty(self, mock_get_task_realtime_result):
+        """Test parsing empty task results."""
         mock_get_task_realtime_result.return_value = (
             True,
             "",
@@ -292,6 +308,7 @@ class TestDriverTiangongBase:
     def test_get_task_results_length_mismatch(
         self, mock_get_task_realtime_result
     ):
+        """Test mismatched result lengths raise an error."""
         mock_get_task_realtime_result.return_value = (
             True,
             "",
@@ -305,6 +322,7 @@ class TestDriverTiangongBase:
 
     @patch.object(DriverTiangongBase, "get_task_realtime_result")
     def test_get_task_results_failed(self, mock_get_task_realtime_result):
+        """Test failed task results raise an error."""
         mock_get_task_realtime_result.return_value = (
             False,
             "Task failed",

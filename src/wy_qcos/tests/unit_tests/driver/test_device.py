@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for the Device class."""
+
 import pytest
 
 from wy_qcos.device.device import Device
@@ -24,47 +26,58 @@ device = Device("dummy", DriverDummy())
 
 
 class TestDevice:
+    """Test Device behavior."""
+
     def test_init_device(self):
+        """Test device initialization."""
         success, err_msg = device.init_device()
         assert success is True
         assert err_msg is None
 
     def test_get_name(self):
+        """Test getting the device name."""
         name = device.get_name()
         assert name == "dummy"
 
     @pytest.mark.smoke
     def test_get_driver(self):
+        """Test getting the device driver."""
         driver = device.get_driver()
         assert isinstance(driver, DriverDummy)
 
     def test_set_enable(self):
+        """Test enabling the device."""
         device.set_enable(True)
         enable = device.get_enable()
         assert enable is True
 
     def test_set_status(self):
+        """Test setting and getting the device status."""
         assert device.set_status("status") is None
         device.set_status(device.DEVICE_STATUS_ONLINE)
         status = device.get_status()
         assert status == "online"
 
     def test_set_alias_name(self):
+        """Test setting and getting the device alias."""
         device.set_alias_name("alias_name")
         alias_name = device.get_alias_name()
         assert alias_name == "alias_name"
 
     def test_set_description(self):
+        """Test setting and getting the device description."""
         device.set_description("description")
         description = device.get_description()
         assert description == "description"
 
     def test_set_configs(self):
+        """Test setting and getting device configurations."""
         device.set_configs("configs")
         configs = device.get_configs()
         assert configs == "configs"
 
     def test_set_device_detail(self):
+        """Test setting device details and calibration data."""
         details = {}
         calibrate_info = {}
         calibrate_info["step"] = 0.1
@@ -75,6 +88,7 @@ class TestDevice:
         assert device.calibrate_info["step"] == 0.1
 
     def test_set_device_option(self):
+        """Test setting and getting device options."""
         dev_opt_info = {}
         dev_opt_info["gap"] = 50
         device.set_device_options_info(dev_opt_info)
@@ -83,25 +97,30 @@ class TestDevice:
         assert res["gap"] == 50
 
     def test_set_and_get_max_queued_jobs(self):
+        """Test setting and getting the maximum queued jobs."""
         device.set_max_queued_jobs(10)
         res = device.get_max_queued_jobs()
         assert res == 10
 
     def test_state_default_auto(self):
+        """Test the default automatic device state."""
         assert device.get_state() == device.DEVICE_STATE_AUTO
 
     def test_set_state_maintain(self):
+        """Test setting the device state to maintain."""
         device.set_state(device.DEVICE_STATUS_MAINTAIN)
         assert device.get_state() == device.DEVICE_STATUS_MAINTAIN
         # Clean up
         device.set_state(device.DEVICE_STATE_AUTO)
 
     def test_set_state_auto(self):
+        """Test restoring the automatic device state."""
         device.set_state(device.DEVICE_STATUS_MAINTAIN)
         device.set_state(device.DEVICE_STATE_AUTO)
         assert device.get_state() == device.DEVICE_STATE_AUTO
 
     def test_get_effective_status_auto(self):
+        """Test effective status in automatic state."""
         device.set_state(device.DEVICE_STATE_AUTO)
         device.set_status(device.DEVICE_STATUS_ONLINE)
         status, is_manual = device.get_effective_status()
@@ -109,6 +128,7 @@ class TestDevice:
         assert is_manual is False
 
     def test_get_effective_status_manual(self):
+        """Test effective status in manual state."""
         device.set_state(device.DEVICE_STATUS_MAINTAIN)
         status, is_manual = device.get_effective_status()
         assert status == device.DEVICE_STATUS_MAINTAIN
@@ -117,6 +137,7 @@ class TestDevice:
         device.set_state(device.DEVICE_STATE_AUTO)
 
     def test_set_device_running_info_skipped_manual_state(self):
+        """Test ignoring monitored status in manual state."""
         # Setup: set device state to maintain (manual override)
         device.set_state(device.DEVICE_STATUS_MAINTAIN)
 
@@ -130,6 +151,7 @@ class TestDevice:
         device.set_state(device.DEVICE_STATE_AUTO)
 
     def test_set_device_running_info_applied_auto_state(self):
+        """Test applying monitored status in automatic state."""
         device.set_state(device.DEVICE_STATE_AUTO)
         device.set_status(device.DEVICE_STATUS_ONLINE)
 
@@ -142,6 +164,7 @@ class TestDevice:
         device.set_status(device.DEVICE_STATUS_ONLINE)
 
     def test_set_device_running_info_maintain_from_monitor(self):
+        """Test applying monitored maintain and online statuses."""
         device.set_state(device.DEVICE_STATE_AUTO)
         device.set_status(device.DEVICE_STATUS_ONLINE)
 
@@ -154,6 +177,7 @@ class TestDevice:
         assert device.get_status() == device.DEVICE_STATUS_ONLINE
 
     def test_set_device_running_info_details_still_updated(self):
+        """Test updating details while manual status is retained."""
         device.set_state(device.DEVICE_STATUS_MAINTAIN)
 
         device.set_device_running_info({

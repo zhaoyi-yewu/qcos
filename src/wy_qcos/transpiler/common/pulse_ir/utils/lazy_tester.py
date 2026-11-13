@@ -33,11 +33,11 @@
 """Lazy testers for optional features."""
 
 import abc
+import asyncio
 import collections
 import contextlib
 import functools
 import importlib
-import subprocess  # noqa: S404
 import typing
 import warnings
 from collections.abc import Iterable, Callable
@@ -380,6 +380,20 @@ class LazyImportTester(LazyDependencyManager):
         return True
 
 
+def _run_command(command):
+    """Run a command without a shell and return its exit status."""
+
+    async def execute():
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        return await process.wait()
+
+    return asyncio.run(execute())
+
+
 class LazySubprocessTester(LazyDependencyManager):
     """A lazy checker that a command-line tool is available.
 
@@ -419,13 +433,7 @@ class LazySubprocessTester(LazyDependencyManager):
 
     def _is_available(self):
         try:
-            subprocess.run(  # noqa: S603
-                self._command,
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        except (OSError, subprocess.SubprocessError):
+            return_code = _run_command(self._command)
+        except OSError:
             return False
-        else:
-            return True
+        return return_code == 0

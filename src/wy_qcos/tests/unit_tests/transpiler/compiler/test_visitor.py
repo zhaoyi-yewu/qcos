@@ -434,6 +434,30 @@ class TestVisitor:
             vist.visit_program(tree)
         assert "qubit error" in str(context.value)
 
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("", True),
+            ("+", True),
+            ("-", True),
+            ("0", True),
+            ("+12", True),
+            ("-12.", True),
+            (".5", True),
+            ("+0.25", True),
+            ("１２.５", True),
+            ("1\n", True),
+            (".", False),
+            ("+.", False),
+            ("1.2.3", False),
+            ("1e3", False),
+            ("--1", False),
+            ("1x", False),
+        ],
+    )
+    def test_is_float_regex(self, value, expected):
+        assert Visitor().is_float_regex(value) is expected
+
     def test_exp(self):
         data = """
         OPENQASM 3.0;

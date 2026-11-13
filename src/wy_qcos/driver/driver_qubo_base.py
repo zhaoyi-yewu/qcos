@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define the base driver for QUBO workloads."""
+
 import random
 
 from schema import Optional
@@ -30,6 +32,7 @@ class DriverQuboBase(DriverBase):
     """
 
     def __init__(self):
+        """Initialize the QUBO base driver."""
         super().__init__()
         self.tech_type = Constant.TECH_TYPE_PHOTON
         self.default_data_type = DriverBase.DATA_TYPE_QUBO

@@ -25,7 +25,7 @@ Supported formats:
     toml - all tables aggregated into a single .toml file
 
 Prerequisite:
-    - sql:  PostgreSQL client tools (pg_dump) in PATH
+    - sql:  PostgreSQL client tools (pg_dump) in a standard system directory
     - csv/json/toml: SQLAlchemy + pg8000 driver installed
     - toml: tomli_w or tomlkit installed
 
@@ -47,7 +47,8 @@ Examples:
 import csv
 import json
 import os
-import shutil
+import re
+import shlex
 import subprocess
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -80,13 +81,54 @@ except ImportError:  # pragma: no cover
 DEFAULT_DB_NAME = "qcos"
 DEFAULT_DB_URL = "127.0.0.1:5432"
 DEFAULT_USERNAME = "qcos"
-DEFAULT_PASSWORD = None
+DEFAULT_PWD = None
 DEFAULT_FILE_TYPE = "sql"
 
 SUPPORTED_FILE_TYPES = ("sql", "csv", "json", "toml")
+DB_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
-# password may be provided via environment variable
-PASSWORD_ENV = "QCOS_DATABASE_PASSWORD"
+# The database credential may be provided via environment variable.
+PWD_ENV = "QCOS_DATABASE_PASSWORD"
+
+if os.name == "nt":
+    PG_DUMP_SEARCH_DIRS = ()
+    PG_DUMP_VERSIONED_DIRS = (
+        Path("C:/Program Files/PostgreSQL"),
+        Path("C:/Program Files (x86)/PostgreSQL"),
+    )
+else:
+    PG_DUMP_SEARCH_DIRS = (
+        Path("/usr/bin"),
+        Path("/usr/local/bin"),
+        Path("/opt/homebrew/bin"),
+    )
+    PG_DUMP_VERSIONED_DIRS = (Path("/usr/lib/postgresql"),)
+
+
+def find_pg_dump():
+    """Find pg_dump in trusted system directories, ignoring PATH."""
+    executable_name = "pg_dump.exe" if os.name == "nt" else "pg_dump"
+    candidates = [
+        directory / executable_name for directory in PG_DUMP_SEARCH_DIRS
+    ]
+    for directory in PG_DUMP_VERSIONED_DIRS:
+        try:
+            candidates.extend(
+                sorted(directory.glob(f"*/bin/{executable_name}"))
+            )
+        except OSError:
+            continue
+
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+            if resolved.is_file() and (
+                os.name == "nt" or os.access(resolved, os.X_OK)
+            ):
+                return resolved
+        except OSError:
+            continue
+    return None
 
 
 def parse_db_url(db_url):
@@ -133,6 +175,17 @@ def build_connection_url(host, port, username, password, db_name):
     return f"postgresql+psycopg://{auth}@{host}:{port}/{db_name}"
 
 
+def resolve_output_path(output):
+    """Resolve an output path within the current working directory."""
+    base_dir = Path.cwd().resolve()
+    output_path = (base_dir / output).resolve()
+    if not output_path.is_relative_to(base_dir):
+        raise ValueError(
+            f"output path must be within {base_dir}: {output}"
+        )
+    return output_path
+
+
 def build_output_path(output, db_name, file_type):
     """Resolve output path according to file type.
 
@@ -143,13 +196,13 @@ def build_output_path(output, db_name, file_type):
 
     if file_type == "csv":
         if output:
-            return Path(output)
-        return Path.cwd() / f"{db_name}_{timestamp}_csv"
+            return resolve_output_path(output)
+        return resolve_output_path(f"{db_name}_{timestamp}_csv")
 
     if output:
-        return Path(output)
+        return resolve_output_path(output)
 
-    return Path.cwd() / f"{db_name}_{timestamp}.{file_type}"
+    return resolve_output_path(f"{db_name}_{timestamp}.{file_type}")
 
 
 def to_native(value):
@@ -171,13 +224,25 @@ def to_native(value):
 def run_pg_dump(db_name, host, port, username, password, output_path,
                 schema_only=False, data_only=False):
     """Execute pg_dump and write result to output_path."""
-    # pass password via PGPASSWORD env var (avoid leaking on cmdline)
-    env = os.environ.copy()
+    if not DB_NAME_RE.fullmatch(db_name):
+        print("ERROR: invalid database name", file=sys.stderr)
+        return 1
+    pg_dump_path = find_pg_dump()
+    if pg_dump_path is None:
+        print(
+            "ERROR: pg_dump not found in trusted system directories",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Use a minimal environment to prevent PATH and libpq environment
+    # variables from changing the subprocess behavior.
+    env = {}
     if password:
         env["PGPASSWORD"] = password
 
     cmd = [
-        "pg_dump",
+        str(pg_dump_path),
         "--host", str(host),
         "--port", str(port),
         "--username", username,
@@ -191,6 +256,10 @@ def run_pg_dump(db_name, host, port, username, password, output_path,
     if data_only:
         cmd.append("--data-only")
 
+    # Apply shell escaping without enabling shell execution.
+    quoted_cmd = " ".join(shlex.quote(str(arg)) for arg in cmd)
+    cmd = shlex.split(quoted_cmd)
+
     try:
         result = subprocess.run(
             cmd,
@@ -198,10 +267,11 @@ def run_pg_dump(db_name, host, port, username, password, output_path,
             capture_output=True,
             text=True,
             check=False,
+            shell=False,
         )
     except FileNotFoundError:
         print("ERROR: pg_dump not found. Please install PostgreSQL client "
-              "tools and ensure pg_dump is in PATH.",
+              "tools in a trusted system directory.",
               file=sys.stderr)
         return 1
 
@@ -379,9 +449,9 @@ USAGE
                         help=f"database username "
                              f"(default: {DEFAULT_USERNAME})")
     parser.add_argument("-p", "--password", dest="password",
-                        default=os.environ.get(PASSWORD_ENV, DEFAULT_PASSWORD),
+                        default=os.environ.get(PWD_ENV, DEFAULT_PWD),
                         help=f"database password "
-                             f"(default: env {PASSWORD_ENV} or empty)")
+                             f"(default: env {PWD_ENV} or empty)")
     parser.add_argument("-t", "--file-type", dest="file_type",
                         choices=SUPPORTED_FILE_TYPES,
                         default=DEFAULT_FILE_TYPE,
@@ -409,12 +479,15 @@ USAGE
     file_type = args.file_type
 
     try:
+        if not DB_NAME_RE.fullmatch(db_name):
+            raise ValueError(
+                "database name may contain only letters, digits, '-' and '_'"
+            )
         host, port = parse_db_url(args.db_url)
-    except ValueError as exc:
+        output_path = build_output_path(args.output, db_name, file_type)
+    except (OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-
-    output_path = build_output_path(args.output, db_name, file_type)
 
     print(f"Exporting database: {db_name}")
     print(f"  host      : {host}")
@@ -425,9 +498,9 @@ USAGE
 
     if file_type == "sql":
         # sql mode uses pg_dump
-        if shutil.which("pg_dump") is None:
-            print("ERROR: pg_dump not found in PATH. Please install "
-                  "PostgreSQL client tools first.",
+        if find_pg_dump() is None:
+            print("ERROR: pg_dump not found in trusted system directories. "
+                  "Please install PostgreSQL client tools first.",
                   file=sys.stderr)
             return 1
 

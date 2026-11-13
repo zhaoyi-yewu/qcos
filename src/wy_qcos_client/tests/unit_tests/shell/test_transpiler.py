@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for transpiler shell commands."""
 
 from argparse import Namespace
 from unittest.mock import patch, Mock
@@ -39,7 +42,10 @@ get_transpilers = GetTranspilers(shell, None)
 
 
 class TestGetTranspilers:
+    """Tests for GetTranspilers command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetTranspilers command."""
         parser = get_transpilers.get_parser("")
         assert parser is not None
 
@@ -52,6 +58,7 @@ class TestGetTranspilers:
         mock_check_results,
         mock_get_table_list_data,
     ):
+        """Test GetTranspilers take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None
@@ -66,7 +73,10 @@ class TestGetTranspilers:
 
 
 class TestGetTranspiler:
+    """Tests for GetTranspiler command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetTranspiler command."""
         parser = get_transpiler.get_parser("")
         assert parser is not None
 
@@ -76,6 +86,7 @@ class TestGetTranspiler:
     def test_take_action(
         self, mock_get_transpiler, mock_check_results, mock_get_table_data
     ):
+        """Test GetTranspiler take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None

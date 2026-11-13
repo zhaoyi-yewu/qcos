@@ -29,9 +29,9 @@
 
 """Multiprocessing utilities."""
 
-import multiprocessing as mp
-import platform
 import os
+import platform
+from multiprocessing.process import parent_process
 
 
 def local_hardware_info():
@@ -43,10 +43,11 @@ def local_hardware_info():
     Returns:
         dict: The hardware information.
     """
-    if hasattr(os, "sched_getaffinity"):
-        num_cpus = len(os.sched_getaffinity(0))
+    sched_getaffinity = getattr(os, "sched_getaffinity", None)
+    if sched_getaffinity is not None:
+        num_cpus = len(sched_getaffinity(0))
     else:
-        num_cpus = os.cpu_count()
+        num_cpus = getattr(os, "cpu_count")()
     if num_cpus is None:
         num_cpus = 1
     else:
@@ -64,10 +65,4 @@ def local_hardware_info():
 
 def is_main_process():
     """Checks whether the current process is the main one."""
-    if platform.system() == "Windows":
-        return not isinstance(mp.current_process(), mp.context.SpawnProcess)
-    else:
-        return not isinstance(
-            mp.current_process(),
-            (mp.context.ForkProcess, mp.context.SpawnProcess),
-        )
+    return parent_process() is None

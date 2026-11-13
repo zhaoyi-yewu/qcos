@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for MQ02 logical-qubit driver overrides."""
+
 # ruff: noqa: E402
 # load driver venv
 #
@@ -48,6 +50,7 @@ class TestDriverLqMQ02:
     """
 
     def test_init_overrides(self):
+        """Test MQ02-specific attribute overrides."""
         driver = DriverLqMQ02()
         assert driver.version == "0.0.1"
         assert driver.alias_name == "逻辑比特 MQ02 超导驱动"

@@ -277,7 +277,7 @@ spec:
         imagePullPolicy: Always
         command: [
           'sh', '-c',
-          'echo "prefect-server: http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api"; until wget -q --spider http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/api; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
+          'echo "prefect-server: http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/"; until wget -q --spider http://prefect-server.${QCOS_NAMESPACE}:${PREFECT_SERVER_PORT}/; do echo "waiting for prefect-server ..."; sleep 2; done; echo "prefect-server is ready"'
         ]
       containers:
       - name: ${QCOS_CONTAINER_NAME}

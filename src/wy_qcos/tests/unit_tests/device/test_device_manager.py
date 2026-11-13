@@ -18,6 +18,7 @@
 """Unit tests for DeviceManager."""
 
 import threading
+from builtins import TimeoutError
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -448,10 +449,10 @@ class TestDeviceManagerSubscribeDeviceInfo:
         mock_pubsub.listen.return_value = iter(messages)
 
         # Run in a thread and stop after a short delay
-        def run_subscribe():
-            mgr.subscribe_device_info(mock_redis, mock_device)
-
-        thread = threading.Thread(target=run_subscribe)
+        thread = threading.Thread(
+            target=mgr.subscribe_device_info,
+            args=(mock_redis, mock_device),
+        )
         thread.daemon = True
         thread.start()
         thread.join(timeout=1)
@@ -488,10 +489,10 @@ class TestDeviceManagerSubscribeDeviceInfo:
         ]
         mock_pubsub.listen.return_value = iter(messages)
 
-        def run_subscribe():
-            mgr.subscribe_device_info(mock_redis, mock_device)
-
-        thread = threading.Thread(target=run_subscribe)
+        thread = threading.Thread(
+            target=mgr.subscribe_device_info,
+            args=(mock_redis, mock_device),
+        )
         thread.daemon = True
         thread.start()
         thread.join(timeout=1)

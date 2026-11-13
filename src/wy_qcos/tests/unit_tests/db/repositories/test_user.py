@@ -23,6 +23,7 @@ from wy_qcos.db.models import User, Role, LoginLog, TokenBlacklist
 from wy_qcos.db.repositories.user import UserRepository
 from wy_qcos.api.schemas.user import CreateUserRequest, UpdateUserRequest
 from wy_qcos.common.library import _s
+from wy_qcos.tests.common import make_test_ip
 
 
 class TestUserRepositoryPasswordUtilities:
@@ -276,7 +277,7 @@ class TestUserRepositoryLoginLogOperations:
         """Test creating login log."""
         success, error, log = user_repository.create_login_log(
             user_name="testuser",
-            ip_address="192.168.1.1",
+            ip_address=make_test_ip(1),
             success=True,
             user_agent="Mozilla/5.0",
         )
@@ -288,7 +289,7 @@ class TestUserRepositoryLoginLogOperations:
         """Test creating failed login log."""
         success, error, log = user_repository.create_login_log(
             user_name="testuser",
-            ip_address="192.168.1.1",
+            ip_address=make_test_ip(1),
             success=False,
             failure_reason="Invalid password",
         )
@@ -301,7 +302,7 @@ class TestUserRepositoryLoginLogOperations:
             log = LoginLog(
                 id=str(uuid.uuid4()),
                 user_name="testuser",
-                ip_address="192.168.1.1",
+                ip_address=make_test_ip(1),
                 login_time=datetime.now(),
                 login_status=True,
             )
@@ -336,7 +337,7 @@ class TestUserRepositoryLoginLogOperations:
             log = LoginLog(
                 id=str(uuid.uuid4()),
                 user_name=sample_user.user_name,
-                ip_address="192.168.1.1",
+                ip_address=make_test_ip(1),
                 login_time=datetime.now(),
                 login_status=True,
             )
@@ -566,7 +567,7 @@ class TestUserRepositoryEdgeCases:
             log = LoginLog(
                 id=str(uuid.uuid4()),
                 user_name="testuser",
-                ip_address=f"192.168.1.{i}",
+                ip_address=make_test_ip(i),
                 login_time=datetime.now(),
                 login_status=True if i % 2 == 0 else False,
             )
@@ -663,7 +664,7 @@ class TestUserRepositoryEdgeCases:
             log = LoginLog(
                 id=str(uuid.uuid4()),
                 user_name=sample_user.user_name,
-                ip_address=f"192.168.1.{i}",
+                ip_address=make_test_ip(i),
                 login_time=datetime.now(),
                 login_status=True,
             )
@@ -684,7 +685,7 @@ class TestUserRepositoryEdgeCases:
             log = LoginLog(
                 id=str(uuid.uuid4()),
                 user_name=sample_user.user_name,
-                ip_address=f"192.168.1.{i}",
+                ip_address=make_test_ip(i),
                 login_time=datetime.now(),
                 login_status=True,
             )
@@ -836,7 +837,7 @@ class TestUserRepositoryEdgeCases:
             log_data = {
                 "id": str(uuid.uuid4()),
                 "user_name": "testuser",
-                "ip_address": "192.168.1.1",
+                "ip_address": make_test_ip(1),
                 "login_time": datetime.now(),
                 "login_status": True,
             }
@@ -845,7 +846,7 @@ class TestUserRepositoryEdgeCases:
         in_memory_db.commit()
 
         success, error, log = user_repository.create_login_log(
-            "testuser", "192.168.1.2", True
+            "testuser", make_test_ip(2), True
         )
         assert success is True
 

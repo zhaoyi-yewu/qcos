@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for collecting and splitting DAG operation blocks."""
+
 import pytest
 
 from wy_qcos.transpiler.cmss.circuit.collect_blocks import (
@@ -27,6 +29,8 @@ from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class TestCollectBlocks:
+    """Tests for collecting and splitting DAG operation blocks."""
+
     @pytest.mark.smoke
     def test_collect_gates_from_dagcircuit_1(self):
         """Test collecting CX gates from DAGCircuits."""

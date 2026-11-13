@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the CIQTEK ion trap driver."""
 
 import json
 from unittest.mock import patch
@@ -50,51 +53,62 @@ shots = 100
 
 
 class TestDriverCiqtekIon1:
+    """Test the CIQTEK ion trap driver."""
+
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
+        """Test validating CIQTEK driver configurations."""
         mock_validate_schema.return_value = True, None
         configs = {}
         success, _ = driver_ion_trap.validate_driver_configs(configs)
         assert success is True
 
     def test_init_driver(self):
+        """Test CIQTEK driver initialization."""
         assert driver_ion_trap.init_driver() is None
 
     def test_close_driver(self):
+        """Test closing the CIQTEK driver."""
         assert driver_ion_trap.close_driver() is None
 
     @patch.object(DriverCiqtekIon1, "get_access_token")
     @patch.object(DriverCiqtekIon1, "refresh_access_token")
     def test_fetch_config(self, mock_refresh, mock_get):
+        """Test fetching CIQTEK driver configurations."""
         mock_refresh.return_value = True, None, ""
         mock_get.return_value = True, None, ""
         assert driver_ion_trap.fetch_configs() is None
 
     @patch.object(Library, "call_http_api")
     def test_get_access_token(self, mock_call_http):
+        """Test getting a CIQTEK access token."""
         mock_call_http.return_value = 200, None, get_data, None
         success, _, _ = driver_ion_trap.get_access_token("", "")
         assert success is True
 
     @patch.object(Library, "call_http_api")
     def test_refresh_access_token(self, mock_call_http):
+        """Test refreshing a CIQTEK access token."""
         mock_call_http.return_value = 200, None, get_data, None
         success, _, _ = driver_ion_trap.refresh_access_token("")
         assert success is True
 
     @patch.object(Library, "call_http_api")
     def test_submit_task(self, mock_call_http):
+        """Test submitting a CIQTEK task."""
         mock_call_http.return_value = 200, None, get_data, None
         success, _, _ = driver_ion_trap.submit_task("", "")
         assert success is True
 
     @patch.object(Library, "call_http_api")
     def test_get_task_result(self, mock_call_http):
+        """Test getting a CIQTEK task result."""
         mock_call_http.return_value = 200, None, get_data, None
         success, _, _ = driver_ion_trap.get_task_result("", [2])
         assert success is True
 
     def test_convert_result(self):
+        """Test converting CIQTEK task results."""
         converted_result = driver_ion_trap.convert_result(result, shots)
         assert converted_result["00"] == 25
 
@@ -105,6 +119,7 @@ class TestDriverCiqtekIon1:
         mock_submit_task,
         mock_loop_with_timeout,
     ):
+        """Test running a CIQTEK job."""
         mock_loop_with_timeout.return_value = True, None, result
         mock_submit_task.return_value = True, None, ""
         assert (

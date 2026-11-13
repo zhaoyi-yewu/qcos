@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for Client flavor management methods."""
+
 import json
 import uuid
 from unittest.mock import patch
@@ -38,6 +40,7 @@ class TestClientFlavor:
 
     @classmethod
     def setup_class(cls):
+        """Provide shared flavor response values."""
         cls.return_values = (200, "OK", "text", "result")
 
     # --------------------------------------------------------------- #
@@ -45,6 +48,7 @@ class TestClientFlavor:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_create_flavor_basic(self, mock_call):
+        """Test creating a flavor with basic parameters."""
         mock_call.return_value = self.return_values
         status_code, reason, text, result = client.create_flavor(
             name="test-flavor", device_groups=DEVICE_GROUPS
@@ -62,6 +66,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_create_flavor_all_params(self, mock_call):
+        """Test creating a flavor with all parameters."""
         mock_call.return_value = self.return_values
         client.create_flavor(
             name="full-flavor",
@@ -138,6 +143,7 @@ class TestClientFlavor:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_update_flavor_basic(self, mock_call):
+        """Test updating a flavor with basic parameters."""
         mock_call.return_value = self.return_values
         client.update_flavor(flavor_id=FLAVOR_ID, device_groups=DEVICE_GROUPS)
         call_args = mock_call.call_args[0]
@@ -148,6 +154,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_flavor_all_params(self, mock_call):
+        """Test updating a flavor with all parameters."""
         mock_call.return_value = self.return_values
         client.update_flavor(
             flavor_id=FLAVOR_ID,
@@ -182,6 +189,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_flavor_none_clears(self, mock_call):
+        """Test clearing nullable flavor fields with None."""
         mock_call.return_value = self.return_values
         client.update_flavor(
             flavor_id=FLAVOR_ID,
@@ -215,6 +223,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_flavor_omit_skips(self, mock_call):
+        """Test omitting unspecified flavor update fields."""
         mock_call.return_value = self.return_values
         client.update_flavor(
             flavor_id=FLAVOR_ID,
@@ -235,6 +244,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_update_flavor_returns_values(self, mock_call):
+        """Test returning flavor update response values."""
         mock_call.return_value = (201, "Created", "resp", "data")
         sc, reason, text, result = client.update_flavor(
             FLAVOR_ID, device_groups=DEVICE_GROUPS
@@ -249,6 +259,7 @@ class TestClientFlavor:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_get_flavor(self, mock_call):
+        """Test getting a flavor by ID."""
         mock_call.return_value = self.return_values
         client.get_flavor(FLAVOR_ID)
         mock_call.assert_called_once_with(
@@ -277,6 +288,7 @@ class TestClientFlavor:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_get_flavors_no_filter(self, mock_call):
+        """Test getting flavors without filters."""
         mock_call.return_value = self.return_values
         client.get_flavors()
         mock_call.assert_called_once_with(
@@ -291,6 +303,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_get_flavors_with_filter(self, mock_call):
+        """Test getting flavors with a name filter."""
         mock_call.return_value = self.return_values
         client.get_flavors(filters={"flavor_name": "g1.all"})
         call_args = mock_call.call_args[0]
@@ -306,6 +319,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_get_flavors_none_filter(self, mock_call):
+        """Test getting flavors with a None filter."""
         mock_call.return_value = self.return_values
         client.get_flavors(filters=None)
         call_args = mock_call.call_args[0]
@@ -322,6 +336,7 @@ class TestClientFlavor:
     # --------------------------------------------------------------- #
     @patch.object(Client, "call_json_rpc")
     def test_delete_flavors_single(self, mock_call):
+        """Test deleting a single flavor."""
         mock_call.return_value = self.return_values
         client.delete_flavors([FLAVOR_ID])
         mock_call.assert_called_once_with(
@@ -332,6 +347,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_flavors_multiple(self, mock_call):
+        """Test deleting multiple flavors."""
         mock_call.return_value = self.return_values
         second_id = "00000000-0000-4000-8000-000000000002"
         client.delete_flavors([FLAVOR_ID, second_id])
@@ -346,6 +362,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_flavors_uuid_object(self, mock_call):
+        """Test deleting a flavor identified by a UUID object."""
         mock_call.return_value = self.return_values
         uid = uuid.UUID(FLAVOR_ID)
         client.delete_flavors([uid])
@@ -360,6 +377,7 @@ class TestClientFlavor:
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_flavors_empty_list(self, mock_call):
+        """Test deleting flavors with an empty ID list."""
         mock_call.return_value = self.return_values
         client.delete_flavors([])
         call_args = mock_call.call_args[0]
@@ -380,6 +398,7 @@ class TestClientFlavor:
         assert result == FLAVOR_ID
 
     def test_resolve_flavor_id_uuid_object(self):
+        """Test resolving a flavor ID from a UUID string."""
         uid = uuid.UUID(FLAVOR_ID)
         result = Client.resolve_flavor_id(client, str(uid))
         assert result == str(uid)

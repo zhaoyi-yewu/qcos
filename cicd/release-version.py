@@ -295,12 +295,12 @@ def bump_version(
         top_dir: top dir
     """
     # set new-version
-    bump_cmd_part = ""
+    bump_cmd_part = []
     if bump_version_part:
-        bump_cmd_part = f"{bump_version_part}"
+        bump_cmd_part.append(bump_version_part)
     elif bump_version_name:
         semver.Version.parse(bump_version_name)
-        bump_cmd_part = f"--new-version {bump_version_name}"
+        bump_cmd_part.extend(["--new-version", bump_version_name])
 
     # set command arguments
     bump_cmd_args_list = []
@@ -314,21 +314,24 @@ def bump_version(
         bump_cmd_args_list.append("--verbose")
     if dry_run:
         bump_cmd_args_list.append("--dry-run")
-    bump_cmd_args = " ".join(bump_cmd_args_list)
 
     # set release notes
     _release_notes = release_notes.replace("### ", "")
     _release_notes = _release_notes.replace("## ", "")
     _release_notes = escape_single_braces(_release_notes)
-    bump_tag_message = f'--tag-message "Release Notes\n\n{_release_notes}"'
+    bump_tag_message = f"Release Notes\n\n{_release_notes}"
 
-    # run bump-my-version command
+    # Keep release notes in one argv element without reparsing shell syntax.
     cmds = [
-        f"bump-my-version bump {bump_cmd_args} {bump_cmd_part} "
-        f"{bump_tag_message}"
+        "bump-my-version",
+        "bump",
+        *bump_cmd_args_list,
+        *bump_cmd_part,
+        "--tag-message",
+        bump_tag_message,
     ]
-    print(f"bump version cmd:\n{';'.join(cmds)}")
-    results = run_command(shlex.split(cmds[0]), cwd=top_dir)
+    print(f"bump version cmd:\n{shlex.join(cmds)}")
+    results = run_command(cmds, cwd=top_dir)
     return results
 
 

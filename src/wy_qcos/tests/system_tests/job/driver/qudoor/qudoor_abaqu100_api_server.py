@@ -21,6 +21,8 @@ import uuid
 
 from aiohttp import web
 
+from wy_qcos.log import init_console_logger
+
 logger = logging.getLogger(__name__)
 
 _query_count = {}
@@ -28,9 +30,9 @@ _query_count = {}
 
 def init_logging():
     """Init logging."""
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+        log_format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 

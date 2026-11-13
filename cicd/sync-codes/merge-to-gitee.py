@@ -223,7 +223,7 @@ def get_commits_dict(branch_name, since_str=None, repo_path="."):
         for d in diffs:
             diff = re.sub(ignore_pattern, b'', d.diff, flags=re.MULTILINE)
             full_diff_text += diff
-        content_hash = hashlib.md5(full_diff_text).hexdigest()
+        content_hash = hashlib.sha256(full_diff_text).hexdigest()
 
         # store commit info
         if (
@@ -409,7 +409,7 @@ def sanitize_message(message):
     Returns:
         Desensitized commit message
     """
-    key_to_remove = {"Jira:", "Code Source From", "市场项目", "AI Co-author:"}
+    key_to_remove = {"Jira:", "Code Source From", "市场项目", "AI Co-author:", "Add #CMSS"}
     new_messages = []
     for line in message.split("\n"):
         # Check whether contains keywords that need to be removed
@@ -427,8 +427,7 @@ def sanitize_message(message):
             )
         new_messages.append(line.strip())
 
-    new_message = "\n".join(new_messages)
-    new_message = re.sub(r"(\s*\n)+$", "", new_message)
+    new_message = "\n".join(new_messages).rstrip()
     new_message = re.sub(r"\n\s*\n", "\n\n", new_message)
     new_message = re.sub(r"\n{3,}", "\n", new_message)
     return new_message
@@ -490,11 +489,8 @@ def create_single_commit_branch(
     run_command(amend_cmd)
 
     if new_message != message:
-        msg_file = "/tmp/git_commit_msg.txt"
-        with open(msg_file, "w", encoding="utf-8") as f:
-            f.write(new_message)
         run_command(
-            ["git", "commit", "--amend", "--no-edit", "-F", msg_file]
+            ["git", "commit", "--amend", "-m", new_message]
         )
 
     new_commit_hash = run_command(
@@ -699,11 +695,8 @@ def merge_branches(commit_id):
         run_command(amend_cmd)
 
         if new_message != message:
-            msg_file = "/tmp/git_commit_msg.txt"
-            with open(msg_file, "w", encoding="utf-8") as f:
-                f.write(new_message)
             run_command(
-                ["git", "commit", "--amend", "--no-edit", "-F", msg_file]
+                ["git", "commit", "--amend", "-m", new_message]
             )
 
         merged_commit = run_command(

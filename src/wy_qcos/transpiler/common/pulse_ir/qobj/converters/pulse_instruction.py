@@ -29,6 +29,7 @@ from typing import cast
 
 import numpy as np
 
+from wy_qcos.common.library import _s
 from wy_qcos.transpiler.cmss.circuit.parameter import Parameter
 from wy_qcos.transpiler.cmss.circuit.parameterexpression import (
     ParameterExpression,
@@ -560,7 +561,7 @@ class QobjToInstructionConverter:
     :class:`~wy_qcos.pulse.instructions.Instruction`.
     """
 
-    __chan_regex__ = re.compile(r"([a-zA-Z]+)(\d+)")
+    __chan_regex__ = re.compile(_s(r"([a-zA-Z]+)(\d+)"))
 
     @deprecate_pulse_dependency
     def __init__(

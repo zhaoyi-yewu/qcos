@@ -395,6 +395,22 @@ class TestZNEMitigation:
         output = zne.postprocess(results, num_qubits=2)
         assert output["metadata"]["applied"] is True
 
+    @pytest.mark.parametrize(
+        ("label", "expected"),
+        [
+            ("zne_s0", 0.0),
+            ("zne_s1", 1.0),
+            ("zne_s01.50", 1.5),
+            ("zne_s1.5\n", 1.5),
+            ("zne_s1.", None),
+            ("zne_s.5", None),
+            ("zne_s+1", None),
+            ("zne_s1e3", None),
+        ],
+    )
+    def test_parse_scale_label(self, label, expected):
+        assert ZNEMitigation()._parse_scale(label) == expected
+
     def test_postprocess_no_scaled(self):
         zne = ZNEMitigation()
         results = {"zne_s1": {"00": 5000, "11": 5000}}

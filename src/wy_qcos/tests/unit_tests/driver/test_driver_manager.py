@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
 
+"""Unit tests for the DriverManager class."""
+
 import pytest
 
 from unittest.mock import patch
@@ -28,10 +30,13 @@ obj = DriverManager()
 
 
 class TestDriverManager:
+    """Test DriverManager behavior."""
+
     @pytest.mark.smoke
     @patch.object(Library, "import_classes")
     @patch("wy_qcos.driver.driver_manager.Config")
     def test_load_drivers(self, mock_config, mock_import_classes):
+        """Test loading configured drivers."""
         mock_config._EXTRA_CONFIGS = {
             "device1": {"driver": "DriverDummyDriver"},
             "device2": {"driver": "DriverDummyDriver"},
@@ -42,6 +47,7 @@ class TestDriverManager:
 
     @patch.object(DriverBase, "validate_driver")
     def test_init_drivers(self, mock_validate_driver):
+        """Test initializing drivers with different validation results."""
         mock_validate_driver.return_value = iter([True, "err_msg"])
         assert obj.init_drivers() is None
 
@@ -49,10 +55,13 @@ class TestDriverManager:
         assert obj.init_drivers() is None
 
     def test_has_driver(self):
+        """Test checking for an unknown driver."""
         assert obj.has_driver("tiangong10000") is False
 
     def test_get_driver(self):
+        """Test getting an unknown driver."""
         assert obj.get_driver("tiangong10000") is None
 
     def test_get_drivers(self):
+        """Test getting all registered drivers."""
         assert obj.get_drivers() == obj.drivers

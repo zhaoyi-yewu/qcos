@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for the CETC Baihua quantum device driver."""
+
 import json
 
 import pytest
@@ -33,6 +35,7 @@ class MockOp:
     """Lightweight stand-in for a GateOperation / BaseOperation."""
 
     def __init__(self, name, targets, arg_value=None):
+        """Initialize a mock operation with its gate and target data."""
         self.name = name
         self.targets = list(targets)
         self.arg_value = list(arg_value) if arg_value else []
@@ -68,19 +71,24 @@ class TestDriverCetcBaihua:
     # -- subclass defaults ------------------------------------------------
 
     def test_inherits_from_base(self):
+        """Verify the Baihua driver inherits from the CETC base driver."""
         assert isinstance(driver_baihua, DriverCetcBase)
 
     def test_default_computer_type(self):
+        """Verify the default Baihua computer type is 60."""
         assert driver_baihua.computer_type == 60
 
     def test_alias_and_description(self):
+        """Verify the alias and description identify the Baihua device."""
         assert driver_baihua.alias_name == "国基量子 百花 超导驱动"
         assert "国基量子 百花 超导驱动" in driver_baihua.description
 
     def test_max_qubits_inherited(self):
+        """Verify the inherited maximum qubit count."""
         assert driver_baihua.max_qubits == 156
 
     def test_tech_type_inherited(self):
+        """Verify the inherited technology type is configured."""
         assert driver_baihua.tech_type is not None
 
     # -- fetch_configs with baihua defaults --------------------------------
@@ -124,6 +132,7 @@ class TestDriverCetcBaihua:
     # -- update_driver_params_from_options ---------------------------------
 
     def test_update_opts_computer_type(self):
+        """Verify driver options override the Baihua computer type."""
         original = driver_baihua.computer_type
         driver_baihua.driver_options["computer_type"] = 61
         driver_baihua.update_driver_params_from_options()
@@ -135,6 +144,7 @@ class TestDriverCetcBaihua:
 
     @patch.object(Library, "call_http_api")
     def test_submit_task_sends_baihua_type(self, mock_http):
+        """Verify task submission sends the Baihua computer type."""
         response = json.dumps({
             "code": 200,
             "data": {"instanceId": task_id},
@@ -180,6 +190,7 @@ class TestDriverCetcBaihua:
 
     @patch.object(Library, "call_http_api")
     def test_get_device_info_sends_baihua_id(self, mock_http):
+        """Verify device information requests use the Baihua device ID."""
         response = json.dumps({"code": 200, "msg": "", "data": {"state": 1}})
         mock_http.return_value = _http_ok(response)
         driver_baihua.base_url = "http://localhost"
@@ -192,6 +203,7 @@ class TestDriverCetcBaihua:
 
     @patch.object(Library, "call_http_api")
     def test_get_device_info_url_construction(self, mock_http):
+        """Verify the device information request URL is correct."""
         response = json.dumps({"code": 200, "data": {"state": 1}})
         mock_http.return_value = _http_ok(response)
         driver_baihua.base_url = "http://localhost:8080"
@@ -207,6 +219,7 @@ class TestDriverCetcBaihua:
     @patch.object(DriverCetcBaihua, "get_device_info")
     @patch.object(DriverCetcBaihua, "fetch_configs")
     def test_fetch_running_info_online(self, mock_fetch, mock_dev):
+        """Verify Baihua device data is converted to online information."""
         mock_dev.return_value = (
             True,
             None,
@@ -232,6 +245,7 @@ class TestDriverCetcBaihua:
 
     @patch.object(Library, "call_http_api")
     def test_submit_task_http_error(self, mock_http):
+        """Verify Baihua task submission reports HTTP failures."""
         mock_http.return_value = _http_err(500, "Internal Error", "err")
         driver_baihua.base_url = "http://localhost"
         driver_baihua.computer_type = 60
@@ -246,6 +260,7 @@ class TestDriverCetcBaihua:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_list_success(self, mock_http):
+        """Verify Baihua task list retrieval returns the response data."""
         response = json.dumps({"code": 200, "data": {"list": []}})
         mock_http.return_value = _http_ok(response)
         driver_baihua.base_url = "http://localhost"
@@ -256,6 +271,7 @@ class TestDriverCetcBaihua:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_list_with_state_filter(self, mock_http):
+        """Verify Baihua task list requests include the state filter."""
         response = json.dumps({"code": 200, "data": {"list": []}})
         mock_http.return_value = _http_ok(response)
         driver_baihua.base_url = "http://localhost"
@@ -269,6 +285,7 @@ class TestDriverCetcBaihua:
 
     @patch.object(DriverCetcBaihua, "_get_task_detail")
     def test_get_task_results_success(self, mock_detail):
+        """Verify Baihua task details are converted to measurement counts."""
         mock_detail.return_value = (
             True,
             None,
@@ -292,6 +309,7 @@ class TestDriverCetcBaihua:
     # -- convert_results inheritance smoke test ---------------------------
 
     def test_convert_results_inherited(self):
+        """Verify Baihua inherits result conversion from the base driver."""
         data = {
             "frequencyResult": [
                 {"qState": "00", "freq": 512},

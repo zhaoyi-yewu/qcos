@@ -1597,6 +1597,7 @@ class TestJobEngine:
             qec_options=None,
         )
 
+    @patch("wy_qcos.engine.job_engine.logger")
     @patch("wy_qcos.engine.job_engine.init_logger")
     @patch("wy_qcos.engine.job_engine.register_signals")
     @patch("wy_qcos.engine.job_engine.flow_task_monitor")
@@ -1607,6 +1608,7 @@ class TestJobEngine:
         mock_flow_task_monitor,
         mock_register_signals,
         mock_init_logger,
+        mock_logger,
     ):
         mock_run_code.return_value = (
             self.job_results,
@@ -1652,6 +1654,11 @@ class TestJobEngine:
             self.src_code_info.aggregation_type
             == Constant.AGGREGATION_TYPE_NONE
         )
+        debug_messages = [
+            call.args[0] for call in mock_logger.debug.call_args_list
+        ]
+        assert any("backend: dummy" in msg for msg in debug_messages)
+        assert all("job_info:" not in msg for msg in debug_messages)
 
     @patch("wy_qcos.engine.job_engine.format_error_results")
     @patch("wy_qcos.engine.job_engine.init_driver.submit")

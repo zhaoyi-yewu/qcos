@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for core Client methods."""
 
 from unittest.mock import patch
 
@@ -23,16 +26,21 @@ client = Client()
 
 
 class TestClient:
+    """Test core Client helper methods."""
+
     @classmethod
     def setup_class(cls):
+        """Set shared mocked API return values."""
         cls.return_values = [-1, "reason", "text", "result"]
 
     def test_print_api_response(self):
+        """Test print_api_response method."""
         assert client.print_api_response("200", "OK", "no") is None
 
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_call_json_rpc(self, mock_print_api_response, mock_call_http_api):
+        """Test call_json_rpc method."""
         mock_call_http_api.return_value = self.return_values
         mock_print_api_response.return_value = self.return_values
         status_code, reason, text, result = client.call_json_rpc(
@@ -42,10 +50,12 @@ class TestClient:
         mock_call_http_api.assert_called_once()
 
     def test_handle_invalid_arguments(self):
+        """Test handle_invalid_arguments method."""
         assert client.handle_invalid_arguments([1, 2]) is None
 
     @patch("wy_qcos_client.client.jsonrpcclient.parse")
     def test_parse_jsonrpc_response(self, mock_parse):
+        """Test parse_jsonrpc_response method."""
         mock_parse.return_value = None
         success, parse = client.parse_jsonrpc_response(None)
         assert not success

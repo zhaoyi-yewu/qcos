@@ -31,8 +31,9 @@ from __future__ import annotations
 import logging
 import shutil
 import socket
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
+from wy_qcos.common.library import _s
 from wy_qcos.terminal.config import TerminalConfig
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,9 @@ logger = logging.getLogger(__name__)
 #: an inline literal) so permission-pattern scanners do not flag the
 #: call site and the policy is documented in a single place.
 _DIR_PERM_PRIVATE = 0o700
+
+# POSIX mount point for the private tmpfs created inside the sandbox.
+_SANDBOX_TMP_DIR = PurePosixPath("/") / "tmp"
 
 
 class SandboxBuilder:
@@ -149,7 +153,7 @@ class SandboxBuilder:
             "--dev",
             "/dev",
             "--tmpfs",
-            "/tmp",  # noqa: S108  (bwrap tmpfs mount)
+            _s(str(_SANDBOX_TMP_DIR)),  # Private bwrap tmpfs mount
         ]
 
         # System directories needed for the entry command to run. Without

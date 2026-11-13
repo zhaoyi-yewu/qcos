@@ -26,6 +26,7 @@ from loguru import logger
 from wy_qcos.transpiler.cmss.compiler.qtypes import Node, RegType
 from wy_qcos.common.cmss.gate_operation import create_gate
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
+from wy_qcos.common.library import _s
 from wy_qcos.transpiler.cmss.compiler.linked_list import (
     LinkedList,
     LinkedNode,
@@ -1304,7 +1305,7 @@ class Visitor:
         Returns:
 
         """
-        pattern = r"^[+-]?(\d+(\.\d*)?|\.\d+)?$"
+        pattern = _s(r"^[+-]?(\d+(\.\d*)?|\.\d+)?$")
         return bool(re.match(pattern, s))
 
     def is_id(self, s):

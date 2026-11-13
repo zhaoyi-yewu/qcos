@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Fixtures for database unit tests."""
+
 import pytest
 import uuid
 from datetime import datetime
@@ -37,6 +39,7 @@ from wy_qcos.db.models import (
 from wy_qcos.db.repositories.base import BaseRepository
 from wy_qcos.db.repositories.user import UserRepository
 from wy_qcos.db.repositories.role import RoleRepository
+from wy_qcos.tests.common import make_test_ip
 
 
 @event.listens_for(Job, "before_insert")
@@ -135,7 +138,7 @@ def sample_login_log(in_memory_db):
     log = LoginLog(
         id=str(uuid.uuid4()),
         user_name="testuser",
-        ip_address="192.168.1.1",
+        ip_address=make_test_ip(1),
         login_time=datetime.now(),
         login_status=True,
         user_agent="Mozilla/5.0",

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define the Qboson Tiangong 550 V2 driver."""
+
 from wy_qcos.device.device import Device
 from wy_qcos.driver.qboson.driver_tiangong_base import DriverTiangongBase
 
@@ -26,6 +28,7 @@ class DriverTiangong550V2(DriverTiangongBase):
     """
 
     def __init__(self):
+        """Initialize the Tiangong 550 V2 driver."""
         super().__init__()
         self.alias_name = "玻色量子-天工550光量子伊辛机驱动-V2"
         self.description = "玻色量子-天工550光量子伊辛机驱动-V2"

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for merging adjacent compatible phase gates."""
+
 import copy
 import numpy as np
 
@@ -36,7 +38,10 @@ from wy_qcos.tests.unit_tests.transpiler.comm import validate_optimize_result
 
 
 class TestAdjacentOptimization:
+    """Test merging of adjacent compatible phase gates."""
+
     def test_adjacent_optimization(self):
+        """Test adjacent phase merging with basis gate restrictions."""
         opt = AdjacentPhaseOptPass()
 
         ir = [

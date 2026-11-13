@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for driver APIs."""
+
 import pytest
 
 from wy_qcos.common.library import Constant
@@ -24,8 +26,11 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestDrivers:
+    """Test driver API endpoints."""
+
     @classmethod
     def setup_class(cls):
+        """Set up the test class."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
@@ -33,14 +38,17 @@ class TestDrivers:
 
     @classmethod
     def teardown_class(cls):
+        """Tear down the test class."""
         pass
 
     def test_get_drivers(self):
+        """Test retrieving all drivers."""
         drivers = StLibrary.get_drivers(self.admin_client)
         assert isinstance(drivers, dict)
 
     @pytest.mark.smoke
     def test_get_driver(self):
+        """Test retrieving a driver by name."""
         driver_name = "DriverDummy"
         driver = StLibrary.get_driver(self.admin_client, driver_name)
         assert isinstance(driver, dict)
@@ -68,6 +76,7 @@ class TestDrivers:
             assert isinstance(driver["version"], str)
 
     def test_get_drivers_check_details(self):
+        """Test retrieving detailed information for every driver."""
         drivers = StLibrary.get_drivers(self.admin_client)
         assert isinstance(drivers, dict)
         for driver_name, driver_info in drivers.items():

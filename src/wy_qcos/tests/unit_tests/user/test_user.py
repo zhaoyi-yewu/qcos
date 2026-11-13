@@ -25,6 +25,7 @@ from wy_qcos.api.schemas import user as schemas
 from wy_qcos.api.schemas.user import LoginLog
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import _s
+from wy_qcos.tests.common import make_test_ip
 from wy_qcos.user.user_manager import UserManager
 
 
@@ -766,13 +767,13 @@ class TestUserManager:
     def test_log_login_attempt(self, user_manager):
         """Test logging login attempts."""
         user_manager.log_login_attempt(
-            "testuser", "192.168.1.1", True, user_agent="Mozilla/5.0"
+            "testuser", make_test_ip(1), True, user_agent="Mozilla/5.0"
         )
 
         assert len(user_manager.login_logs) == 1
         log = user_manager.login_logs[0]
         assert log.user_name == "testuser"
-        assert log.ip_address == "192.168.1.1"
+        assert log.ip_address == make_test_ip(1)
         assert log.login_status is True
         assert log.user_agent == "Mozilla/5.0"
 
@@ -780,10 +781,10 @@ class TestUserManager:
         """Test getting login logs."""
         # Add some logs
         user_manager.log_login_attempt(
-            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+            "user1", make_test_ip(1), True, user_agent="Mozilla/5.0"
         )
         user_manager.log_login_attempt(
-            "user2", "192.168.1.2", False, user_agent="Chrome/91.0"
+            "user2", make_test_ip(2), False, user_agent="Chrome/91.0"
         )
 
         success, error, result = user_manager.get_login_logs()
@@ -796,10 +797,10 @@ class TestUserManager:
         """Test deleting all login logs."""
         # Add some logs
         user_manager.log_login_attempt(
-            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+            "user1", make_test_ip(1), True, user_agent="Mozilla/5.0"
         )
         user_manager.log_login_attempt(
-            "user2", "192.168.1.2", False, user_agent="Chrome/91.0"
+            "user2", make_test_ip(2), False, user_agent="Chrome/91.0"
         )
 
         # Verify logs exist
@@ -820,13 +821,13 @@ class TestUserManager:
         """Test deleting login logs for a specific user."""
         # Add logs for multiple users
         user_manager.log_login_attempt(
-            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+            "user1", make_test_ip(1), True, user_agent="Mozilla/5.0"
         )
         user_manager.log_login_attempt(
-            "user1", "192.168.1.2", False, user_agent="Firefox/88"
+            "user1", make_test_ip(2), False, user_agent="Firefox/88"
         )
         user_manager.log_login_attempt(
-            "user2", "192.168.1.3", True, user_agent="Chrome/91.0"
+            "user2", make_test_ip(3), True, user_agent="Chrome/91.0"
         )
 
         # Verify logs exist
@@ -851,7 +852,7 @@ class TestUserManager:
         """Test deleting logs for nonexistent user returns 0."""
         # Add some logs
         user_manager.log_login_attempt(
-            "user1", "192.168.1.1", True, user_agent="Mozilla/5.0"
+            "user1", make_test_ip(1), True, user_agent="Mozilla/5.0"
         )
 
         # Try to delete logs for nonexistent user

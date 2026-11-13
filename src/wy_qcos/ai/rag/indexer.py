@@ -35,6 +35,7 @@ from wy_qcos.ai.rag.chunker import chunk_file
 from wy_qcos.ai.rag.embedder import embed_texts
 from wy_qcos.common.config import Config
 from wy_qcos.db.models import AiDocumentChunk
+from wy_qcos.log import init_console_logger
 
 logger = logging.getLogger(__name__)
 
@@ -210,9 +211,9 @@ def parse_args(argv: list[str] | None = None):
 async def run_indexer(argv: list[str] | None = None):
     """Entry point called by bin/qcos-ai-indexer.py."""
     args = parse_args(argv)
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        log_format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     # Load QCOS config (DATABASE / AI sections) from the TOML file.
     Config.load_config_file(args.config_file)

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for database utility helpers."""
+
 from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 

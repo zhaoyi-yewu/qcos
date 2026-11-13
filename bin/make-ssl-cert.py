@@ -32,7 +32,7 @@ from pathlib import Path
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 TOP_DIR = Path(__file__).resolve().parent.parent
-TEMP_DIR = "/tmp/qcos"
+TEMP_DIR = os.path.join(os.sep, "etc", "qcos", "ssl")
 KEY_SIZE = 2048
 CERT_C = "CN"
 CERT_ST = "Suzhou"
@@ -99,10 +99,10 @@ def make_ssl_cert(ip_list, dns_list, key_files, cert_days=CERT_DAYS):
     Returns:
         return code (0: success, other: failed)
     """
-    openssl_conf_temp_file = TEMP_DIR + "/openssl.conf"
-    ssl_database_index_file = TEMP_DIR + "/index.txt"
-    ssl_serial_file = TEMP_DIR + "/serial.txt"
-    ssl_newcerts_dir = TEMP_DIR + "/"
+    openssl_conf_temp_file = os.path.join(TEMP_DIR, "openssl.conf")
+    ssl_database_index_file = os.path.join(TEMP_DIR, "index.txt")
+    ssl_serial_file = os.path.join(TEMP_DIR, "serial.txt")
+    ssl_newcerts_dir = TEMP_DIR + os.sep
 
     print("Generating SSL certificate: ")
 
@@ -115,7 +115,6 @@ def make_ssl_cert(ip_list, dns_list, key_files, cert_days=CERT_DAYS):
     for key_file_name, key_file in key_files.items():
         key_file_list.append(key_file_name + ": " + key_file)
     key_files_str = "\n".join(key_file_list)
-    import pdb;
     if key_file_exist:
         print(key_files_str + " are already existed, skip!")
         return 1
@@ -296,13 +295,14 @@ USAGE
 
         # prepare and generate ssl cert
         mkdirs(TEMP_DIR)
+        os.chmod(TEMP_DIR, 0o700)
         key_files = {
-            "SSL_PRIVATE_KEY": f"{TEMP_DIR}/ssl.key",
-            "SSL_CSR": f"{TEMP_DIR}/ssl.csr",
-            "SSL_CRT": f"{TEMP_DIR}/ssl.crt",
-            "CAKEY_PEM": f"{TEMP_DIR}/cakey.pem",
-            "CACERT_PEM": f"{TEMP_DIR}/cacert.pem",
-            "COMBINED_PEM": f"{TEMP_DIR}/qcos-combined.pem"
+            "SSL_PRIVATE_KEY": os.path.join(TEMP_DIR, "ssl.key"),
+            "SSL_CSR": os.path.join(TEMP_DIR, "ssl.csr"),
+            "SSL_CRT": os.path.join(TEMP_DIR, "ssl.crt"),
+            "CAKEY_PEM": os.path.join(TEMP_DIR, "cakey.pem"),
+            "CACERT_PEM": os.path.join(TEMP_DIR, "cacert.pem"),
+            "COMBINED_PEM": os.path.join(TEMP_DIR, "qcos-combined.pem")
         }
         ret = make_ssl_cert(ip_list=ip_list,
                             dns_list=dns_list,

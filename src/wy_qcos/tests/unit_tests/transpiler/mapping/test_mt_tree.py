@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the Monte Carlo mapping tree."""
 
 import networkx as nx
 import pytest
@@ -2553,6 +2556,7 @@ class TestMCTree:
         call_count = [0]
 
         def mock_expand(node, swap):
+            """Return None once before delegating to the original expander."""
             call_count[0] += 1
             if call_count[0] == 1:
                 return None  # First call returns None (line 459-460)

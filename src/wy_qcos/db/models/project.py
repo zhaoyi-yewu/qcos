@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define the project database model."""
+
 import uuid
 from datetime import datetime
 

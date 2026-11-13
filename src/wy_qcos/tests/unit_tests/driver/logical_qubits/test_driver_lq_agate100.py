@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for AGate-100 logical-qubit driver overrides."""
+
 # ruff: noqa: E402
 # load driver venv
 #
@@ -48,6 +50,7 @@ class TestDriverLqAGate100:
     """
 
     def test_init_overrides(self):
+        """Test AGate-100-specific attribute overrides."""
         driver = DriverLqAGate100()
         assert driver.version == "0.0.1"
         assert driver.alias_name == "逻辑比特 AGate-100 超导驱动"

@@ -143,7 +143,7 @@ class TestAiChatRepl:
 
     def test_exit_immediately(self, capsys):
         cmd, fake_input = self._make_cmd(["/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -154,7 +154,7 @@ class TestAiChatRepl:
 
     def test_eof_breaks(self, capsys):
         cmd, _ = self._make_cmd([])
-        with patch("builtins.input", side_effect=EOFError):
+        with patch("click.termui.visible_prompt_func", side_effect=EOFError):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -163,7 +163,7 @@ class TestAiChatRepl:
 
     def test_help_command(self, capsys):
         cmd, fake_input = self._make_cmd(["/help", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -181,7 +181,7 @@ class TestAiChatRepl:
         cmd, fake_input = self._make_cmd(
             ["/new my title", "/exit"], client_mock
         )
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -197,7 +197,7 @@ class TestAiChatRepl:
             "session_id": "s-new",
         }
         cmd, fake_input = self._make_cmd(["/new", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -218,7 +218,7 @@ class TestAiChatRepl:
             }
         ]
         cmd, fake_input = self._make_cmd(["/list", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id="s1", no_rag=False, show_tools=False, model=None
@@ -232,7 +232,7 @@ class TestAiChatRepl:
         client_mock = Mock()
         client_mock.ai_list_sessions.return_value = []
         cmd, fake_input = self._make_cmd(["/list", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -242,7 +242,7 @@ class TestAiChatRepl:
 
     def test_use_command(self, capsys):
         cmd, fake_input = self._make_cmd(["/use s9", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -252,7 +252,7 @@ class TestAiChatRepl:
 
     def test_use_without_arg(self, capsys):
         cmd, fake_input = self._make_cmd(["/use", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -269,7 +269,7 @@ class TestAiChatRepl:
             ]
         }
         cmd, fake_input = self._make_cmd(["/history", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id="s1", no_rag=False, show_tools=False, model=None
@@ -281,7 +281,7 @@ class TestAiChatRepl:
 
     def test_history_without_session(self, capsys):
         cmd, fake_input = self._make_cmd(["/history", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -292,7 +292,7 @@ class TestAiChatRepl:
     def test_delete_command(self, capsys):
         client_mock = Mock()
         cmd, fake_input = self._make_cmd(["/delete s1", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id="s1", no_rag=False, show_tools=False, model=None
@@ -304,7 +304,7 @@ class TestAiChatRepl:
 
     def test_delete_without_arg(self, capsys):
         cmd, fake_input = self._make_cmd(["/delete", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -314,7 +314,7 @@ class TestAiChatRepl:
 
     def test_rag_toggle(self, capsys):
         cmd, fake_input = self._make_cmd(["/rag off", "/rag on", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -326,7 +326,7 @@ class TestAiChatRepl:
 
     def test_tools_toggle(self, capsys):
         cmd, fake_input = self._make_cmd(["/tools on", "/tools off", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -338,7 +338,7 @@ class TestAiChatRepl:
 
     def test_unknown_command(self, capsys):
         cmd, fake_input = self._make_cmd(["/frobnicate", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -348,7 +348,7 @@ class TestAiChatRepl:
 
     def test_empty_line_skipped(self, capsys):
         cmd, fake_input = self._make_cmd(["", "/exit"])
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -366,7 +366,7 @@ class TestAiChatRepl:
         ])
         client_mock.ai_chat_stream.return_value = resp
         cmd, fake_input = self._make_cmd(["hi", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -387,7 +387,7 @@ class TestAiChatRepl:
         ])
         client_mock.ai_chat_stream.return_value = resp
         cmd, fake_input = self._make_cmd(["hi", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -422,7 +422,7 @@ class TestAiChatRepl:
         cmd, fake_input = self._make_cmd(
             ["/model", "/model b", "hi", "/exit"], client_mock
         )
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -451,7 +451,7 @@ class TestAiChatRepl:
         cmd, fake_input = self._make_cmd(
             ["/model default", "/exit"], client_mock
         )
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -473,7 +473,7 @@ class TestAiChatRepl:
             ],
         }
         cmd, fake_input = self._make_cmd(["/model nope", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -511,7 +511,7 @@ class TestAiChatRepl:
         cmd, fake_input = self._make_cmd(
             ["/model b", "/new", "hi", "/exit"], client_mock
         )
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -553,7 +553,7 @@ class TestAiChatRepl:
         cmd, fake_input = self._make_cmd(
             ["/use s9", "hi", "/exit"], client_mock
         )
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -581,7 +581,7 @@ class TestAiChatRepl:
             ],
         }
         cmd, fake_input = self._make_cmd(["/use s9", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -596,7 +596,7 @@ class TestAiChatRepl:
             "AI down"
         )
         cmd, fake_input = self._make_cmd(["hi", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None
@@ -608,7 +608,7 @@ class TestAiChatRepl:
         client_mock = Mock()
         client_mock.ai_chat_stream.side_effect = RuntimeError("net")
         cmd, fake_input = self._make_cmd(["hi", "/exit"], client_mock)
-        with patch("builtins.input", side_effect=fake_input):
+        with patch("click.termui.visible_prompt_func", side_effect=fake_input):
             cmd.take_action(
                 Mock(
                     session_id=None, no_rag=False, show_tools=False, model=None

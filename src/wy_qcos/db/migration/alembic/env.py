@@ -15,9 +15,9 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import logging
 import os
 import sys
-from logging.config import fileConfig
 from pathlib import Path
 
 import tomllib
@@ -38,10 +38,21 @@ qcos_config_file = "/etc/qcos/qcos.toml"
 # access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# Use a fixed console configuration instead of evaluating handlers from INI.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(
+            logging.Formatter(
+                "%(levelname)-5.5s [%(name)s] %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
+        root_logger.addHandler(console_handler)
+    root_logger.setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("alembic").setLevel(logging.INFO)
 
 # for 'autogenerate' support, add model MetaData object here
 target_metadata = Base.metadata

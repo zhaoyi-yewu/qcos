@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for transpiler API routes."""
+
 import pytest
 from unittest.mock import Mock, patch
 
@@ -41,12 +43,15 @@ response_info = {
 
 
 class TestTranspiler:
+    """Test transpiler API routes."""
+
     @pytest.mark.smoke
     @patch.object(TranspilerManager, "get_transpilers")
     @patch.object(TaskScheduler, "get_transpiler_manager")
     def test_get_transpilers(
         self, mock_get_transpiler_manager, mock_get_transpilers
     ):
+        """Test listing transpilers when none are registered."""
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_transpilers.return_value = {}
         mock_client = Mock(spec=GetTranspilerRequest)
@@ -62,6 +67,7 @@ class TestTranspiler:
         mock_get_transpiler,
         mock_get_transpiler_info,
     ):
+        """Test retrieving a transpiler."""
         mock_get_transpiler_info.return_value = response_info
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_transpiler.return_value = TranspilerBase()
@@ -71,6 +77,7 @@ class TestTranspiler:
         assert response.name == ""
 
     def test__get_transpiler_info(self):
+        """Test building transpiler information."""
         mock_client = TranspilerBase()
         response = _get_transpiler_info(mock_client)
         assert response["name"] is None
@@ -80,6 +87,7 @@ class TestTranspiler:
     def test_get_transpilers_with_entries(
         self, mock_get_transpiler_manager, mock_get_transpilers
     ):
+        """Test listing registered transpilers."""
         transpiler = Mock(spec=TranspilerBase)
         transpiler.name = Constant.TRANSPILER_DUMMY
         transpiler.alias_name = "Dummy"
@@ -108,6 +116,7 @@ class TestTranspiler:
     def test_get_transpiler_not_found(
         self, mock_get_transpiler_manager, mock_get_transpiler
     ):
+        """Test handling a missing transpiler."""
         mock_get_transpiler_manager.return_value = TranspilerManager()
         mock_get_transpiler.return_value = None
         mock_client = Mock(spec=GetTranspilerRequest)

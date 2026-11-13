@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for job shell commands."""
 
 import argparse
 import json
@@ -103,7 +106,10 @@ get_device_options = GetDeviceOptions(shell, None)
 
 
 class TestSubmitJob:
+    """Tests for SubmitJob command."""
+
     def test_validate_filepath(self):
+        """Test SubmitJob filepath validation."""
         with pytest.raises(argparse.ArgumentTypeError) as e:
             submit_job.validate_filepath("")
         assert "Error" in str(e)
@@ -119,6 +125,7 @@ class TestSubmitJob:
         mock_handle_invalid_arguments,
         mock_version,
     ):
+        """Test SubmitJob take_action method."""
         mock_version.return_value = -1, None, None, None
         mock_handle_invalid_arguments.return_value = None
         mock_get_content_by_type.return_value = (True, "no", "qcos")
@@ -155,7 +162,10 @@ class TestSubmitJob:
         mock_client.transpiler = Constant.TRANSPILER_CMSS
         mock_client.transpiler_options = '{"options": "options"}'
         mock_client.profiling = [Constant.PROFILING_TYPE_CODE]
-        mock_client.callbacks = '[{"name":"cb","type":"results","method":"post","url":"http://test"}]'
+        mock_client.callbacks = (
+            '[{"name":"cb","type":"results","method":"post",'
+            '"url":"http://test"}]'
+        )
         mock_client.source_code_files = ["/qcos/test.qasm"]
         mock_client.qec_options = None
         mock_client.flavor = None
@@ -166,12 +176,16 @@ class TestSubmitJob:
         assert submit_job.take_action(mock_client) is None
 
     def test_get_parser(self):
+        """Test parser creation for SubmitJob command."""
         parser = submit_job.get_parser("")
         assert parser is not None
 
 
 class TestGetJobStatus:
+    """Tests for GetJobStatus command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetJobStatus command."""
         parser = get_job_status.get_parser("")
         assert parser is not None
 
@@ -186,6 +200,7 @@ class TestGetJobStatus:
         mock_handle_invalid_arguments,
         mock_get_table_data,
     ):
+        """Test GetJobStatus take_action method."""
         mock_check_results.return_value = None
         mock_get_job_status.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -202,7 +217,10 @@ class TestGetJobStatus:
 
 
 class TestGetJobResults:
+    """Tests for GetJobResults command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetJobResults command."""
         parser = get_job_results.get_parser("")
         assert parser is not None
 
@@ -217,6 +235,7 @@ class TestGetJobResults:
         mock_handle_invalid_arguments,
         mock_get_table_data,
     ):
+        """Test GetJobResults take_action method."""
         mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -247,6 +266,7 @@ class TestGetJobResults:
         mock_handle_invalid_arguments,
         mock_get_table_data,
     ):
+        """Test saving job results to a text file."""
         mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -283,6 +303,7 @@ class TestGetJobResults:
         mock_handle_invalid_arguments,
         mock_get_table_data,
     ):
+        """Test saving job results with a non-text extension."""
         mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -319,6 +340,7 @@ class TestGetJobResults:
         mock_handle_invalid_arguments,
         mock_get_table_data,
     ):
+        """Test saving job results to a nested path."""
         mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -344,7 +366,7 @@ class TestGetJobResults:
         assert os.path.exists("./result/result.doc") is True
         os.remove("./result/result.doc")
 
-    @patch("builtins.input")
+    @patch("click.termui.visible_prompt_func")
     @patch.object(CommandHelper, "get_table_data")
     @patch.object(CommandHelper, "handle_invalid_arguments")
     @patch.object(Client, "get_job_results")
@@ -357,6 +379,7 @@ class TestGetJobResults:
         mock_get_table_data,
         mock_input,
     ):
+        """Test declining to overwrite an existing results file."""
         mock_check_results.return_value = response
         mock_get_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -507,7 +530,10 @@ class TestGetJobResults:
 
 
 class TestGetJobs:
+    """Tests for GetJobs command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetJobs command."""
         parser = get_jobs.get_parser("")
         assert parser is not None
 
@@ -517,6 +543,7 @@ class TestGetJobs:
     def test_take_action(
         self, mock_check_results, mock_get_jobs, mock_get_table_data
     ):
+        """Test GetJobs take_action method."""
         mock_get_jobs.return_value = iter([None, None, None, None])
         mock_get_table_data.return_value = None
         mock_check_results.return_value = None
@@ -536,7 +563,10 @@ class TestGetJobs:
 
 
 class TestCancelJobs:
+    """Tests for CancelJobs command."""
+
     def test_get_parser(self):
+        """Test parser creation for CancelJobs command."""
         parser = cancel_jobs.get_parser("")
         assert parser is not None
 
@@ -551,6 +581,7 @@ class TestCancelJobs:
         mock_handle_invalid_arguments,
         mock_cancel_jobs,
     ):
+        """Test CancelJobs take_action method."""
         mock_check_results.return_value = [response["result"]]
         mock_get_jobs.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -570,7 +601,10 @@ class TestCancelJobs:
 
 
 class TestDeleteJobs:
+    """Tests for DeleteJobs command."""
+
     def test_get_parser(self):
+        """Test parser creation for DeleteJobs command."""
         parser = delete_jobs.get_parser("")
         assert parser is not None
 
@@ -585,6 +619,7 @@ class TestDeleteJobs:
         mock_handle_invalid_arguments,
         mock_delete_jobs,
     ):
+        """Test DeleteJobs take_action method."""
         mock_check_results.return_value = [response["result"]]
         mock_get_jobs.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -606,7 +641,10 @@ class TestDeleteJobs:
 
 
 class TestSetJobResults:
+    """Tests for SetJobResults command."""
+
     def test_get_parser(self):
+        """Test parser creation for SetJobResults command."""
         parser = set_job_results.get_parser("")
         assert parser is not None
 
@@ -619,6 +657,7 @@ class TestSetJobResults:
         mock_set_job_results,
         mock_handle_invalid_arguments,
     ):
+        """Test SetJobResults take_action method."""
         mock_check_results.return_value = None
         mock_set_job_results.return_value = iter([None, None, None, None])
         mock_handle_invalid_arguments.return_value = None
@@ -636,7 +675,10 @@ class TestSetJobResults:
 
 
 class TestUpdateJob:
+    """Tests for UpdateJob command."""
+
     def test_get_parser(self):
+        """Test parser creation for UpdateJob command."""
         parser = update_job.get_parser("")
         assert parser is not None
 
@@ -649,6 +691,7 @@ class TestUpdateJob:
         mock_handle_invalid_arguments,
         mock_update_job,
     ):
+        """Test UpdateJob take_action method."""
         mock_handle_invalid_arguments.return_value = None
         mock_check_results.return_value = response["result"]
         mock_update_job.return_value = iter([None, None, None, None])
@@ -666,13 +709,17 @@ class TestUpdateJob:
 
 
 class TestCalibrateDevice:
+    """Tests for CalibrateDevice command."""
+
     def test_get_parser(self):
+        """Test parser creation for CalibrateDevice command."""
         parser = calibrate_device.get_parser("")
         assert parser is not None
 
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "calibrate_device")
     def test_take_action(self, mock_calibrate_device, mock_check_results):
+        """Test CalibrateDevice take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None
@@ -687,13 +734,17 @@ class TestCalibrateDevice:
 
 
 class TestGetCalibrateResults:
+    """Tests for GetCalibrateResults command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetCalibrateResults command."""
         parser = get_calibrate_results.get_parser("")
         assert parser is not None
 
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_calibrate_results")
     def test_take_action(self, mock_get_calibrate_results, mock_check_results):
+        """Test GetCalibrateResults take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None
@@ -712,13 +763,17 @@ class TestGetCalibrateResults:
 
 
 class TestSetDeviceOptions:
+    """Tests for SetDeviceOptions command."""
+
     def test_get_parser(self):
+        """Test parser creation for SetDeviceOptions command."""
         parser = set_device_options.get_parser("")
         assert parser is not None
 
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "set_device_options")
     def test_take_action(self, mock_set_device_options, mock_check_results):
+        """Test SetDeviceOptions take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None
@@ -733,13 +788,17 @@ class TestSetDeviceOptions:
 
 
 class TestGetDeviceOptions:
+    """Tests for GetDeviceOptions command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetDeviceOptions command."""
         parser = get_device_options.get_parser("")
         assert parser is not None
 
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "get_device_options")
     def test_take_action(self, mock_get_device_options, mock_check_results):
+        """Test GetDeviceOptions take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None

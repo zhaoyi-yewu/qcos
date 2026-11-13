@@ -176,7 +176,10 @@ def wirecut_flow(job_info: dict) -> None:
         log_rotate_compression=None,
     )
     logger.info(f"Processing work flow: wirecut_engine. job_id: {job_id}")
-    logger.debug(f"Job details: job_id: {job_id}, job_info: {job_info}")
+    logger.debug(
+        f"Job details: job_id: {job_id}, flow_run_id: {flow_run_id}, "
+        f"available_devices: {len(available_devices)}"
+    )
 
     logger.info(
         f"Wirecut engine: {len(available_devices)} available "

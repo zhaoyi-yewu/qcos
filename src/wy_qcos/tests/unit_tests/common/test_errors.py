@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for QCOS custom exception classes."""
+
 import pytest
 
 from wy_qcos.common.errors import (

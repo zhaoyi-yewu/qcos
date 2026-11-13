@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for driver shell commands."""
 
 from argparse import Namespace
 from unittest.mock import patch, Mock
@@ -40,7 +43,10 @@ get_drivers = GetDrivers(shell, None)
 
 
 class TestGetDriver:
+    """Tests for GetDriver command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetDriver command."""
         parser = get_driver.get_parser("")
         assert parser is not None
 
@@ -50,6 +56,7 @@ class TestGetDriver:
     def test_take_action(
         self, mock_get_driver, mock_check_results, mock_get_table_data
     ):
+        """Test GetDriver take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None
@@ -64,7 +71,10 @@ class TestGetDriver:
 
 
 class TestGetDrivers:
+    """Tests for GetDrivers command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetDrivers command."""
         parser = get_drivers.get_parser("")
         assert parser is not None
 
@@ -74,6 +84,7 @@ class TestGetDrivers:
     def test_take_action(
         self, mock_check_results, mock_get_table_list_data, mock_get_drivers
     ):
+        """Test GetDrivers take_action method."""
         mock_get_drivers.return_value = -1, None, None, None
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for version API routes."""
+
 from unittest.mock import Mock, patch
 
 from wy_qcos.api.posiq.routes_jsonrpc.version import version

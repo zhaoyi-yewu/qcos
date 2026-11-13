@@ -14,6 +14,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for neutral-atom transpiler mapping."""
+
 import pytest
 
 from wy_qcos.common.constant import Constant
@@ -35,8 +37,11 @@ from wy_qcos.transpiler.high_performance import (
 
 @pytest.mark.usefixtures("global_configs")
 class TestTranspilerNaMapping:
+    """Tests for neutral-atom mapping in the transpiler."""
+
     @classmethod
     def setup_class(cls):
+        """Set up neutral-atom mapping test fixtures."""
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
         cls.simple_data = """
         OPENQASM 2.0;
@@ -188,6 +193,7 @@ class TestTranspilerNaMapping:
         ]
 
     def test_na_mapping_prepare_data(self):
+        """Test preparing data for neutral-atom mapping."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -211,6 +217,7 @@ class TestTranspilerNaMapping:
         assert na.logical_to_storage is None
 
     def test_execute_with_order(self):
+        """Test executing neutral-atom mapping in circuit order."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -233,6 +240,7 @@ class TestTranspilerNaMapping:
         assert mapping_res[-1].name == "measure"
 
     def test_execute_with_opt(self):
+        """Test executing optimized neutral-atom mapping."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -255,6 +263,7 @@ class TestTranspilerNaMapping:
         assert mapping_res[-1].name == "measure"
 
     def test_2_qubit_gate_na_mapping_opt(self):
+        """Test optimized mapping with two-qubit gates."""
         src_code_info = {"000": self.task2_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -277,6 +286,7 @@ class TestTranspilerNaMapping:
         assert opt_mapping_res[-1].name == "measure"
 
     def test_add_put(self):
+        """Test adding a put move to an occupied operation area."""
         src_code_info = {"000": self.task2_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -301,6 +311,7 @@ class TestTranspilerNaMapping:
         assert len(result) == 0
 
     def test_execute_overlap(self):
+        """Test mapping a circuit with overlapping gate operations."""
         src_code_info = {"000": self.task3_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -323,6 +334,7 @@ class TestTranspilerNaMapping:
         assert mapping_res[-1].name == "measure"
 
     def test_cpp_na_routing_bell(self):
+        """Test C++ neutral-atom routing for a Bell circuit."""
         bell_qasm = (
             "OPENQASM 3.0;\n"
             'include "stdgates.inc";\n'
@@ -342,6 +354,7 @@ class TestTranspilerNaMapping:
         assert "move" in [op.name for op in mapped_ir]
 
     def test_cpp_na_routing_optimize(self):
+        """Test optimized C++ neutral-atom routing."""
         bell_qasm = (
             "OPENQASM 3.0;\n"
             'include "stdgates.inc";\n'
@@ -361,6 +374,7 @@ class TestTranspilerNaMapping:
         assert mapped_ir[-1].name == "measure"
 
     def test_mapping_cpp_na_routing(self):
+        """Test transpiler mapping through C++ neutral-atom routing."""
         transpiler = TranspilerHighPerformanceCmss(
             enable_na_move=True, na_mapping_type="default"
         )
@@ -381,6 +395,7 @@ class TestTranspilerNaMapping:
         assert "move" in [op.name for op in mapping_res]
 
     def test_cpp_na_routing_single_qubit(self):
+        """Test C++ routing for a single-qubit circuit."""
         single_qasm = (
             "OPENQASM 3.0;\n"
             'include "stdgates.inc";\n'
@@ -398,6 +413,7 @@ class TestTranspilerNaMapping:
         assert "move" not in [op.name for op in mapped_ir]
 
     def test_cpp_na_routing_zap(self):
+        """Test C++ neutral-atom routing with ZAP mapping."""
         bell_qasm = (
             "OPENQASM 3.0;\n"
             'include "stdgates.inc";\n'
@@ -417,6 +433,7 @@ class TestTranspilerNaMapping:
         assert layout == {}
 
     def test_mapping_cpp_na_routing_zap(self):
+        """Test transpiler mapping through C++ ZAP routing."""
         transpiler = TranspilerHighPerformanceCmss(
             enable_na_move=True, na_mapping_type="ZAP"
         )
@@ -436,6 +453,7 @@ class TestTranspilerNaMapping:
         assert mapping_res
 
     def test_cpp_vs_python_na_default_consistency(self):
+        """Test consistency between C++ and Python NA routing."""
         parse_result = self.transpiler.parse({"000": self.task2_data})
         key, value = list(parse_result.items())[0]
         na = NARoute()

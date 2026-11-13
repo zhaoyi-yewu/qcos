@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for directed acyclic graph circuits."""
+
 from wy_qcos.transpiler.cmss.circuit.dag_node import (
     DAGInNode,
     DAGOutNode,
@@ -27,6 +29,7 @@ from wy_qcos.common.cmss.gate_operation import X, H, CCX, CX
 
 
 def normalize_runs(runs):
+    """Normalize operation runs for deterministic comparisons."""
     return sorted(
         [[node.name for node in run] for run in runs],
         key=lambda run: (len(run), run),
@@ -34,6 +37,7 @@ def normalize_runs(runs):
 
 
 def normalize_run_qargs(runs):
+    """Normalize operation run qubits for deterministic comparisons."""
     return sorted(
         [[tuple(node.qargs) for node in run] for run in runs],
         key=lambda run: (len(run), run),
@@ -41,6 +45,8 @@ def normalize_run_qargs(runs):
 
 
 class TestDAGCircuit:
+    """Tests for directed acyclic graph circuits."""
+
     data1 = """
     OPENQASM 3.0;
     include "stdgates.inc";
@@ -51,6 +57,7 @@ class TestDAGCircuit:
     """
 
     def test_ir_to_dag(self):
+        """Test converting a circuit to a DAG."""
         tree = get_abs_tree(self.data1)
         cir = get_ir(tree)
         dag = DAGCircuit.circuit_to_dag(cir)
@@ -62,6 +69,7 @@ class TestDAGCircuit:
         assert len(dag.output_map) == 2
 
     def test_dag_to_ir(self):
+        """Test converting a DAG back to a circuit."""
         tree = get_abs_tree(self.data1)
         cir = get_ir(tree)
         dag = DAGCircuit.circuit_to_dag(cir)
@@ -71,6 +79,7 @@ class TestDAGCircuit:
         assert ir._num_qubits == 2
 
     def test_add_qubits(self):
+        """Test adding qubits to a DAG."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         assert len(dag.input_map) == 3
@@ -78,6 +87,7 @@ class TestDAGCircuit:
         assert len(dag._multi_graph.nodes()) == 6
 
     def test_apply_operation_back(self):
+        """Test appending an operation to a DAG."""
         dag = DAGCircuit()
         dag.add_qubits(1)
         op = X([0])
@@ -92,6 +102,7 @@ class TestDAGCircuit:
         assert len(dag._multi_graph.nodes()) == 3
 
     def test_apply_operation_front(self):
+        """Test prepending an operation to a DAG."""
         dag = DAGCircuit()
         dag.add_qubits(1)
         op = X([0])
@@ -106,6 +117,7 @@ class TestDAGCircuit:
         assert len(dag._multi_graph.nodes()) == 3
 
     def test_size_depth_width(self):
+        """Test DAG size, depth, and width calculations."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         assert dag.size() == 0
@@ -133,6 +145,7 @@ class TestDAGCircuit:
         assert dag.width() == 3
 
     def test_topological_nodes(self):
+        """Test topological iteration over DAG nodes."""
         tree = get_abs_tree(self.data1)
         ir = get_ir(tree)
         dag = DAGCircuit.circuit_to_dag(ir)
@@ -157,6 +170,7 @@ class TestDAGCircuit:
         assert op_nodes_name == ["h", "cx", "h"]
 
     def test_two_and_multi_qubit_ops(self):
+        """Test retrieving two-qubit and multi-qubit operations."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         op1 = X([0])
@@ -172,6 +186,7 @@ class TestDAGCircuit:
         assert len(dag.multi_qubit_ops()) == 1
 
     def test_longest_path(self):
+        """Test finding the longest path through a DAG."""
         tree = get_abs_tree(self.data1)
         ir = get_ir(tree)
         dag = DAGCircuit.circuit_to_dag(ir)
@@ -188,6 +203,7 @@ class TestDAGCircuit:
         assert name_path == ["in", "h", "cx", "h", "out"]
 
     def test_successors_and_predecessors(self):
+        """Test querying DAG successors and predecessors."""
         dag = DAGCircuit()
         dag.add_qubits(2)
         op1 = H([0])
@@ -224,6 +240,7 @@ class TestDAGCircuit:
         assert dag.is_predecessor(node5, node3)
 
     def test_remove_op_node(self):
+        """Test removing operation nodes from a DAG."""
         dag = DAGCircuit()
         dag.add_qubits(2)
         op1 = H([0])
@@ -238,6 +255,7 @@ class TestDAGCircuit:
         assert dag.node_counter == 4
 
     def test_count_ops(self):
+        """Test counting operations by name."""
         dag = DAGCircuit()
         dag.add_qubits(2)
         op1 = H([0])
@@ -251,6 +269,7 @@ class TestDAGCircuit:
         assert counts["cx"] == 1
 
     def test_nodes_on_wire(self):
+        """Test retrieving operation nodes on a qubit wire."""
         dag = DAGCircuit()
         dag.add_qubits(2)
         op1 = H([0])
@@ -266,6 +285,7 @@ class TestDAGCircuit:
         assert isinstance(qubit_operations[0], DAGOpNode)
 
     def test_two_qubit_ops_to_dag(self):
+        """Test extracting two-qubit operations into a new DAG."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         op1 = H([0])
@@ -289,6 +309,7 @@ class TestDAGCircuit:
         assert len(new_dag._multi_graph.nodes()) == 8
 
     def test_edges(self):
+        """Test retrieving edges between DAG operation nodes."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         op1 = H([0])
@@ -312,6 +333,7 @@ class TestDAGCircuit:
         assert edge_list == [[0, 2], [1, 2], [3, 4], [2, 4]]
 
     def test_collect_runs_h_chain(self):
+        """Test collecting a chain of Hadamard operations."""
         dag = DAGCircuit()
         dag.add_qubits(1)
         dag.apply_operation_back(H([0]))
@@ -320,6 +342,7 @@ class TestDAGCircuit:
         assert normalize_runs(dag.collect_runs(["h"])) == [["h", "h"]]
 
     def test_collect_runs_two_adjacent_cx(self):
+        """Test collecting runs from two adjacent CX operations."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         dag.apply_operation_back(CX([0, 1]))
@@ -332,6 +355,7 @@ class TestDAGCircuit:
         ]
 
     def test_collect_runs_wide_three_wire_block(self):
+        """Test collecting a wide block on three wires."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         dag.apply_operation_back(H([0]))
@@ -351,6 +375,7 @@ class TestDAGCircuit:
         ]
 
     def test_collect_runs_wide_three_wire_branch(self):
+        """Test collecting a branched block on three wires."""
         dag = DAGCircuit()
         dag.add_qubits(3)
         dag.apply_operation_back(H([0]))
@@ -373,6 +398,7 @@ class TestDAGCircuit:
         ]
 
     def test_collect_runs_wide_four_wire_block(self):
+        """Test collecting a wide block on four wires."""
         dag = DAGCircuit()
         dag.add_qubits(4)
         dag.apply_operation_back(H([0]))
@@ -395,6 +421,7 @@ class TestDAGCircuit:
         ]
 
     def test_collect_runs_only_extends_forward(self):
+        """Test that operation runs extend only forward."""
         dag = DAGCircuit()
         dag.add_qubits(2)
         dag.apply_operation_back(H([0]))

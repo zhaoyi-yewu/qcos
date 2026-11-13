@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for quantum and classical registers."""
+
 import pytest
 
 from wy_qcos.common.cmss.register import (
@@ -24,7 +26,10 @@ from wy_qcos.common.cmss.register import (
 
 
 class TestRegister:
+    """Tests for quantum and classical registers."""
+
     def test_qreg_init(self):
+        """Test quantum register initialization and indexing."""
         qreg = QuantumRegister(size=4, name="q", init_pos=0)
         assert qreg.name == "q"
         assert qreg.size == 4
@@ -39,6 +44,7 @@ class TestRegister:
         assert qreg[:3] == [0, 1, 2]
 
     def test_creg_init(self):
+        """Test classical register initialization and indexing."""
         creg = ClassicalRegister(size=3, name="c", init_pos=1)
         assert creg.name == "c"
         assert creg.size == 3
@@ -53,18 +59,21 @@ class TestRegister:
         assert creg[1:3] == [2, 3]
 
     def test_qreg_bits_provided(self):
+        """Test quantum register initialization with explicit bits."""
         bits = [2, 4, 6]
         qreg = QuantumRegister(size=None, name="q_custom", bits=bits)
         assert qreg.name == "q_custom"
         assert qreg.size == 3
 
     def test_creg_bits_provided(self):
+        """Test classical register initialization with explicit bits."""
         bits = [5, 7]
         creg = ClassicalRegister(size=None, name="c_custom", bits=bits)
         assert creg.name == "c_custom"
         assert creg.size == 2
 
     def test_qreg_eq(self):
+        """Test quantum register equality comparisons."""
         qreg1 = QuantumRegister(size=2, name="q1")
         qreg2 = QuantumRegister(size=2, name="q1")
         qreg3 = QuantumRegister(size=3, name="q2")
@@ -75,6 +84,7 @@ class TestRegister:
         assert qreg1 == qreg4
 
     def test_creg_eq(self):
+        """Test classical register equality comparisons."""
         creg1 = ClassicalRegister(size=2, name="c1")
         creg2 = ClassicalRegister(size=2, name="c1")
         creg3 = ClassicalRegister(size=3, name="c2")
@@ -85,6 +95,7 @@ class TestRegister:
         assert creg1 == creg4
 
     def test_register_abnormal(self):
+        """Test exceptions raised for invalid register operations."""
         with pytest.raises(ValueError) as e1:
             _ = QuantumRegister(size=None, bits=None)
 

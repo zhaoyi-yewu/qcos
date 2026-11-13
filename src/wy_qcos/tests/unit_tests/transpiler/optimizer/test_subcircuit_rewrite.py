@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for rewriting equivalent quantum subcircuits."""
+
 import copy
 
 from wy_qcos.common.cmss.gate_operation import (
@@ -31,7 +33,10 @@ from wy_qcos.tests.unit_tests.transpiler.comm import validate_optimize_result
 
 
 class TestSubcircuitRewrite:
+    """Test equivalent subcircuit rewriting."""
+
     def test_subcircuit_rewrite(self):
+        """Test subcircuit rewriting with optional basis gates."""
         ir = [H([0]), Z([0]), H([0])]
         dag = DAGCircuit.ir_to_dag(ir)
         opt = EquivalencePass()

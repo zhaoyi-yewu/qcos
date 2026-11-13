@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
 
+"""Tests for the Qiskit QASM simulator driver."""
+
 # ruff: noqa: E402
 # load driver venv
 import sys
@@ -41,24 +43,31 @@ data_type = DriverQiskitQasmSim.DATA_TYPE_GATE_SEQUENCE
 
 @pytest.mark.driver
 class TestDriverQiskitQasmSim:
+    """Test the Qiskit QASM simulator driver."""
+
     @classmethod
     def teardown_class(cls):
+        """Restore the original module search path."""
         sys.path = org_path
 
     def test_init_driver(self):
+        """Test QASM simulator driver initialization."""
         assert driver_qasm_sim.init_driver() is None
 
     def test_validate_driver_configs(self):
+        """Test QASM simulator configuration validation."""
         configs = {}
         success, err_msg = driver_qasm_sim.validate_driver_configs(configs)
         assert success is True
 
     def test_close_driver(self):
+        """Test closing the QASM simulator driver."""
         assert driver_qasm_sim.close_driver() is None
 
     @pytest.mark.smoke
     @patch("wy_qcos.driver.qiskit.driver_qiskit_qasm_sim.QasmSimulator")
     def test_run(self, mock_qasm_sim):
+        """Test running a circuit and retrieving counts."""
         mock_counts = {"00": 45, "11": 55}
         mock_result_obj = Mock()
         mock_result_obj.get_counts.return_value = mock_counts
@@ -74,4 +83,5 @@ class TestDriverQiskitQasmSim:
         assert results == mock_counts
 
     def test_cancel(self):
+        """Test cancelling a QASM simulator job."""
         assert driver_qasm_sim.cancel(job_id) is None

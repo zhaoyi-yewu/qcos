@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for QZ01 repetition-code driver overrides."""
+
 # ruff: noqa: E402
 # load driver venv
 #
@@ -48,6 +50,7 @@ class TestDriverLqQZ01RepetitionCode:
     """
 
     def test_init_overrides(self):
+        """Test QZ01 repetition-code attribute overrides."""
         driver = DriverLqQZ01RepetitionCode()
         assert driver.version == "0.0.1"
         assert driver.alias_name == "逻辑比特 QZ01-repetition_code 超导驱动"

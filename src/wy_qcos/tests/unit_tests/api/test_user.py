@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for user and role API routes."""
+
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
@@ -44,6 +46,7 @@ from wy_qcos.api.posiq.routes_jsonrpc.user import (
 from wy_qcos.api.schemas import user as user_schemas
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import _s
+from wy_qcos.tests.common import make_test_ip
 from wy_qcos.user.user_manager import UserManager
 
 
@@ -936,14 +939,14 @@ class TestGetLoginLogs:
         logs = [
             user_schemas.LoginLog(
                 user_name="testuser",
-                ip_address="192.168.1.1",
+                ip_address=make_test_ip(1),
                 login_time=datetime.now() - timedelta(hours=1),
                 login_status=True,
                 user_agent="Mozilla/5.0",
             ),
             user_schemas.LoginLog(
                 user_name="testuser",
-                ip_address="192.168.1.2",
+                ip_address=make_test_ip(2),
                 login_time=datetime.now() - timedelta(hours=2),
                 login_status=False,
                 failure_reason="Invalid password",
@@ -974,7 +977,7 @@ class TestGetLoginLogs:
             "user_id": str(uuid.uuid4()),
             "project_id": Constant.DEFAULT_PROJECT_ID,
             "user_name": "testuser",
-            "ip_address": "192.168.1.1",
+            "ip_address": make_test_ip(1),
             "login_time": now.isoformat(),
             "user_agent": "Mozilla/5.0",
             "login_status": True,
@@ -984,7 +987,7 @@ class TestGetLoginLogs:
             "user_id": str(uuid.uuid4()),
             "project_id": Constant.DEFAULT_PROJECT_ID,
             "user_name": "testuser",
-            "ip_address": "192.168.1.2",
+            "ip_address": make_test_ip(2),
             "login_time": (now - timedelta(hours=1)).isoformat(),
             "user_agent": None,
             "login_status": False,
@@ -1014,7 +1017,7 @@ class TestGetLoginLogs:
             "user_id": str(uuid.uuid4()),
             "project_id": Constant.DEFAULT_PROJECT_ID,
             "user_name": "testuser",
-            "ip_address": "192.168.1.1",
+            "ip_address": make_test_ip(1),
             "login_time": now.isoformat(),
             "user_agent": "Mozilla/5.0",
             "login_status": True,
@@ -1044,7 +1047,7 @@ class TestGetLoginLogs:
             "user_id": str(uuid.uuid4()),
             "project_id": Constant.DEFAULT_PROJECT_ID,
             "user_name": "testuser",
-            "ip_address": "192.168.1.1",
+            "ip_address": make_test_ip(1),
             "login_time": now.isoformat(),
             "user_agent": "Mozilla/5.0",
             "login_status": True,
@@ -1054,7 +1057,7 @@ class TestGetLoginLogs:
             "user_id": str(uuid.uuid4()),
             "project_id": Constant.DEFAULT_PROJECT_ID,
             "user_name": "testuser",
-            "ip_address": "192.168.1.2",
+            "ip_address": make_test_ip(2),
             "login_time": (now - timedelta(hours=1)).isoformat(),
             "user_agent": None,
             "login_status": False,

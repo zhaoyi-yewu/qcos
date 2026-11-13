@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for equivalence rules and decomposition graph traversal."""
+
 import pytest
 
 from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
@@ -24,8 +26,11 @@ from wy_qcos.transpiler.cmss.decomposer.equivalence_graph import (
 
 
 class TestEquivalenceRule:
+    """Test parsing of gate equivalence rules."""
+
     @pytest.mark.smoke
     def test_h_equivalence_u2(self):
+        """Test parsing the H-to-U2 equivalence rule."""
         dsl = "h() q0 -> u2(0, pi) q0"
         rule = EquivalenceRule(dsl)
 
@@ -46,6 +51,7 @@ class TestEquivalenceRule:
         assert src.params == ("0", "pi")
 
     def test_ch_equivalence(self):
+        """Test parsing of the CH equivalence rule."""
         dsl = (
             "ch() q0,q1 -> "
             "s() q1 | "
@@ -82,6 +88,7 @@ class TestEquivalenceRule:
             assert src[i].params == params
 
     def test_p_equivalence(self):
+        """Test parsing of P equivalence rules."""
         dsl = "p(theta) q0 -> u1(theta) q0"
         rule = EquivalenceRule(dsl)
 
@@ -114,6 +121,7 @@ class TestEquivalenceRule:
         assert src.params[2] == "theta"
 
     def test_cphase_equivalence(self):
+        """Test parsing of controlled-phase equivalence rules."""
         dsl = (
             "cp(theta) q0,q1 -> "
             "p(theta/2) q0 | "
@@ -163,6 +171,7 @@ class TestEquivalenceRule:
         assert src[0].params == ("theta",)
 
     def test_r_equivalence(self):
+        """Test parsing of the R equivalence rule."""
         dsl = "r(theta, phi) q0 -> u3(theta, phi - pi/2, -phi + pi/2) q0"
 
         rule = EquivalenceRule(dsl)
@@ -185,6 +194,7 @@ class TestEquivalenceRule:
         )
 
     def test_rccx_equivalence(self):
+        """Test parsing of the RCCX equivalence rule."""
         dsl = (
             "rccx() q0,q1,q2 -> "
             "h() q2 | "
@@ -254,6 +264,7 @@ class TestEquivalenceRule:
         assert not g8.params
 
     def test_rx_equivalence(self):
+        """Test parsing of the RX equivalence rule."""
         dsl = "rx(theta) q0 -> r(theta, 0) q0"
 
         rule = EquivalenceRule(dsl)
@@ -272,6 +283,7 @@ class TestEquivalenceRule:
         assert gate.params == ("theta", "0")
 
     def test_crx_equivalence(self):
+        """Test parsing of CRX equivalence rules."""
         dsl = (
             "crx(theta) q0,q1 -> "
             "u1(pi/2) q1 | "
@@ -367,6 +379,7 @@ class TestEquivalenceRule:
         assert not g5.params
 
     def test_rxx_equivalence(self):
+        """Test parsing of the RXX equivalence rule."""
         dsl = (
             "rxx(theta) q0,q1 -> "
             "h() q0 | "
@@ -407,6 +420,7 @@ class TestEquivalenceRule:
         assert not src[4].params
 
     def test_rzx_equivalence(self):
+        """Test parsing of the RZX equivalence rule."""
         dsl = (
             "rzx(theta) q0,q1 -> "
             "h() q1 | "
@@ -447,6 +461,7 @@ class TestEquivalenceRule:
         assert not src[4].params
 
     def test_ry_equivalence(self):
+        """Test parsing of the RY equivalence rule."""
         dsl = "ry(theta) q0 -> r(theta, pi/2) q0"
 
         rule = EquivalenceRule(dsl)
@@ -465,6 +480,7 @@ class TestEquivalenceRule:
         assert g0.params == ("theta", "pi/2")
 
     def test_cry_equivalence(self):
+        """Test parsing of the CRY equivalence rule."""
         dsl = (
             "cry(theta) q0,q1 -> "
             "ry(theta/2) q1 | "
@@ -500,6 +516,7 @@ class TestEquivalenceRule:
         assert not src[3].params
 
     def test_ryy_equivalence(self):
+        """Test parsing of RYY equivalence rules."""
         dsl = (
             "ryy(theta) q0,q1 -> "
             "rx(pi/2) q0 | "
@@ -589,6 +606,7 @@ class TestEquivalenceRule:
         assert src[4].params == ("-pi/2",)
 
     def test_rz_equivalence(self):
+        """Test parsing of RZ equivalence rules."""
         dsl = "rz(theta) q0 -> u1(theta) q0"
 
         rule = EquivalenceRule(dsl)
@@ -630,6 +648,7 @@ class TestEquivalenceRule:
         assert not src[2].params
 
     def test_crz_equivalence(self):
+        """Test parsing of the CRZ equivalence rule."""
         dsl = (
             "crz(theta) q0,q1 -> "
             "rz(theta/2) q1 | "
@@ -665,6 +684,7 @@ class TestEquivalenceRule:
         assert not src[3].params
 
     def test_rzz_equivalence(self):
+        """Test parsing of RZZ equivalence rules."""
         dsl = "rzz(theta) q0,q1 -> cx() q0,q1 | rz(theta) q1 | cx() q0,q1"
 
         rule = EquivalenceRule(dsl)
@@ -761,6 +781,7 @@ class TestEquivalenceRule:
         assert src[4].params == ("pi/2",)
 
     def test_ecr_equivalence(self):
+        """Test parsing of the ECR equivalence rule."""
         dsl = "ecr() q0,q1 -> rzx(pi/4) q0,q1 | x() q0 | rzx(-pi/4) q0,q1"
 
         rule = EquivalenceRule(dsl)
@@ -786,6 +807,7 @@ class TestEquivalenceRule:
         assert src[2].params == ("-pi/4",)
 
     def test_s_equivalence(self):
+        """Test parsing of the S equivalence rule."""
         dsl = "s() q0 -> u1(pi/2) q0"
         rule = EquivalenceRule(dsl)
 
@@ -802,6 +824,7 @@ class TestEquivalenceRule:
         assert src[0].params == ("pi/2",)
 
     def test_sdg_equivalence(self):
+        """Test parsing of SDG equivalence rules."""
         dsl = "sdg() q0 -> u1(-pi/2) q0"
         rule = EquivalenceRule(dsl)
 
@@ -872,6 +895,7 @@ class TestEquivalenceRule:
             assert not g.params
 
     def test_cs_equivalence(self):
+        """Test parsing of the CS equivalence rule."""
         dsl = "cs() q0,q1 -> h() q1 | csx() q0,q1 | h() q1"
         rule = EquivalenceRule(dsl)
 
@@ -899,6 +923,7 @@ class TestEquivalenceRule:
         assert not g2.params
 
     def test_csdg_equivalence(self):
+        """Test parsing of the CSDG equivalence rule."""
         dsl = "csdg() q0,q1 -> h() q1 | cx() q0,q1 | csx() q0,q1 | h() q1"
         rule = EquivalenceRule(dsl)
 
@@ -931,6 +956,7 @@ class TestEquivalenceRule:
         assert not g3.params
 
     def test_swap_equivalence(self):
+        """Test parsing of the SWAP equivalence rule."""
         dsl = "swap() q0,q1 -> cx() q0,q1 | cx() q1,q0 | cx() q0,q1"
         rule = EquivalenceRule(dsl)
 
@@ -958,6 +984,7 @@ class TestEquivalenceRule:
         assert not g2.params
 
     def test_iswap_equivalence(self):
+        """Test parsing of the ISWAP equivalence rule."""
         dsl = (
             "iswap() q0,q1 -> "
             "s() q0 | "
@@ -1008,6 +1035,7 @@ class TestEquivalenceRule:
         assert not g5.params
 
     def test_sx_equivalence(self):
+        """Test parsing of SX equivalence rules."""
         dsl = "sx() q0 -> sdg() q0 | h() q0 | sdg() q0"
         rule = EquivalenceRule(dsl)
 
@@ -1051,6 +1079,7 @@ class TestEquivalenceRule:
         assert g0.params == ("pi/2",)
 
     def test_sxdg_equivalence(self):
+        """Test parsing of SXDG equivalence rules."""
         dsl = "sxdg() q0 -> s() q0 | h() q0 | s() q0"
         rule = EquivalenceRule(dsl)
 
@@ -1094,6 +1123,7 @@ class TestEquivalenceRule:
         assert g0.params == ("-pi/2",)
 
     def test_csx_equivalence(self):
+        """Test parsing of CSX equivalence rules."""
         dsl = "csx() q0,q1 -> h() q1 | cu1(pi/2) q0,q1 | h() q1"
         rule = EquivalenceRule(dsl)
 
@@ -1164,6 +1194,7 @@ class TestEquivalenceRule:
         assert g4.params == ("pi/4",)
 
     def test_dcx_equivalence(self):
+        """Test parsing of DCX equivalence rules."""
         dsl = "dcx() q0,q1 -> cx() q0,q1 | cx() q1,q0"
         rule = EquivalenceRule(dsl)
 
@@ -1229,6 +1260,7 @@ class TestEquivalenceRule:
         assert not g4.params
 
     def test_cswap_equivalence(self):
+        """Test parsing of the CSWAP equivalence rule."""
         dsl = "cswap() q0,q1,q2 -> cx() q2,q1 | ccx() q0,q1,q2 | cx() q2,q1"
         rule = EquivalenceRule(dsl)
 
@@ -1256,6 +1288,7 @@ class TestEquivalenceRule:
         assert not g2.params
 
     def test_t_equivalence(self):
+        """Test parsing of the T equivalence rule."""
         dsl = "t() q0 -> u1(pi/4) q0"
         rule = EquivalenceRule(dsl)
 
@@ -1273,6 +1306,7 @@ class TestEquivalenceRule:
         assert g0.params == ("pi/4",)
 
     def test_tdg_equivalence(self):
+        """Test parsing of the TDG equivalence rule."""
         dsl = "tdg() q0 -> u1(-pi/4) q0"
         rule = EquivalenceRule(dsl)
 
@@ -1290,6 +1324,7 @@ class TestEquivalenceRule:
         assert g0.params == ("-pi/4",)
 
     def test_u_equivalence(self):
+        """Test parsing of the U equivalence rule."""
         dsl = "u(theta,phi,lam) q0 -> u3(theta,phi,lam) q0"
         rule = EquivalenceRule(dsl)
 
@@ -1307,6 +1342,7 @@ class TestEquivalenceRule:
         assert g0.params == ("theta", "phi", "lam")
 
     def test_cu_equivalence(self):
+        """Test parsing of CU equivalence rules."""
         dsl = (
             "cu(theta,phi,lam,gamma) q0,q1 -> "
             "p(gamma) q0 | "
@@ -1388,6 +1424,7 @@ class TestEquivalenceRule:
         assert g1.params == ("theta", "phi", "lam")
 
     def test_u1_equivalence(self):
+        """Test parsing of U1 equivalence rules."""
         dsl = "u1(theta) q0 -> u3(0,0,theta) q0"
         rule = EquivalenceRule(dsl)
 
@@ -1437,6 +1474,7 @@ class TestEquivalenceRule:
         assert g0.params == ("theta",)
 
     def test_cu1_equivalence(self):
+        """Test parsing of the CU1 equivalence rule."""
         dsl = (
             "cu1(theta) q0,q1 -> "
             "u1(theta/2) q0 | "
@@ -1481,6 +1519,7 @@ class TestEquivalenceRule:
         assert g4.params == ("theta/2",)
 
     def test_u2_equivalence(self):
+        """Test parsing of the U2 equivalence rule."""
         dsl = "u2(phi,lam) q0 -> u3(pi/2,phi,lam) q0"
         rule = EquivalenceRule(dsl)
 
@@ -1497,6 +1536,7 @@ class TestEquivalenceRule:
         assert g0.params == ("pi/2", "phi", "lam")
 
     def test_u3_equivalence(self):
+        """Test parsing of U3 equivalence rules."""
         dsl = (
             "u3(theta,phi,lam) q0 -> "
             "rz(lam) q0 | "
@@ -1548,6 +1588,7 @@ class TestEquivalenceRule:
         assert g0.params == ("theta", "phi", "lam")
 
     def test_cu3_equivalence(self):
+        """Test parsing of CU3 equivalence rules."""
         dsl = (
             "cu3(theta,phi,lam) q0,q1 -> "
             "u1((lam+phi)/2) q0 | "
@@ -1606,6 +1647,7 @@ class TestEquivalenceRule:
         assert g0.params == ("theta", "phi", "lam")
 
     def test_x_equivalences(self):
+        """Test parsing of X equivalence rules."""
         dsl = "x() q0 -> u3(pi,0,pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
@@ -1648,6 +1690,7 @@ class TestEquivalenceRule:
         assert g0.params == ("pi",)
 
     def test_cx_equivalences(self):
+        """Test parsing of CX equivalence rules."""
         dsl = (
             "cx() q0,q1 -> "
             "ry(pi/2) q0 | "
@@ -1972,6 +2015,7 @@ class TestEquivalenceRule:
             assert g.params == params
 
     def test_ccx_equivalences(self):
+        """Test parsing of CCX equivalence rules."""
         dsl = (
             "ccx() q0,q1,q2 -> "
             "h() q2 | "
@@ -2071,6 +2115,7 @@ class TestEquivalenceRule:
             assert not g.params
 
     def test_y_equivalences(self):
+        """Test parsing of Y equivalence rules."""
         dsl = "y() q0 -> u3(pi,pi/2,pi/2) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
@@ -2112,6 +2157,7 @@ class TestEquivalenceRule:
         assert g0.params == ("pi",)
 
     def test_cy_equivalences(self):
+        """Test parsing of the CY equivalence rule."""
         dsl = "cy() q0,q1 -> sdg() q1 | cx() q0,q1 | s() q1"
         rule = EquivalenceRule(dsl)
         target = rule.target
@@ -2128,6 +2174,7 @@ class TestEquivalenceRule:
             assert not g.params
 
     def test_z_equivalences(self):
+        """Test parsing of Z equivalence rules."""
         dsl = "z() q0 -> u1(pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
@@ -2155,6 +2202,7 @@ class TestEquivalenceRule:
             assert not g.params
 
     def test_cz_equivalences(self):
+        """Test parsing of the CZ equivalence rule."""
         dsl = "cz() q0,q1 -> h() q1 | cx() q0,q1 | h() q1"
         rule = EquivalenceRule(dsl)
         target = rule.target
@@ -2170,6 +2218,7 @@ class TestEquivalenceRule:
             assert not g.params
 
     def test_ccz_equivalences(self):
+        """Test parsing of the CCZ equivalence rule."""
         dsl = "ccz() q0,q1,q2 -> h() q2 | ccx() q0,q1,q2 | h() q2"
         rule = EquivalenceRule(dsl)
         target = rule.target
@@ -2185,6 +2234,7 @@ class TestEquivalenceRule:
             assert not g.params
 
     def test_h_equivalences(self):
+        """Test parsing of H equivalence rules."""
         dsl = "h() q0 -> ry(pi/2) q0 | rx(pi) q0"
         rule = EquivalenceRule(dsl)
         target = rule.target
@@ -2221,7 +2271,10 @@ class TestEquivalenceRule:
 
 
 class TestEquivalenceGraph:
+    """Test decomposition rule lookup and table construction."""
+
     def test_no_decomposition_needed(self):
+        """Test matching source and target gates without decomposition."""
         g = EquivalenceGraph()
         source = ["rx", "ry", "rz", "cx"]
         target = ["rx", "ry", "rz", "cx"]
@@ -2230,6 +2283,7 @@ class TestEquivalenceGraph:
         assert not rules
 
     def test_h_gates(self):
+        """Test decomposition lookup for H gates."""
         g = EquivalenceGraph()
         source = ["h"]
         target = ["rx", "ry", "rz", "cx"]
@@ -2240,6 +2294,7 @@ class TestEquivalenceGraph:
             assert gate in rules
 
     def test_single_qubit_gates(self):
+        """Test decomposition lookup for single-qubit gates."""
         g = EquivalenceGraph()
         target = ["rx", "ry", "rz", "cx"]
 
@@ -2271,6 +2326,7 @@ class TestEquivalenceGraph:
             assert any(g.name == gate_name for g in table)
 
     def test_two_qubits_gates(self):
+        """Test decomposition lookup for two-qubit gates."""
         g = EquivalenceGraph()
         target = ["rx", "ry", "rz", "cx"]
 
@@ -2301,6 +2357,7 @@ class TestEquivalenceGraph:
             assert any(g.name == gate_name for g in table)
 
     def test_three_or_more_qubits_gates(self):
+        """Test decomposition lookup for multi-qubit gates."""
         g = EquivalenceGraph()
         target = ["rx", "ry", "rz", "cx"]
 

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for Client role management methods."""
+
 from unittest.mock import patch
 
 from wy_qcos_client.client import Client
@@ -27,6 +29,7 @@ class TestClientRole:
 
     @classmethod
     def setup_class(cls):
+        """Set shared role test data and return values."""
         cls.role_id = "10000000-0000-4000-8000-000000000001"
         cls.return_values = (200, "OK", "text", "result")
 

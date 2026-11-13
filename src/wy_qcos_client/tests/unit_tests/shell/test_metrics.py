@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for metrics shell commands."""
 
 from argparse import Namespace
 from unittest.mock import patch, Mock
@@ -40,7 +43,10 @@ shell.client = Client()
 
 
 class TestGetSystemHealth:
+    """Tests for GetSystemHealth command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetSystemHealth command."""
         get_system_health = GetSystemHealth(shell, None)
         parser = get_system_health.get_parser("")
         assert parser is not None
@@ -54,6 +60,7 @@ class TestGetSystemHealth:
         mock_check_results,
         mock_get_table_list_data,
     ):
+        """Test GetSystemHealth take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_get_system_health.return_value = (200, "OK", "text", None)
         mock_check_results.return_value = {
@@ -67,6 +74,7 @@ class TestGetSystemHealth:
 
     @patch.object(CommandHelper, "check_results")
     def test_take_action_invalid_response(self, mock_check_results):
+        """Test GetSystemHealth with an invalid response."""
         mock_client = Mock(spec=Namespace)
         mock_check_results.return_value = {
             "system_healthy": True,
@@ -80,7 +88,10 @@ class TestGetSystemHealth:
 
 
 class TestGetApiStats:
+    """Tests for GetApiStats command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetApiStats command."""
         get_api_stats = GetApiStats(shell, None)
         parser = get_api_stats.get_parser("")
         assert parser is not None
@@ -91,6 +102,7 @@ class TestGetApiStats:
     def test_take_action(
         self, mock_get_api_stats, mock_check_results, mock_get_table_list_data
     ):
+        """Test GetApiStats take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_get_api_stats.return_value = (200, "OK", "text", None)
         mock_check_results.return_value = {
@@ -104,7 +116,10 @@ class TestGetApiStats:
 
 
 class TestGetJobStats:
+    """Tests for GetJobStats command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetJobStats command."""
         get_job_stats = GetJobStats(shell, None)
         parser = get_job_stats.get_parser("")
         assert parser is not None
@@ -115,6 +130,7 @@ class TestGetJobStats:
     def test_take_action(
         self, mock_get_job_stats, mock_check_results, mock_get_table_list_data
     ):
+        """Test GetJobStats take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_get_job_stats.return_value = (200, "OK", "text", None)
         mock_check_results.return_value = {
@@ -134,7 +150,10 @@ class TestGetJobStats:
 
 
 class TestGetSystemStats:
+    """Tests for GetSystemStats command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetSystemStats command."""
         cmd = GetSystemStats(shell, None)
         parser = cmd.get_parser("")
         assert parser is not None
@@ -148,6 +167,7 @@ class TestGetSystemStats:
         mock_check_results,
         mock_get_table_list_data,
     ):
+        """Test GetSystemStats take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_get_system_stats.return_value = (200, "OK", "text", None)
         mock_check_results.return_value = {

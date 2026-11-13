@@ -38,6 +38,8 @@ from prefect.client.schemas.filters import (
     FlowRunFilterTags,
     FlowFilter,
     FlowFilterName,
+    WorkPoolFilter,
+    WorkPoolFilterName,
 )
 from prefect.exceptions import ObjectAlreadyExists, ObjectNotFound
 from prefect.states import State
@@ -1213,7 +1215,12 @@ class TaskFlowManager:
         return all_queues
 
     @staticmethod
-    def read_all_flow_runs(sync_client, flow_run_filter=None, page_size=200):
+    def read_all_flow_runs(
+        sync_client,
+        flow_run_filter=None,
+        page_size=200,
+        work_pool_filter=None,
+    ):
         """Fetch all flow runs with pagination.
 
         Prefect read_flow_runs is bounded by
@@ -1226,6 +1233,7 @@ class TaskFlowManager:
             sync_client: prefect SyncPrefectClient instance
             flow_run_filter: optional FlowRunFilter to narrow results
             page_size: number of flow runs per request page (default 200)
+            work_pool_filter: optional WorkPoolFilter to narrow results
 
         Returns:
             list of FlowRun objects
@@ -1235,6 +1243,7 @@ class TaskFlowManager:
         while True:
             page = sync_client.read_flow_runs(
                 flow_run_filter=flow_run_filter,
+                work_pool_filter=work_pool_filter,
                 limit=page_size,
                 offset=offset,
             )
@@ -1860,15 +1869,20 @@ class TaskFlowManager:
             tags_filter = FlowRunFilterTags(all_=tags)
             flow_run_filter_kwargs["tags"] = tags_filter
 
+        work_pool_filter = None
         if pool_name is not None:
-            flow_run_filter_kwargs["work_pool_name"] = {"eq_": pool_name}
+            work_pool_filter = WorkPoolFilter(
+                name=WorkPoolFilterName(any_=[pool_name])
+            )
 
         # create flow run filter with flow_run_filter_kwargs
         flow_run_filter = FlowRunFilter(**flow_run_filter_kwargs)
 
-        # get flow runs with flow_run_filter
+        # get flow runs with flow_run_filter and work_pool_filter
         flow_runs = self.read_all_flow_runs(
-            self._sync_client, flow_run_filter=flow_run_filter
+            self._sync_client,
+            flow_run_filter=flow_run_filter,
+            work_pool_filter=work_pool_filter,
         )
         return flow_runs
 
