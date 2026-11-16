@@ -1,0 +1,190 @@
+[lq_qz03]
+alias_name = "逻辑比特 QZ03"
+driver = "DriverLqQZ03"
+description = "逻辑比特 QZ03"
+
+# [Optional] enable or disable the device
+# enable = true
+
+# [Optional] debug
+# debug = false
+debug = false
+
+# [Optional] device log file path
+# device_log_file = /var/log/qcos/device_lq_qz03.log
+device_log_file = "/var/log/qcos/device_lq_qz03.log"
+
+# [Optional] device manager log file path
+# mgr_log_file = /var/log/qcos/device_mgr_lq_qz03.log
+
+# [Optional] log format string
+# log_format = "%(asctime)s | %(levelname)s | %(module)s:%(lineno)s %(message)s"
+
+# [Optional] log rotate, max_size (MB). default: 10MB
+# log_rotate_max_size_mb = 10
+
+# [Optional] log rotate, backup count. default: 10
+# log_rotate_backup_count = 10
+
+# [Optional] log rotate, compression. default: true
+# log_rotate_compression = true
+
+# [Optional] max queued jobs, -1 means unlimited
+max_queued_jobs = -1
+
+# [Optional] max job wait time, default value is 604800 seconds (7 days)
+max_job_wait_time = 604800
+
+# [Optional] job query interval, default value is 5 seconds
+job_query_interval = 5
+
+chip_name = "QZ03"
+token = ""
+url = "https://cloud.logicalqubit.com"
+
+[lq_qz03.device_monitor]
+# [Optional] enable device monitor
+enable_device_monitor = true
+
+# [Optional] device monitor log file path
+monitor_log_file = "/var/log/qcos/device_monitor_lq_qz03.log"
+
+# [Optional] monitor polling interval (secs)
+polling_interval = 60
+
+[lq_qz03.transpiler.qpu_configs]
+qubits = 34
+
+coupler_map.CZ0_1 = ["Q0", "Q1"]
+coupler_map.CZ0_6 = ["Q0", "Q6"]
+coupler_map.CZ1_2 = ["Q1", "Q2"]
+coupler_map.CZ1_7 = ["Q1", "Q7"]
+coupler_map.CZ2_3 = ["Q2", "Q3"]
+coupler_map.CZ2_8 = ["Q2", "Q8"]
+coupler_map.CZ3_4 = ["Q3", "Q4"]
+coupler_map.CZ3_9 = ["Q3", "Q9"]
+coupler_map.CZ4_10 = ["Q4", "Q10"]
+coupler_map.CZ5_11 = ["Q5", "Q11"]
+coupler_map.CZ6_7 = ["Q6", "Q7"]
+coupler_map.CZ6_12 = ["Q6", "Q12"]
+coupler_map.CZ7_8 = ["Q7", "Q8"]
+coupler_map.CZ7_13 = ["Q7", "Q13"]
+coupler_map.CZ8_9 = ["Q8", "Q9"]
+coupler_map.CZ9_10 = ["Q9", "Q10"]
+coupler_map.CZ10_11 = ["Q10", "Q11"]
+coupler_map.CZ10_15 = ["Q10", "Q15"]
+coupler_map.CZ11_16 = ["Q11", "Q16"]
+coupler_map.CZ12_13 = ["Q12", "Q13"]
+coupler_map.CZ12_17 = ["Q12", "Q17"]
+coupler_map.CZ14_15 = ["Q14", "Q15"]
+coupler_map.CZ14_20 = ["Q14", "Q20"]
+coupler_map.CZ15_16 = ["Q15", "Q16"]
+coupler_map.CZ16_22 = ["Q16", "Q22"]
+coupler_map.CZ17_18 = ["Q17", "Q18"]
+coupler_map.CZ17_23 = ["Q17", "Q23"]
+coupler_map.CZ18_19 = ["Q18", "Q19"]
+coupler_map.CZ18_24 = ["Q18", "Q24"]
+coupler_map.CZ19_20 = ["Q19", "Q20"]
+coupler_map.CZ20_26 = ["Q20", "Q26"]
+coupler_map.CZ21_22 = ["Q21", "Q22"]
+coupler_map.CZ21_27 = ["Q21", "Q27"]
+coupler_map.CZ22_28 = ["Q22", "Q28"]
+coupler_map.CZ23_24 = ["Q23", "Q24"]
+coupler_map.CZ23_29 = ["Q23", "Q29"]
+coupler_map.CZ24_25 = ["Q24", "Q25"]
+coupler_map.CZ24_30 = ["Q24", "Q30"]
+coupler_map.CZ25_26 = ["Q25", "Q26"]
+coupler_map.CZ25_31 = ["Q25", "Q31"]
+coupler_map.CZ26_27 = ["Q26", "Q27"]
+coupler_map.CZ26_32 = ["Q26", "Q32"]
+coupler_map.CZ27_33 = ["Q27", "Q33"]
+coupler_map.CZ28_34 = ["Q28", "Q34"]
+coupler_map.CZ29_30 = ["Q29", "Q30"]
+coupler_map.CZ30_31 = ["Q30", "Q31"]
+coupler_map.CZ31_32 = ["Q31", "Q32"]
+coupler_map.CZ32_33 = ["Q32", "Q33"]
+
+readout_error.Q0 = 0.00048
+readout_error.Q1 = 0.00037
+readout_error.Q2 = 0.00043
+readout_error.Q3 = 0.00047
+readout_error.Q4 = 0.00034
+readout_error.Q5 = 0.00044
+readout_error.Q6 = 0.00037
+readout_error.Q7 = 0.00044
+readout_error.Q8 = 0.00089
+readout_error.Q9 = 0.00091
+readout_error.Q10 = 0.00032
+readout_error.Q11 = 0.00043
+readout_error.Q12 = 0.00075
+readout_error.Q13 = 0.00089
+readout_error.Q14 = 0.00109
+readout_error.Q15 = 0.00079
+readout_error.Q16 = 0.00067
+readout_error.Q17 = 0.00052
+readout_error.Q18 = 0.00070
+readout_error.Q19 = 0.00180
+readout_error.Q20 = 0.00081
+readout_error.Q21 = 0.00076
+readout_error.Q22 = 0.00059
+readout_error.Q23 = 0.00050
+readout_error.Q24 = 0.00123
+readout_error.Q25 = 0.00169
+readout_error.Q26 = 0.00082
+readout_error.Q27 = 0.00053
+readout_error.Q28 = 0.00045
+readout_error.Q29 = 0.00055
+readout_error.Q30 = 0.00053
+readout_error.Q31 = 0.00048
+readout_error.Q32 = 0.00098
+readout_error.Q33 = 0.00055
+readout_error.Q34 = 0.00055
+
+coupler_error.CZ0_1 = 0.0041
+coupler_error.CZ0_6 = 0.0058
+coupler_error.CZ1_2 = 0.0046
+coupler_error.CZ1_7 = 0.0059
+coupler_error.CZ2_3 = 0.0063
+coupler_error.CZ2_8 = 0.0092
+coupler_error.CZ3_4 = 0.0057
+coupler_error.CZ3_9 = 0.0065
+coupler_error.CZ4_10 = 0.0071
+coupler_error.CZ5_11 = 0.0036
+coupler_error.CZ6_7 = 0.0072
+coupler_error.CZ6_12 = 0.0057
+coupler_error.CZ7_8 = 0.0144
+coupler_error.CZ7_13 = 0.0076
+coupler_error.CZ8_9 = 0.0098
+coupler_error.CZ9_10 = 0.0074
+coupler_error.CZ10_11 = 0.0044
+coupler_error.CZ10_15 = 0.0134
+coupler_error.CZ11_16 = 0.0076
+coupler_error.CZ12_13 = 0.0198
+coupler_error.CZ12_17 = 0.0058
+coupler_error.CZ14_15 = 0.0065
+coupler_error.CZ14_20 = 0.0083
+coupler_error.CZ15_16 = 0.0070
+coupler_error.CZ16_22 = 0.0073
+coupler_error.CZ17_18 = 0.0098
+coupler_error.CZ17_23 = 0.0084
+coupler_error.CZ18_19 = 0.0115
+coupler_error.CZ18_24 = 0.0078
+coupler_error.CZ19_20 = 0.0137
+coupler_error.CZ20_26 = 0.0087
+coupler_error.CZ21_22 = 0.0075
+coupler_error.CZ21_27 = 0.0088
+coupler_error.CZ22_28 = 0.0099
+coupler_error.CZ23_24 = 0.0054
+coupler_error.CZ23_29 = 0.0060
+coupler_error.CZ24_25 = 0.0073
+coupler_error.CZ24_30 = 0.0067
+coupler_error.CZ25_26 = 0.0168
+coupler_error.CZ25_31 = 0.0159
+coupler_error.CZ26_27 = 0.0113
+coupler_error.CZ26_32 = 0.0104
+coupler_error.CZ27_33 = 0.0049
+coupler_error.CZ28_34 = 0.0068
+coupler_error.CZ29_30 = 0.0051
+coupler_error.CZ30_31 = 0.0061
+coupler_error.CZ31_32 = 0.0050
+coupler_error.CZ32_33 = 0.0089

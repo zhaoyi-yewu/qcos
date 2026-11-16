@@ -46,6 +46,7 @@
 | 逻辑比特 QZ01-surface_code 超导驱动 | 逻辑比特 | DriverQZ01SurfaceCode | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01-surface_code 超导驱动 |
 | 逻辑比特 QZ01-repetition_code 超导驱动 | 逻辑比特 | DriverLqQZ01RepetitionCode | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01-repetition_code 超导驱动 |
 | 逻辑比特 QZ02 超导驱动 | 逻辑比特 | DriverLqQZ02 | 0.0.1 | 超导 | 20 | cmss | 逻辑比特 QZ02 超导驱动 |
+| 逻辑比特 QZ03 超导驱动 | 逻辑比特 | DriverLqQZ03 | 0.0.1 | 超导 | 34 | cmss | 逻辑比特 QZ03 超导驱动 |
 | 逻辑比特 MQ02 超导驱动 | 逻辑比特 | DriverLqMQ02 | 0.0.1 | 超导 | 24 | cmss | 逻辑比特 MQ02 超导驱动 |
 | 逻辑比特 MQ02 超导脉冲驱动 | 逻辑比特 | DriverLqMQ02Pulse | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 MQ02 超导脉冲驱动 |
 | 逻辑比特 AGate-100 超导驱动 | 逻辑比特 | DriverLqAGate100 | 0.0.1 | 超导 | 101 | cmss | 逻辑比特 AGate-100 超导驱动 |

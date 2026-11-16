@@ -100,7 +100,7 @@ class DriverLqMQ02Pulse(DriverPulseBase):
         self.input_constrains["job_shots"] = Schema(
             And(
                 int,
-                lambda x: 1 <= x <= 50000,  # min: 1024, max: 50000
+                lambda x: 1 <= x <= 50000,  # min: 1, max: 50000
             )
         )
         # transpiler_option schema for specific driver
