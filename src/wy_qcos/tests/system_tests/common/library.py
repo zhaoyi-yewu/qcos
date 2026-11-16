@@ -250,9 +250,9 @@ class StLibrary:
             Dict mapping job_id to job info
         """
         status_code, reason, text, result = client.get_jobs(filters=filters)
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get jobs failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get jobs failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -354,7 +354,9 @@ class StLibrary:
 
     @staticmethod
     def get_device(client, device_name, details=False):
-        status_code, reason, text, response = client.get_device(device_name, details)
+        status_code, reason, text, response = client.get_device(
+            device_name, details
+        )
         assert status_code == HttpCode.SUCCESS_OK
         result = json.loads(text)
         error = result.get("error", {})
@@ -398,7 +400,9 @@ class StLibrary:
 
     @staticmethod
     def get_transpiler(client, transpiler_name):
-        status_code, reason, text, response = client.get_transpiler(transpiler_name)
+        status_code, reason, text, response = client.get_transpiler(
+            transpiler_name
+        )
         assert status_code == HttpCode.SUCCESS_OK
         result = json.loads(text)
         error = result.get("error", {})
@@ -411,18 +415,18 @@ class StLibrary:
     def login(client, username, password):
         """User login."""
         status_code, reason, text, result = client.login(username, password)
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Login failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Login failed: {status_code} {reason} {text}"
+        )
 
         # Parse JSON response from text
         response = json.loads(text) if text else {}
 
         error = response.get("error", {})
         error_code = error.get("code", 0)
-        assert (
-            error_code == 0
-        ), f"Login error: {error_code} - {error.get('message')} - {response}"
+        assert error_code == 0, (
+            f"Login error: {error_code} - {error.get('message')} - {response}"
+        )
         login_result = response.get("result", response)
         return login_result
 
@@ -457,7 +461,9 @@ class StLibrary:
         return project_info
 
     @staticmethod
-    def update_project(client, project_id, updated_name=None, description=None):
+    def update_project(
+        client, project_id, updated_name=None, description=None
+    ):
         """Update project."""
         status_code, reason, text, result = client.update_project(
             project_id, updated_name, description
@@ -517,9 +523,9 @@ class StLibrary:
             is_enabled=is_enabled,
             is_locked=is_locked,
         )
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Create user failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Create user failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         user = response.get("result", response)
@@ -552,7 +558,9 @@ class StLibrary:
         if description:
             assert user_info.get("description") == description
         if password_expiry_days:
-            assert user_info.get("password_expiry_days") == password_expiry_days
+            assert (
+                user_info.get("password_expiry_days") == password_expiry_days
+            )
         if is_enabled is not None:
             assert user_info.get("is_enabled") == is_enabled
         if is_locked is not None:
@@ -566,9 +574,9 @@ class StLibrary:
         if is_name:
             user_id = client.resolve_user_id(client, username)
         status_code, reason, text, result = client.get_user(user_id)
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get user failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get user failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -581,9 +589,9 @@ class StLibrary:
     def get_users(client):
         """Get all users."""
         status_code, reason, text, result = client.get_users()
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get users failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get users failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -596,9 +604,9 @@ class StLibrary:
     def get_me(client):
         """Get user info."""
         status_code, reason, text, result = client.get_me()
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get current user failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get current user failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -614,9 +622,9 @@ class StLibrary:
         if is_name:
             user_id = client.resolve_user_id(client, username)
         status_code, reason, text, result = client.delete_user(user_id, force)
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Delete user failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Delete user failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -633,9 +641,9 @@ class StLibrary:
         status_code, reason, text, result = client.create_role(
             role_name, permissions, description=description
         )
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Create role failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Create role failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -651,9 +659,9 @@ class StLibrary:
         if is_name:
             role_id = client.resolve_role_id(client, role_name)
         status_code, reason, text, result = client.get_role(role_id)
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get role failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get role failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -666,9 +674,9 @@ class StLibrary:
     def get_roles(client):
         """Get all roles."""
         status_code, reason, text, result = client.get_roles()
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get roles failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get roles failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -684,9 +692,9 @@ class StLibrary:
         if is_name:
             role_id = client.resolve_role_id(client, role_name)
         status_code, reason, text, result = client.delete_role(role_id)
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Delete role failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Delete role failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -694,7 +702,9 @@ class StLibrary:
         assert error_code == 0, msg
 
     @staticmethod
-    def change_password(client, username, old_password, new_password, is_name=False):
+    def change_password(
+        client, username, old_password, new_password, is_name=False
+    ):
         """Change user password."""
         user_id = username
         if is_name:
@@ -702,9 +712,9 @@ class StLibrary:
         status_code, reason, text, result = client.change_password(
             user_id, old_password, new_password
         )
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Change password failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Change password failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -715,9 +725,9 @@ class StLibrary:
     def get_user_roles(client, username):
         """Get all roles for user."""
         status_code, reason, text, result = client.get_user_roles(username)
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get user roles failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get user roles failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -727,7 +737,9 @@ class StLibrary:
         return roles
 
     @staticmethod
-    def get_login_logs(client, username=None, user_id=None, limit=100, offset=0):
+    def get_login_logs(
+        client, username=None, user_id=None, limit=100, offset=0
+    ):
         """Get login logs."""
         # Convert legacy limit/offset to pagination params
         if limit > 0:
@@ -740,9 +752,9 @@ class StLibrary:
             user_name=username,
             pagination=pagination,
         )
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Get login logs failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Get login logs failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
@@ -760,9 +772,9 @@ class StLibrary:
         status_code, reason, text, result = client.clear_login_logs(
             user_id=user_id, user_name=user_name
         )
-        assert (
-            status_code == HttpCode.SUCCESS_OK
-        ), f"Clear login logs failed: {status_code} {reason} {text}"
+        assert status_code == HttpCode.SUCCESS_OK, (
+            f"Clear login logs failed: {status_code} {reason} {text}"
+        )
         response = json.loads(text) if text else {}
         error = response.get("error", {})
         error_code = error.get("code", 0)
