@@ -17,11 +17,9 @@
 
 import json
 import time
-from datetime import datetime, timezone
 
 from loguru import logger
 from schema import And, Optional, Schema
-from zoneinfo import ZoneInfo
 
 from wy_qcos.common.constant import Constant, HttpCode, HttpMethod
 from wy_qcos.common.library import Library
@@ -638,38 +636,33 @@ class DriverQudoorAbaQu100(DriverQudoorBase):
         )
 
         # extract machine profiling data
-        # execStartTime/execEndTime are microsecond timestamps;
-        # convert to Beijing time ISO string
+        # execStartTime/execEndTime are microsecond timestamps. Keep them as
+        # Unix timestamps because the job engine converts profiling times to
+        # ISO strings.
         time_consume = result.get("timeConsume")
         exec_start_time = result.get("execStartTime")
         exec_end_time = result.get("execEndTime")
         machine_profiling = {}
         if exec_start_time:
             try:
-                dt_utc = datetime.fromtimestamp(
-                    exec_start_time / 1000000, tz=timezone.utc
-                )
-                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
                 machine_profiling["machine_started_at"] = (
-                    dt_beijing.isoformat()
+                    float(exec_start_time) / 1000000
                 )
-            except (ValueError, OSError, TypeError):
+            except (TypeError, ValueError):
                 logger.warning(
-                    f"Failed to convert exec_start_time="
-                    f"{exec_start_time} to datetime, "
+                    f"Failed to convert exec_start_time={exec_start_time} "
+                    f"to timestamp, "
                     f"skipping machine_started_at"
                 )
         if exec_end_time:
             try:
-                dt_utc = datetime.fromtimestamp(
-                    exec_end_time / 1000000, tz=timezone.utc
+                machine_profiling["machine_ended_at"] = (
+                    float(exec_end_time) / 1000000
                 )
-                dt_beijing = dt_utc.astimezone(ZoneInfo("Asia/Shanghai"))
-                machine_profiling["machine_ended_at"] = dt_beijing.isoformat()
-            except (ValueError, OSError, TypeError):
+            except (TypeError, ValueError):
                 logger.warning(
-                    f"Failed to convert exec_end_time="
-                    f"{exec_end_time} to datetime, "
+                    f"Failed to convert exec_end_time={exec_end_time} "
+                    f"to timestamp, "
                     f"skipping machine_ended_at"
                 )
         if time_consume:
