@@ -28,7 +28,13 @@ import itertools
 
 
 from wy_qcos.common.config import Config
-from wy_qcos.log.logger import init_logger, PerfFilter, PERF_LEVEL, log_perf
+from wy_qcos.log.logger import (
+    ColouredStreamHandler,
+    PerfFilter,
+    PERF_LEVEL,
+    init_logger,
+    log_perf,
+)
 from wy_qcos.common.constant import Constant
 from wy_qcos.transpiler.common.utils import (
     Timer,
@@ -1446,6 +1452,75 @@ class CMSSTranspilerPerf:
                 )
         return runtime
 
+    def validate_qasm_file(self, qasm_file):
+        """Validate a qasm file and print its circuit information.
+
+        Parses the given qasm file, builds a QuantumCircuit from the
+        parsed operations, and prints the file name, qubit count, gate
+        count and circuit depth.
+
+        Args:
+            qasm_file (str): path to the input qasm file.
+
+        Raises:
+            FileNotFoundError: when the input file does not exist.
+            ValueError: when the qasm data cannot be read or parsed.
+        """
+        file_path, _ = self.check_file_args(qasm_file, "")
+        qasm_data = self.read_qasm_from_file(str(file_path))
+        if qasm_data is None:
+            raise ValueError(f"read qasm data from file[{file_path}] failed!")
+        try:
+            ops, num_qubits = qasm_to_ir(qasm_data)
+        except Exception as e:
+            raise ValueError(f"parse qasm file[{file_path.name}] failed: {e}")
+        qc = QuantumCircuit(num_qubits=num_qubits)
+        qc.append_operations(ops)
+        gate_count = len(ops)
+        depth = qc.depth()
+        log_perf(
+            logger,
+            "QASM 文件信息\n"
+            "--------------------------------------------------\n"
+            f"文件名: {file_path.name}\n"
+            f"量子比特数: {num_qubits}\n"
+            f"量子线路深度: {depth}\n"
+            f"量子门数量: {gate_count}\n"
+            "--------------------------------------------------",
+        )
+
+
+class _PerfColourFormatter(logging.Formatter):
+    r"""Colour PERF-level messages green while preserving newlines.
+
+    Unlike ColouredFormatter (which inherits SecureFormatter and escapes
+    control characters such as "\n"), this formatter keeps real newlines
+    so the multi-line perf output of the CLI renders correctly, and tints
+    PERF records green when writing to a TTY. Each PERF record is prefixed
+    with a timestamp, the level name and the source location, e.g.
+    "2026-09-21 10:00:00 PERF logger.py:35 <message>".
+    """
+
+    GREEN = "\x1b[32m"
+    RESET = "\x1b[0m"
+    PERF_PREFIX_FMT = "%Y-%m-%d %H:%M:%S"
+
+    def __init__(self, *, colour=False):
+        super().__init__()
+        self._colour = colour
+
+    def format(self, record):
+        message = record.getMessage()
+        if record.levelno == PERF_LEVEL:
+            prefix = (
+                f"{self.formatTime(record, self.PERF_PREFIX_FMT)} "
+                f"{record.levelname} {record.filename}:{record.lineno} "
+            )
+            if self._colour:
+                return f"{self.GREEN}{prefix}{message}{self.RESET}"
+            return f"{prefix}{message}"
+        return message
+
 
 def get_parse_args():
     parser = argparse.ArgumentParser(description="cmss transpiler cli")
@@ -1457,9 +1532,18 @@ def get_parse_args():
         default="etc/perf/transpile_conf.toml",
         help="Input config file.",
     )
+    parser.add_argument(
+        "-q",
+        "--qasm-file",
+        dest="qasm_file",
+        type=str,
+        default="",
+        help="Input qasm file to validate and print circuit info.",
+    )
     args = parser.parse_args()
     cmss_args = {
         "trans_config_file": args.trans_config_file,
+        "qasm_file": args.qasm_file,
     }
     return cmss_args
 
@@ -1474,12 +1558,40 @@ def main(argv=None):
     # handler level/filters are set after loading config
     handlers = init_logger(logging.DEBUG, console=True, quiet=False)
 
+    # Replace the sanitized console handler with a plain StreamHandler.
+    # SecureFormatter escapes "\n" to the literal "\\n", which breaks
+    # the multi-line perf output of this CLI tool. A custom formatter
+    # keeps real newlines and tints PERF records green on a TTY.
+    root_logger = logging.getLogger()
+    cli_handlers = []
+    for h in handlers:
+        if isinstance(h, ColouredStreamHandler):
+            root_logger.removeHandler(h)
+            plain = logging.StreamHandler(sys.stdout)
+            plain.setLevel(h.level)
+            for f in h.filters:
+                plain.addFilter(f)
+            plain.setFormatter(
+                _PerfColourFormatter(colour=sys.stdout.isatty())
+            )
+            root_logger.addHandler(plain)
+            cli_handlers.append(plain)
+        else:
+            cli_handlers.append(h)
+
     # parse arguments
     cmss_args = get_parse_args()
+
+    # -q mode: validate qasm file and print circuit info
+    if cmss_args["qasm_file"]:
+        perf = CMSSTranspilerPerf()
+        perf.validate_qasm_file(cmss_args["qasm_file"])
+        return
+
     perf = CMSSTranspilerPerf()
     sys.exit(
         perf.main_cmss_transpiler(
             cmss_args["trans_config_file"],
-            handlers,
+            cli_handlers,
         )
     )
