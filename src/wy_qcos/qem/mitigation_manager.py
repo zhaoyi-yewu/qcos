@@ -136,7 +136,7 @@ class MitigationManager:
         """
         all_circuits: dict[str, list[dict[str, Any]]] = {}
 
-        rem = self._techniques.get("readout") or self._techniques.get("rem")
+        rem = self._techniques.get("readout")
         if rem and isinstance(rem, ReadoutMitigation):
             qubits = target_qubits or list(range(circuit.num_qubits))
             all_circuits["readout"] = rem.build_calibration_circuits(qubits)
@@ -233,7 +233,7 @@ class MitigationManager:
                 "metadata": dd_output.get("metadata"),
             })
 
-        rem = self._techniques.get("readout") or self._techniques.get("rem")
+        rem = self._techniques.get("readout")
         if rem and isinstance(rem, ReadoutMitigation) and rem.enabled:
             calib = self._calibration_data.get("readout")
             rem_output = rem.postprocess(

@@ -583,9 +583,7 @@ def driver_run(job_info, driver, num_qubits, data, transpiler=None):
                                 all_cal_circuits,
                             )
 
-                            rem_tech = mitigation_mgr.get_technique(
-                                "rem"
-                            ) or mitigation_mgr.get_technique("readout")
+                            rem_tech = mitigation_mgr.get_technique("readout")
                             if rem_tech and hasattr(
                                 rem_tech, "process_calibration_results"
                             ):

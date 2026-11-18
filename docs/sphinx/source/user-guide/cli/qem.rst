@@ -17,7 +17,7 @@
 .. code-block:: python
 
    {
-       "rem": {"enabled": True, "calibration_shots": 8192},
+       "readout": {"enabled": True, "calibration_shots": 8192},
        "zne": {
            "enabled": True,
            "scale_factors": [1, 3, 5],

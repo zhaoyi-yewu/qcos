@@ -39,19 +39,12 @@ class TestMitigationFactory:
         factory = MitigationFactory()
         available = factory.list_available()
         assert "readout" in available
-        assert "rem" in available
         assert "zne" in available
 
     def test_create_readout(self):
         """Test creating a readout mitigation instance."""
         factory = MitigationFactory()
         rem = factory.create("readout")
-        assert isinstance(rem, ReadoutMitigation)
-
-    def test_create_rem_alias(self):
-        """Test creating readout mitigation via the rem alias."""
-        factory = MitigationFactory()
-        rem = factory.create("rem")
         assert isinstance(rem, ReadoutMitigation)
 
     def test_create_zne(self):

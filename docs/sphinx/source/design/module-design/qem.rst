@@ -32,7 +32,7 @@ QEM模块由五个主要部分组成：
    | 错误缓解技术工厂       |
    +-----------------------+
             |
-            | create("rem"/"zne"/"dd")
+            | create("readout"/"zne"/"dd")
             v
    +-----------------------+
    |   MitigationBase      |
@@ -411,12 +411,11 @@ DD脉冲序列
        def __init__(self):
            self._registry = {
                "readout": ReadoutMitigation,
-               "rem": ReadoutMitigation,
                "zne": ZNEMitigation,
                "dd": DDMitigation,
            }
 
-工厂默认注册了 ``"readout"``/``"rem"``（均为 ``ReadoutMitigation``）、``"zne"``、``"dd"``。支持的操作包括：
+工厂默认注册了 ``"readout"``（``ReadoutMitigation``）、``"zne"``、``"dd"``。支持的操作包括：
 
 .. list-table:: MitigationFactory 方法说明
    :widths: 20 30 50
@@ -447,7 +446,7 @@ DD脉冲序列
 
    mgr = MitigationManager()
    mgr.configure({
-       "rem": {"enabled": True, "calibration_shots": 8192},
+       "readout": {"enabled": True, "calibration_shots": 8192},
        "zne": {"enabled": True, "scale_factors": [1, 3, 5]},
        "dd": {"enabled": False},
    })
@@ -476,7 +475,7 @@ DD脉冲序列
    from wy_qcos.qem.mitigation_factory import MitigationFactory
 
    factory = MitigationFactory()
-   rem = factory.create("readout", calibration_shots=4096)
+   mitigation = factory.create("readout", calibration_shots=4096)
    zne = factory.create("zne", scale_factors=[1, 3])
    dd = factory.create("dd", sequence="XY4", gate_times={"h": 0.02})
 
@@ -489,7 +488,7 @@ QEM 模块与作业引擎（``job_engine``）集成，通过作业提交参数 `
 
    # job_info["data"]["qem_options"]
    {
-       "rem": {"enabled": True, "calibration_shots": 8192},
+       "readout": {"enabled": True, "calibration_shots": 8192},
        "zne": {
            "enabled": True,
            "scale_factors": [1, 3, 5],
@@ -527,7 +526,7 @@ QEM 模块与作业引擎（``job_engine``）集成，通过作业提交参数 `
        "dry_run": False,
        "backend": "quafu",
        "qem_options": {
-           "rem": {"enabled": True, "calibration_shots": 8192},
+           "readout": {"enabled": True, "calibration_shots": 8192},
            "zne": {
                "enabled": True,
                "scale_factors": [1, 3, 5],
