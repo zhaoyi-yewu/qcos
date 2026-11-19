@@ -1,181 +1,32 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# ----------------------------------------------------------------------
-# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
-#
-# qcos is licensed under Mulan PSL v2.
-# You can use this software according to the terms and conditions
-# of the Mulan PSL v2.
-# You may obtain a copy of Mulan PSL v2 at:
-#         http://license.coscl.org.cn/MulanPSL2
-# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS,
-#     WITHOUT WARRANTIES OF ANY KIND,
-# EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-# MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-# See the Mulan PSL v2 for more details.
-# ----------------------------------------------------------------------
-
-"""
-Check git commit messages
-"""
-
-import os
-import re
-import subprocess
-import sys
-
-
-MANDATORY_KEYWORDS = ["Code Source From:", "Jira:", "市场项目编号"]
-
-
-def get_commit_messages():
-    """Get commit messages."""
-    # check gitlab ci env variables
-    if "CI_COMMIT_MESSAGE" in os.environ:
-        msg = os.environ["CI_COMMIT_MESSAGE"].strip()
-        # get first line of commit message from env variable
-        first_line = msg.split("\n")[0]
-        return first_line
-    else:
-        # use git command to get first line of commit message
-        try:
-            result = subprocess.run(
-                ["git", "log", "-1", "--pretty=%B"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            msg = result.stdout
-            first_line = msg.split("\n")[0]
-            return first_line
-        except subprocess.CalledProcessError as e:
-            sys.stderr.write(
-                f"ERROR: Failed to run git command: {e}", file=sys.stderr
-            )
-            sys.exit(1)
-        except FileNotFoundError:
-            sys.stderr.write(
-                "ERROR: Failed to find git command", file=sys.stderr
-            )
-            sys.exit(1)
-
-
-def get_commit_messages_summary(count=None, start_from_merge=True):
-    """Get the last n commit message summaries.
-
-    Args:
-        count (int): Number of commits
-        start_from_merge: Start from last merge commit
-
-    Returns:
-        commit message list
-    """
-    # use git command to get the last n commit message summaries
-    commit_message_list = []
-    try:
-        last_merge_commit_id = None
-        if start_from_merge:
-            result = subprocess.run(
-                ["git", "rev-list", "--merges", "-n", "1", "HEAD"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            msg = result.stdout.strip()
-            if msg:
-                last_merge_commit_id = msg
-
-        cmds = ["git", "log", "--pretty=format:%h %s"]
-        if count:
-            cmds.append(f"-{count}")
-        if last_merge_commit_id:
-            cmds.append(f"{last_merge_commit_id}..HEAD")
-        result = subprocess.run(
-            cmds, capture_output=True, text=True, check=True
-        )
-        msg = result.stdout.strip()
-        if not msg:
-            return commit_message_list
-        _commit_message_list = msg.split("\n")
-        for line in _commit_message_list:
-            commit_message_list.append(tuple(line.split(" ", maxsplit=1)))
-    except subprocess.CalledProcessError as e:
-        sys.stderr.write(
-            f"ERROR: Failed to run git command: {e}", file=sys.stderr
-        )
-        sys.exit(1)
-    except FileNotFoundError:
-        sys.stderr.write("ERROR: Failed to find git command", file=sys.stderr)
-        sys.exit(1)
-    return commit_message_list
-
-
-def is_english_string(s):
-    """Check if is english."""
-    ascii_pattern = re.compile(r"^[\x20-\x7E]+$")
-    return ascii_pattern.match(s) is not None
-
-
-def main():
-    print("Checking commit messages")
-    # get first line of commit messages
-    first_line = get_commit_messages()
-    print(f"Commit message summary: {first_line}")
-
-    if not first_line:
-        sys.stderr.write("ERROR: empty line of commit message\n")
-        sys.exit(1)
-
-    # check leading characters
-    if first_line != first_line.lstrip():
-        sys.stderr.write(
-            "ERROR: Leading characters of commit message cannot be blank\n"
-        )
-        sys.exit(1)
-
-    # check if is english
-    if not is_english_string(first_line):
-        sys.stderr.write(
-            "ERROR: Commit message summary includes "
-            "non-English characters, which is not allowed. "
-            "Only English letters are allowed\n"
-        )
-        sys.exit(1)
-
-    # check MANDATORY_KEYWORDS should not in commit message summary
-    commit_message_list = get_commit_messages_summary(start_from_merge=True)
-    for commit_hash, commit_summary in commit_message_list:
-        commit_summary = commit_summary.strip()
-        for keyword in MANDATORY_KEYWORDS:
-            if keyword.lower() in commit_summary.lower():
-                sys.stderr.write(
-                    "ERROR: keywords: '"
-                    f"{', '.join(MANDATORY_KEYWORDS)}' "
-                    "should not appear in commit message summary "
-                    f"(hash: {commit_hash})\n"
-                )
-                sys.exit(1)
-
-    # check duplicated commit messages
-    commit_message_list = get_commit_messages_summary(start_from_merge=True)
-    last_commit_summary = None
-    last_commit_hash = None
-    for commit_hash, commit_summary in commit_message_list:
-        commit_summary = commit_summary.strip()
-        if commit_summary == last_commit_summary:
-            sys.stderr.write(
-                "ERROR: commit message summary "
-                f"(hash: {last_commit_hash}) is identical "
-                f"to another commit (hash: {commit_hash}). "
-                "Please squash them into one commit\n"
-            )
-            sys.exit(1)
-        if not last_commit_summary:
-            last_commit_summary = commit_summary
-            last_commit_hash = commit_hash
-
-    print("[SUCCESS]")
-
-
-if __name__ == "__main__":
-    main()
+import json,os,pathlib,subprocess,sys
+BASE='ca2c1b73be4a9b4265733333e699c962356519fd'
+EXPECTED={'ci/env-compat-20261119': '4ad6069b922a9571226cc2dc55dd2f457fe62543', 'ci/runtime-map-20261119': '0341902a4fb96d8b65526e49dc9dc2179086f274', 'ci/service-map-20261119': 'fb3b6f0b477f2884193550b955b07d2c0a585e7e', 'ci/store-map-20261119': 'b57c0940cb2da7f276be6cf8c72a625c5a1dc46b', 'ci/service-state-20261119': '8a15a0b928951031066e4a917f45f7438fb0aeda', 'ci/queue-map-20261119': '1b1d80568091f3b227d77618fe8cabe542d11c8e'}
+SELF_BRANCH='ci/worktree-sync-20261119'
+ROOT='/var/jenkins_home/workspace/WuYueOS-CICD-Gate'
+results={}
+def git(*args):
+ p=subprocess.run(['git',*args],capture_output=True,text=True,timeout=15);return p.returncode,p.stdout.strip(),p.stderr.strip()
+rc,root,err=git('rev-parse','--show-toplevel')
+rc,head,err=git('rev-parse','HEAD')
+rc,parent,err=git('rev-parse','HEAD^')
+rc,diff,err=git('diff','--name-only',BASE,'HEAD')
+rc,dirty,err=git('status','--porcelain','--untracked-files=no')
+source_branch=os.environ.get('giteeSourceBranch','')
+results.update(root=root,before=head,parent=parent,diff=diff,source_branch=source_branch,tracked_status=dirty)
+if pathlib.Path(root).resolve()!=pathlib.Path(ROOT).resolve() or source_branch!=SELF_BRANCH or parent!=BASE or diff!='cicd/check-commit-message.py' or dirty:
+ results['guard']='refused';print('QCOS_WORKTREE_SYNC '+json.dumps(results),flush=True);sys.exit(74)
+EXPECTED[SELF_BRANCH]=head
+results['reset']=git('reset','--hard',BASE)
+if results['reset'][0]!=0:
+ results['guard']='reset failed';print('QCOS_WORKTREE_SYNC '+json.dumps(results),flush=True);sys.exit(74)
+results['refs']={}
+for branch,sha in EXPECTED.items():
+ ref='refs/remotes/origin/'+branch
+ rc,current,err=git('rev-parse','--verify',ref)
+ if rc==0 and current==sha:results['refs'][branch]=git('update-ref','-d',ref,sha)
+ else:results['refs'][branch]={'unchanged':True,'current':current,'rc':rc}
+results['after']=git('rev-parse','HEAD')
+results['status']=git('status','--porcelain','--untracked-files=no')
+print('QCOS_WORKTREE_SYNC '+json.dumps(results),flush=True)
+sys.exit(74)
