@@ -80,7 +80,7 @@ except ImportError:  # pragma: no cover
 DEFAULT_DB_NAME = "qcos"
 DEFAULT_DB_URL = "127.0.0.1:5432"
 DEFAULT_USERNAME = "qcos"
-DEFAULT_PASSWORD = ""
+DEFAULT_PASSWORD = None
 DEFAULT_FILE_TYPE = "sql"
 
 SUPPORTED_FILE_TYPES = ("sql", "csv", "json", "toml")
