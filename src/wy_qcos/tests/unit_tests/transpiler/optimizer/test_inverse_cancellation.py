@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for cancellation of adjacent inverse quantum gates."""
+
 from wy_qcos.transpiler.cmss.optimizer.inverse_cancellation import (
     InverseCancellation,
 )
@@ -35,7 +37,10 @@ from wy_qcos.common.cmss.gate_operation import (
 
 
 class TestInverseCancellation:
+    """Test cancellation of self-inverse and paired inverse gates."""
+
     def test_self_inverse_h(self):
+        """Test cancellation of adjacent Hadamard gates."""
         optimizer = InverseCancellation([H()])
         ir = [H([0]), H([0]), H([1]), H([1]), H([1])]
         dag = DAGCircuit.ir_to_dag(ir)
@@ -50,6 +55,7 @@ class TestInverseCancellation:
         assert counts.get("h", 0) == 2
 
     def test_self_inverse_cx(self):
+        """Test cancellation of adjacent CX gates."""
         optimizer = InverseCancellation([CX()])
         ir = [CX([0, 1]), CX([0, 1])]
         dag = DAGCircuit.ir_to_dag(ir)
@@ -70,6 +76,7 @@ class TestInverseCancellation:
         assert counts.get("cx", 0) == 2
 
     def test_self_inverse_cx_h(self):
+        """Test combined cancellation of CX and Hadamard gates."""
         optimizer = InverseCancellation([H(), CX()])
         ir = [H([0]), H([0]), H([1]), CX([0, 1]), CX([0, 1]), H([1])]
         dag = DAGCircuit.ir_to_dag(ir)
@@ -80,6 +87,7 @@ class TestInverseCancellation:
         assert counts.get("h", 0) in (0, 2)
 
     def test_inverse_s_sdg(self):
+        """Test cancellation of S and SDG inverse pairs."""
         optimizer = InverseCancellation([(S(), SDG())])
         ir = [S([0]), SDG([0])]
         dag = DAGCircuit.ir_to_dag(ir)
@@ -111,6 +119,7 @@ class TestInverseCancellation:
         assert counts.get("h", 0) == 1
 
     def test_inverse_t_tdg(self):
+        """Test cancellation of T and TDG inverse pairs."""
         optimizer = InverseCancellation([(T(), TDG())])
         ir = [T([0]), TDG([0])]
         dag = DAGCircuit.ir_to_dag(ir)
@@ -129,6 +138,7 @@ class TestInverseCancellation:
         assert counts.get("tdg", 0) == 0
 
     def test_self_inverse_pauli(self):
+        """Test cancellation of adjacent Pauli gates."""
         optimizer = InverseCancellation([X(), Y(), Z()])
         ir = [
             X([0]),
@@ -148,6 +158,7 @@ class TestInverseCancellation:
         assert counts.get("z", 0) == 1
 
     def test_self_inverse_swap(self):
+        """Test cancellation of adjacent SWAP gates."""
         optimizer = InverseCancellation([SWAP()])
         ir = [
             SWAP([0, 1]),
@@ -160,6 +171,7 @@ class TestInverseCancellation:
         assert counts.get("swap", 0) == 1
 
     def test_self_inverse_cz(self):
+        """Test cancellation of adjacent CZ gates."""
         optimizer = InverseCancellation([CZ()])
         ir = [CZ([0, 1]), CZ([0, 1])]
         dag = DAGCircuit.ir_to_dag(ir)

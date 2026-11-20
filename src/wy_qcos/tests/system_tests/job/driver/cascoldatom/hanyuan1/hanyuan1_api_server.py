@@ -15,7 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Support the mock Hanyuan1 API server for system tests."""
+
 import logging
+
+from wy_qcos.log import init_console_logger
 
 
 logger = logging.getLogger(__name__)
@@ -23,9 +27,9 @@ logger = logging.getLogger(__name__)
 
 def main(port=18610):
     """Start the mock Hanyuan1 API server."""
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+        log_format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 

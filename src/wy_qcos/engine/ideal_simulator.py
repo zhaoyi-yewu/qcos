@@ -8,9 +8,13 @@
 
 """Run ideal simulation in the Qiskit Aer driver's environment."""
 
+import asyncio
 import json
+import locale
 import os
-import subprocess  # noqa: S404 - required for the isolated driver venv
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
 
 from wy_qcos.common.config import Config
 from wy_qcos.common.library import Library
@@ -18,6 +22,34 @@ from wy_qcos.common.library import Library
 IDEAL_SIMULATOR_NAME = "qiskit_aer_sim"
 IDEAL_SIMULATOR_TIMEOUT = 120
 QISKIT_AER_DRIVER_NAME = "DriverQiskitAerSim"
+
+
+def _run_command(command, environment):
+    """Execute an isolated process without invoking a command shell."""
+
+    async def execute():
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=environment,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=IDEAL_SIMULATOR_TIMEOUT
+            )
+        except TimeoutError:
+            process.kill()
+            await process.communicate()
+            raise
+        encoding = locale.getpreferredencoding(False)
+        return SimpleNamespace(
+            returncode=process.returncode,
+            stdout=stdout.decode(encoding),
+            stderr=stderr.decode(encoding),
+        )
+
+    return asyncio.run(execute())
 
 
 def simulate_qasm_probabilities(source_code):
@@ -35,27 +67,36 @@ def simulate_qasm_probabilities(source_code):
         Config.DEFAULT.VENV_DIR,
         add_default_env=True,
     )
+    if not python_bin or not Path(python_bin).is_absolute():
+        raise ValueError(
+            "Qiskit Aer driver interpreter must be an absolute path"
+        )
     environment = os.environ.copy()
     environment.update(python_path_env)
 
     try:
-        # The executable and arguments come from trusted QCOS configuration;
-        # circuit source is passed via stdin and no shell is involved.
-        completed = subprocess.run(  # noqa: S603
-            [
-                python_bin,
-                "-m",
-                "wy_qcos.driver.qiskit.driver_qiskit_aer_sim",
-                "--ideal-probabilities",
-            ],
-            input=source_code,
-            capture_output=True,
-            text=True,
-            timeout=IDEAL_SIMULATOR_TIMEOUT,
-            env=environment,
-            check=False,
+        # Use a private temporary file to pass circuit source without
+        # exposing it through process arguments or standard input.
+        source_fd, source_name = tempfile.mkstemp(
+            prefix="qcos-ideal-", suffix=".qasm"
         )
-    except (OSError, subprocess.SubprocessError) as error:
+        source_path = Path(source_name)
+        try:
+            with os.fdopen(source_fd, "w", encoding="utf-8") as source_file:
+                source_file.write(source_code)
+            completed = _run_command(
+                [
+                    python_bin,
+                    "-m",
+                    "wy_qcos.driver.qiskit.driver_qiskit_aer_sim",
+                    "--ideal-probabilities",
+                    str(source_path),
+                ],
+                environment,
+            )
+        finally:
+            source_path.unlink(missing_ok=True)
+    except (OSError, TimeoutError) as error:
         raise ValueError(
             f"unable to start Qiskit Aer ideal simulator: {error}"
         ) from error

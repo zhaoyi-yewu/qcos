@@ -24,14 +24,17 @@ class TestProxySection:
     """Verify ProxySection defaults and field types."""
 
     def test_default_prometheus_base_url(self):
+        """Test default Prometheus base URL value."""
         section = ProxySection()
         assert section.PROMETHEUS_BASE_URL == "http://127.0.0.1:9090"
 
     def test_default_alertmanager_base_url(self):
+        """Test default Alertmanager base URL value."""
         section = ProxySection()
         assert section.ALERTMANAGER_BASE_URL == "http://127.0.0.1:9093"
 
     def test_field_types_are_str(self):
+        """Test that URL fields are strings."""
         section = ProxySection()
         assert isinstance(section.PROMETHEUS_BASE_URL, str)
         assert isinstance(section.ALERTMANAGER_BASE_URL, str)
@@ -57,19 +60,23 @@ class TestConfigRegistersProxy:
     """Verify PROXY is wired into ConfigModel and Config."""
 
     def test_config_model_has_proxy_section(self):
+        """Test ConfigModel includes a ProxySection."""
         model = ConfigModel()
         assert isinstance(model.PROXY, ProxySection)
         assert model.PROXY.PROMETHEUS_BASE_URL == "http://127.0.0.1:9090"
 
     def test_config_class_attribute(self):
+        """Test Config class exposes PROXY attribute."""
         Config.initialize()
         assert hasattr(Config, "PROXY")
         assert isinstance(Config.PROXY, ProxySection)
 
     def test_proxy_in_valid_sections(self):
+        """Test PROXY is listed in valid config sections."""
         assert "PROXY" in Config.VALID_SECTIONS
 
     def test_proxy_section_defaults_via_config(self):
+        """Test ProxySection defaults accessible via Config."""
         Config.initialize()
         assert Config.PROXY.PROMETHEUS_BASE_URL == "http://127.0.0.1:9090"
         assert Config.PROXY.ALERTMANAGER_BASE_URL == "http://127.0.0.1:9093"

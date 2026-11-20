@@ -26,6 +26,7 @@ class _ConcreteMitigation(MitigationBase):
     """Minimal concrete subclass for testing default behaviours."""
 
     def postprocess(self, results, calibration=None, **kwargs):
+        """Return results with empty metadata for the concrete test double."""
         return {"results": results, "metadata": {}}
 
 
@@ -33,12 +34,14 @@ class TestMitigationBaseDefaults:
     """Cover the default method implementations."""
 
     def test_init_defaults(self):
+        """Test default initialization values."""
         m = _ConcreteMitigation("test")
         assert m.name == "test"
         assert m.enabled is False
         assert m._config == {}
 
     def test_qem_metadata_getter_returns_independent_copy(self):
+        """Test QEM metadata getter returns independent copies."""
         schema = MitigationBase.get_qem_options_schema()
         metadata = MitigationBase.get_qem_options_metadata()
         metadata["enabled"]["default"] = True
@@ -50,17 +53,20 @@ class TestMitigationBaseDefaults:
         )
 
     def test_set_config_enables(self):
+        """Test set_config enables the mitigation."""
         m = _ConcreteMitigation("test")
         m.set_config({"enabled": True, "foo": "bar"})
         assert m.enabled is True
         assert m._config["foo"] == "bar"
 
     def test_set_config_disabled_by_default(self):
+        """Test set_config defaults to disabled without enabled key."""
         m = _ConcreteMitigation("test")
         m.set_config({"foo": "bar"})  # no "enabled" key
         assert m.enabled is False
 
     def test_get_config_returns_copy(self):
+        """Test get_config returns a copy of the config."""
         m = _ConcreteMitigation("test")
         m.set_config({"enabled": True, "key": 1})
         cfg = m.get_config()
@@ -68,15 +74,18 @@ class TestMitigationBaseDefaults:
         assert m._config["key"] == 1  # original untouched
 
     def test_needs_calibration_default_false(self):
+        """Test needs_calibration defaults to False."""
         m = _ConcreteMitigation("test")
         assert m.needs_calibration() is False
 
     def test_calibrate_returns_empty_dict(self):
+        """Test calibrate returns an empty dict by default."""
         m = _ConcreteMitigation("test")
         result = m.calibrate(None, "device-0", [0, 1])
         assert result == {}
 
     def test_transform_circuit_default_returns_original(self):
+        """Test transform_circuit returns the original circuit."""
         m = _ConcreteMitigation("test")
         sentinel = object()
         variants = m.transform_circuit(sentinel)
@@ -86,27 +95,37 @@ class TestMitigationBaseDefaults:
         assert variants[0]["scale_factor"] == 1
 
     def test_validate_device_default_valid(self):
+        """Test validate_device returns valid by default."""
         m = _ConcreteMitigation("test")
         valid, msg = m.validate_device({"basis_gates": ["cz"]})
         assert valid is True
         assert msg is None
 
     def test_postprocess_not_implemented_on_abstract(self):
+        """Test that abstract postprocess prevents instantiation."""
+
         # MitigationBase is abstract (postprocess is abstractmethod): a
         # subclass that doesn't override it cannot be instantiated.
         class Incomplete(MitigationBase):
+            """Leave postprocess unimplemented for abstract-class testing."""
+
             pass
 
         with pytest.raises(TypeError):
             Incomplete("test")  # can't instantiate abstract class
 
     def test_postprocess_raises_not_implemented_via_super(self):
+        """Test that calling super().postprocess raises NotImplementedError."""
+
         # Calling the abstract postprocess directly (via __init_subclass__
         # bypass) is not possible since the class is abstract; instead verify
         # that the base raise statement exists by checking the method body is
         # the documented behaviour via a near-complete subclass.
         class Almost(MitigationBase):
+            """Delegate postprocessing to the parent implementation."""
+
             def postprocess(self, results, calibration=None, **kwargs):
+                """Delegate postprocessing to the abstract parent method."""
                 # invoke the parent's NotImplementedError path
                 return super().postprocess(results, calibration, **kwargs)
 

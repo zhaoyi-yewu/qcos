@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for QZ01 surface-code driver overrides."""
+
 # ruff: noqa: E402
 # load driver venv
 #
@@ -48,6 +50,7 @@ class TestDriverLqQZ01SurfaceCode:
     """
 
     def test_init_overrides(self):
+        """Test QZ01 surface-code attribute overrides."""
         driver = DriverLqQZ01SurfaceCode()
         assert driver.version == "0.0.1"
         assert driver.alias_name == "逻辑比特 QZ01-surface_code 超导驱动"

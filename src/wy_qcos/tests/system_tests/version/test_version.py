@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for version APIs."""
+
 import json
 import pytest
 
@@ -25,15 +27,20 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestVersion:
+    """Test version API endpoints."""
+
     @classmethod
     def setup_class(cls):
+        """Set up the test class."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
 
     @classmethod
     def teardown_class(cls):
+        """Tear down the test class."""
         pass
 
     def test_version(self):
+        """Test retrieving version information."""
         status_code, reason, text, result = self.admin_client.version()
         assert status_code == HttpCode.SUCCESS_OK
         json_results = json.loads(text)

@@ -21,6 +21,7 @@ from aiohttp import web
 import socketio
 
 from wy_qcos.common.library import Library
+from wy_qcos.log import init_console_logger
 
 
 logger = logging.getLogger(__name__)
@@ -34,9 +35,9 @@ access_token = str(Library.create_uuid(prefix=[0xF0]))
 
 def init_logging():
     """Init logging."""
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+        log_format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 

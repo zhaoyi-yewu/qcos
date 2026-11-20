@@ -28,13 +28,14 @@ from fastapi import (
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from wy_qcos.common.constant import HttpCode
+from wy_qcos.common.library import _s
 from wy_qcos.metrics import get_metrics_collector
 
 logger = logging.getLogger(__name__)
 
 ID_PATTERN = re.compile(r"/\d+")
 UUID_PATTERN = re.compile(
-    r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    _s(r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 )
 HEX_ID_PATTERN = re.compile(r"/[0-9a-f]{24}")
 

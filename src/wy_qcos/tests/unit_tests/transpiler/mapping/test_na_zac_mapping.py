@@ -14,6 +14,8 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for neutral-atom ZAC mapping."""
+
 import pytest
 
 from wy_qcos.common.constant import Constant
@@ -27,8 +29,11 @@ from wy_qcos.transpiler.cmss.optimizer.gate_optimizer import optimize_gate
 
 @pytest.mark.usefixtures("global_configs")
 class TestTranspilerNaZacMapping:
+    """Tests for neutral-atom ZAC mapping."""
+
     @classmethod
     def setup_class(cls):
+        """Set up ZAC mapping test fixtures."""
         cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
         cls.simple_data = """
         OPENQASM 2.0;
@@ -182,6 +187,7 @@ class TestTranspilerNaZacMapping:
         ]
 
     def test_na_zac_mapping_prepare_data(self):
+        """Test preparing data for ZAC mapping."""
         src_code_info = {"000": self.simple_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -208,6 +214,7 @@ class TestTranspilerNaZacMapping:
         assert len(na.measure_op) == na.qbit_num
 
     def test_na_zap_mapping_scheduling(self):
+        """Test scheduling gates for ZAC mapping."""
         src_code_info = {"000": self.task2_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -232,6 +239,7 @@ class TestTranspilerNaZacMapping:
         assert len(na.gate_2q_scheduling) >= 1
 
     def test_collect_reuse_qubit(self):
+        """Test collecting reusable qubits after scheduling."""
         src_code_info = {"000": self.task3_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}
@@ -255,6 +263,7 @@ class TestTranspilerNaZacMapping:
         assert len(na.reuse_qubit) > 0
 
     def test_execute_with_order(self):
+        """Test executing ZAC mapping in circuit order."""
         src_code_info = {"000": self.task3_data}
         parse_result = self.transpiler.parse(src_code_info)
         opt_result_dict = {}

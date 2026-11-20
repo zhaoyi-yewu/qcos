@@ -125,7 +125,7 @@ services:
       PREFECT_LOGGING_LEVEL: ${PREFECT_LOGGING_LEVEL:-INFO}
       REDIS_URL: "redis://:${REDIS_PASSWORD:-123456}@${REDIS_SERVER_IP:-127.0.0.1}:${REDIS_SERVER_PORT:-6379}/0"
       PYTHONPATH: /root/qcos-project/src
-    command: "--db-migration --no-exit -w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/api"
+    command: "--db-migration --no-exit -w http://${PREFECT_SERVER_API_HOST:-127.0.0.1}:${PREFECT_SERVER_PORT}/"
     logging:
       driver: "json-file"
       options:

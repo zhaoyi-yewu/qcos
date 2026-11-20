@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for the greedy wire-cutting model."""
+
 import unittest
 
 from wy_qcos.transpiler.common.wirecut.greedy import GreedyModel

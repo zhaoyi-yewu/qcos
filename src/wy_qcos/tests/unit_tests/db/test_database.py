@@ -15,8 +15,12 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
-import pytest
+"""Unit tests for database drivers and initialization."""
+
+from builtins import TimeoutError
 from unittest.mock import MagicMock, patch
+
+import pytest
 from sqlalchemy.engine import Engine
 
 from wy_qcos.db.database import DatabaseDriver, init_database
@@ -115,6 +119,7 @@ class TestDatabaseDriver:
         driver._engine = MagicMock()
 
         def mock_is_connected():
+            """Return a failed database connection result."""
             return False, "Connection failed", None
 
         with patch(

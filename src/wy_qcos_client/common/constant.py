@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+"""Define constants for the QCOS client."""
+
 # Don't import any libraries
 
 
@@ -172,6 +175,8 @@ class Constant:
 
 
 class HttpHeaders:
+    """Define default HTTP headers."""
+
     # headers
     DEFAULT_JSON_HEADERS = {
         "Content-Type": "application/json",

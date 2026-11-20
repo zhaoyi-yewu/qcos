@@ -15,8 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for ClientLibrary file and validation helpers."""
+
 import os
-import tempfile
+from tempfile import TemporaryDirectory
 
 from wy_qcos_client.common.client_library import ClientLibrary
 
@@ -24,38 +26,37 @@ library = ClientLibrary()
 
 
 class TestClientLibrary:
+    """Test ClientLibrary file reading and validation helpers."""
+
     def test_read_file(self):
-        file_path = None
-        with tempfile.NamedTemporaryFile(
-            mode="w+", newline="", suffix=".txt", delete=False
-        ) as temp_file:
-            temp_file.write("")
-            file_path = temp_file.name
+        """Test read_file method."""
+        with TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "data.txt")
+            with open(file_path, "w", encoding="utf-8") as temp_file:
+                temp_file.write("")
 
-        content = library.read_file(file_path)
-        assert content is not None
+            content = library.read_file(file_path)
+            assert content is not None
 
-        pattern = {"1": "1"}
-        content = library.read_file(file_path, replace_pattern=pattern)
-        assert content is not None
+            pattern = {"1": "1"}
+            content = library.read_file(file_path, replace_pattern=pattern)
+            assert content is not None
 
-        formats = {"2": "2"}
-        content = library.read_file(file_path, customer_format=formats)
-        assert content is not None
-        os.unlink(file_path)
+            formats = {"2": "2"}
+            content = library.read_file(file_path, customer_format=formats)
+            assert content is not None
 
     def test_read_csv_file(self):
-        file_path = None
-        with tempfile.NamedTemporaryFile(
-            mode="w+", newline="", suffix=".csv", delete=False
-        ) as temp_file:
-            temp_file.write("")
-            file_path = temp_file.name
+        """Test read_csv_file method."""
+        with TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "data.csv")
+            with open(file_path, "w", encoding="utf-8") as temp_file:
+                temp_file.write("")
 
-        assert library.read_csv_file(file_path) is not None
-        os.unlink(file_path)
+            assert library.read_csv_file(file_path) is not None
 
     def test_validate_values_enum(self):
+        """Test validate_values_enum method."""
         value = ["6", "7", "8", "9"]
         success, _ = library.validate_values_enum("9", "Tzeentch", value)
         assert success is True
@@ -69,10 +70,12 @@ class TestClientLibrary:
         assert success is False
 
     def test_validate_values_uuid(self):
+        """Test validate_values_uuid method."""
         success, _ = library.validate_values_uuid("9", "Tzeentch")
         assert success is False
 
     def test_validate_values_range(self):
+        """Test validate_values_range method."""
         success, _ = library.validate_values_range(9, "Tzeentch")
         assert success is True
 
@@ -82,6 +85,7 @@ class TestClientLibrary:
         assert success is False
 
     def test_validate_values_length(self):
+        """Test validate_values_length method."""
         success, _ = library.validate_values_length(
             None, "Tzeentch", allow_none=True
         )
@@ -96,6 +100,7 @@ class TestClientLibrary:
         assert success is True
 
     def test_validate_schema(self):
+        """Test validate_schema method."""
         success, _ = library.validate_schema("9", "Tzeentch")
         assert success is False
 

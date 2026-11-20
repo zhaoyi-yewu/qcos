@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for initial qubit mapping strategies."""
 
 from networkx import Graph
 import pytest
@@ -31,6 +32,8 @@ from wy_qcos.common.cmss.gate_operation import CX
 
 
 class TestInitialMapping:
+    """Tests for initial mapping algorithms."""
+
     qasm_str1 = """
     OPENQASM 2.0;
     include "qelib1.inc";
@@ -65,6 +68,7 @@ class TestInitialMapping:
     """
 
     def test_get_init_mapping(self):
+        """Test initial mapping generation with supported methods."""
         coupling_graph = Graph()
         edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
         coupling_graph.add_edges_from(edges)
@@ -134,6 +138,7 @@ class TestInitialMapping:
         assert len(mapping) == 2
 
     def test_subgraph_isomorphism_mapping(self):
+        """Test mapping with subgraph isomorphism."""
         coupling_graph = Graph()
         edges = [(1, 2), (2, 3), (3, 4), (4, 1), (4, 5)]
         coupling_graph.add_edges_from(edges)
@@ -171,6 +176,7 @@ class TestInitialMapping:
         assert mapping is None
 
     def test_topgraph_mapping(self):
+        """Test initial mapping with the topgraph algorithm."""
         # liner topo
         coupling_graph = Graph()
         edges = [(0, 1), (1, 2), (2, 3), (3, 4), (7, 8)]
@@ -214,6 +220,7 @@ class TestFidelityAwareInitialMapping:
             assert adjacent
 
     def test_fallback_to_dense_layout(self):
+        """Test falling back to a dense layout when embedding fails."""
         coupling = [(0, 1), (1, 2), (2, 3)]
         gates = [CX([0, 1]), CX([1, 2]), CX([0, 2])]
         mapping = fidelity_aware_initial_mapping(gates, coupling, [], [], 3)

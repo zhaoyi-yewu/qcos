@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for superconducting circuit routing."""
 
 import networkx as nx
 import pytest
@@ -300,19 +301,23 @@ class TestSCRoutingFactory:
     """Test SCRoutingFactory routing selection."""
 
     def test_factory_default_mct(self):
+        """Test creating the default MCTS routing."""
         routing = SCRoutingFactory.create_routing()
         assert isinstance(routing, MCTSRouting)
 
     def test_factory_mct_with_selec_times(self):
+        """Test creating MCTS routing with a custom selection count."""
         routing = SCRoutingFactory.create_routing("mct", selec_times=7)
         assert isinstance(routing, MCTSRouting)
         assert routing.selec_times == 7
 
     def test_factory_sc_alias(self):
+        """Test creating MCTS routing through the SC alias."""
         routing = SCRoutingFactory.create_routing("sc")
         assert isinstance(routing, MCTSRouting)
 
     def test_factory_sabre_defaults(self):
+        """Test creating SABRE routing with default parameters."""
         routing = SCRoutingFactory.create_routing("sabre")
         assert isinstance(routing, SABRERouting)
         assert routing.extension_size == 20
@@ -320,6 +325,7 @@ class TestSCRoutingFactory:
         assert routing.decay == 0.001
 
     def test_factory_sabre_custom(self):
+        """Test creating SABRE routing with custom parameters."""
         routing = SCRoutingFactory.create_routing(
             "sabre", extension_size=10, weight=0.7, decay=0.02
         )
@@ -329,5 +335,6 @@ class TestSCRoutingFactory:
         assert routing.decay == 0.02
 
     def test_factory_invalid_algorithm(self):
+        """Test that an invalid routing algorithm raises an error."""
         with pytest.raises(MappingException):
             SCRoutingFactory.create_routing("invalid")

@@ -14,6 +14,7 @@
 #     MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
 
 """Tests for wy_qcos_client.Client system/job/misc methods."""
 
@@ -35,6 +36,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_ping(self, mock_call):
+        """Test pinging the system with a message."""
         mock_call.return_value = (200, "OK", "text", "pong")
         ret = client.ping("hello")
         assert ret == (200, "OK", "text", "pong")
@@ -44,6 +46,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_system_info(self, mock_call):
+        """Test getting system information."""
         mock_call.return_value = (200, "OK", "text", {"total_jobs": 1})
         ret = client.system_info()
         assert ret[0] == 200
@@ -53,6 +56,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_show_mem(self, mock_call):
+        """Test showing memory usage."""
         mock_call.return_value = (200, "OK", "text", {"rss_mb": 100})
         ret = client.show_mem()
         assert ret[0] == 200
@@ -62,6 +66,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_gc_mem_default(self, mock_call):
+        """Test garbage collection with default generations."""
         mock_call.return_value = (200, "OK", "text", {"collected": 1})
         ret = client.gc_mem()
         assert ret[0] == 200
@@ -71,6 +76,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_gc_mem_generations(self, mock_call):
+        """Test garbage collection with specified generations."""
         mock_call.return_value = (200, "OK", "text", {"collected": 1})
         ret = client.gc_mem(generations=0)
         assert ret[0] == 200
@@ -80,6 +86,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_trace_mem_default(self, mock_call):
+        """Test tracing memory with default parameters."""
         mock_call.return_value = (200, "OK", "text", "stats")
         ret = client.trace_mem()
         assert ret[0] == 200
@@ -91,6 +98,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_trace_mem_custom(self, mock_call):
+        """Test tracing memory with custom parameters."""
         mock_call.return_value = (200, "OK", "text", "stats")
         ret = client.trace_mem(action="stop", nframe=10, sort_count=True)
         assert ret[0] == 200
@@ -102,6 +110,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_list_workers_no_filters(self, mock_call):
+        """Test listing workers without filters."""
         mock_call.return_value = (200, "OK", "text", [])
         ret = client.list_workers()
         assert ret[0] == 200
@@ -117,6 +126,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_list_workers_with_filters(self, mock_call):
+        """Test listing workers with filters and query options."""
         mock_call.return_value = (200, "OK", "text", [])
         ret = client.list_workers(
             filters={"worker_status": "running"},
@@ -133,6 +143,7 @@ class TestSystemMethods:
 
     @patch.object(Client, "call_json_rpc")
     def test_restart_worker(self, mock_call):
+        """Test restarting a worker."""
         mock_call.return_value = (200, "OK", "text", "restarted")
         ret = client.restart_worker(worker_name="worker1")
         assert ret[0] == 200
@@ -148,6 +159,7 @@ class TestSetDevice:
 
     @patch.object(Client, "call_json_rpc")
     def test_set_device_no_optional_fields(self, mock_call):
+        """Test setting a device without optional fields."""
         mock_call.return_value = (200, "OK", "text", "done")
         ret = client.set_device("dummy")
         assert ret[0] == 200
@@ -157,6 +169,7 @@ class TestSetDevice:
 
     @patch.object(Client, "call_json_rpc")
     def test_set_device_all_fields(self, mock_call):
+        """Test setting a device with all fields."""
         mock_call.return_value = (200, "OK", "text", "done")
         ret = client.set_device(
             "dummy",
@@ -180,6 +193,7 @@ class TestSetDevice:
 
     @patch.object(Client, "call_json_rpc")
     def test_set_device_partial_fields(self, mock_call):
+        """Test setting a device with partial fields."""
         mock_call.return_value = (200, "OK", "text", "done")
         ret = client.set_device("dummy", state="offline", enable=False)
         assert ret[0] == 200
@@ -195,6 +209,7 @@ class TestSubmitJob:
 
     @patch.object(Client, "call_json_rpc")
     def test_submit_job_minimal(self, mock_call):
+        """Test submitting a job with minimal parameters."""
         mock_call.return_value = (200, "OK", "text", {"job_id": "j1"})
         ret = client.submit_job("OPENQASM 2.0;")
         assert ret[0] == 200
@@ -209,6 +224,7 @@ class TestSubmitJob:
 
     @patch.object(Client, "call_json_rpc")
     def test_submit_job_all_optional(self, mock_call):
+        """Test submitting a job with all optional parameters."""
         job_uuid = str(uuid_lib.uuid4())
         flavor_uuid = uuid_lib.uuid4()
         mock_call.return_value = (200, "OK", "text", {"job_id": job_uuid})
@@ -239,11 +255,13 @@ class TestResolveHelpers:
     """Cover resolve_user_id / resolve_role_id / resolve_device_group_id."""
 
     def test_resolve_user_id_uuid_passthrough(self):
+        """Test passing through a user UUID."""
         uid = str(uuid_lib.uuid4())
         assert Client.resolve_user_id(client, uid) == uid
 
     @patch.object(Client, "get_users")
     def test_resolve_user_id_by_name_found(self, mock_get_users):
+        """Test resolving a user ID by name."""
         uid = str(uuid_lib.uuid4())
         text = json.dumps({"result": {uid: {"user_name": "alice"}}})
         mock_get_users.return_value = (200, "OK", text, {})
@@ -252,6 +270,7 @@ class TestResolveHelpers:
 
     @patch.object(Client, "get_users")
     def test_resolve_user_id_not_found(self, mock_get_users):
+        """Test resolving a missing user name."""
         text = json.dumps({"result": {}})
         mock_get_users.return_value = (200, "OK", text, {})
         with pytest.raises(errors.GenericException, match="not found"):
@@ -259,12 +278,14 @@ class TestResolveHelpers:
 
     @patch.object(Client, "get_users")
     def test_resolve_user_id_http_error(self, mock_get_users):
+        """Test handling an HTTP error during user ID resolution."""
         mock_get_users.return_value = (500, "Server Error", "", None)
         with pytest.raises(errors.GenericException, match="Failed"):
             Client.resolve_user_id(client, "alice")
 
     @patch.object(Client, "get_users")
     def test_resolve_user_id_jsonrpc_error(self, mock_get_users):
+        """Test handling a JSON-RPC error during user ID resolution."""
         text = json.dumps({
             "error": {"message": "denied", "data": {"details": "no perm"}}
         })
@@ -273,11 +294,13 @@ class TestResolveHelpers:
             Client.resolve_user_id(client, "alice")
 
     def test_resolve_role_id_uuid_passthrough(self):
+        """Test passing through a role UUID."""
         rid = str(uuid_lib.uuid4())
         assert Client.resolve_role_id(client, rid) == rid
 
     @patch.object(Client, "get_roles")
     def test_resolve_role_id_by_name_found(self, mock_get_roles):
+        """Test resolving a role ID by name."""
         rid = str(uuid_lib.uuid4())
         text = json.dumps({"result": {rid: {"role_name": "ops"}}})
         mock_get_roles.return_value = (200, "OK", text, {})
@@ -286,6 +309,7 @@ class TestResolveHelpers:
 
     @patch.object(Client, "get_roles")
     def test_resolve_role_id_not_found(self, mock_get_roles):
+        """Test resolving a missing role name."""
         text = json.dumps({"result": {}})
         mock_get_roles.return_value = (200, "OK", text, {})
         with pytest.raises(errors.GenericException, match="not found"):
@@ -293,16 +317,19 @@ class TestResolveHelpers:
 
     @patch.object(Client, "get_roles")
     def test_resolve_role_id_http_error(self, mock_get_roles):
+        """Test handling an HTTP error during role ID resolution."""
         mock_get_roles.return_value = (502, "Bad Gateway", "", None)
         with pytest.raises(errors.GenericException, match="Failed"):
             Client.resolve_role_id(client, "ops")
 
     def test_resolve_device_group_id_uuid_passthrough(self):
+        """Test passing through a device group UUID."""
         gid = str(uuid_lib.uuid4())
         assert Client.resolve_device_group_id(client, gid) == gid
 
     @patch.object(Client, "get_device_groups")
     def test_resolve_device_group_id_by_name(self, mock_get):
+        """Test resolving a device group ID by name."""
         gid = str(uuid_lib.uuid4())
         text = json.dumps({"result": [{"id": gid, "name": "grp"}]})
         mock_get.return_value = (200, "OK", text, {})
@@ -311,6 +338,7 @@ class TestResolveHelpers:
 
     @patch.object(Client, "get_device_groups")
     def test_resolve_device_group_id_not_found(self, mock_get):
+        """Test resolving a missing device group name."""
         text = json.dumps({"result": []})
         mock_get.return_value = (200, "OK", text, {})
         with pytest.raises(errors.GenericException, match="not found"):
@@ -318,12 +346,14 @@ class TestResolveHelpers:
 
     @patch.object(Client, "get_device_groups")
     def test_resolve_device_group_id_http_error(self, mock_get):
+        """Test an HTTP error during device group ID resolution."""
         mock_get.return_value = (503, "Unavailable", "", None)
         with pytest.raises(errors.GenericException, match="Failed"):
             Client.resolve_device_group_id(client, "grp")
 
     @patch.object(Client, "get_device_groups")
     def test_resolve_device_group_id_jsonrpc_error(self, mock_get):
+        """Test a JSON-RPC error during device group ID resolution."""
         text = json.dumps({
             "error": {"message": "boom", "data": {"details": "why"}}
         })
@@ -338,6 +368,7 @@ class TestCallJsonRpcHeaders:
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_token_from_env_and_instance(self, mock_print, mock_call_http_api):
+        """Test preferring the instance token over the environment token."""
         mock_call_http_api.return_value = [-1, "reason", "text", "result"]
         client.access_token = _s("instance-token")
         with patch.dict(
@@ -351,6 +382,7 @@ class TestCallJsonRpcHeaders:
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_token_from_env_only(self, mock_print, mock_call_http_api):
+        """Test using the environment token without an instance token."""
         mock_call_http_api.return_value = [-1, "reason", "text", "result"]
         client.access_token = None
         with patch.dict(
@@ -365,6 +397,7 @@ class TestCallJsonRpcHeaders:
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_virtual_instance_header(self, mock_print, mock_call_http_api):
+        """Test adding the virtual instance header."""
         mock_call_http_api.return_value = [-1, "reason", "text", "result"]
         with patch.dict(
             "os.environ",
@@ -378,6 +411,7 @@ class TestCallJsonRpcHeaders:
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_custom_request_headers(self, mock_print, mock_call_http_api):
+        """Test adding custom request headers."""
         mock_call_http_api.return_value = [-1, "reason", "text", "result"]
         client.request_headers = {"x-qcos-virtual-instance-id": "custom"}
         try:
@@ -390,6 +424,7 @@ class TestCallJsonRpcHeaders:
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_query_object_assembly(self, mock_print, mock_call_http_api):
+        """Test assembling the JSON-RPC query object."""
         mock_call_http_api.return_value = [-1, "reason", "text", "result"]
         client.call_json_rpc(
             "http://127.0.0.1",
@@ -429,6 +464,7 @@ class TestCallJsonRpcHeaders:
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_connection_error(self, mock_print, mock_call_http_api):
+        """Test handling a connection error."""
         import requests
 
         mock_call_http_api.side_effect = requests.exceptions.ConnectionError(
@@ -443,6 +479,7 @@ class TestCallJsonRpcHeaders:
     @patch("wy_qcos_client.client.ClientLibrary.call_http_api")
     @patch.object(Client, "print_api_response")
     def test_generic_exception(self, mock_print, mock_call_http_api):
+        """Test handling a generic exception."""
         mock_call_http_api.side_effect = ValueError("boom")
         status, reason, _text, _res = client.call_json_rpc(
             "http://127.0.0.1", "get", {}
@@ -451,6 +488,7 @@ class TestCallJsonRpcHeaders:
         assert reason == "boom"
 
     def test_print_api_response_verbose(self, capsys):
+        """Test printing API responses in verbose mode."""
         Client.verbose = True
         try:
             Client.print_api_response(200, "OK", "body", "res")
@@ -461,6 +499,7 @@ class TestCallJsonRpcHeaders:
         assert "reason: OK" in out
 
     def test_print_api_response_quiet(self, capsys):
+        """Test suppressing API response output in quiet mode."""
         Client.verbose = False
         Client.print_api_response(200, "OK", "body", "res")
         assert capsys.readouterr().out == ""

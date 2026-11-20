@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the Wuyue Hanyuan1 simulator driver."""
 
 import json
 import pytest
@@ -58,7 +61,10 @@ driver_wy_hanyuan1_sim.password_pub_key = _s(
 
 @pytest.mark.driver
 class TestDriverWuyuehanyuanSim:
+    """Test the Wuyue Hanyuan1 simulator driver."""
+
     def test_init(self):
+        """Test Wuyue Hanyuan1 simulator default attributes."""
         assert driver_wy_hanyuan1_sim.submit_path == "task/WuYue/submit"
         assert driver_wy_hanyuan1_sim.query_task_path == "task/WuYue/query"
         assert driver_wy_hanyuan1_sim.version == "0.0.1"

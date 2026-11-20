@@ -191,7 +191,7 @@ Endpoint 字段
         v
    parse-webui-toml.py
         |
-        +---> /tmp/webui.env (LISTEN_IP, LISTEN_PORT, DEBUG)
+        +---> /etc/qcos/webui.env (LISTEN_IP, LISTEN_PORT, DEBUG)
         +---> /apps/webui-config.json (endpoints, debug, timeout)
         +---> /etc/nginx/default.d/endpoints.conf (location /api/<name>/)
 

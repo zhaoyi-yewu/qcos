@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the qboson Tiangong100 driver."""
 
 from unittest.mock import patch
 
@@ -36,15 +39,20 @@ shots = 1024
 
 @pytest.mark.driver
 class TestDriverTiangong100:
+    """Test cases for the DriverTiangong100 driver."""
+
     def test_init_driver(self):
+        """Test driver initialization."""
         assert driver_tiangong100.init_driver() is None
 
     def test_validate_driver_configs(self):
+        """Test driver configuration validation."""
         configs = {}
         success, err_msg = driver_tiangong100.validate_driver_configs(configs)
         assert success is False
 
     def test_close_driver(self):
+        """Test closing the driver."""
         assert driver_tiangong100.close_driver() is None
 
     @pytest.mark.smoke
@@ -67,6 +75,7 @@ class TestDriverTiangong100:
         mock_get_task_id,
         mock_get_task_results,
     ):
+        """Test the run workflow with mocked dependencies."""
         mock_is_valid_url.return_value = False
         with pytest.raises(ValueError) as context:
             driver_tiangong100.run(job_id, num_qubits, data, data_type)
@@ -176,6 +185,7 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_user_auth(self, mock_call_http_api):
+        """Test user authentication."""
         mock_call_http_api.return_value = iter([
             200,
             "",
@@ -200,6 +210,7 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_check_device_status(self, mock_call_http_api):
+        """Test device status checking."""
         mock_call_http_api.return_value = iter([
             200,
             "",
@@ -211,6 +222,7 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_upload_file(self, mock_call_http_api):
+        """Test file uploading."""
         mock_call_http_api.return_value = iter([
             200,
             "",
@@ -230,6 +242,7 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_submit_tasks(self, mock_call_http_api):
+        """Test task submission."""
         mock_call_http_api.return_value = iter([
             200,
             "",
@@ -241,6 +254,7 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_id(self, mock_call_http_api):
+        """Test retrieving the task ID."""
         mock_call_http_api.return_value = iter([
             200,
             "",
@@ -252,12 +266,14 @@ class TestDriverTiangong100:
 
     @patch.object(DriverTiangong100, "get_task_id")
     def test_check_task_status(self, mock_get_task_id):
+        """Test task status checking."""
         mock_get_task_id.return_value = iter([True, "", {"id": task_id}])
         success, _, _ = driver_tiangong100.check_task_status(job_id, [])
         assert success is False
 
     @patch.object(Library, "call_http_api")
     def test_get_task_results(self, mock_call_http_api):
+        """Test retrieving task results."""
         mock_call_http_api.return_value = iter([
             200,
             "",
@@ -269,6 +285,7 @@ class TestDriverTiangong100:
 
     @patch.object(Library, "call_http_api")
     def test_delete_task(self, mock_call_http_api):
+        """Test task deletion."""
         mock_call_http_api.return_value = iter([
             200,
             "",
@@ -279,8 +296,10 @@ class TestDriverTiangong100:
         assert success is True
 
     def test_get_fake_results(self):
+        """Test generating fake results."""
         result = driver_tiangong100.get_fake_results(num_qubits, shots, data)
         assert len(result) == 10
 
     def test_cancel(self):
+        """Test job cancellation."""
         assert driver_tiangong100.cancel(job_id) is None

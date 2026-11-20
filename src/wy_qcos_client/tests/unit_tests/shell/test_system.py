@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for system shell commands."""
 
 from argparse import Namespace
 from unittest.mock import patch, Mock
@@ -50,13 +53,17 @@ restart_worker = RestartWorker(shell, None)
 
 
 class TestPing:
+    """Tests for Ping command."""
+
     def test_get_parser(self):
+        """Test parser creation for Ping command."""
         parser = ping.get_parser("")
         assert parser is not None
 
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "ping")
     def test_take_action(self, mock_ping, mock_check_results):
+        """Test Ping take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None
@@ -70,7 +77,10 @@ class TestPing:
 
 
 class TestSystemInfo:
+    """Tests for SystemInfo command."""
+
     def test_get_parser(self):
+        """Test parser creation for SystemInfo command."""
         parser = system_info.get_parser("")
         assert parser is not None
 
@@ -80,6 +90,7 @@ class TestSystemInfo:
     def test_take_action(
         self, mock_system_info, mock_check_results, mock_get_table_data
     ):
+        """Test SystemInfo take_action method."""
         mock_system_info.return_value = iter([None, None, None, None])
         mock_check_results.return_value = None
         mock_get_table_data.return_value = None
@@ -93,7 +104,10 @@ class TestSystemInfo:
 
 
 class TestShowMem:
+    """Tests for ShowMem command."""
+
     def test_get_parser(self):
+        """Test parser creation for ShowMem command."""
         parser = show_mem.get_parser("")
         assert parser is not None
 
@@ -103,6 +117,7 @@ class TestShowMem:
     def test_take_action(
         self, mock_show_mem, mock_check_results, mock_get_table_data
     ):
+        """Test ShowMem take_action method."""
         mock_show_mem.return_value = iter([None, None, None, None])
         mock_check_results.return_value = None
         mock_get_table_data.return_value = None
@@ -116,7 +131,10 @@ class TestShowMem:
 
 
 class TestGcMem:
+    """Tests for GcMem command."""
+
     def test_get_parser(self):
+        """Test parser creation for GcMem command."""
         parser = do_gc.get_parser("")
         assert parser is not None
         # verify --generations argument exists
@@ -128,6 +146,7 @@ class TestGcMem:
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "gc_mem")
     def test_take_action(self, mock_gc_mem, mock_check_results):
+        """Test GcMem take_action method."""
         mock_gc_mem.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {
             "collected": 10,
@@ -147,7 +166,10 @@ class TestGcMem:
 
 
 class TestTraceMem:
+    """Tests for TraceMem command."""
+
     def test_get_parser(self):
+        """Test parser creation for TraceMem command."""
         parser = trace_mem.get_parser("")
         assert parser is not None
         # verify --action and --nframe arguments exist
@@ -167,6 +189,7 @@ class TestTraceMem:
         mock_check_results,
         mock_get_table_list_data,
     ):
+        """Test TraceMem snapshot action."""
         mock_trace_mem.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {
             "tracing": True,
@@ -208,6 +231,7 @@ class TestTraceMem:
         mock_check_results,
         mock_get_table_list_data,
     ):
+        """Test TraceMem stop action."""
         mock_trace_mem.return_value = iter([None, None, None, None])
         mock_check_results.return_value = {
             "tracing": False,
@@ -236,7 +260,10 @@ class TestTraceMem:
 
 
 class TestListWorkers:
+    """Tests for ListWorkers command."""
+
     def test_get_parser(self):
+        """Test parser creation for ListWorkers command."""
         parser = list_workers.get_parser("")
         assert parser is not None
 
@@ -244,6 +271,7 @@ class TestListWorkers:
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "list_workers")
     def test_take_action(self, mock_list, mock_check, mock_table):
+        """Test ListWorkers take_action method."""
         mock_list.return_value = iter([None, None, None, None])
         mock_check.return_value = {
             "workers": [
@@ -287,7 +315,10 @@ class TestListWorkers:
 
 
 class TestRestartWorker:
+    """Tests for RestartWorker command."""
+
     def test_get_parser(self):
+        """Test parser creation for RestartWorker command."""
         parser = restart_worker.get_parser("")
         assert parser is not None
 
@@ -295,6 +326,7 @@ class TestRestartWorker:
     @patch.object(CommandHelper, "check_results")
     @patch.object(Client, "restart_worker")
     def test_take_action(self, mock_restart, mock_check, mock_print):
+        """Test RestartWorker take_action method."""
         mock_restart.return_value = iter([None, None, None, None])
         mock_check.return_value = {
             "success": True,

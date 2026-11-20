@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for SubQUBOMultiSolution."""
+
 import numpy as np
 import pytest
 from unittest.mock import patch
@@ -28,6 +30,7 @@ class TestSubQUBOMultiSolution:
 
     @classmethod
     def setup_class(cls):
+        """Create shared test matrices and solutions."""
         # Creating a QUBO matrix for testing
         cls.qubo_matrix = np.array([
             [1, 0.5, 0.3],
@@ -42,6 +45,7 @@ class TestSubQUBOMultiSolution:
         )
 
     def setup_method(self):
+        """Create a solver for each test."""
         self.solver = SubQUBOMultiSolution(
             N_I=5,
             N_E=2,

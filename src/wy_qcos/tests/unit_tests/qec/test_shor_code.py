@@ -14,6 +14,11 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for Shor quantum error correction code."""
+
+from types import GenericAlias
 
 import pytest
 import numpy as np
@@ -28,6 +33,8 @@ from wy_qcos.qec.shor_code import (
 from wy_qcos.qec.quantum_code_base import QuantumCodeBase
 from wy_qcos.common.cmss.base_operation import BaseOperation
 from wy_qcos.common.cmss.gate_operation import H, X, Z
+
+_OPERATION_LIST_TYPE = GenericAlias(list, BaseOperation)
 
 
 # ===========================================================================
@@ -94,6 +101,7 @@ class TestShorStrategy:
         assert "type error" in str(exc_info.value)
 
     def test_validate_error_inject_invalid_error_type_raises_error(self):
+        """Test invalid error_type raises ValueError."""
         strategy = ShorStrategy()
         with pytest.raises(ValueError) as exc_info:
             strategy._validate_error_inject({
@@ -103,6 +111,7 @@ class TestShorStrategy:
         assert "Invalid error_type" in str(exc_info.value)
 
     def test_validate_error_inject_invalid_noise_prob_raises_error(self):
+        """Test invalid noise_prob raises ValueError."""
         strategy = ShorStrategy()
         with pytest.raises(ValueError) as exc_info:
             strategy._validate_error_inject({
@@ -608,13 +617,13 @@ class TestShorCode:
         """Test that strategies class variable exists and is a dict."""
         assert isinstance(ShorCode.strategies, dict)
         assert stim.Circuit in ShorCode.strategies
-        assert list[BaseOperation] in ShorCode.strategies
+        assert _OPERATION_LIST_TYPE in ShorCode.strategies
 
     def test_strategies_are_correct_types(self):
         """Test that strategies map to correct types."""
         assert isinstance(ShorCode.strategies[stim.Circuit], ShorStimStrategy)
         assert isinstance(
-            ShorCode.strategies[list[BaseOperation]],
+            ShorCode.strategies[_OPERATION_LIST_TYPE],
             ShorQuantumCircuitStrategy,
         )
 
@@ -622,7 +631,7 @@ class TestShorCode:
         """Test the register decorator."""
 
         class MockStimStrategy(ShorStimStrategy):
-            pass
+            """Provide a strategy for testing registration."""
 
         ShorCode.register(stim.Circuit)(MockStimStrategy)
         assert isinstance(ShorCode.strategies[stim.Circuit], MockStimStrategy)
@@ -742,7 +751,7 @@ class TestShorCode:
         """Test registering a new strategy and retrieving it."""
 
         class CustomStrategy(ShorStimStrategy):
-            pass
+            """Provide a custom strategy for registration tests."""
 
         custom_strategy = CustomStrategy()
         ShorCode.strategies["custom"] = custom_strategy
@@ -755,4 +764,4 @@ class TestShorCode:
         ShorCode()
         assert len(ShorCode.strategies) >= 2
         assert stim.Circuit in ShorCode.strategies
-        assert list[BaseOperation] in ShorCode.strategies
+        assert _OPERATION_LIST_TYPE in ShorCode.strategies

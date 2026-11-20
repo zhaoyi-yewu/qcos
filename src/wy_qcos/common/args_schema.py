@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+"""Define validation schemas for QCOS arguments."""
+
 # Don't import library
 
 from schema import And, Optional, Or, Regex, Use

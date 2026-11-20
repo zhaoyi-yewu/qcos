@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for applying equivalence rules to quantum circuits."""
+
 import math
 import pytest
 
@@ -30,6 +32,8 @@ from wy_qcos.tests.unit_tests.transpiler.comm import (
 
 
 class TestRuleApplier:
+    """Test application of gate equivalence rules and paths."""
+
     @classmethod
     def setup_class(cls):
         """Initialize shared test resources."""
@@ -38,6 +42,7 @@ class TestRuleApplier:
 
     @pytest.mark.smoke
     def test_apply_one_rule(self):
+        """Test applying individual equivalence rules to gates."""
         # test rx equivalence rule
         rx_rule = EquivalenceRule(
             "rx(beta) q0 -> rx(pi) q0 | ry(beta) q0 | rx(3*pi/2) q0"
@@ -110,6 +115,7 @@ class TestRuleApplier:
         validate_gate_ir(result[5], "u3", [1], 1, False)
 
     def test_apply_path_simple_recursive(self):
+        """Test recursive application of a simple decomposition path."""
         # A → B
         rule_A = EquivalenceRule("h() q0 -> x() q0")
 

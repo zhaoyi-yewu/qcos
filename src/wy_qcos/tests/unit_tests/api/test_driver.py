@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for driver API routes."""
+
 import pytest
 from unittest.mock import Mock, patch
 
@@ -54,14 +56,18 @@ response_info = {
 
 
 class TestDriver:
+    """Test driver API routes."""
+
     @classmethod
     def setup_class(cls):
+        """Initialize the dummy driver name."""
         cls.dummy = Constant.TRANSPILER_DUMMY
 
     @pytest.mark.smoke
     @patch.object(DriverManager, "get_drivers")
     @patch.object(TaskScheduler, "get_driver_manager")
     def test_get_drivers(self, mock_get_driver_manager, mock_get_drivers):
+        """Test listing drivers when none are registered."""
         mock_get_drivers.return_value = {}
         mock_get_driver_manager.return_value = DriverManager()
         mock_client = Mock()
@@ -83,6 +89,7 @@ class TestDriver:
         mock_get_transpiler,
         mock__get_driver_info,
     ):
+        """Test retrieving a driver."""
         mock_get_transpiler.return_value = TranspilerBase()
         mock_get_transpiler_manager.return_value = TranspilerManager()
         return_dummy = DriverDummy()
@@ -97,6 +104,7 @@ class TestDriver:
 
     @patch.object(DriverBase, "get_supported_code_types")
     def test_get_driver_info(self, mock_get_supported_code_types):
+        """Test building driver information."""
         mock_get_supported_code_types.return_value = ["qasm"]
         mock_client = DriverBase()
         transpiler = TranspilerCmss()
@@ -114,6 +122,7 @@ class TestDriver:
         mock_get_transpiler_manager,
         mock_get_driver_info,
     ):
+        """Test listing registered drivers."""
         transpiler = Mock(spec=TranspilerBase)
         transpiler_manager = Mock(spec=TranspilerManager)
         transpiler_manager.get_transpiler.return_value = transpiler
@@ -143,6 +152,7 @@ class TestDriver:
         mock_get_driver,
         mock_handle_error_not_found,
     ):
+        """Test handling a missing driver."""
         mock_get_driver.return_value = None
         mock_get_driver_manager.return_value = DriverManager()
         mock_handle_error_not_found.side_effect = RuntimeError("not found")
@@ -162,6 +172,7 @@ class TestDriver:
         mock_get_supported_code_types,
         mock_set_supported_code_types,
     ):
+        """Test falling back to driver-supported code types."""
         mock_get_supported_code_types.return_value = ["openqasm"]
         driver = DriverBase()
         _driver_info = _get_driver_info(driver, None)

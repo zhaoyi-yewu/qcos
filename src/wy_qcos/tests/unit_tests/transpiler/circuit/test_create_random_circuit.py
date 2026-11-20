@@ -15,6 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for the random circuit creation command-line interface."""
+
+import argparse
+from builtins import FileNotFoundError
 from unittest.mock import patch
 
 import pytest
@@ -32,12 +36,16 @@ from wy_qcos.transpiler.cmss.circuit.utils import RandomCircuitGen
 
 
 class TestParseArgs:
+    """Tests for command-line argument parsing."""
+
     def test_missing_q_arg_defaults_to_none(self):
+        """Test that a missing qubit argument defaults to none."""
         args = parse_args(["-d", "5"])
         assert args.num_qubits is None
         assert args.depth == 5
 
     def test_parse_view_mode(self):
+        """Test parsing view mode arguments."""
         args = parse_args(["-v", "circuit.qasm"])
         assert args.view == "circuit.qasm"
         assert args.num_qubits is None
@@ -45,12 +53,14 @@ class TestParseArgs:
         assert args.num_gates is None
 
     def test_parse_view_with_other_args(self):
+        """Test parsing view mode with generation arguments."""
         args = parse_args(["-v", "circuit.qasm", "-q", "5", "-d", "8"])
         assert args.view == "circuit.qasm"
         assert args.num_qubits == 5
         assert args.depth == 8
 
     def test_parse_depth_mode(self):
+        """Test parsing depth mode arguments."""
         args = parse_args(["-q", "5", "-d", "8", "-t", "1", "-n", "0.3"])
         assert args.num_qubits == 5
         assert args.depth == 8
@@ -59,6 +69,7 @@ class TestParseArgs:
         assert args.density == 0.3
 
     def test_parse_gates_mode(self):
+        """Test parsing gate count mode arguments."""
         args = parse_args(["-q", "5", "-g", "10", "-b", "x,h,cx"])
         assert args.num_qubits == 5
         assert args.depth is None
@@ -66,6 +77,7 @@ class TestParseArgs:
         assert args.basis_gates == "x,h,cx"
 
     def test_parse_default_values(self):
+        """Test parsing optional argument default values."""
         args = parse_args(["-q", "5", "-d", "8"])
         assert args.gate_type is None
         assert args.density is None
@@ -75,9 +87,10 @@ class TestParseArgs:
 
 
 class TestValidateArgs:
-    def test_both_depth_and_gates(self):
-        import argparse
+    """Tests for general argument validation."""
 
+    def test_both_depth_and_gates(self):
+        """Test that depth and gate count together are rejected."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=8,
@@ -92,8 +105,7 @@ class TestValidateArgs:
             validate_args(ns)
 
     def test_neither_depth_nor_gates_error(self):
-        import argparse
-
+        """Test that omitting depth and gate count is rejected."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=None,
@@ -108,8 +120,7 @@ class TestValidateArgs:
             validate_args(ns)
 
     def test_depth_only_passes(self):
-        import argparse
-
+        """Test that depth-only arguments pass validation."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=8,
@@ -123,8 +134,7 @@ class TestValidateArgs:
         validate_args(ns)
 
     def test_gates_only_passes(self):
-        import argparse
-
+        """Test that gate-count-only arguments pass validation."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=None,
@@ -139,9 +149,10 @@ class TestValidateArgs:
 
 
 class TestValidateDepthMode:
-    def test_basis_gates_in_depth_mode_error(self):
-        import argparse
+    """Tests for depth mode argument validation."""
 
+    def test_basis_gates_in_depth_mode_error(self):
+        """Test that incompatible basis gates are rejected in depth mode."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=8,
@@ -156,8 +167,7 @@ class TestValidateDepthMode:
             validate_depth_mode(ns)
 
     def test_no_basis_gates_in_depth_mode_passes(self):
-        import argparse
-
+        """Test that depth mode passes without basis gates."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=8,
@@ -171,8 +181,7 @@ class TestValidateDepthMode:
         validate_depth_mode(ns)
 
     def test_basis_gates_with_gate_type_2_passes(self):
-        import argparse
-
+        """Test that basis gates pass with gate type two."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=8,
@@ -186,8 +195,7 @@ class TestValidateDepthMode:
         validate_depth_mode(ns)
 
     def test_basis_gates_with_gate_type_none_error(self):
-        import argparse
-
+        """Test that basis gates require an explicit gate type."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=8,
@@ -203,9 +211,10 @@ class TestValidateDepthMode:
 
 
 class TestValidateGatesMode:
-    def test_density_in_gates_mode_error(self):
-        import argparse
+    """Tests for gate count mode argument validation."""
 
+    def test_density_in_gates_mode_error(self):
+        """Test that density is rejected in gate count mode."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=None,
@@ -220,8 +229,7 @@ class TestValidateGatesMode:
             validate_gates_mode(ns)
 
     def test_gate_type_in_gates_mode_error(self):
-        import argparse
-
+        """Test that gate type is rejected in gate count mode."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=None,
@@ -236,8 +244,7 @@ class TestValidateGatesMode:
             validate_gates_mode(ns)
 
     def test_default_values_in_gates_mode_passes(self):
-        import argparse
-
+        """Test that default optional values pass gate count validation."""
         ns = argparse.Namespace(
             num_qubits=5,
             depth=None,
@@ -252,21 +259,29 @@ class TestValidateGatesMode:
 
 
 class TestParseBasisGates:
+    """Tests for basis gate list parsing."""
+
     def test_none_returns_none(self):
+        """Test that an absent basis gate value returns none."""
         assert parse_basis_gates(None) is None
 
     def test_parse_comma_separated(self):
+        """Test parsing comma-separated basis gates."""
         result = parse_basis_gates("x,h,cx")
         assert result == ("x", "h", "cx")
 
     def test_parse_with_spaces(self):
+        """Test parsing basis gates with surrounding spaces."""
         result = parse_basis_gates("x, h , cx")
         assert result == ("x", "h", "cx")
 
 
 class TestMain:
+    """Tests for the random circuit creation entry point."""
+
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_depth_mode_success(self, MockRCG):
+        """Test successful circuit generation in depth mode."""
         mock_rcg = MockRCG.return_value
         mock_rcg.num_qubits = 5
         mock_rcg.depth = 8
@@ -286,6 +301,7 @@ class TestMain:
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_gates_mode_success(self, MockRCG):
+        """Test successful circuit generation in gate count mode."""
         mock_rcg = MockRCG.return_value
         mock_rcg.num_qubits = 5
         mock_rcg.depth = 3
@@ -304,6 +320,7 @@ class TestMain:
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_gates_mode_default_basis(self, MockRCG):
+        """Test gate count mode with the default basis gates."""
         mock_rcg = MockRCG.return_value
         mock_rcg.num_qubits = 5
         mock_rcg.depth = 3
@@ -321,6 +338,7 @@ class TestMain:
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_depth_mode_default_values(self, MockRCG):
+        """Test depth mode with default optional values."""
         mock_rcg = MockRCG.return_value
         mock_rcg.num_qubits = 5
         mock_rcg.depth = 8
@@ -340,11 +358,13 @@ class TestMain:
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_depth_mode_with_basis_gates_error(self, MockRCG):
+        """Test that incompatible depth mode basis gates are rejected."""
         with pytest.raises(SystemExit):
             main(["-q", "5", "-d", "8", "-t", "0", "-b", "x,h"])
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_depth_mode_custom_gates_success(self, MockRCG):
+        """Test depth mode with valid custom gates."""
         mock_rcg = MockRCG.return_value
         mock_rcg.num_qubits = 5
         mock_rcg.depth = 8
@@ -365,31 +385,37 @@ class TestMain:
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_depth_mode_custom_gates_wrong_gate_type_error(self, MockRCG):
+        """Test that custom gates with the wrong gate type are rejected."""
         with pytest.raises(SystemExit):
             main(["-q", "5", "-d", "8", "-b", "x,h"])
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_gates_mode_with_density_error(self, MockRCG):
+        """Test that density in gate count mode is rejected."""
         with pytest.raises(SystemExit):
             main(["-q", "5", "-g", "10", "-n", "0.3"])
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_gates_mode_with_gate_type_error(self, MockRCG):
+        """Test that gate type in gate count mode is rejected."""
         with pytest.raises(SystemExit):
             main(["-q", "5", "-g", "10", "-t", "1"])
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_both_depth_and_gates_error(self, MockRCG):
+        """Test that specifying both generation modes is rejected."""
         with pytest.raises(SystemExit):
             main(["-q", "5", "-d", "8", "-g", "10"])
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_neither_depth_nor_gates_error(self, MockRCG):
+        """Test that omitting both generation modes is rejected."""
         with pytest.raises(SystemExit):
             main(["-q", "5"])
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_with_outfile(self, MockRCG):
+        """Test passing an output file to the circuit generator."""
         mock_rcg = MockRCG.return_value
         mock_rcg.num_qubits = 5
         mock_rcg.depth = 8
@@ -408,31 +434,38 @@ class TestMain:
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     def test_missing_q_in_main_error(self, MockRCG):
+        """Test that a missing qubit argument is rejected by main."""
         with pytest.raises(SystemExit):
             main(["-d", "5"])
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.view_qasm")
     def test_view_mode_calls_view_qasm(self, mock_view):
+        """Test that view mode calls the QASM viewer."""
         main(["-v", "circuit.qasm"])
         mock_view.assert_called_once_with("circuit.qasm")
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.view_qasm")
     def test_view_mode_skips_validation(self, mock_view):
+        """Test that view mode skips generation argument validation."""
         main(["-v", "circuit.qasm"])
         mock_view.assert_called_once()
 
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.RandomCircuitGen")
     @patch("wy_qcos.transpiler.cmss.create_random_circuit.view_qasm")
     def test_view_mode_no_rcg_instantiated(self, mock_view, MockRCG):
+        """Test that view mode does not instantiate the circuit generator."""
         main(["-v", "circuit.qasm"])
         MockRCG.assert_not_called()
 
 
 class TestViewQasm:
+    """Tests for viewing QASM circuit summaries."""
+
     def _write_qasm(self, path, qasm_str):
         path.write_text(qasm_str, encoding="utf-8")
 
     def test_view_qasm_success(self, tmp_path, capsys):
+        """Test viewing a valid QASM circuit."""
         qasm = (
             "OPENQASM 2.0;\n"
             'include "qelib1.inc";\n'
@@ -452,10 +485,12 @@ class TestViewQasm:
         assert "num_gates:" in out
 
     def test_view_qasm_file_not_found(self):
+        """Test that viewing a missing QASM file raises an exception."""
         with pytest.raises(FileNotFoundError):
             view_qasm("/nonexistent/path/circuit.qasm")
 
     def test_view_qasm_with_r_gate(self, tmp_path, capsys):
+        """Test viewing a QASM circuit containing an R gate."""
         qasm = (
             "OPENQASM 2.0;\n"
             'include "qelib1.inc";\n'
@@ -473,6 +508,7 @@ class TestViewQasm:
         assert "num_qubits: 2" in out
 
     def test_view_qasm_with_u_gate(self, tmp_path, capsys):
+        """Test viewing a QASM circuit containing a U gate."""
         qasm = (
             "OPENQASM 2.0;\n"
             'include "qelib1.inc";\n'
@@ -490,6 +526,7 @@ class TestViewQasm:
         assert "num_qubits: 2" in out
 
     def test_view_qasm_with_u3_gate(self, tmp_path, capsys):
+        """Test viewing a QASM circuit containing U3 and U2 gates."""
         qasm = (
             "OPENQASM 2.0;\n"
             'include "qelib1.inc";\n'
@@ -508,6 +545,7 @@ class TestViewQasm:
         assert "num_qubits: 3" in out
 
     def test_view_qasm_output_format(self, tmp_path, capsys):
+        """Test the QASM summary output format."""
         qasm = (
             "OPENQASM 2.0;\n"
             'include "qelib1.inc";\n'
@@ -528,6 +566,7 @@ class TestViewQasm:
         assert lines[3].startswith("num_gates:")
 
     def test_view_qasm_empty_circuit(self, tmp_path, capsys):
+        """Test viewing an empty QASM circuit."""
         qasm = 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\ncreg c[2];\n'
         f = tmp_path / "empty.qasm"
         self._write_qasm(f, qasm)
@@ -538,6 +577,7 @@ class TestViewQasm:
         assert "num_gates: 0" in out
 
     def test_view_qasm_generated_by_rcg(self, tmp_path, capsys):
+        """Test viewing a QASM file created by the circuit generator."""
         rcg = RandomCircuitGen()
         outfile = tmp_path / "generated.qasm"
         rcg.random_circuit_with_depth(
@@ -557,6 +597,7 @@ class TestViewQasm:
         assert "num_gates:" in out
 
     def test_view_qasm_via_main(self, tmp_path, capsys):
+        """Test viewing a QASM circuit through the main entry point."""
         qasm = (
             "OPENQASM 2.0;\n"
             'include "qelib1.inc";\n'

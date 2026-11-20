@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for role management."""
+
 import pytest
 
 from wy_qcos.common.constant import Constant

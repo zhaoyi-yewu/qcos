@@ -28,6 +28,8 @@ import logging
 
 from aiohttp import web
 
+from wy_qcos.log import init_console_logger
+
 logger = logging.getLogger(__name__)
 
 # -- mock data -----------------------------------------------------------
@@ -61,9 +63,9 @@ _SUPPORT_GATE_NAMES = [
 
 
 def _init_logging():
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+        log_format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 

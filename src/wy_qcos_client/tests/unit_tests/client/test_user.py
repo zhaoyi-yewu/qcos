@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for Client user management methods."""
 
 from unittest.mock import patch
 
@@ -28,6 +31,7 @@ class TestClientUser:
 
     @classmethod
     def setup_class(cls):
+        """Provide shared user test data."""
         cls.user_id = "00000000-0000-4000-8000-000000000001"
         cls.role_id = "10000000-0000-4000-8000-000000000001"
         cls.return_values = (200, "OK", "text", "result")
@@ -248,6 +252,7 @@ class TestSetUserMgmt:
 
     @classmethod
     def setup_class(cls):
+        """Provide shared user management response values."""
         cls.return_values = (200, "OK", "text", "result")
 
     @patch.object(Client, "call_json_rpc")

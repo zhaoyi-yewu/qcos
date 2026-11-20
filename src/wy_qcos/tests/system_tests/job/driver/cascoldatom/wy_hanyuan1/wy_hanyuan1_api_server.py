@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.backends import default_backend
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from wy_qcos.common.library import _s
+from wy_qcos.log import init_console_logger
 
 logger = logging.getLogger(__name__)
 
@@ -231,14 +232,14 @@ class Hanyuan1DataHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         """Override to use logging instead of stderr."""
-        logger.info(f"{fmt % args}")
+        logger.info(fmt, *args)
 
 
 def main(port=18609):
     """Start the mock Hanyuan1 API server."""
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+        log_format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 

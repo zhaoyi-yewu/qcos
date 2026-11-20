@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the device monitor engine."""
 
 import pytest
 from loguru import logger
@@ -29,7 +32,10 @@ import prefect
 
 
 def _mock_flow(*args, **kwargs):
+    """Mock prefect.flow without wrapping the decorated function."""
+
     def decorator(fn):
+        """Return the decorated function unchanged."""
         return fn
 
     if len(args) == 1 and callable(args[0]):
@@ -91,6 +97,7 @@ class TestDeviceInfoSchema:
     """Tests for DEVICE_INFO_SCHEMA validation via Library.validate_schema."""
 
     def test_full_valid_device_info(self):
+        """Test validation of fully populated device information."""
         success, err_msgs = Library.validate_schema(
             FULL_DEVICE_INFO, DEVICE_INFO_SCHEMA
         )
@@ -99,6 +106,7 @@ class TestDeviceInfoSchema:
         assert err_msgs == [None]
 
     def test_minimal_valid_device_info(self):
+        """Test validation of minimal device information."""
         # Only the required "status" field is present.
         device_info = {"status": "offline"}
         success, err_msgs = Library.validate_schema(
@@ -108,6 +116,7 @@ class TestDeviceInfoSchema:
         assert err_msgs == [None]
 
     def test_none_allowed(self):
+        """Test acceptance of None when explicitly allowed."""
         # allow_none=True should pass None values.
         success, _ = Library.validate_schema(
             None, DEVICE_INFO_SCHEMA, allow_none=True
@@ -115,6 +124,7 @@ class TestDeviceInfoSchema:
         assert success is True
 
     def test_none_not_allowed(self):
+        """Test rejection of None when not allowed."""
         # Without allow_none, None should fail validation.
         success, _ = Library.validate_schema(
             None, DEVICE_INFO_SCHEMA, allow_none=False
@@ -122,16 +132,19 @@ class TestDeviceInfoSchema:
         assert success is False
 
     def test_missing_status_is_invalid(self):
+        """Test rejection of device information without a status."""
         device_info = {"details": {}}
         success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)
         assert success is False
 
     def test_status_wrong_type_is_invalid(self):
+        """Test rejection of a non-string device status."""
         device_info = {"status": 123}
         success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)
         assert success is False
 
     def test_last_updated_at_accepts_string(self):
+        """Test acceptance of a string update timestamp."""
         # DEVICE_INFO_SCHEMA defines last_updated_at as str (ISO
         # timestamp), matching device_monitor_engine which sets it
         # via Library.to_iso(...).
@@ -143,6 +156,7 @@ class TestDeviceInfoSchema:
         assert success is True
 
     def test_last_updated_at_rejects_int(self):
+        """Test rejection of an integer update timestamp."""
         # Numeric timestamps are rejected because the schema requires
         # a string value.
         device_info = {"status": "online", "last_updated_at": 1722867883}
@@ -150,16 +164,19 @@ class TestDeviceInfoSchema:
         assert success is False
 
     def test_empty_details_is_valid(self):
+        """Test acceptance of empty device details."""
         device_info = {"status": "online", "details": {}}
         success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)
         assert success is True
 
     def test_details_wrong_type_is_invalid(self):
+        """Test rejection of non-dictionary device details."""
         device_info = {"status": "online", "details": "not a dict"}
         success, _ = Library.validate_schema(device_info, DEVICE_INFO_SCHEMA)
         assert success is False
 
     def test_calibration_partial_is_valid(self):
+        """Test acceptance of partial calibration details."""
         # calibration with only last_updated (no metrics lists)
         device_info = {
             "status": "online",
@@ -171,6 +188,7 @@ class TestDeviceInfoSchema:
         assert success is True
 
     def test_calibration_empty_qubit_metrics_is_valid(self):
+        """Test acceptance of empty qubit metrics."""
         device_info = {
             "status": "online",
             "details": {"calibration": {"qubit_metrics": []}},
@@ -179,6 +197,7 @@ class TestDeviceInfoSchema:
         assert success is True
 
     def test_qubit_metrics_missing_qubit_id_is_invalid(self):
+        """Test rejection of qubit metrics without a qubit ID."""
         device_info = {
             "status": "online",
             "details": {
@@ -191,6 +210,7 @@ class TestDeviceInfoSchema:
         assert success is False
 
     def test_qubit_metrics_qubit_id_wrong_type_is_invalid(self):
+        """Test rejection of qubit metrics with a non-integer qubit ID."""
         device_info = {
             "status": "online",
             "details": {
@@ -203,6 +223,7 @@ class TestDeviceInfoSchema:
         assert success is False
 
     def test_qubit_metrics_fidelity_accepts_int(self):
+        """Test acceptance of integer qubit fidelity values."""
         device_info = {
             "status": "online",
             "details": {
@@ -215,6 +236,7 @@ class TestDeviceInfoSchema:
         assert success is True
 
     def test_qubit_metrics_fidelity_rejects_string(self):
+        """Test rejection of string qubit fidelity values."""
         device_info = {
             "status": "online",
             "details": {
@@ -227,6 +249,7 @@ class TestDeviceInfoSchema:
         assert success is False
 
     def test_coupler_metrics_missing_qubits_is_invalid(self):
+        """Test rejection of coupler metrics without qubits."""
         device_info = {
             "status": "online",
             "details": {
@@ -239,6 +262,7 @@ class TestDeviceInfoSchema:
         assert success is False
 
     def test_coupler_metrics_qubits_wrong_element_type_is_invalid(self):
+        """Test rejection of coupler qubits with invalid element types."""
         device_info = {
             "status": "online",
             "details": {
@@ -253,6 +277,7 @@ class TestDeviceInfoSchema:
         assert success is False
 
     def test_coupler_metrics_cz_fidelity_accepts_int(self):
+        """Test acceptance of integer coupler fidelity values."""
         device_info = {
             "status": "online",
             "details": {
@@ -265,6 +290,7 @@ class TestDeviceInfoSchema:
         assert success is True
 
     def test_qudoor_trapped_ion_device_info_is_valid(self):
+        """Test validation of QuDoor trapped-ion device information."""
         # QuDoor AbaQu100 fetch_running_info output with trapped-ion
         # hardware metrics (timing, single/double qubit fidelity, spam).
         # Field names use snake_case matching DEVICE_INFO_SCHEMA.
@@ -418,11 +444,13 @@ class TestValidateDeviceInfo:
     """Tests for the validate_device_info wrapper function."""
 
     def test_valid_device_info_logs_no_warning(self):
+        """Test that valid device information emits no warning."""
         with logger.catch():
             with pytest.MonkeyPatch().context() as ctx:
                 called = []
 
                 def fake_warn(msg, *args, **kwargs):
+                    """Record warning messages for assertions."""
                     called.append(msg)
 
                 ctx.setattr(
@@ -433,11 +461,13 @@ class TestValidateDeviceInfo:
                 assert called == []
 
     def test_none_device_info_logs_no_warning(self):
+        """Test that None device information emits no warning."""
         # allow_none=True means None should pass without warning.
         with pytest.MonkeyPatch().context() as ctx:
             called = []
 
             def fake_warn(msg, *args, **kwargs):
+                """Record warning messages for assertions."""
                 called.append(msg)
 
             ctx.setattr(
@@ -448,11 +478,13 @@ class TestValidateDeviceInfo:
             assert called == []
 
     def test_invalid_device_info_logs_warning(self):
+        """Test that invalid device information emits a warning."""
         # Missing required "status" field should trigger a warning.
         with pytest.MonkeyPatch().context() as ctx:
             called = []
 
             def fake_warn(msg, *args, **kwargs):
+                """Record warning messages for assertions."""
                 called.append(msg)
 
             ctx.setattr(
@@ -464,10 +496,12 @@ class TestValidateDeviceInfo:
             assert "Invalid device info" in called[0]
 
     def test_invalid_status_type_logs_warning(self):
+        """Test that an invalid status type emits a warning."""
         with pytest.MonkeyPatch().context() as ctx:
             called = []
 
             def fake_warn(msg, *args, **kwargs):
+                """Record warning messages for assertions."""
                 called.append(msg)
 
             ctx.setattr(
@@ -479,10 +513,12 @@ class TestValidateDeviceInfo:
             assert "Invalid device info" in called[0]
 
     def test_minimal_valid_device_info_logs_no_warning(self):
+        """Test that minimal valid device information emits no warning."""
         with pytest.MonkeyPatch().context() as ctx:
             called = []
 
             def fake_warn(msg, *args, **kwargs):
+                """Record warning messages for assertions."""
                 called.append(msg)
 
             ctx.setattr(

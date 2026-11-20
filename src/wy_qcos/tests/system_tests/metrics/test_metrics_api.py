@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for metrics APIs."""
+
 import json
 import pytest
 
@@ -24,16 +26,21 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestMetricsAPI:
+    """Test metrics API endpoints."""
+
     @classmethod
     def setup_class(cls):
+        """Set up the test class."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
 
     @classmethod
     def teardown_class(cls):
+        """Tear down the test class."""
         pass
 
     @pytest.mark.smoke
     def test_get_system_health(self):
+        """Test retrieving system health."""
         status_code, reason, text, response = (
             self.admin_client.get_system_health()
         )
@@ -63,6 +70,7 @@ class TestMetricsAPI:
 
     @pytest.mark.smoke
     def test_get_api_stats(self):
+        """Test retrieving API request statistics."""
         status_code, reason, text, response = self.admin_client.get_api_stats()
         assert status_code == HttpCode.SUCCESS_OK
 
@@ -91,6 +99,7 @@ class TestMetricsAPI:
 
     @pytest.mark.smoke
     def test_get_job_stats(self):
+        """Test retrieving job statistics."""
         status_code, reason, text, response = self.admin_client.get_job_stats()
         assert status_code == HttpCode.SUCCESS_OK
 

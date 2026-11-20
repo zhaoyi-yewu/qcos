@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Shared fixtures for user management unit tests."""
 
 import pytest
 import uuid
@@ -74,6 +77,7 @@ def user_manager_with_mocks():
         created_users = {}
 
         def mock_create_role(request):
+            """Create and store a mocked role."""
             role = schemas.Role(
                 id=str(uuid.uuid4()),
                 role_name=request.role_name,
@@ -84,11 +88,13 @@ def user_manager_with_mocks():
             return (True, None, role)
 
         def mock_get_role_by_name(role_name):
+            """Return a stored role matching the role name."""
             if role_name in created_roles:
                 return (True, None, created_roles[role_name])
             return (False, None, None)
 
         def mock_create_user(request):
+            """Create and store a mocked user."""
             user = schemas.User(
                 id=uuid.uuid4(),
                 project_id=uuid.UUID(Constant.DEFAULT_PROJECT_ID)
@@ -109,11 +115,13 @@ def user_manager_with_mocks():
             return (True, None, user)
 
         def mock_get_user_by_username(user_name):
+            """Return a stored user matching the username."""
             if user_name in created_users:
                 return (True, None, created_users[user_name])
             return (False, None, None)
 
         def mock_get_user_by_id(user_id):
+            """Return a stored user matching the user ID."""
             user_id_str = str(user_id).lower() if user_id else None
             for user in created_users.values():
                 if hasattr(user, "id") and str(user.id).lower() == user_id_str:
@@ -121,9 +129,11 @@ def user_manager_with_mocks():
             return (False, None, None)
 
         def mock_get_users(filters=None):
+            """Return all stored users."""
             return (True, None, list(created_users.values()))
 
         def mock_delete_user_by_id(user_id):
+            """Delete a stored user matching the user ID."""
             # Normalize user_id to string for comparison
             user_id_str = str(user_id).lower() if user_id else None
             for user_name, user in list(created_users.items()):
@@ -133,6 +143,7 @@ def user_manager_with_mocks():
             return (False, "User not found")
 
         def mock_delete_role(role_id):
+            """Delete a stored role matching the role ID."""
             # Normalize role_id to string for comparison
             role_id_str = str(role_id).lower() if role_id else None
             for role_name, role in list(created_roles.items()):
@@ -142,6 +153,7 @@ def user_manager_with_mocks():
             return (False, "Role not found")
 
         def mock_get_role_by_id(role_id):
+            """Return a stored role matching the role ID."""
             role_id_str = str(role_id).lower() if role_id else None
             for role in created_roles.values():
                 if hasattr(role, "id") and str(role.id).lower() == role_id_str:
@@ -149,9 +161,11 @@ def user_manager_with_mocks():
             return (False, None, None)
 
         def mock_get_roles(filters=None):
+            """Return all stored roles."""
             return (True, None, list(created_roles.values()))
 
         def mock_update_role(role_id, request):
+            """Update a stored role matching the role ID."""
             # Normalize role_id to string for comparison
             role_id_str = str(role_id).lower() if role_id else None
             for role in created_roles.values():
@@ -162,6 +176,7 @@ def user_manager_with_mocks():
             return (False, "Role not found", None)
 
         def mock_update_user(user_id, request):
+            """Update a stored user matching the user ID."""
             # Normalize user_id to string for comparison
             user_id_str = str(user_id).lower() if user_id else None
             for user_name, user in created_users.items():

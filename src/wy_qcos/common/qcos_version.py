@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define the QCOS version."""
+
 
 class QcosVersion:
     """QCOS Version."""

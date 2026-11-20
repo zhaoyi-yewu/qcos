@@ -27,6 +27,7 @@ from wy_qcos.common.cmss.base_operation import OperationType
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.library import Library
 from wy_qcos.device.device import Device
+from wy_qcos.tests.common import make_test_ip
 
 
 if "smbclient" not in sys.modules:
@@ -82,7 +83,7 @@ class TestDriverHanyuan1Pulse:
         mock_validate.return_value = (True, [])
 
         configs = {
-            "ip_address": "192.168.1.2",
+            "ip_address": make_test_ip(2),
             "port": 445,
             "username": "user1",
             "password": "pwd1",

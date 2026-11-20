@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for QEM utility functions."""
 
 import numpy as np
 
@@ -32,22 +35,26 @@ class TestCountsToProbabilities:
     """Test counts_to_probabilities function."""
 
     def test_uniform_distribution(self):
+        """Test uniform counts produce equal probabilities."""
         counts = {"00": 250, "01": 250, "10": 250, "11": 250}
         probs = counts_to_probabilities(counts, 2)
         np.testing.assert_allclose(probs, [0.25, 0.25, 0.25, 0.25])
 
     def test_single_outcome(self):
+        """Test single outcome gives probability one."""
         counts = {"00": 1000}
         probs = counts_to_probabilities(counts, 2)
         assert probs[0] == 1.0
         assert np.sum(probs[1:]) == 0.0
 
     def test_empty_counts(self):
+        """Test empty counts produce zero probabilities."""
         counts = {}
         probs = counts_to_probabilities(counts, 2)
         np.testing.assert_allclose(probs, np.zeros(4))
 
     def test_three_qubits(self):
+        """Test three-qubit counts conversion."""
         counts = {"000": 500, "111": 500}
         probs = counts_to_probabilities(counts, 3)
         assert len(probs) == 8
@@ -56,6 +63,7 @@ class TestCountsToProbabilities:
         assert np.sum(probs[1:7]) == 0.0
 
     def test_probabilities_sum_to_one(self):
+        """Test that probabilities sum to one."""
         counts = {"00": 300, "01": 200, "10": 100, "11": 400}
         probs = counts_to_probabilities(counts, 2)
         np.testing.assert_allclose(np.sum(probs), 1.0)
@@ -65,12 +73,14 @@ class TestCountsToSamples:
     """Test counts_to_samples function."""
 
     def test_basic_expansion(self):
+        """Test basic counts-to-samples expansion."""
         counts = {"00": 2, "11": 3}
         samples = counts_to_samples(counts, 2)
         assert samples.shape == (5, 2)
         assert samples.dtype == int
 
     def test_correct_counts_in_samples(self):
+        """Test sample counts match input counts."""
         counts = {"00": 100, "11": 200}
         samples = counts_to_samples(counts, 2)
         zeros = np.sum(np.all(samples == 0, axis=1))
@@ -79,6 +89,7 @@ class TestCountsToSamples:
         assert ones == 200
 
     def test_single_qubit(self):
+        """Test single-qubit counts-to-samples conversion."""
         counts = {"0": 600, "1": 400}
         samples = counts_to_samples(counts, 1)
         assert samples.shape == (1000, 1)
@@ -90,16 +101,19 @@ class TestSamplesToProbabilities:
     """Test samples_to_probabilities function."""
 
     def test_basic_conversion(self):
+        """Test basic samples-to-probabilities conversion."""
         samples = np.array([[0, 0], [0, 0], [1, 1], [1, 1]])
         probs = samples_to_probabilities(samples, 2)
         np.testing.assert_allclose(probs, [0.5, 0.0, 0.0, 0.5])
 
     def test_empty_samples(self):
+        """Test empty samples produce zero probabilities."""
         samples = np.zeros((0, 2), dtype=int)
         probs = samples_to_probabilities(samples, 2)
         np.testing.assert_allclose(probs, np.zeros(4))
 
     def test_roundtrip_with_counts(self):
+        """Test counts-to-samples-to-probabilities roundtrip."""
         original_counts = {"00": 300, "01": 200, "10": 100, "11": 400}
         samples = counts_to_samples(original_counts, 2)
         probs = samples_to_probabilities(samples, 2)
@@ -110,17 +124,20 @@ class TestMarginalSamples:
     """Test marginal_samples function."""
 
     def test_extract_subset(self):
+        """Test extracting a subset of qubits."""
         samples = np.array([[0, 1, 0], [1, 0, 1], [0, 0, 1]])
         marginal = marginal_samples(samples, [0, 2])
         expected = np.array([[0, 0], [1, 1], [0, 1]])
         np.testing.assert_array_equal(marginal, expected)
 
     def test_empty_support(self):
+        """Test marginal with empty support."""
         samples = np.array([[0, 1], [1, 0]])
         marginal = marginal_samples(samples, [])
         assert marginal.shape == (2, 0)
 
     def test_single_qubit(self):
+        """Test marginal extraction of a single qubit."""
         samples = np.array([[0, 1, 0], [1, 0, 1]])
         marginal = marginal_samples(samples, [1])
         expected = np.array([[1], [0]])
@@ -131,31 +148,37 @@ class TestExpectationFromProbabilities:
     """Test expectation_from_probabilities function."""
 
     def test_pure_zero_state(self):
+        """Test expectation for pure zero state."""
         probs = np.array([1.0, 0.0])
         exp = expectation_from_probabilities(probs, [0])
         assert exp == 1.0
 
     def test_pure_one_state(self):
+        """Test expectation for pure one state."""
         probs = np.array([0.0, 1.0])
         exp = expectation_from_probabilities(probs, [0])
         assert exp == -1.0
 
     def test_maximally_mixed(self):
+        """Test expectation for maximally mixed state."""
         probs = np.array([0.5, 0.5])
         exp = expectation_from_probabilities(probs, [0])
         np.testing.assert_allclose(exp, 0.0, atol=1e-10)
 
     def test_empty_support(self):
+        """Test expectation with empty support."""
         probs = np.array([1.0])
         exp = expectation_from_probabilities(probs, [])
         assert exp == 1.0
 
     def test_two_qubit_parity(self):
+        """Test two-qubit parity expectation."""
         probs = np.array([0.5, 0.0, 0.0, 0.5])
         exp = expectation_from_probabilities(probs, [0, 1])
         np.testing.assert_allclose(exp, 1.0, atol=1e-10)
 
     def test_anti_correlated(self):
+        """Test anti-correlated two-qubit expectation."""
         probs = np.array([0.0, 0.5, 0.5, 0.0])
         exp = expectation_from_probabilities(probs, [0, 1])
         np.testing.assert_allclose(exp, -1.0, atol=1e-10)
@@ -165,28 +188,33 @@ class TestClipAndNormalize:
     """Test clip_and_normalize function."""
 
     def test_already_valid(self):
+        """Test clip_and_normalize with already valid input."""
         probs = np.array([0.3, 0.7])
         result = clip_and_normalize(probs)
         np.testing.assert_allclose(result, [0.3, 0.7])
 
     def test_negative_values(self):
+        """Test clip_and_normalize clips negative values."""
         probs = np.array([-0.1, 0.6, 0.5])
         result = clip_and_normalize(probs)
         assert np.all(result >= 0)
         np.testing.assert_allclose(np.sum(result), 1.0)
 
     def test_overflow_values(self):
+        """Test clip_and_normalize clips values above one."""
         probs = np.array([1.2, 0.3])
         result = clip_and_normalize(probs)
         assert np.all(result <= 1)
         np.testing.assert_allclose(np.sum(result), 1.0)
 
     def test_all_zeros(self):
+        """Test clip_and_normalize with all-zero input."""
         probs = np.array([0.0, 0.0, 0.0])
         result = clip_and_normalize(probs)
         np.testing.assert_allclose(result, [0.0, 0.0, 0.0])
 
     def test_mixed_invalid(self):
+        """Test clip_and_normalize with mixed invalid values."""
         probs = np.array([-0.2, 0.8, 1.1, 0.3])
         result = clip_and_normalize(probs)
         assert np.all(result >= 0)
@@ -198,11 +226,13 @@ class TestClosestPositiveDistribution:
     """Test closest_positive_distribution (mitiq-style L2 projection)."""
 
     def test_already_valid(self):
+        """Test closest_positive_distribution with valid input."""
         probs = np.array([0.3, 0.7])
         result = closest_positive_distribution(probs)
         np.testing.assert_allclose(result, [0.3, 0.7])
 
     def test_negative_elements_reach_zero(self):
+        """Test negative elements are projected to zero."""
         # [-1, 0.1, -1, 0.2] -> [0, ~0.4503, 0, ~0.5497]
         result = closest_positive_distribution(
             np.array([-1.0, 0.1, -1.0, 0.2])
@@ -215,6 +245,7 @@ class TestClosestPositiveDistribution:
         assert result[3] > result[1] > 0.0
 
     def test_matches_mitiq_reference_values(self):
+        """Test results match mitiq reference values."""
         # Reference values from mitiq's test_closest_positive_distribution.
         cases = [
             ([0.3, 0.7], [0.3, 0.7]),
@@ -228,6 +259,7 @@ class TestClosestPositiveDistribution:
             np.testing.assert_allclose(result, expected, atol=1e-4)
 
     def test_sum_to_one_and_nonneg(self):
+        """Test output sums to one and is non-negative."""
         rng = np.random.default_rng(0)
         for _ in range(20):
             q = rng.normal(-0.5, 1.5, size=8)
@@ -236,6 +268,7 @@ class TestClosestPositiveDistribution:
             np.testing.assert_allclose(np.sum(result), 1.0, atol=1e-6)
 
     def test_all_zero_input(self):
+        """Test all-zero input yields uniform distribution."""
         # Degenerate input: projection is the uniform distribution.
         result = closest_positive_distribution(np.zeros(4))
         np.testing.assert_allclose(result, [0.25, 0.25, 0.25, 0.25])
@@ -245,6 +278,7 @@ class TestCountsToSamplesPadding:
     """Cover the short-bitstring padding branch."""
 
     def test_short_bitstring_padded(self):
+        """Test short bitstrings are padded with zeros."""
         # "1" for 2 qubits -> padded to "01"
         counts = {"1": 2}
         samples = counts_to_samples(counts, 2)
@@ -253,6 +287,7 @@ class TestCountsToSamplesPadding:
         assert np.all(samples == [0, 1])
 
     def test_mixed_length_bitstrings(self):
+        """Test mixed-length bitstrings are handled."""
         counts = {"0": 1, "11": 1}
         samples = counts_to_samples(counts, 2)
         assert samples.shape == (2, 2)
@@ -265,6 +300,7 @@ class TestSamplesToProbabilitiesZeroTotal:
     """Cover the total==0 early-return branch."""
 
     def test_all_zero_samples(self):
+        """Test zero-total early-return branch."""
         # samples of all-zero rows -> bincount all at index 0, total = n
         # To hit the total==0 branch we need an empty-ish array; a (0,2)
         # array is already covered. Use a 2-row all-zero with num_qubits=0
@@ -281,6 +317,7 @@ class TestClosestPositiveDistributionFallback:
     def test_fallback_to_clip_and_normalize_when_scipy_missing(
         self, monkeypatch
     ):
+        """Test fallback to clip_and_normalize when scipy is missing."""
         import wy_qcos.qem.utils as utils_mod
 
         # Force scipy.optimize import to fail inside the function so the
@@ -292,6 +329,7 @@ class TestClosestPositiveDistributionFallback:
         )
 
         def fake_import(name, *args, **kwargs):
+            """Simulate an import failure for scipy.optimize."""
             if name == "scipy.optimize":
                 raise ImportError("simulated missing scipy")
             return real_import(name, *args, **kwargs)
@@ -305,23 +343,35 @@ class TestClosestPositiveDistributionFallback:
         np.testing.assert_allclose(np.sum(result), 1.0)
 
     def test_fallback_when_optimizer_does_not_succeed(self, monkeypatch):
+        """Test fallback when the optimizer does not converge."""
         import wy_qcos.qem.utils as utils_mod
 
         class _FakeResult:
+            """Represent an unsuccessful optimization result."""
+
             success = False
             x = None
 
         class _FakeOptimize:
+            """Provide fake scipy.optimize interfaces for fallback testing."""
+
             @staticmethod
             def minimize(*args, **kwargs):
+                """Return an unsuccessful optimization result."""
                 return _FakeResult()
 
             class Bounds:
+                """Represent fake optimization bounds."""
+
                 def __init__(self, *a, **k):
+                    """Accept arbitrary bounds arguments."""
                     pass
 
             class LinearConstraint:
+                """Represent a fake linear optimization constraint."""
+
                 def __init__(self, *a, **k):
+                    """Accept arbitrary constraint arguments."""
                     pass
 
         # Pre-import scipy.optimize in the real module, then patch it.

@@ -28,6 +28,7 @@ It does NOT depend on the full wy-qcos package or its dependency tree.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -60,26 +61,51 @@ class CMakeBuildExt(_build_ext):
         dist_dir = _CPP_SOURCE_DIR / "dist"
         build_dir = Path(self.build_temp) / "cmake_build"
         build_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.check_call([  # noqa: S603, S607
-            "cmake", "-S", str(_CPP_SOURCE_DIR), "-B", str(build_dir),
-            "-DCMAKE_BUILD_TYPE=Release",
-            "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
-            "-DUSE_PYQCOS=ON",
-            f"-DPython_EXECUTABLE={sys.executable}",
-        ])
-        n = os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL")
-        jobs = int(n) if n and n.isdigit() else os.cpu_count() or 1
-        subprocess.check_call([  # noqa: S603, S607
-            "cmake", "--build", str(build_dir),
-            "--target", "high_performance", "--config", "Release",
-            "--parallel", str(jobs),
-        ])
+        cmake = shutil.which("cmake")
+        if cmake is None:
+            raise RuntimeError("cmake not found in PATH")
+        cmake_path = Path(cmake).resolve()
+        subprocess.check_call(  # noqa: S603
+            [
+                str(cmake_path),
+                "-S",
+                str(_CPP_SOURCE_DIR),
+                "-B",
+                str(build_dir),
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+                "-DUSE_PYQCOS=ON",
+                f"-DPython_EXECUTABLE={sys.executable}",
+            ],
+            shell=False,
+        )
+        subprocess.check_call(  # noqa: S603
+            [
+                str(cmake_path),
+                "--build",
+                str(build_dir),
+                "--target",
+                "high_performance",
+                "--config",
+                "Release",
+                "--parallel",
+                str(self._parallel_jobs()),
+            ],
+            shell=False,
+        )
         so = sorted(dist_dir.rglob("high_performance*.so"))
 
         if not so:
             raise RuntimeError(
                 f"high_performance .so not found under {dist_dir}")
         shutil.copyfile(str(so[0]), str(ext_path))
+
+    @staticmethod
+    def _parallel_jobs():
+        n = os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL")
+        if n and re.fullmatch(r"[1-9][0-9]{0,3}", n):
+            return min(int(n), 256)
+        return os.cpu_count() or 1
 
 
 setup(

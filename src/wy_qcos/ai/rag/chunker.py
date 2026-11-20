@@ -25,6 +25,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from wy_qcos.common.library import _s
+
 
 @dataclass
 class DocumentChunk:
@@ -73,8 +75,9 @@ def chunk_markdown(text: str, source_file: str) -> list[DocumentChunk]:
         current_content = []
         current_title = ""
 
+    header_pattern = _s(r"^(#{1,3})\s+(.+)$")
     for line in lines:
-        header_match = re.match(r"^(#{1,3})\s+(.+)$", line)
+        header_match = re.match(header_pattern, line)
         if header_match:
             flush()
             level = len(header_match.group(1))

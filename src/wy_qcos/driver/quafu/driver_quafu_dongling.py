@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define the Quafu Dongling superconducting driver."""
+
 from wy_qcos.driver.quafu.driver_quafu_base import (
     DriverQuafuBase,
 )
@@ -28,6 +30,7 @@ class DriverQuafuDongling(DriverQuafuBase):
     """
 
     def __init__(self):
+        """Initialize the Quafu Dongling driver."""
         super().__init__()
         self.alias_name = "北京量子院-夸父-Dongling 超导驱动"
         self.description = "北京量子院-夸父-Dongling 超导驱动"

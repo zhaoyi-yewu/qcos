@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Shared SQLAlchemy model types and serialization helpers."""
+
 import json
 import uuid
 from datetime import datetime
@@ -37,24 +39,32 @@ from wy_qcos.common.constant import Constant
 metadata = MetaData()
 
 
-class MyEncoder(json.JSONEncoder):
-    def default(self, obj):
+class MyEncoder:
+    """Provide a JSON serialization hook without framework inheritance."""
+
+    @staticmethod
+    def default(obj):
+        """Convert supported values to their string representation."""
         if isinstance(obj, (datetime, uuid.UUID)):
             return str(obj)
-        return super().default(obj)
+        raise TypeError(
+            f"Object of type {type(obj).__name__} is not JSON serializable"
+        )
 
 
 class Base(DeclarativeBase):
     """Base model."""
 
     def asdict(self):
+        """Return mapped column values as a dictionary."""
         return {
             c.key: getattr(self, c.key, None)
             for c in inspect(self).mapper.column_attrs
         }
 
     def asjson(self):
-        return json.dumps(self.asdict(), cls=MyEncoder)
+        """Serialize mapped column values as JSON."""
+        return json.dumps(self.asdict(), default=MyEncoder.default)
 
 
 class BaseTable(Base):
@@ -142,11 +152,7 @@ class GUID(TypeDecorator):
         elif dialect.name == Constant.DB_DIALECT_POSTGRESQL:
             return str(value)
         else:
-            if not isinstance(value, uuid.UUID):
-                return "%.32x" % uuid.UUID(value).int
-            else:
-                # hexstring
-                return "%.32x" % value.int
+            return uuid.UUID(str(value)).hex
 
     def process_result_value(self, value, dialect):
         """Process result value - convert database value to UUID object."""

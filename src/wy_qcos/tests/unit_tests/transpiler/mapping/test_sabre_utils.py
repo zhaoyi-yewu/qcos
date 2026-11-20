@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for SABRE topology utility functions."""
 
 import pytest
 
@@ -23,7 +24,10 @@ from wy_qcos.transpiler.cmss.mapping.utils.sabre_utils import (
 
 
 class TestExtractTopologyData:
+    """Tests for extracting topology and fidelity data."""
+
     def test_coupler_map_only(self):
+        """Test extracting topology from only a coupler map."""
         qpu_cfg = {
             "coupler_map": {
                 "CZ0_1": ["Q0", "Q1"],
@@ -38,6 +42,7 @@ class TestExtractTopologyData:
         assert qubit_fidelities == []
 
     def test_full_fidelity_data(self):
+        """Test extracting topology with all fidelity data."""
         qpu_cfg = {
             "coupler_map": {
                 "CZ0_1": ["Q0", "Q1"],
@@ -63,6 +68,7 @@ class TestExtractTopologyData:
         assert qubit_fidelities == [0.999, 0.994, 0.998]
 
     def test_coupler_error_only(self):
+        """Test extracting topology with only coupler errors."""
         qpu_cfg = {
             "coupler_map": {"CZ0_1": ["Q0", "Q1"]},
             "coupler_error": {"CZ0_1": 0.01},
@@ -75,6 +81,7 @@ class TestExtractTopologyData:
         assert qubit_fidelities == []
 
     def test_readout_error_only(self):
+        """Test extracting topology with only readout errors."""
         qpu_cfg = {
             "coupler_map": {"CZ0_1": ["Q0", "Q1"]},
             "readout_error": {"Q0": 0.001, "Q1": 0.002},
@@ -87,6 +94,7 @@ class TestExtractTopologyData:
         assert qubit_fidelities == [0.999, 0.998]
 
     def test_coupler_error_key_mismatch_raises(self):
+        """Test that mismatched coupler error keys raise an error."""
         qpu_cfg = {
             "coupler_map": {
                 "CZ0_1": ["Q0", "Q1"],
@@ -99,6 +107,7 @@ class TestExtractTopologyData:
             extract_topology_data(qpu_cfg)
 
     def test_invalid_qubit_name_raises(self):
+        """Test that an invalid qubit identifier raises an error."""
         qpu_cfg = {
             "coupler_map": {"CZ0_1": ["Q0", "Q1"]},
             "readout_error": {"Q0": 0.001, "invalid": 0.5},
@@ -107,6 +116,7 @@ class TestExtractTopologyData:
             extract_topology_data(qpu_cfg)
 
     def test_non_numeric_readout_error_raises(self):
+        """Test that a non-numeric readout error raises an error."""
         qpu_cfg = {
             "coupler_map": {"CZ0_1": ["Q0", "Q1"]},
             "readout_error": {"Q0": "high", "Q1": 0.002},

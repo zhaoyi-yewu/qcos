@@ -14,7 +14,11 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
 
+"""Tests for user shell commands."""
+
+import ipaddress
 import json
 from unittest.mock import patch, Mock
 
@@ -53,6 +57,7 @@ command_manager = CommandManager("qcos")
 
 user_id = "00000000-0000-4000-8000-000000000001"
 role_id = "10000000-0000-4000-8000-000000000001"
+test_ip_address = str(ipaddress.IPv4Address(0xC0A80101))
 
 response = {
     "jsonrpc": "2.0",
@@ -69,6 +74,7 @@ class TestGetUserMgmt:
     """Test cases for GetUserMgmt command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = GetUserMgmt(shell, None)
         parser = cmd.get_parser("get-user-mgmt")
         assert parser is not None
@@ -98,6 +104,7 @@ class TestCreateUser:
     """Test cases for CreateUser command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = CreateUser(shell, None)
         parser = cmd.get_parser("create-user")
         assert parser is not None
@@ -176,6 +183,7 @@ class TestUpdateUser:
     """Test cases for UpdateUser command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = UpdateUser(shell, None)
         parser = cmd.get_parser("update-user")
         assert parser is not None
@@ -252,6 +260,7 @@ class TestGetUser:
     """Test cases for GetUser command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = GetUser(shell, None)
         parser = cmd.get_parser("get-user")
         assert parser is not None
@@ -294,6 +303,7 @@ class TestGetUsers:
     """Test cases for GetUsers command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = GetUsers(shell, None)
         parser = cmd.get_parser("list-users")
         assert parser is not None
@@ -364,6 +374,7 @@ class TestDeleteUser:
     """Test cases for DeleteUser command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = DeleteUser(shell, None)
         parser = cmd.get_parser("delete-user")
         assert parser is not None
@@ -389,6 +400,7 @@ class TestCreateRole:
     """Test cases for CreateRole command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = CreateRole(shell, None)
         parser = cmd.get_parser("create-role")
         assert parser is not None
@@ -440,6 +452,7 @@ class TestGetRole:
     """Test cases for GetRole command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = GetRole(shell, None)
         parser = cmd.get_parser("get-role")
         assert parser is not None
@@ -479,6 +492,7 @@ class TestUpdateRole:
     """Test cases for UpdateRole command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = UpdateRole(shell, None)
         parser = cmd.get_parser("update-role")
         assert parser is not None
@@ -536,6 +550,7 @@ class TestDeleteRole:
     """Test cases for DeleteRole command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = DeleteRole(shell, None)
         parser = cmd.get_parser("delete-role")
         assert parser is not None
@@ -560,6 +575,7 @@ class TestGetRoles:
     """Test cases for GetRoles command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = GetRoles(shell, None)
         parser = cmd.get_parser("list-roles")
         assert parser is not None
@@ -630,6 +646,7 @@ class TestChangePassword:
     """Test cases for ChangePassword command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = ChangePassword(shell, None)
         parser = cmd.get_parser("change-password")
         assert parser is not None
@@ -658,6 +675,7 @@ class TestGetLoginLogs:
     """Test cases for GetLoginLogs command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = GetLoginLogs(shell, None)
         parser = cmd.get_parser("list-login-logs")
         assert parser is not None
@@ -671,7 +689,7 @@ class TestGetLoginLogs:
                 {
                     "user_name": "testuser",
                     "login_time": "2024-01-01T10:00:00",
-                    "ip_address": "192.168.1.1",
+                    "ip_address": test_ip_address,
                     "success": True,
                     "failure_reason": None,
                 }
@@ -732,12 +750,13 @@ class TestClearLoginLogs:
     """Test cases for ClearLoginLogs command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = ClearLoginLogs(shell, None)
         parser = cmd.get_parser("clear-login-logs")
         assert parser is not None
 
     @patch.object(Client, "clear_login_logs")
-    @patch("builtins.input", return_value="y")
+    @patch("click.termui.visible_prompt_func", return_value="y")
     def test_take_action_all_logs_with_confirmation(
         self, mock_input, mock_clear_login_logs
     ):
@@ -827,7 +846,7 @@ class TestClearLoginLogs:
         mock_clear_login_logs.assert_called_once_with(user_name="admin")
 
     @patch.object(Client, "clear_login_logs")
-    @patch("builtins.input", return_value="n")
+    @patch("click.termui.visible_prompt_func", return_value="n")
     def test_take_action_user_cancel(self, mock_input, mock_clear_login_logs):
         """Test ClearLoginLogs when user cancels operation."""
         cmd = ClearLoginLogs(shell, None)
@@ -850,6 +869,7 @@ class TestLogin:
     """Test cases for Login command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = Login(shell, None)
         parser = cmd.get_parser("login")
         assert parser is not None
@@ -955,6 +975,7 @@ class TestLogout:
     """Test cases for Logout command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = Logout(shell, None)
         parser = cmd.get_parser("logout")
         assert parser is not None
@@ -978,6 +999,7 @@ class TestRefreshToken:
     """Test cases for RefreshToken command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = RefreshToken(shell, None)
         parser = cmd.get_parser("refresh-token")
         assert parser is not None
@@ -1052,6 +1074,7 @@ class TestWhoami:
     """Test cases for Whoami command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         cmd = Whoami(shell, None)
         parser = cmd.get_parser("whoami")
         assert parser is not None
@@ -1089,6 +1112,7 @@ class TestSetUserMgmt:
     """Test cases for SetUserMgmt command."""
 
     def test_get_parser(self):
+        """Test command parser creation."""
         from wy_qcos_client.shell import SetUserMgmt
 
         cmd = SetUserMgmt(shell, None)

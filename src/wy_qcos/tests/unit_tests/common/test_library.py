@@ -19,6 +19,7 @@ import base64
 import csv as csv_module
 import os
 import shutil
+import signal
 import uuid
 from datetime import datetime
 from unittest.mock import patch, Mock, MagicMock, AsyncMock
@@ -88,27 +89,27 @@ class TestLibrary:
         password_replace = _s("*" * 8)
         configs = {
             "test": "000000",
-            "_param": "1a123456",
-            "_password": "1b123456",
-            "password": "2a123456",
-            "my_password": "2b123456",
-            "my_password_1": "2c123456",
-            "secret": "2a123456",
-            "my_secret": "2b123456",
-            "my_secret_1": "2c123456",
-            "hidden": "3a123456",
-            "my_hidden": "3b123456",
-            "my_hidden_1": "3c123456",
+            "_param": None,
+            "_password": None,
+            "password": None,
+            "my_password": None,
+            "my_password_1": None,
+            "secret": None,
+            "my_secret": None,
+            "my_secret_1": None,
+            "hidden": None,
+            "my_hidden": None,
+            "my_hidden_1": None,
             "list": ["1", "2", "3"],
             "dict": {"1": {"a": "1"}, "2": {"b": "2"}, "3": {"c": "3"}},
-            "list_dict": [{"password": "1"}, "2"],
+            "list_dict": [{"password": None}, "2"],
             "list_pass": ["1", "2", "password"],
             "dict_pass": {
                 "1": {"a": 1},
-                "2": {"password": "123"},
+                "2": {"password": None},
                 "3": {"c": 3},
             },
-            "list_dict_pass": [{"password": "123"}, "2"],
+            "list_dict_pass": [{"password": None}, "2"],
         }
         expected_configs = {
             "test": "000000",
@@ -152,17 +153,42 @@ class TestLibrary:
 
     def test_mask_password_dict(self):
         """Test mask_password with dictionary."""
-        config = {"password": "secret", "user": "john"}
+        config = {"password": None, "user": "john"}
         result = Library.mask_password(config)
-        assert "***" in str(result["password"]) or result["password"] != _s(
-            "secret"
-        )
+        assert result["password"] == _s("*" * 8)
 
     def test_mask_password_nested(self):
         """Test mask_password with nested dict."""
-        config = {"db": {"password": "secret"}, "user": "john"}
+        config = {"db": {"password": None}, "user": "john"}
         result = Library.mask_password(config)
         assert result is not None
+
+    def test_mask_password_connection_url(self):
+        """Test default sensitive-key matching and URL masking."""
+        configs = {
+            "database_connection_url": _s(
+                "postgresql://user:plainpass@localhost:5432/qcos"
+            ),
+            "CONNECTION_URL_BACKUP": _s("redis://:plainpass@localhost:6379/0"),
+            "ordinary": "unchanged",
+        }
+
+        masked = Library.mask_password(configs)
+
+        assert masked["database_connection_url"] == (
+            "postgresql://user:********@localhost:5432/qcos"
+        )
+        assert masked["CONNECTION_URL_BACKUP"] == (
+            "redis://:********@localhost:6379/0"
+        )
+        assert masked["ordinary"] == "unchanged"
+
+    @pytest.mark.timeout(2)
+    def test_mask_password_long_non_sensitive_key(self):
+        """Test a long non-matching key without quadratic backtracking."""
+        configs = {"x" * 50000: "unchanged"}
+
+        assert Library.mask_password(configs) == configs
 
     # ========== Dictionary Operations ==========
 
@@ -1386,7 +1412,7 @@ class TestLibrary:
 
     def test_mask_password_tuple(self):
         """Test mask_password with tuple."""
-        config = ({"password": "secret"}, "data")
+        config = ({"password": None}, "data")
         result = Library.mask_password(config)
         assert isinstance(result, tuple)
 
@@ -1421,12 +1447,53 @@ class TestLibrary:
 
     # ========== Additional Coverage for kill_pid ==========
 
+    @patch(
+        "wy_qcos.common.library.os.getuid",
+        return_value=1000,
+        create=True,
+    )
+    @patch("wy_qcos.common.library.os.stat")
+    def test_is_process_owner(self, mock_stat, mock_getuid):
+        """Test process owner validation using procfs metadata."""
+        mock_stat.return_value.st_uid = 1000
+        assert Library.is_process_owner(12345) is True
+        mock_stat.assert_called_once_with("/proc/12345")
+
+        mock_stat.return_value.st_uid = 1001
+        assert Library.is_process_owner(12345) is False
+        assert mock_getuid.call_count == 2
+
+    @patch("wy_qcos.common.library.os.stat", side_effect=OSError)
+    def test_is_process_owner_os_error(self, mock_stat):
+        """Test fail-closed behavior when procfs cannot be read."""
+        assert Library.is_process_owner(12345) is False
+        mock_stat.assert_called_once_with("/proc/12345")
+
+    @patch("wy_qcos.common.library.os.kill")
+    @patch(
+        "wy_qcos.common.library.Library.is_process_owner",
+        return_value=False,
+    )
+    def test_send_signal_rejects_non_owner(
+        self, mock_is_process_owner, mock_kill
+    ):
+        """Test that a non-owned process is never signalled."""
+        with pytest.raises(PermissionError):
+            Library.send_signal(12345, signal.SIGTERM)
+
+        mock_is_process_owner.assert_called_once_with(12345)
+        mock_kill.assert_not_called()
+
+    @patch(
+        "wy_qcos.common.library.Library.is_process_owner",
+        return_value=True,
+    )
     @patch("wy_qcos.common.library.os.path.exists")
     @patch("wy_qcos.common.library.os.kill")
     @patch("wy_qcos.common.library.time.sleep")
     @patch("builtins.open", create=True)
     def test_kill_pid_with_process_match(
-        self, mock_open, mock_sleep, mock_kill, mock_exists
+        self, mock_open, mock_sleep, mock_kill, mock_exists, mock_owner
     ):
         """Test kill_pid with expected process name matching."""
         mock_exists.side_effect = [True, True]
@@ -1437,9 +1504,68 @@ class TestLibrary:
         mock_open.return_value.__enter__.side_effect = [
             mock_file,
             mock_cmdline,
+            mock_cmdline,
         ]
         Library.kill_pid("/test.pid", expected_process_name="python.*")
         assert mock_open.called
+
+    @patch("wy_qcos.common.library.os.remove")
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.kill")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_fails_closed_without_proc(
+        self, mock_open, mock_kill, mock_exists, mock_remove
+    ):
+        """Test that an unverifiable process is never signaled."""
+        mock_exists.return_value = True
+        mock_file = MagicMock()
+        mock_file.read.return_value = "12345"
+        mock_open.return_value.__enter__.side_effect = [
+            mock_file,
+            FileNotFoundError(),
+        ]
+
+        Library.kill_pid("/test.pid", expected_process_name="python.*")
+
+        mock_kill.assert_not_called()
+        mock_remove.assert_called_once_with("/test.pid")
+
+    @patch(
+        "wy_qcos.common.library.Library.is_process_owner",
+        return_value=True,
+    )
+    @patch("wy_qcos.common.library.os.remove")
+    @patch("wy_qcos.common.library.os.path.exists")
+    @patch("wy_qcos.common.library.os.kill")
+    @patch("wy_qcos.common.library.time.sleep")
+    @patch("builtins.open", create=True)
+    def test_kill_pid_rechecks_identity_before_sigkill(
+        self,
+        mock_open,
+        mock_sleep,
+        mock_kill,
+        mock_exists,
+        mock_remove,
+        mock_owner,
+    ):
+        """Test that a reused PID is not force-killed."""
+        mock_exists.return_value = True
+        mock_file = MagicMock()
+        mock_file.read.return_value = "12345"
+        matching_cmdline = MagicMock()
+        matching_cmdline.read.return_value = "python\x00test.py"
+        changed_cmdline = MagicMock()
+        changed_cmdline.read.return_value = "other\x00test.py"
+        mock_open.return_value.__enter__.side_effect = [
+            mock_file,
+            matching_cmdline,
+            changed_cmdline,
+        ]
+
+        Library.kill_pid("/test.pid", expected_process_name="python.*")
+
+        assert mock_kill.call_count == 21
+        mock_remove.assert_called_once_with("/test.pid")
 
     @patch("wy_qcos.common.library.os.path.exists")
     @patch("wy_qcos.common.library.os.getpid")
@@ -1456,11 +1582,15 @@ class TestLibrary:
         Library.kill_pid("/test.pid", allow_kill_self=False)
         assert mock_open.called
 
+    @patch(
+        "wy_qcos.common.library.Library.is_process_owner",
+        return_value=True,
+    )
     @patch("wy_qcos.common.library.os.path.exists")
     @patch("wy_qcos.common.library.os.kill")
     @patch("builtins.open", create=True)
     def test_kill_pid_process_lookup_error(
-        self, mock_open, mock_kill, mock_exists
+        self, mock_open, mock_kill, mock_exists, mock_owner
     ):
         """Test kill_pid with ProcessLookupError."""
         mock_exists.return_value = True
@@ -1471,11 +1601,15 @@ class TestLibrary:
         Library.kill_pid("/test.pid")
         assert mock_kill.called
 
+    @patch(
+        "wy_qcos.common.library.Library.is_process_owner",
+        return_value=True,
+    )
     @patch("wy_qcos.common.library.os.path.exists")
     @patch("wy_qcos.common.library.os.kill")
     @patch("builtins.open", create=True)
     def test_kill_pid_permission_error(
-        self, mock_open, mock_kill, mock_exists
+        self, mock_open, mock_kill, mock_exists, mock_owner
     ):
         """Test kill_pid with PermissionError."""
         mock_exists.return_value = True
@@ -1486,11 +1620,15 @@ class TestLibrary:
         Library.kill_pid("/test.pid")
         assert mock_kill.called
 
+    @patch(
+        "wy_qcos.common.library.Library.is_process_owner",
+        return_value=True,
+    )
     @patch("wy_qcos.common.library.os.path.exists")
     @patch("wy_qcos.common.library.os.kill")
     @patch("builtins.open", create=True)
     def test_kill_pid_general_exception(
-        self, mock_open, mock_kill, mock_exists
+        self, mock_open, mock_kill, mock_exists, mock_owner
     ):
         """Test kill_pid with general exception."""
         mock_exists.return_value = True

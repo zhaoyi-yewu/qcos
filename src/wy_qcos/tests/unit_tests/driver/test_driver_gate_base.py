@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for the DriverGateBase class."""
+
 from unittest.mock import patch
 
 import pytest
@@ -27,7 +29,10 @@ from wy_qcos.driver.driver_gate_base import DriverGateBase
 
 @pytest.mark.driver
 class TestDriverGateBase:
+    """Test DriverGateBase behavior."""
+
     def test_init(self):
+        """Test gate driver default attributes."""
         driver = DriverGateBase()
         assert driver.supported_code_types == [
             Constant.CODE_TYPE_QASM,
@@ -40,27 +45,33 @@ class TestDriverGateBase:
         assert driver.supported_basis_gates == []
 
     def test_is_subclass_of_driver_base(self):
+        """Test DriverGateBase inheritance."""
         assert issubclass(DriverGateBase, DriverBase)
 
     def test_init_driver(self):
+        """Test gate driver initialization."""
         driver = DriverGateBase()
         with patch.object(DriverGateBase, "set_device_status") as mock_set:
             driver.init_driver()
             mock_set.assert_called_once_with(Device.DEVICE_STATUS_ONLINE)
 
     def test_close_driver(self):
+        """Test closing the gate driver."""
         driver = DriverGateBase()
         assert driver.close_driver() is None
 
     def test_cancel(self):
+        """Test cancelling a gate driver job."""
         driver = DriverGateBase()
         assert driver.cancel("test_job_id") is None
 
     def test_fetch_running_info(self):
+        """Test fetching gate driver running information."""
         driver = DriverGateBase()
         info = driver.fetch_running_info()
         assert info == {"status": Device.DEVICE_STATUS_ONLINE}
 
     def test_fetch_configs(self):
+        """Test fetching gate driver configurations."""
         driver = DriverGateBase()
         assert driver.fetch_configs() is None

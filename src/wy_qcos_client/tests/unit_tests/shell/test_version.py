@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for version shell commands."""
+
 from argparse import Namespace
 from unittest.mock import patch, Mock
 
@@ -37,13 +39,17 @@ version = Version(shell, None)
 
 
 class TestVersion:
+    """Tests for Version command."""
+
     def test_get_parser(self):
+        """Test parser creation for Version command."""
         parser = version.get_parser("")
         assert parser is not None
 
     @patch.object(Client, "version")
     @patch.object(CommandHelper, "check_results")
     def test_take_action(self, mock_check_results, mock_version):
+        """Test Version take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.details = False
         mock_version.return_value = -1, None, None, None

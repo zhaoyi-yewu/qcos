@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for parsing OpenQASM source into an abstract syntax tree."""
+
 import pytest
 
 from wy_qcos.transpiler.cmss.compiler.parser import get_abs_tree
@@ -22,8 +24,11 @@ from wy_qcos.transpiler.cmss.compiler.qtypes import Node
 
 
 class TestGetAbsTree:
+    """Test abstract syntax tree construction for OpenQASM source."""
+
     @classmethod
     def setup_class(cls):
+        """Provide shared OpenQASM source for parser tests."""
         cls.data = """
         OPENQASM 2.0;
         include "qelib1.inc";
@@ -62,6 +67,7 @@ class TestGetAbsTree:
 
     @pytest.mark.smoke
     def test_get_abs_tree(self):
+        """Test construction of the top-level abstract syntax tree."""
         tree = get_abs_tree(self.data)
         assert tree is not None
         assert isinstance(tree, Node)
@@ -69,6 +75,7 @@ class TestGetAbsTree:
         assert len(tree.children) == 8
 
     def test_qreg_declaration(self):
+        """Test parsing of a quantum register declaration."""
         tree = get_abs_tree(self.data)
         qreg_found = False
         for child in tree.children:
@@ -81,6 +88,7 @@ class TestGetAbsTree:
         assert qreg_found is True
 
     def test_creg_declaration(self):
+        """Test parsing of a classical register declaration."""
         tree = get_abs_tree(self.data)
         creg_found = False
         for child in tree.children:
@@ -93,6 +101,7 @@ class TestGetAbsTree:
         assert creg_found is True
 
     def test_custom_single_gate(self):
+        """Test parsing of a custom single-qubit gate definition."""
         tree = get_abs_tree(self.data)
         custom_gate_found = False
         for child in tree.children:
@@ -105,6 +114,7 @@ class TestGetAbsTree:
         assert custom_gate_found is True
 
     def test_custom_multi_gate(self):
+        """Test parsing of a custom multi-qubit gate definition."""
         tree = get_abs_tree(self.data)
         custom_gate_found = False
         for child in tree.children:
@@ -117,6 +127,7 @@ class TestGetAbsTree:
         assert custom_gate_found is True
 
     def test_register_usage(self):
+        """Test parsing of register use in a gate invocation."""
         tree = get_abs_tree(self.data)
         register_usage_found = False
         for child in tree.children:
@@ -128,6 +139,7 @@ class TestGetAbsTree:
         assert register_usage_found is True
 
     def test_barrier_statement(self):
+        """Test parsing of a barrier statement."""
         tree = get_abs_tree(self.data)
         barrier_found = False
         for child in tree.children:
@@ -139,6 +151,7 @@ class TestGetAbsTree:
         assert barrier_found is True
 
     def test_measure_statement(self):
+        """Test parsing of a measurement statement."""
         tree = get_abs_tree(self.data)
         measure_found = False
         for child in tree.children:

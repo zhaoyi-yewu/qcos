@@ -59,6 +59,15 @@ from pathlib import Path
 TOP_DIR = Path(__file__).resolve().parent.parent
 
 
+def resolve_path_within(path, root):
+    """Resolve a path and require it to stay within an allowed root."""
+    root_path = Path(root).resolve()
+    resolved_path = (root_path / path).resolve()
+    if not resolved_path.is_relative_to(root_path):
+        raise ValueError(f"path must be within {root_path}: {path}")
+    return resolved_path
+
+
 def load_pyproject(pyproject_file):
     """Load and return the parsed pyproject.toml content.
 
@@ -225,8 +234,8 @@ OPTIONS
 
         args = parser.parse_args(argv)
 
-        pyproject_file = args.pyproject
-        output_file = args.output
+        pyproject_file = resolve_path_within(args.pyproject, TOP_DIR)
+        output_file = resolve_path_within(args.output, TOP_DIR)
         include_core = not args.no_deps
         extras = args.extras if args.extras else None
 

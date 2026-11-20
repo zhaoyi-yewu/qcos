@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for OpenQASM conversion."""
+
 import os
 import pytest
 
@@ -23,8 +25,11 @@ from wy_qcos.common.cmss.qasm_converter import QasmConverter
 
 
 class TestQasmConverter:
+    """Test OpenQASM conversion."""
+
     @pytest.mark.smoke
     def test_single_qubit_gates(self):
+        """Test conversion of single-qubit gates."""
         openqasm2_header = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[6];
@@ -69,6 +74,7 @@ u3(1.57079632679,0.78539816339,0.39269908169) q[1];"""
         assert qasm == openqasm3_data
 
     def test_two_qubit_gates(self):
+        """Test conversion of two-qubit gates."""
         openqasm2_header = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[7];
@@ -115,6 +121,7 @@ rzz(1.0471975512) q[2],q[3];"""
         assert qasm == openqasm3_data
 
     def test_three_qubit_gates(self):
+        """Test conversion of three-qubit gates."""
         openqasm2_header = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[3];
@@ -149,6 +156,7 @@ rccx q[0],q[1],q[2];"""
         assert qasm == openqasm3_data
 
     def test_four_qubit_gates(self):
+        """Test conversion of four-qubit gates."""
         openqasm2_header = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[4];
@@ -183,6 +191,7 @@ c3sqrtx q[0],q[1],q[2],q[3];"""
         assert qasm == openqasm3_data
 
     def test_five_qubit_gates(self):
+        """Test conversion of five-qubit gates."""
         openqasm2_header = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[5];
@@ -215,6 +224,7 @@ c4x q[0],q[1],q[2],q[3],q[4];"""
         assert qasm == openqasm3_data
 
     def test_reset_measure(self):
+        """Test conversion of reset and measurement operations."""
         openqasm2_header = """OPENQASM 2.0;
 include "qelib1.inc";
 qreg q[2];
@@ -249,6 +259,7 @@ measure q[1] -> c[1];"""
         assert qasm == openqasm3_data
 
     def test_parametric_for_loop(self):
+        """Test conversion and expansion of a parametric for loop."""
         data = """OPENQASM 3.0;
 include "stdgates.inc";
 qubit[3] q;

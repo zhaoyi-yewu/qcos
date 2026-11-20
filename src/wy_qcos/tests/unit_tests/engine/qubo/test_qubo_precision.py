@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for QUBO precision utilities."""
+
 import numpy as np
 from unittest.mock import patch
 

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define scheduler-related exceptions."""
+
 from wy_qcos.common import errors
 
 

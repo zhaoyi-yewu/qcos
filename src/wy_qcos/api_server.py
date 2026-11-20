@@ -66,11 +66,11 @@ def main():
     # kill existing qcos-api process
     Library.kill_pid(PID_FILE, expected_process_name=r"qcos-api")
     Library.mkdir(PID_DIR)
-    Library.create_pid_file(PID_FILE)
 
-    # daemonize process
+    # daemonize process before recording the final process ID
     if "--daemon" in sys.argv:
         daemonize()
+    Library.create_pid_file(PID_FILE)
     try:
         loop = asyncio.get_event_loop()
         Server().run(loop)

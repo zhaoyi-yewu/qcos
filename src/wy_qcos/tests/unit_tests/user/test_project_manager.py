@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ---------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for project management."""
 
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -26,23 +29,29 @@ from wy_qcos.user.project_manager import ProjectManager
 
 
 class TestProjectManager:
+    """Test ProjectManager behavior."""
+
     @pytest.fixture
     def project_manager(self):
+        """Create a project manager with a mocked repository."""
         mock_repo = Mock()
         manager = ProjectManager(projects_repo=mock_repo)
         return manager, mock_repo
 
     def test_validate_project_name_valid(self, project_manager):
+        """Test acceptance of a valid project name."""
         manager, _ = project_manager
         manager.validate_project_name("project_1")
 
     def test_validate_project_name_too_short(self, project_manager):
+        """Test rejection of a project name that is too short."""
         manager, _ = project_manager
 
         with pytest.raises(ValueError, match="too short"):
             manager.validate_project_name("a")
 
     def test_validate_project_name_too_long(self, project_manager):
+        """Test rejection of a project name that is too long."""
         manager, _ = project_manager
         name = "a" * (Constant.MAX_PROJECT_LENGTH + 1)
 
@@ -52,18 +61,21 @@ class TestProjectManager:
     def test_validate_project_name_startswith_underscore(
         self, project_manager
     ):
+        """Test rejection of a project name starting with an underscore."""
         manager, _ = project_manager
 
         with pytest.raises(ValueError, match="cannot start with underscore"):
             manager.validate_project_name("_project")
 
     def test_validate_project_name_invalid_chars(self, project_manager):
+        """Test rejection of a project name with invalid characters."""
         manager, _ = project_manager
 
         with pytest.raises(ValueError, match="is invalid"):
             manager.validate_project_name("project name")
 
     def test_validate_description_too_long(self, project_manager):
+        """Test rejection of a description that is too long."""
         manager, _ = project_manager
         description = "d" * (Constant.MAX_DESCRIPTION_LENGTH + 1)
 
@@ -71,6 +83,7 @@ class TestProjectManager:
             manager.validate_description(description)
 
     def test_create_project_success_with_auto_uuid(self, project_manager):
+        """Test project creation with an automatically generated UUID."""
         manager, mock_repo = project_manager
         project = SimpleNamespace(id=str(uuid.uuid4()), name="demo")
         mock_repo.get_project_by_name.return_value = (False, None, None)
@@ -87,12 +100,14 @@ class TestProjectManager:
         assert manager._project_name_to_id["demo"] == project.id
 
     def test_create_project_invalid_uuid(self, project_manager):
+        """Test project creation rejection for an invalid UUID."""
         manager, _ = project_manager
 
         with pytest.raises(ValueError, match="Invalid project ID"):
             manager.create_project("demo", project_id="invalid-uuid")
 
     def test_create_project_duplicate_name(self, project_manager):
+        """Test project creation rejection for a duplicate name."""
         manager, mock_repo = project_manager
         mock_repo.get_project_by_name.return_value = (
             True,
@@ -104,6 +119,7 @@ class TestProjectManager:
             manager.create_project("demo")
 
     def test_create_project_repo_failure(self, project_manager):
+        """Test project creation failure in the repository."""
         manager, mock_repo = project_manager
         mock_repo.get_project_by_name.return_value = (False, None, None)
         mock_repo.create_project.return_value = (False, "db error", None)
@@ -112,6 +128,7 @@ class TestProjectManager:
             manager.create_project("demo")
 
     def test_update_project_duplicate_new_name(self, project_manager):
+        """Test update rejection when the new project name exists."""
         manager, mock_repo = project_manager
         old_project = SimpleNamespace(id="1", name="old_name")
         manager.get_project_by_id = Mock(return_value=old_project)
@@ -127,6 +144,7 @@ class TestProjectManager:
     def test_update_project_success_renames_internal_cache(
         self, project_manager
     ):
+        """Test project renaming updates the internal caches."""
         manager, mock_repo = project_manager
         old_project = SimpleNamespace(id="1", name="old_name")
         updated_project = SimpleNamespace(id="1", name="new_name")
@@ -148,6 +166,7 @@ class TestProjectManager:
         assert manager._project_name_to_id["new_name"] == "1"
 
     def test_get_projects_with_filters(self, project_manager):
+        """Test project retrieval with attribute filters."""
         manager, mock_repo = project_manager
         project_1 = SimpleNamespace(id="1", name="alpha", description="a")
         project_2 = SimpleNamespace(id="2", name="beta", description="b")
@@ -162,6 +181,7 @@ class TestProjectManager:
         assert result == {"1": project_1}
 
     def test_get_projects_with_unknown_filter_attr(self, project_manager):
+        """Test project retrieval with an unknown filter attribute."""
         manager, mock_repo = project_manager
         project = SimpleNamespace(id="1", name="alpha")
         mock_repo.get_projects.return_value = (True, None, [project])
@@ -171,6 +191,7 @@ class TestProjectManager:
         assert result == {}
 
     def test_delete_project_reserved_project(self, project_manager):
+        """Test rejection of reserved project deletion."""
         manager, _ = project_manager
         reserved_project = SimpleNamespace(
             id=Constant.ADMIN_PROJECT_ID,
@@ -182,6 +203,7 @@ class TestProjectManager:
             manager.delete_project(Constant.ADMIN_PROJECT_ID)
 
     def test_delete_project_success_clears_cache(self, project_manager):
+        """Test project deletion clears the internal caches."""
         manager, mock_repo = project_manager
         project = SimpleNamespace(id="1", name="demo")
         manager.get_project_by_id = Mock(return_value=project)
@@ -196,6 +218,7 @@ class TestProjectManager:
         assert "demo" not in manager._project_name_to_id
 
     def test_find_projects_by_name(self, project_manager):
+        """Test case-insensitive project name searches."""
         manager, mock_repo = project_manager
         project_1 = SimpleNamespace(id="1", name="AlphaProject")
         project_2 = SimpleNamespace(id="2", name="beta")

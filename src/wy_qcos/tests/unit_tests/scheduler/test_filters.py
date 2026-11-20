@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
 
 """Unit tests for scheduler filters."""
 
@@ -101,18 +102,21 @@ class TestCodeTypeFilter:
     """Tests for CodeTypeFilter."""
 
     def test_filter_matching_code_type(self):
+        """Accept a device supporting the requested code type."""
         filter_obj = CodeTypeFilter()
         device = make_device_state(supported_code_types=["qasm", "qasm2"])
         spec = make_spec(code_type="qasm")
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_non_matching_code_type(self):
+        """Reject a device without the requested code type."""
         filter_obj = CodeTypeFilter()
         device = make_device_state(supported_code_types=["qasm"])
         spec = make_spec(code_type="qubo")
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_empty_code_type(self):
+        """Accept any device when the code type is empty."""
         filter_obj = CodeTypeFilter()
         device = make_device_state()
         spec = make_spec(code_type="")
@@ -123,24 +127,28 @@ class TestDeviceStatusFilter:
     """Tests for DeviceStatusFilter."""
 
     def test_filter_online(self):
+        """Accept an online and enabled device."""
         filter_obj = DeviceStatusFilter()
         device = make_device_state(status="online", enable=True)
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_busy(self):
+        """Accept a busy and enabled device."""
         filter_obj = DeviceStatusFilter()
         device = make_device_state(status="busy", enable=True)
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_offline(self):
+        """Reject an offline device."""
         filter_obj = DeviceStatusFilter()
         device = make_device_state(status="offline", enable=True)
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_disabled(self):
+        """Reject a disabled device."""
         filter_obj = DeviceStatusFilter()
         device = make_device_state(enable=False)
         spec = make_spec()
@@ -151,24 +159,28 @@ class TestQubitCountFilter:
     """Tests for QubitCountFilter."""
 
     def test_filter_sufficient_qubits(self):
+        """Accept a device with enough qubits."""
         filter_obj = QubitCountFilter()
         device = make_device_state(max_qubits=20)
         spec = make_spec(num_qubits=10)
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_insufficient_qubits(self):
+        """Reject a device with too few qubits."""
         filter_obj = QubitCountFilter()
         device = make_device_state(max_qubits=5)
         spec = make_spec(num_qubits=10)
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_no_qubit_requirement(self):
+        """Accept a device when no qubits are required."""
         filter_obj = QubitCountFilter()
         device = make_device_state(max_qubits=5)
         spec = make_spec(num_qubits=0)
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_min_qubits_from_flavor(self):
+        """Reject a device below the flavor minimum qubit count."""
         filter_obj = QubitCountFilter()
         device = make_device_state(max_qubits=10)
         key = FlavorConstant.FS_KEY_MIN_QUBITS
@@ -176,6 +188,7 @@ class TestQubitCountFilter:
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_max_qubits_from_extra_specs(self):
+        """Reject a device above the extra specs maximum qubit count."""
         filter_obj = QubitCountFilter()
         device = make_device_state(max_qubits=200)
         key = FlavorConstant.FS_KEY_MAX_QUBITS
@@ -187,28 +200,33 @@ class TestTechTypeFilter:
     """Tests for TechTypeFilter."""
 
     def test_is_enabled_when_tech_type_set(self):
+        """Enable the filter when a technology type is specified."""
         filter_obj = TechTypeFilter()
         spec = make_spec(flavor_specs={"qc:tech_types": "superconducting"})
         assert filter_obj.is_enabled(spec) is True
 
     def test_is_disabled_when_no_tech_type(self):
+        """Disable the filter when no technology type is specified."""
         filter_obj = TechTypeFilter()
         spec = make_spec()
         assert filter_obj.is_enabled(spec) is False
 
     def test_filter_matching_tech_type(self):
+        """Accept a device with the requested technology type."""
         filter_obj = TechTypeFilter()
         device = make_device_state(tech_type="superconducting")
         spec = make_spec(flavor_specs={"qc:tech_types": "superconducting"})
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_non_matching_tech_type(self):
+        """Reject a device with a different technology type."""
         filter_obj = TechTypeFilter()
         device = make_device_state(tech_type="ion_trap")
         spec = make_spec(flavor_specs={"qc:tech_types": "superconducting"})
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_matching_one_of_multiple(self):
+        """Accept a device matching one of multiple technology types."""
         filter_obj = TechTypeFilter()
         device = make_device_state(tech_type="ion_trap")
         spec = make_spec(
@@ -217,6 +235,7 @@ class TestTechTypeFilter:
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_non_matching_one_of_multiple(self):
+        """Reject a device matching none of multiple technology types."""
         filter_obj = TechTypeFilter()
         device = make_device_state(tech_type="neutral_atom")
         spec = make_spec(
@@ -229,23 +248,27 @@ class TestGateFidelityFilter:
     """Tests for GateFidelityFilter."""
 
     def test_is_enabled_when_2q_fidelity_set(self):
+        """Enable the filter when a two-qubit fidelity is specified."""
         filter_obj = GateFidelityFilter()
         key = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
         spec = make_spec(flavor_specs={key: 0.99})
         assert filter_obj.is_enabled(spec) is True
 
     def test_is_enabled_when_1q_fidelity_set(self):
+        """Enable the filter when a one-qubit fidelity is specified."""
         filter_obj = GateFidelityFilter()
         key = FlavorConstant.FS_KEY_GATE_FIDELITY_1Q_MIN
         spec = make_spec(flavor_specs={key: 0.99})
         assert filter_obj.is_enabled(spec) is True
 
     def test_is_disabled_when_no_fidelity(self):
+        """Disable the filter when no fidelity is specified."""
         filter_obj = GateFidelityFilter()
         spec = make_spec()
         assert filter_obj.is_enabled(spec) is False
 
     def test_filter_2q_fidelity_meets_threshold(self):
+        """Accept a device meeting the two-qubit fidelity threshold."""
         filter_obj = GateFidelityFilter()
         details = {
             "calibration": {
@@ -261,6 +284,7 @@ class TestGateFidelityFilter:
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_2q_fidelity_below_threshold(self):
+        """Reject a device below the two-qubit fidelity threshold."""
         filter_obj = GateFidelityFilter()
         details = {
             "calibration": {
@@ -276,6 +300,7 @@ class TestGateFidelityFilter:
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_1q_fidelity_meets_threshold(self):
+        """Accept a device meeting the one-qubit fidelity threshold."""
         filter_obj = GateFidelityFilter()
         details = {
             "calibration": {
@@ -291,6 +316,7 @@ class TestGateFidelityFilter:
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_1q_fidelity_below_threshold(self):
+        """Reject a device below the one-qubit fidelity threshold."""
         filter_obj = GateFidelityFilter()
         details = {
             "calibration": {
@@ -306,6 +332,7 @@ class TestGateFidelityFilter:
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_no_fidelity_data(self):
+        """Accept a device without fidelity calibration data."""
         filter_obj = GateFidelityFilter()
         device = make_device_state(details={})
         key = FlavorConstant.FS_KEY_GATE_FIDELITY_2Q_MIN
@@ -313,6 +340,7 @@ class TestGateFidelityFilter:
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_both_1q_and_2q_pass(self):
+        """Accept a device meeting both fidelity thresholds."""
         filter_obj = GateFidelityFilter()
         details = {
             "calibration": {
@@ -331,6 +359,7 @@ class TestGateFidelityFilter:
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_1q_pass_2q_fail(self):
+        """Reject a device meeting only the one-qubit threshold."""
         filter_obj = GateFidelityFilter()
         details = {
             "calibration": {
@@ -353,30 +382,35 @@ class TestQueueLimitFilter:
     """Tests for QueueLimitFilter."""
 
     def test_filter_no_limit(self):
+        """Accept any queue length when no queue limit is set."""
         filter_obj = QueueLimitFilter()
         device = make_device_state(max_queued_jobs=-1, queued_job_count=100)
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_under_limit(self):
+        """Accept a device whose queue is below the limit."""
         filter_obj = QueueLimitFilter()
         device = make_device_state(max_queued_jobs=10, queued_job_count=5)
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is True
 
     def test_filter_at_limit(self):
+        """Reject a device whose queue has reached the limit."""
         filter_obj = QueueLimitFilter()
         device = make_device_state(max_queued_jobs=10, queued_job_count=10)
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_zero_limit_with_jobs(self):
+        """Reject a queued job when the queue limit is zero."""
         filter_obj = QueueLimitFilter()
         device = make_device_state(max_queued_jobs=0, queued_job_count=1)
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is False
 
     def test_filter_zero_limit_no_jobs(self):
+        """Accept an empty queue when the queue limit is zero."""
         filter_obj = QueueLimitFilter()
         device = make_device_state(max_queued_jobs=0, queued_job_count=0)
         spec = make_spec()
@@ -387,6 +421,7 @@ class TestBaseFilterHandler:
     """Tests for BaseFilterHandler."""
 
     def test_filter_chain_all_pass(self):
+        """Return all devices when every filter passes."""
         handler = BaseFilterHandler(DEFAULT_FILTERS)
         devices = [
             make_device_state(name="d1", status="online", enable=True),
@@ -397,6 +432,7 @@ class TestBaseFilterHandler:
         assert len(result) == 2
 
     def test_filter_chain_some_filtered(self):
+        """Return only devices accepted by the filter chain."""
         handler = BaseFilterHandler(DEFAULT_FILTERS)
         devices = [
             make_device_state(
@@ -418,6 +454,7 @@ class TestBaseFilterHandler:
         assert result[0].name == "d1"
 
     def test_filter_chain_all_filtered(self):
+        """Return no devices when the filter chain rejects all of them."""
         handler = BaseFilterHandler(DEFAULT_FILTERS)
         devices = [
             make_device_state(name="d1", status="offline"),
@@ -495,16 +532,19 @@ class TestDeviceNameFilter:
     # --- enable/disable ---
 
     def test_is_disabled_when_no_devices_and_no_exclude(self):
+        """Disable the filter without device or exclusion settings."""
         filter_obj = DeviceNameFilter()
         spec = make_spec()
         assert filter_obj.is_enabled(spec) is False
 
     def test_is_enabled_when_devices_set(self):
+        """Enable the filter when allowed devices are specified."""
         filter_obj = DeviceNameFilter()
         spec = make_spec(flavor_specs={"qcos:devices": "dev1,dev2"})
         assert filter_obj.is_enabled(spec) is True
 
     def test_is_enabled_when_exclude_set(self):
+        """Enable the filter when excluded devices are specified."""
         filter_obj = DeviceNameFilter()
         spec = make_spec(flavor_specs={"qcos:exclude_devices": "dev1"})
         assert filter_obj.is_enabled(spec) is True
@@ -512,30 +552,35 @@ class TestDeviceNameFilter:
     # --- whitelist ---
 
     def test_device_in_whitelist(self):
+        """Accept a device included in the whitelist."""
         filter_obj = DeviceNameFilter()
         device = make_device_state(name="dev1")
         spec = make_spec(flavor_specs={"qcos:devices": "dev1,dev2"})
         assert filter_obj._filter_one(device, spec) is True
 
     def test_device_not_in_whitelist(self):
+        """Reject a device omitted from the whitelist."""
         filter_obj = DeviceNameFilter()
         device = make_device_state(name="dev3")
         spec = make_spec(flavor_specs={"qcos:devices": "dev1,dev2"})
         assert filter_obj._filter_one(device, spec) is False
 
     def test_all_means_no_restriction(self):
+        """Accept any device when the whitelist allows all devices."""
         filter_obj = DeviceNameFilter()
         device = make_device_state(name="dev_any")
         spec = make_spec(flavor_specs={"qcos:devices": "all"})
         assert filter_obj._filter_one(device, spec) is True
 
     def test_whitelist_only_disabled_returns_true(self):
+        """Accept a device when the whitelist filter is disabled."""
         filter_obj = DeviceNameFilter()
         device = make_device_state(name="dev1")
         spec = make_spec()
         assert filter_obj._filter_one(device, spec) is True
 
     def test_extra_specs_overrides_flavor(self):
+        """Prefer the device whitelist from extra specs."""
         filter_obj = DeviceNameFilter()
         device = make_device_state(name="dev3")
         spec = make_spec(
@@ -547,12 +592,14 @@ class TestDeviceNameFilter:
     # --- blacklist ---
 
     def test_device_in_blacklist(self):
+        """Reject a device included in the blacklist."""
         filter_obj = DeviceNameFilter()
         device = make_device_state(name="dev1")
         spec = make_spec(flavor_specs={"qcos:exclude_devices": "dev1,dev2"})
         assert filter_obj._filter_one(device, spec) is False
 
     def test_device_not_in_blacklist(self):
+        """Accept a device omitted from the blacklist."""
         filter_obj = DeviceNameFilter()
         device = make_device_state(name="dev3")
         spec = make_spec(flavor_specs={"qcos:exclude_devices": "dev1,dev2"})
@@ -601,6 +648,7 @@ class TestCodeTypeFilterOverride:
     """Tests for CodeTypeFilter qcos:code_types override."""
 
     def test_code_types_override_matches(self):
+        """Accept a device matching the overridden code types."""
         filter_obj = CodeTypeFilter()
         device = make_device_state(supported_code_types=["qasm", "qasm2"])
         spec = make_spec(
@@ -610,6 +658,7 @@ class TestCodeTypeFilterOverride:
         assert filter_obj._filter_one(device, spec) is True
 
     def test_code_types_override_no_match(self):
+        """Reject a device not matching the overridden code types."""
         filter_obj = CodeTypeFilter()
         device = make_device_state(supported_code_types=["qasm"])
         spec = make_spec(
@@ -619,12 +668,14 @@ class TestCodeTypeFilterOverride:
         assert filter_obj._filter_one(device, spec) is False
 
     def test_code_types_multiple_match_one(self):
+        """Accept a device matching one overridden code type."""
         filter_obj = CodeTypeFilter()
         device = make_device_state(supported_code_types=["qasm2"])
         spec = make_spec(flavor_specs={"qcos:code_types": "qasm,qasm2"})
         assert filter_obj._filter_one(device, spec) is True
 
     def test_no_code_types_falls_back_to_job_code_type(self):
+        """Use the job code type when no override is specified."""
         filter_obj = CodeTypeFilter()
         device = make_device_state(supported_code_types=["qasm", "qasm2"])
         spec = make_spec(code_type="qasm")

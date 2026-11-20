@@ -179,6 +179,7 @@ def merge_branches(commit_id):
             'Code Source From': (False, 'Others'),
             '市场项目编号（名称）': (False, '{default_project_id}'),
             'AI Co-author': (False, '{default_ai_co_author}'),
+            'Add #CMSSRD20240011-6',
         }}
         last_message = None
         decoded_message = commit.message.decode('utf-8')

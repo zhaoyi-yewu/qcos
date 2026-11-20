@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Define constants for flavor specifications and device selection."""
+
 
 class FlavorConstant:
     """Flavor Constants."""

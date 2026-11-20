@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the Hanyuan1 neutral-atom quantum device driver."""
 
 import pytest
 import requests
@@ -35,7 +38,10 @@ results = {"00": 100, "11": shots - 100}
 
 @pytest.mark.driver
 class TestDriverHanyuan1:
+    """Unit tests for DriverHanyuan1."""
+
     def test_init(self):
+        """Verify the driver's default metadata and capabilities."""
         assert driver_hanyuan1.version == "0.0.1"
         assert driver_hanyuan1.alias_name == "中科酷原-汉原1 中性原子驱动"
         assert driver_hanyuan1.description == "中科酷原-汉原1 中性原子驱动"
@@ -59,6 +65,7 @@ class TestDriverHanyuan1:
     def test_init_driver_with_zmq(
         self, mock_set_status, mock_init_url, mock_init_zmq
     ):
+        """Verify driver initialization uses ZeroRPC when ZMQ is enabled."""
         driver = DriverHanyuan1()
         driver.set_configs({
             "use_zmq": True,
@@ -72,6 +79,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "init_base_url")
     @patch.object(DriverHanyuan1, "set_device_status")
     def test_init_driver_without_zmq(self, mock_set_status, mock_init_url):
+        """Verify driver initialization uses HTTP when ZMQ is disabled."""
         driver = DriverHanyuan1()
         driver.set_configs({
             "use_zmq": False,
@@ -84,6 +92,7 @@ class TestDriverHanyuan1:
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_success(self, mock_validate):
+        """Verify valid driver configurations pass schema validation."""
         driver = DriverHanyuan1()
         # validate_driver_configs deep-copies default_driver_config_schema
         # before calling validate_schema; provide a stub so the method
@@ -110,6 +119,7 @@ class TestDriverHanyuan1:
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_failure(self, mock_validate):
+        """Verify invalid driver configurations return validation errors."""
         driver = DriverHanyuan1()
         driver.default_driver_config_schema = {}
         configs = {}
@@ -119,6 +129,7 @@ class TestDriverHanyuan1:
         assert "error" in err_msg
 
     def test_close_driver(self):
+        """Verify closing the driver closes and clears ZeroRPC clients."""
         driver = DriverHanyuan1()
         mock_client = MagicMock()
         driver.zerorpc_clients = [mock_client]
@@ -127,6 +138,7 @@ class TestDriverHanyuan1:
         assert driver.zerorpc_clients == []
 
     def test_close_driver_with_exception(self):
+        """Verify client closure errors do not prevent client cleanup."""
         driver = DriverHanyuan1()
         mock_client = MagicMock()
         mock_client.close.side_effect = Exception("test")
@@ -135,6 +147,7 @@ class TestDriverHanyuan1:
         assert driver.zerorpc_clients == []
 
     def test_get_formatted_timestamp(self):
+        """Verify the formatted timestamp is a nonempty string."""
         driver = DriverHanyuan1()
         timestamp = driver.get_formatted_timestamp()
         assert isinstance(timestamp, str)
@@ -143,6 +156,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "_execute_task_workflow")
     @patch.object(Library, "create_uuid")
     def test_fetch_configs(self, mock_uuid, mock_workflow):
+        """Verify configuration fetching invokes the task workflow."""
         driver = DriverHanyuan1()
         mock_uuid.return_value = "test-uuid"
         mock_workflow.return_value = {"test": "config"}
@@ -156,6 +170,7 @@ class TestDriverHanyuan1:
     def test_check_task_status_completed(
         self, mock_time, mock_sleep, mock_get_status
     ):
+        """Verify a completed task status finishes polling successfully."""
         driver = DriverHanyuan1()
         mock_time.side_effect = [0, 1]
         mock_get_status.return_value = driver.task_status_completed
@@ -171,6 +186,7 @@ class TestDriverHanyuan1:
     def test_check_task_status_unknown(
         self, mock_time, mock_sleep, mock_get_status
     ):
+        """Verify an unknown task status returns a polling error."""
         driver = DriverHanyuan1()
         mock_time.side_effect = [0, 1]
         mock_get_status.return_value = driver.task_status_unknown
@@ -186,6 +202,7 @@ class TestDriverHanyuan1:
     def test_check_task_status_timeout(
         self, mock_time, mock_sleep, mock_get_status
     ):
+        """Verify task polling returns an error when the timeout expires."""
         driver = DriverHanyuan1()
         mock_time.side_effect = [0, 2000]
         mock_get_status.return_value = driver.task_status_running
@@ -201,6 +218,7 @@ class TestDriverHanyuan1:
     def test_execute_task_workflow_success(
         self, mock_submit, mock_check, mock_get_results
     ):
+        """Verify the workflow returns results after successful polling."""
         driver = DriverHanyuan1()
         mock_submit.return_value = (True, None)
         mock_check.return_value = (True, None)
@@ -210,6 +228,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "submit_task")
     def test_execute_task_workflow_submit_failure(self, mock_submit):
+        """Verify a submission failure aborts the task workflow."""
         driver = DriverHanyuan1()
         mock_submit.return_value = (False, "submit error")
         with pytest.raises(ValueError) as exc_info:
@@ -218,6 +237,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "_execute_task_workflow")
     def test_run(self, mock_workflow):
+        """Verify running a job invokes the task workflow once."""
         driver = DriverHanyuan1()
         mock_workflow.return_value = results
         driver.run(job_id, num_qubits, data, data_type, shots)
@@ -225,6 +245,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "set_task")
     def test_cancel_success(self, mock_set_task):
+        """Verify successful task cancellation returns no error."""
         driver = DriverHanyuan1()
         mock_set_task.return_value = (True, None, {})
         success, err_msg = driver.cancel(job_id)
@@ -233,6 +254,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "set_task")
     def test_cancel_failure(self, mock_set_task):
+        """Verify a failed cancellation returns the service error."""
         driver = DriverHanyuan1()
         mock_set_task.return_value = (False, "error", None)
         success, err_msg = driver.cancel(job_id)
@@ -241,6 +263,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "set_task")
     def test_cancel_exception(self, mock_set_task):
+        """Verify a cancellation exception is returned as an error."""
         driver = DriverHanyuan1()
         mock_set_task.side_effect = Exception("test error")
         success, err_msg = driver.cancel(job_id)
@@ -248,6 +271,7 @@ class TestDriverHanyuan1:
         assert "test error" in err_msg
 
     def test_init_base_url(self):
+        """Verify base URL initialization stores connection settings."""
         driver = DriverHanyuan1()
         driver.init_base_url("127.0.0.1", 18402)
         assert driver.server_host == "127.0.0.1"
@@ -256,6 +280,7 @@ class TestDriverHanyuan1:
 
     @patch("zerorpc.Client")
     def test_init_zerorpc_client(self, mock_client_class):
+        """Verify ZeroRPC initialization creates and connects a client pool."""
         driver = DriverHanyuan1()
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
@@ -266,6 +291,7 @@ class TestDriverHanyuan1:
         assert mock_client.connect.call_count == 2
 
     def test_get_zerorpc_client(self):
+        """Verify a ZeroRPC client is selected from the client pool."""
         driver = DriverHanyuan1()
         mock_client1 = MagicMock()
         mock_client2 = MagicMock()
@@ -274,12 +300,14 @@ class TestDriverHanyuan1:
         assert client in [mock_client1, mock_client2]
 
     def test_get_zerorpc_client_empty(self):
+        """Verify an empty ZeroRPC client pool returns no client."""
         driver = DriverHanyuan1()
         driver.zerorpc_clients = []
         client = driver._get_zerorpc_client()
         assert client is None
 
     def test_print_api_response(self):
+        """Verify verbose API response printing completes without errors."""
         driver = DriverHanyuan1()
         driver.verbose = True
         driver.print_api_response(200, "OK", "text", {"result": "test"})
@@ -287,6 +315,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "_get_zerorpc_client")
     def test_call_zerorpc_rpc_success(self, mock_get_client):
+        """Verify a successful ZeroRPC call returns its result."""
         driver = DriverHanyuan1()
         mock_client = MagicMock()
         mock_method = MagicMock(
@@ -302,6 +331,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "_get_zerorpc_client")
     def test_call_zerorpc_rpc_no_client(self, mock_get_client):
+        """Verify a ZeroRPC call without a client returns an error."""
         driver = DriverHanyuan1()
         mock_get_client.return_value = None
         status, reason, text, result = driver.call_zerorpc_rpc(
@@ -312,11 +342,15 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "_get_zerorpc_client")
     def test_call_zerorpc_rpc_unknown_method(self, mock_get_client):
+        """Verify an unknown ZeroRPC method returns an error."""
         driver = DriverHanyuan1()
         # Create a mock client that returns None for unknown attributes
 
         class MockClient:
+            """Mock a client without the requested RPC method."""
+
             def __getattr__(self, name):
+                """Return None for every requested attribute."""
                 return None
 
         mock_client = MockClient()
@@ -329,6 +363,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "_get_zerorpc_client")
     def test_call_zerorpc_rpc_timeout(self, mock_get_client):
+        """Verify a ZeroRPC invocation exception returns an error."""
         driver = DriverHanyuan1()
         mock_client = MagicMock()
         mock_method = MagicMock(side_effect=Exception("timeout"))
@@ -342,6 +377,7 @@ class TestDriverHanyuan1:
 
     @patch.object(Library, "call_http_api")
     def test_call_json_rpc_success(self, mock_call_http):
+        """Verify a successful JSON-RPC call returns its decoded result."""
         driver = DriverHanyuan1()
         mock_response = MagicMock()
         mock_response.json.return_value = {"result": "test"}
@@ -359,6 +395,7 @@ class TestDriverHanyuan1:
 
     @patch.object(Library, "call_http_api")
     def test_call_json_rpc_connection_error(self, mock_call_http):
+        """Verify a JSON-RPC connection exception returns an error."""
         driver = DriverHanyuan1()
         mock_call_http.side_effect = requests.exceptions.ConnectionError(
             "connection failed"
@@ -370,6 +407,7 @@ class TestDriverHanyuan1:
         assert "Connection error" in reason
 
     def test_build_request_data_gate_sequence(self):
+        """Verify gate sequence request data includes all job fields."""
         driver = DriverHanyuan1()
         mock_gate = MagicMock()
         mock_gate.name = "rx"
@@ -391,6 +429,7 @@ class TestDriverHanyuan1:
         assert "timestamp" in result
 
     def test_build_request_data_gate_sequence_dict(self):
+        """Verify gate sequence request data accepts a gate dictionary."""
         driver = DriverHanyuan1()
         mock_gate = MagicMock()
         mock_gate.name = "ry"
@@ -408,18 +447,21 @@ class TestDriverHanyuan1:
         assert len(result["data"]) == 1
 
     def test_build_request_data_gate_sequence_no_data(self):
+        """Verify gate sequence requests require operation data."""
         driver = DriverHanyuan1()
         with pytest.raises(ValueError) as exc_info:
             driver._build_request_data(job_id, "gate_sequence", data=None)
         assert "requires data parameter" in str(exc_info.value)
 
     def test_build_request_data_qu_topo(self):
+        """Verify topology request data uses the expected data type."""
         driver = DriverHanyuan1()
         result = driver._build_request_data(job_id, "qu_topo")
         assert result["job_id"] == job_id
         assert result["data_type"] == "qu_topo"
 
     def test_build_request_data_cancel_task(self):
+        """Verify cancellation request data uses the expected data type."""
         driver = DriverHanyuan1()
         result = driver._build_request_data(job_id, "cancel_task")
         assert result["job_id"] == job_id
@@ -427,6 +469,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_submit_task_zmq_success(self, mock_zerorpc):
+        """Verify successful task submission over ZeroRPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (
@@ -442,6 +485,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_submit_task_jsonrpc_success(self, mock_jsonrpc):
+        """Verify successful task submission over JSON-RPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = False
         driver.base_url = "http://test.com"
@@ -458,6 +502,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_submit_task_zmq_failure(self, mock_zerorpc):
+        """Verify a ZeroRPC task submission error returns a failure."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (
@@ -473,6 +518,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_submit_task_exception(self, mock_zerorpc):
+        """Verify a task submission exception is returned as an error."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.side_effect = Exception("test error")
@@ -484,6 +530,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_get_task_status_zmq_success(self, mock_zerorpc):
+        """Verify task status retrieval over ZeroRPC returns the status."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (
@@ -497,6 +544,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_get_task_status_jsonrpc_success(self, mock_jsonrpc):
+        """Verify task status retrieval over JSON-RPC returns the status."""
         driver = DriverHanyuan1()
         driver.use_zmq = False
         driver.base_url = "http://test.com"
@@ -511,6 +559,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_get_task_status_failure(self, mock_zerorpc):
+        """Verify a failed task status request returns no status."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (-1, "Error", None, None)
@@ -519,6 +568,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_get_task_results_zmq_success(self, mock_zerorpc):
+        """Verify successful task result retrieval over ZeroRPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (
@@ -533,6 +583,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_get_task_results_zmq_no_result(self, mock_zerorpc):
+        """Verify missing ZeroRPC task results return an error."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (
@@ -547,6 +598,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_get_task_results_jsonrpc_success(self, mock_jsonrpc):
+        """Verify successful task result retrieval over JSON-RPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = False
         driver.base_url = "http://test.com"
@@ -567,6 +619,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_set_task_zmq_success(self, mock_zerorpc):
+        """Verify a successful task control request over ZeroRPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (
@@ -581,6 +634,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     def test_set_task_zmq_failed(self, mock_zerorpc):
+        """Verify a failed ZeroRPC task control request returns an error."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_zerorpc.return_value = (
@@ -595,6 +649,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "call_json_rpc")
     def test_set_task_jsonrpc_success(self, mock_jsonrpc):
+        """Verify a successful task control request over JSON-RPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = False
         driver.base_url = "http://test.com"
@@ -610,6 +665,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     @patch.object(Library, "create_uuid")
     def test_get_device_info_zmq_success(self, mock_uuid, mock_zerorpc):
+        """Verify successful device information retrieval over ZeroRPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_uuid.return_value = job_id
@@ -633,6 +689,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     @patch.object(Library, "create_uuid")
     def test_get_device_info_zmq_failed(self, mock_uuid, mock_zerorpc):
+        """Verify a ZeroRPC device information failure returns an error."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_uuid.return_value = job_id
@@ -649,6 +706,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "call_json_rpc")
     @patch.object(Library, "create_uuid")
     def test_get_device_info_jsonrpc_success(self, mock_uuid, mock_jsonrpc):
+        """Verify successful device information retrieval over JSON-RPC."""
         driver = DriverHanyuan1()
         driver.use_zmq = False
         driver.base_url = "http://test.com"
@@ -675,6 +733,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "call_json_rpc")
     @patch.object(Library, "create_uuid")
     def test_get_device_info_jsonrpc_failed(self, mock_uuid, mock_jsonrpc):
+        """Verify a JSON-RPC device information failure returns an error."""
         driver = DriverHanyuan1()
         driver.use_zmq = False
         driver.base_url = "http://test.com"
@@ -692,6 +751,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     @patch.object(Library, "create_uuid")
     def test_get_device_info_request_failed(self, mock_uuid, mock_zerorpc):
+        """Verify a failed device information request returns an error."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_uuid.return_value = job_id
@@ -703,6 +763,7 @@ class TestDriverHanyuan1:
     @patch.object(DriverHanyuan1, "call_zerorpc_rpc")
     @patch.object(Library, "create_uuid")
     def test_get_device_info_exception(self, mock_uuid, mock_zerorpc):
+        """Verify a device information exception is returned as an error."""
         driver = DriverHanyuan1()
         driver.use_zmq = True
         mock_uuid.return_value = job_id
@@ -713,6 +774,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "get_device_info")
     def test_fetch_running_info_success(self, mock_get_device_info):
+        """Verify device information is converted to running information."""
         driver = DriverHanyuan1()
         mock_get_device_info.return_value = (
             True,
@@ -734,6 +796,7 @@ class TestDriverHanyuan1:
 
     @patch.object(DriverHanyuan1, "get_device_info")
     def test_fetch_running_info_exception(self, mock_get_device_info):
+        """Verify device query failures produce disconnected information."""
         driver = DriverHanyuan1()
         mock_get_device_info.return_value = (False, "test error", None)
         result = driver.fetch_running_info()

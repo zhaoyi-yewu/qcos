@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the SpinQ RPC driver."""
 
 # ruff: noqa: E402
 # load driver venv
@@ -65,6 +68,7 @@ results = {"task_result": {"qubit_result": {"000": 1, "010": 9}}}
 
 
 def validate_converted_gate(actual_info, expected_info):
+    """Check converted gate fields against expected values."""
     assert actual_info["angle"] == expected_info["angle"]
     assert actual_info["controlQubit"] == expected_info["controlQubit"]
     assert actual_info["qubitIndex"] == expected_info["qubitIndex"]
@@ -74,7 +78,10 @@ def validate_converted_gate(actual_info, expected_info):
 
 @pytest.mark.driver
 class TestDriverSpinQRpc(unittest.TestCase):
+    """Test cases for the DriverSpinQRpc driver."""
+
     def setUp(self):
+        """Set up the driver and mocked RPC client."""
         self.driver = DriverSpinQRpc()
         self.driver._rpc_conn_str = "tcp://127.0.0.1:4242"
         self.driver.max_retries = 3
@@ -83,14 +90,17 @@ class TestDriverSpinQRpc(unittest.TestCase):
 
     @classmethod
     def teardown_class(cls):
+        """Restore the original module search path."""
         sys.path = org_path
 
     def test_init_driver(self):
+        """Test driver initialization."""
         assert self.driver.init_driver() is None
 
     @patch("zerorpc.Client")
     @patch.object(DriverSpinQRpc, "user_auth")
     def test_fetch_configs(self, mock_user_auth, mock_client_class):
+        """Test fetching driver configurations."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         _results = {
@@ -106,15 +116,18 @@ class TestDriverSpinQRpc(unittest.TestCase):
 
     @patch.object(DriverSpinQRpc, "client_close")
     def test_close_driver(self, mock_client_close):
+        """Test closing the driver."""
         mock_client_close.return_value = None
         assert self.driver.close_driver() is None
         self.driver._session_id = session_id
         assert self.driver.close_driver() is None
 
     def test_cancel(self):
+        """Test job cancellation."""
         self.driver.cancel(job_id)
 
     def test_validate_driver_configs(self):
+        """Test driver configuration validation."""
         configs = {
             "rpc_host": DriverSpinQRpc.default_rpc_host,
             "rpc_port": DriverSpinQRpc.default_rpc_port,
@@ -140,6 +153,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         mock_check_task_status,
         mock_submit_task,
     ):
+        """Test the run workflow with mocked dependencies."""
         mock_submit_task.return_value = True, "", task_id
         mock_check_task_status.return_value = True, None, None
         mock_get_task_results.return_value = True, "", results
@@ -147,6 +161,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         self.driver.run(job_id, num_qubits, data, data_type, shots)
 
     def test_user_auth(self):
+        """Test user authentication."""
         request_login_response = {
             "return_code": 0,
             "qubits_num": 5,
@@ -163,6 +178,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert _results == request_login_response
 
     def test_user_auth_rpc_error(self):
+        """Test user authentication RPC errors."""
         self.mock_client.request_login.side_effect = (
             zerorpc.exceptions.LostRemote("Connection lost")
         )
@@ -173,6 +189,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert err_msg is not None
 
     def test_submit_task(self):
+        """Test gate conversion and task submission."""
         # 设置 available_qubits，因为convert_gates需要它来初始化qubit_depth
         self.driver.available_qubits = 6
         h = H([0])
@@ -251,6 +268,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
 
     @patch.object(DriverSpinQRpc, "get_task_status")
     def test_check_task_status(self, mock_get_task_status):
+        """Test task status checking."""
         finished = 0
         mock_get_task_status.return_value = True, "", finished
         success, _, task_status = self.driver.check_task_status(
@@ -260,6 +278,7 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert task_status is finished
 
     def test_get_task_status(self):
+        """Test retrieving task status."""
         finished = 0
         self.mock_client.get_task_status = MagicMock()
         self.mock_client.get_task_status.return_value = finished
@@ -268,17 +287,20 @@ class TestDriverSpinQRpc(unittest.TestCase):
         assert task_status == finished
 
     def test_get_task_results(self):
+        """Test retrieving task results."""
         self.mock_client.get_task_result.return_value = json.dumps(results)
         success, err_msg, response = self.driver.get_task_results(task_id)
         assert success is True
         assert response == results
 
     def test_client_close(self):
+        """Test closing the RPC client."""
         self.mock_client.request_logout.return_value = None
         self.mock_client.close.return_value = None
         assert self.driver.client_close(username, session_id) is None
 
     def test_convert_results(self):
+        """Test converting task results."""
         self.mock_client.get_task_result.return_value = json.dumps(results)
         success, err_msg, response = self.driver.get_task_results(task_id)
         assert success is True

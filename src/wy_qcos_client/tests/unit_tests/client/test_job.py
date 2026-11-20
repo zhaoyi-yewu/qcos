@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for Client job methods."""
+
 from unittest.mock import patch
 
 from wy_qcos_client.client import Client
@@ -26,47 +28,57 @@ client = Client()
 
 
 class TestClient:
+    """Tests for Client job methods."""
+
     @classmethod
     def setup_class(cls):
+        """Provide shared job test data."""
         cls.return_values = [-1, "reason", "text", "result"]
         cls.job_id = ConstantForTest.job_id
         cls.job_ids = ConstantForTest.job_ids
 
     def test_handle_invalid_arguments(self):
+        """Test handling invalid arguments."""
         assert client.handle_invalid_arguments([1, 2]) is None
 
     @patch.object(Client, "call_json_rpc")
     def test_submit_job(self, mock_call_json_rpc):
+        """Test submitting a job."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.submit_job("msg")
         assert reason == "reason"
 
     @patch.object(Client, "call_json_rpc")
     def test_get_job_status(self, mock_call_json_rpc):
+        """Test getting a job status."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_job_status(self.job_id)
         assert text == "text"
 
     @patch.object(Client, "call_json_rpc")
     def test_get_jobs(self, mock_call_json_rpc):
+        """Test getting jobs."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_jobs()
         assert result == "result"
 
     @patch.object(Client, "call_json_rpc")
     def test_cancel_jobs(self, mock_call_json_rpc):
+        """Test cancelling jobs."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.cancel_jobs(self.job_ids)
         assert status_code == -1
 
     @patch.object(Client, "call_json_rpc")
     def test_delete_jobs(self, mock_call_json_rpc):
+        """Test deleting jobs."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.delete_jobs(self.job_ids)
         assert reason == "reason"
 
     @patch.object(Client, "call_json_rpc")
     def test_set_job_results(self, mock_call_json_rpc):
+        """Test setting job results."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.set_job_results(
             self.job_id, "result"
@@ -75,12 +87,14 @@ class TestClient:
 
     @patch.object(Client, "call_json_rpc")
     def test_get_job_results(self, mock_call_json_rpc):
+        """Test getting job results."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.get_job_results(self.job_id)
         assert status_code == -1
 
     @patch.object(Client, "call_json_rpc")
     def test_update_job(self, mock_call_json_rpc):
+        """Test updating a job."""
         mock_call_json_rpc.return_value = self.return_values
         status_code, reason, text, result = client.update_job("msg")
         assert reason == "reason"

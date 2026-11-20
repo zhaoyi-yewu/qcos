@@ -183,6 +183,38 @@ class Library:
         return os.getpid()
 
     @staticmethod
+    def _is_expected_process(pid, expected_process_name):
+        """Return whether the PID still matches the expected process."""
+        if not expected_process_name:
+            return True
+        cmd_line_filepath = f"/proc/{pid}/cmdline"
+        try:
+            with open(
+                cmd_line_filepath, encoding="utf-8", errors="replace"
+            ) as cmdline_file:
+                cmd_line = cmdline_file.read().replace("\0", " ").strip()
+        except OSError:
+            return False
+        return Library.str_match(cmd_line, expected_process_name)
+
+    @staticmethod
+    def is_process_owner(pid):
+        """Return whether the current user owns the target process."""
+        try:
+            proc_stat = os.stat(f"/proc/{pid}")
+            return proc_stat.st_uid == os.getuid()
+        except (OSError, AttributeError):
+            return False
+
+    @staticmethod
+    def send_signal(pid, sig):
+        """Send a signal after verifying target process ownership."""
+        if Library.is_process_owner(pid):
+            os.kill(pid, sig)
+            return
+        raise PermissionError(f"Process {pid} is not owned by current user")
+
+    @staticmethod
     def kill_pid(pid_file, expected_process_name=None, allow_kill_self=False):
         """Kill existing process from pid file.
 
@@ -202,15 +234,11 @@ class Library:
                 if not pid_str.isdigit():
                     raise ValueError(f"Invalid pid format: {pid_str}")
                 pid = int(pid_str)
-            # match expected process name
-            if expected_process_name and pid:
-                cmd_line = None
-                cmd_line_filepath = f"/proc/{pid}/cmdline"
-                if os.path.exists(cmd_line_filepath):
-                    with open(cmd_line_filepath) as f:
-                        cmd_line = f.read().replace("\0", " ").strip()
-                    if not Library.str_match(cmd_line, expected_process_name):
-                        need_to_kill = False
+            # Fail closed when the expected process cannot be verified.
+            if pid and not Library._is_expected_process(
+                pid, expected_process_name
+            ):
+                need_to_kill = False
             if not allow_kill_self:
                 if os.getpid() == pid:
                     need_to_kill = False
@@ -219,30 +247,38 @@ class Library:
             # still alive, escalate to SIGKILL to ensure the port is
             # released before the new process starts.
             if pid and need_to_kill:
-                os.kill(pid, signal.SIGTERM)
+                Library.send_signal(pid, signal.SIGTERM)
                 # Wait for process to exit with escalating timeout
                 max_wait = 10
                 waited = 0
                 while waited < max_wait:
                     try:
                         # os.kill with signal 0 checks process existence
-                        os.kill(pid, 0)
+                        Library.send_signal(pid, 0)
                         time.sleep(0.5)
                         waited += 0.5
                     except ProcessLookupError:
                         # Process has exited
                         break
                 if waited >= max_wait:
-                    # Process did not exit gracefully; force kill
-                    try:
-                        os.kill(pid, signal.SIGKILL)
-                        time.sleep(0.5)
-                    except ProcessLookupError:
-                        pass
-                    print(
-                        f"Process {pid} did not exit after SIGTERM "
-                        f"within {max_wait}s, sent SIGKILL"
-                    )
+                    # Recheck identity to avoid signaling a reused PID.
+                    if Library._is_expected_process(
+                        pid, expected_process_name
+                    ):
+                        try:
+                            Library.send_signal(pid, signal.SIGKILL)
+                            time.sleep(0.5)
+                        except ProcessLookupError:
+                            pass
+                        print(
+                            f"Process {pid} did not exit after SIGTERM "
+                            f"within {max_wait}s, sent SIGKILL"
+                        )
+                    else:
+                        print(
+                            f"Skip SIGKILL for PID {pid}: "
+                            "process identity changed"
+                        )
         except ValueError as e:
             print(f"Failed to process PID file: {e}")
         except ProcessLookupError:
@@ -1153,15 +1189,17 @@ class Library:
             return 0
         total_qubits = 0
         # qreg <name>[<size>];  (OpenQASM 2.0)
-        qreg_matches = re.findall(r"qreg\s+\w+\[(\d+)\]", qasm_content)
+        qreg_matches = re.findall(_s(r"qreg\s+\w+\[(\d+)\]"), qasm_content)
         total_qubits += sum(int(n) for n in qreg_matches)
         # qubit[<size>] <name>;  (OpenQASM 3.0 array form)
-        qubit_arr_matches = re.findall(r"qubit\[(\d+)\]\s+\w+", qasm_content)
+        qubit_arr_matches = re.findall(
+            _s(r"qubit\[(\d+)\]\s+\w+"), qasm_content
+        )
         total_qubits += sum(int(n) for n in qubit_arr_matches)
         # qubit <name>;  (OpenQASM 3.0 single qubit, avoid matching
         # the array form qubit[<size>] already counted above)
         single_matches = re.findall(
-            r"(?<![\w\[])\bqubit\s+\w+\s*;", qasm_content
+            _s(r"(?<![\w\[])\bqubit\s+\w+\s*;"), qasm_content
         )
         # subtract single-qubit declarations that are actually part
         # of qubit[<size>] form (contains '[' between qubit and name)
@@ -2022,7 +2060,10 @@ class Library:
     def mask_password(
         configs,
         password_replace="*" * 8,
-        keys_to_match=r"^(?:_.*|.*(password|secret|hidden|token|salt|.*connection_url).*)$",
+        keys_to_match=(
+            r"^(?:_.*|.*(?:password|secret|hidden|token|salt|"
+            r"connection_url).*)$"
+        ),
     ):
         """Mask password and sensitive values.
 
@@ -2083,7 +2124,7 @@ class Library:
         """
         # Pattern: scheme://user:password@host:port/db
         # Replace password between : and @
-        pattern = r"(://[^:]*:)[^@]+(@)"
+        pattern = _s(r"(://[^:]*:)[^@]+(@)")
         return re.sub(pattern, f"\\1{mask_value}\\2", url)
 
     @staticmethod

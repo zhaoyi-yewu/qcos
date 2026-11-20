@@ -20,6 +20,8 @@ import logging
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
+from wy_qcos.log import init_console_logger
+
 logger = logging.getLogger(__name__)
 
 # A stable instance ID returned by the mock /executetask endpoint
@@ -143,9 +145,9 @@ class CetcApiHandler(BaseHTTPRequestHandler):
 
 
 def main(port=18611):
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+        log_format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     server_address = ("", port)

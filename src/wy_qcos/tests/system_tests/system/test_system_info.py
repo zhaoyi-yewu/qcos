@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for system information APIs."""
+
 import json
 import pytest
 
@@ -24,17 +26,22 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestPing:
+    """Test the system information API endpoint."""
+
     @classmethod
     def setup_class(cls):
+        """Set up the test class."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
 
     @classmethod
     def teardown_class(cls):
+        """Tear down the test class."""
         pass
 
     def test_system_info(self):
+        """Test retrieving system information."""
         status_code, reason, text, response = self.admin_client.system_info()
         assert status_code == HttpCode.SUCCESS_OK
         result = json.loads(text)

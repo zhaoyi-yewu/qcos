@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the UQC Matrix2 driver."""
 
 # ruff: noqa: E402
 # load driver venv
@@ -83,26 +86,33 @@ result_simulator = {"0x0": 45, "0x3": 55}
 
 @pytest.mark.driver
 class TestDriverUqc:
+    """Test cases for the DriverUQCMatrix2 driver."""
+
     @classmethod
     def teardown_class(cls):
+        """Restore the original module search path."""
         sys.path = org_path
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
+        """Test driver configuration validation."""
         mock_validate_schema.return_value = True, None
         configs = {}
         success, _ = driver_uqc.validate_driver_configs(configs)
         assert success is True
 
     def test_init_driver(self):
+        """Test driver initialization."""
         assert driver_uqc.init_driver() is None
 
     @patch("wy_qcos.driver.uqc.driver_uqc.uqc_client.UQC")
     def test_fetch_configs(self, mock_uqc):
+        """Test fetching driver configurations."""
         mock_uqc.return_value = Mock()
         assert driver_uqc.fetch_configs() is None
 
     def test_cancel(self):
+        """Test job cancellation."""
         assert driver_uqc.cancel("1") is None
 
     @pytest.mark.smoke
@@ -115,6 +125,7 @@ class TestDriverUqc:
         mock_check_task_status,
         mock_get_task_results,
     ):
+        """Test the run workflow with mocked dependencies."""
         mock_submit_task.return_value = task_id
         mock_check_task_status.return_value = True, None, "SUCCESS"
         mock_get_task_results.return_value = (
@@ -129,6 +140,7 @@ class TestDriverUqc:
 
     @patch.object(UQC, "get_task_result")
     def test_get_task_results(self, mock_get_task_results):
+        """Test retrieving task results."""
         mock_get_task_results.return_value = {}
         driver_uqc._uqc = Mock()
         success, results = driver_uqc.get_task_results(task_id)
@@ -136,14 +148,17 @@ class TestDriverUqc:
         assert results is not None
 
     def test_is_valid_shots(self):
+        """Test shots validation."""
         assert driver_uqc.is_valid_shots(shots) is None
 
     def test_convert_results(self):
+        """Test converting simulator results."""
         results = driver_uqc.convert_results(result_simulator, num_qubits)
         assert results["00000"] == 45
         assert results["00011"] == 55
 
     def test_normalize_task_results(self):
+        """Test normalizing Matrix2 task results."""
         results = driver_uqc.normalize_task_results(
             result_matrix2, num_qubits, shots
         )

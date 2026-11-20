@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for metrics API routes."""
+
 from unittest.mock import Mock, patch
 
 import pytest
@@ -190,6 +192,7 @@ class TestGetApiStats:
         mock_stats = MockApiStats()
 
         def mock_get_api_stats():
+            """Return mocked API request statistics."""
             return {
                 Constant.API_TOTAL_REQUESTS: mock_stats.total_requests,
                 Constant.API_LAST_HOUR_REQUESTS: mock_stats.last_hour_requests,
@@ -214,6 +217,7 @@ class TestGetApiStats:
         """Test API stats response when there are zero requests."""
 
         def mock_get_api_stats():
+            """Return mocked API request statistics."""
             return {
                 Constant.API_TOTAL_REQUESTS: 0,
                 Constant.API_LAST_HOUR_REQUESTS: 0,
@@ -239,6 +243,7 @@ class TestGetApiStats:
         mock_stats = MockApiStats()
 
         def mock_get_api_stats():
+            """Return mocked API request statistics."""
             return {
                 Constant.API_TOTAL_REQUESTS: mock_stats.total_requests,
                 Constant.API_LAST_HOUR_REQUESTS: mock_stats.last_hour_requests,

@@ -23,7 +23,7 @@ from loguru import logger
 from uqc_client.uqc import uqc_config
 
 from wy_qcos.common.constant import Constant
-from wy_qcos.common.library import Library
+from wy_qcos.common.library import _s, Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_base import DriverBase
 from wy_qcos.driver.driver_gate_base import DriverGateBase
@@ -186,7 +186,7 @@ class DriverUQCMatrix2(DriverGateBase):
             f"data_type: {data_type}, data: {data}"
         )
         if num_qubits is None and self.default_data_type == "qasm3":
-            pattern = r"qubit\s*\[\s*(\d+)\s*\]"
+            pattern = _s(r"qubit\s*\[\s*(\d+)\s*\]")
             matches = re.findall(pattern, data["source_code"], re.IGNORECASE)
             num_qubits = sum(int(match) for match in matches)
 

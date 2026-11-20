@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Shared constants for task manager unit tests."""
+
 from prefect.client.schemas.objects import Artifact
 
 from wy_qcos.common.constant import Constant
@@ -22,6 +24,8 @@ from wy_qcos.common.library import Library
 
 
 class ConstantForTest:
+    """Container for shared test constants."""
+
     args = {
         "job_info": {
             "data": {

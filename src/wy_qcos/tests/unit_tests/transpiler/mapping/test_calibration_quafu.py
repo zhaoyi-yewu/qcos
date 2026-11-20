@@ -16,16 +16,21 @@
 # ----------------------------------------------------------------------
 """Unit tests for calibration_quafu module."""
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
 
-try:
+if TYPE_CHECKING:
     from wy_qcos.transpiler.cmss.mapping.utils.calibration_quafu import (
         QuafuFidelityCalibrator,
     )
-except ModuleNotFoundError:
-    pytest.skip("quark not installed", allow_module_level=True)
+else:
+    calibration_quafu = pytest.importorskip(
+        "wy_qcos.transpiler.cmss.mapping.utils.calibration_quafu",
+        reason="quark not installed",
+    )
+    QuafuFidelityCalibrator = calibration_quafu.QuafuFidelityCalibrator
 
 _CSV = (
     "Qubit,T1,T2,Freq,Fidelity,CZ\n"
@@ -76,7 +81,10 @@ class _Calibrator(QuafuFidelityCalibrator):
 
 
 class TestLoadCalibration:
+    """Tests for loading Quafu calibration data."""
+
     def test_parse(self, tmp_path):
+        """Test parsing qubit and coupler calibration data."""
         calibrator = _Calibrator(csv_path=_csv(tmp_path, _CSV))
         edges, qubits, qreg = calibrator.load_calibration()
         assert len(edges) == 3
@@ -86,11 +94,13 @@ class TestLoadCalibration:
         assert qreg == 4
 
     def test_no_edges_raises(self, tmp_path):
+        """Test that calibration data without edges raises an error."""
         calibrator = _Calibrator(csv_path=_csv(tmp_path, _CSV_NO_EDGES))
         with pytest.raises(ValueError, match="No edges"):
             calibrator.load_calibration()
 
     def test_zero_fid_filtered(self, tmp_path):
+        """Test filtering couplers with zero fidelity."""
         calibrator = _Calibrator(csv_path=_csv(tmp_path, _CSV_ZERO_FID))
         edges, qubits, qreg = calibrator.load_calibration()
         assert not edges
@@ -98,6 +108,7 @@ class TestLoadCalibration:
         assert qreg == 2
 
     def test_short_row_skipped(self, tmp_path):
+        """Test skipping incomplete calibration rows."""
         calibrator = _Calibrator(csv_path=_csv(tmp_path, _CSV_SHORT))
         edges, qubits, _ = calibrator.load_calibration()
         assert (1, 2) in edges

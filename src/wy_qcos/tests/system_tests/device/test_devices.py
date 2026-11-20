@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""System tests for device APIs."""
+
 import pytest
 
 from wy_qcos.device.device import Device
@@ -24,8 +26,11 @@ from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 @pytest.mark.usefixtures("global_configs")
 class TestDevice:
+    """Test device API endpoints."""
+
     @classmethod
     def setup_class(cls):
+        """Set up the test class."""
         cls.admin_client = GLOBAL_CONFIGS["admin_client"]
         cls.timeout = GLOBAL_CONFIGS["timeout"]
         cls.interval = GLOBAL_CONFIGS["interval"]
@@ -33,15 +38,18 @@ class TestDevice:
 
     @classmethod
     def teardown_class(cls):
+        """Tear down the test class."""
         pass
 
     @pytest.mark.smoke
     def test_get_devices(self):
+        """Test retrieving all devices."""
         devices = StLibrary.get_devices(self.admin_client)
         assert isinstance(devices, dict)
 
     @pytest.mark.smoke
     def test_get_device(self):
+        """Test retrieving a device by name."""
         device_name = "dummy"
         device = StLibrary.get_device(self.admin_client, device_name)
         assert isinstance(device, dict)
@@ -56,6 +64,7 @@ class TestDevice:
         assert device["status"] == Device.DEVICE_STATUS_ONLINE
 
     def test_get_devices_check_details(self):
+        """Test retrieving detailed information for every device."""
         devices = StLibrary.get_devices(self.admin_client)
         assert isinstance(devices, dict)
         for device_name, device_info in devices.items():
@@ -75,6 +84,7 @@ class TestDevice:
             assert device["max_qubits"] > 0
 
     def test_get_device_with_details(self):
+        """Test retrieving a device with detailed information."""
         device_name = "dummy"
         device = StLibrary.get_device(self.admin_client, device_name, True)
         assert isinstance(device, dict)

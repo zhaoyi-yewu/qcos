@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for the dummy driver."""
+
 import pytest
 from unittest.mock import patch
 
@@ -44,18 +46,23 @@ data_qasm = {
 
 
 class TestDriverDummy:
+    """Test the dummy driver."""
+
     @classmethod
     def setup_class(cls):
+        """Set up dummy driver options for the tests."""
         cls.driver_options = {
             "driver_options": "driver_options",
             "max_qubits": 20,
         }
 
     def test_init_driver(self):
+        """Test dummy driver initialization."""
         assert driver_dummy.init_driver() is None
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs(self, mock_validate_schema):
+        """Test validating dummy driver configurations."""
         configs = {}
         mock_validate_schema.return_value = iter([True, ""])
         success, err_msg = driver_dummy.validate_driver_configs(configs)
@@ -66,20 +73,24 @@ class TestDriverDummy:
         assert success is False
 
     def test_close_driver(self):
+        """Test closing the dummy driver."""
         assert driver_dummy.close_driver() is None
 
     @pytest.mark.smoke
     @patch.object(DriverBase, "get_fake_results")
     def test_run(self, mock_get_fake_results):
+        """Test running a dummy driver job."""
         mock_get_fake_results.return_value = {"00": 45, "11": 55}
         assert (
             driver_dummy.run(job_id, num_qubits, data_qasm, data_type) is None
         )
 
     def test_cancel(self):
+        """Test cancelling a dummy driver job."""
         assert driver_dummy.cancel(job_id) is None
 
     def test_update_driver_options(self):
+        """Test updating dummy driver options."""
         driver_dummy.update_driver_options(self.driver_options)
         max_qubits = driver_dummy.get_max_qubits()
         assert max_qubits == 20

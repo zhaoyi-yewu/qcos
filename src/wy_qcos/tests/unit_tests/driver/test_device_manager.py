@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for the DeviceManager class."""
+
 import pytest
 from unittest.mock import Mock
 
@@ -26,12 +28,16 @@ device_manager = DeviceManager(Config(), DriverManager())
 
 
 class TestDeviceManager:
+    """Test DeviceManager behavior."""
+
     @pytest.mark.smoke
     def test_load_devices(self):
+        """Test loading configured devices."""
         device_manager.config.DEVICE_LIST = ["dummy"]
         assert device_manager.load_devices() is None
 
     def test_init_devices(self):
+        """Test initializing managed devices."""
         redis_instance = Mock()
         redis_ping = Mock()
         redis_instance.ping.return_value = redis_ping
@@ -39,10 +45,13 @@ class TestDeviceManager:
         assert device_manager.init_devices() is None
 
     def test_has_device(self):
+        """Test checking for an unknown device."""
         assert device_manager.has_device("tiangong10000") is False
 
     def test_get_device(self):
+        """Test getting an unknown device."""
         assert device_manager.get_device("tiangong10000") is None
 
     def test_get_devices(self):
+        """Test getting all managed devices."""
         assert device_manager.get_devices() is not None

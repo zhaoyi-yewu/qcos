@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for device API routes."""
+
 import pytest
 
 from unittest.mock import MagicMock, Mock, patch
@@ -49,14 +51,18 @@ from wy_qcos.task_manager import TaskScheduler
 
 
 class TestDevice:
+    """Test device API routes."""
+
     @classmethod
     def setup_class(cls):
+        """Initialize shared test constants."""
         cls.dummy = Constant.TRANSPILER_DUMMY
 
     @pytest.mark.smoke
     @patch.object(DeviceManager, "get_devices")
     @patch.object(TaskScheduler, "get_device_manager")
     def test_get_devices(self, mock_get_device_manager, mock_get_devices):
+        """Test listing devices when none are registered."""
         mock_get_devices.return_value = {}
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
@@ -76,6 +82,7 @@ class TestDevice:
         mock_get_device,
         mock_get_device_manager,
     ):
+        """Test retrieving device details."""
         mock_get_driver.return_value = DriverDummy()
         device = Device("dummy", DriverDummy())
         device.status = Device.DEVICE_STATUS_ONLINE
@@ -206,6 +213,7 @@ class TestDevice:
 
     @patch.object(TaskScheduler, "submit_manage_job")
     def test_calibrate(self, mock_submit_manage_job):
+        """Test submitting a device calibration job."""
         mock_submit_manage_job.return_value = None
         mock_client = Mock(spec=CalibrateDeviceRequest)
         mock_client.device_name = self.dummy
@@ -222,6 +230,7 @@ class TestDevice:
         mock_get_device,
         mock_get_device_manager,
     ):
+        """Test retrieving device calibration results."""
         mock_get_device.return_value = Device("dummy", DriverDummy())
         mock_get_device.calibrate_info = None
         mock_get_device_manager.return_value = DeviceManager(
@@ -239,6 +248,7 @@ class TestDevice:
         self,
         mock_submit_manage_job,
     ):
+        """Test submitting device option updates."""
         mock_submit_manage_job.return_value = None
         mock_client = Mock(spec=SetDeviceOptionsRequest)
         mock_client.device_name = self.dummy
@@ -254,6 +264,7 @@ class TestDevice:
         mock_get_device,
         mock_get_device_manager,
     ):
+        """Test retrieving device options."""
         mock_get_device.return_value = Device("dummy", DriverDummy())
         mock_get_device.device_options_info = {}
         mock_get_device_manager.return_value = DeviceManager(
@@ -275,6 +286,7 @@ class TestDevice:
         mock_get_devices,
         mock_validate_virtual_instance,
     ):
+        """Test skipping an unauthorized device."""
         mock_get_devices.return_value = {
             "device_a": Device("device_a", DriverDummy())
         }
@@ -289,8 +301,9 @@ class TestDevice:
         assert response_info == {}
 
     def test_get_device_info_hides_configs_for_virtual_instance_user(self):
+        """Test hiding device configuration from virtual instance users."""
         device = Device("dummy", DriverDummy())
-        device.configs = {"password": "secret"}
+        device.configs = {"password": None}
         device.details = {"key": "value"}
         auth_data = {
             Constant.AUTH_MODE_KEY: Constant.AUTH_MODE_VIRTUAL_INSTANCE,
@@ -316,6 +329,7 @@ class TestDevice:
         mock_validate_virtual_instance,
         mock_handle_error_not_found,
     ):
+        """Test reporting an unauthorized device as not found."""
         mock_get_device.return_value = Device("dummy", DriverDummy())
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
@@ -344,6 +358,7 @@ class TestDevice:
         mock_get_device,
         mock_handle_error_not_found,
     ):
+        """Test handling a missing device during calibration lookup."""
         mock_get_device.return_value = None
         mock_get_device_manager.return_value = DeviceManager(
             Config(), DriverManager()
@@ -365,6 +380,7 @@ class TestSetDevice:
 
     @classmethod
     def setup_class(cls):
+        """Initialize the dummy device name."""
         cls.dummy = Constant.TRANSPILER_DUMMY
 
     def _make_device(self):

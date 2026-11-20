@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Tests for device shell commands."""
 
 from argparse import Namespace
 from unittest.mock import patch, Mock
@@ -39,7 +42,10 @@ get_devices = GetDevices(shell, None)
 
 
 class TestGetDevice:
+    """Tests for GetDevice command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetDevice command."""
         parser = get_device.get_parser("")
         assert parser is not None
 
@@ -49,6 +55,7 @@ class TestGetDevice:
     def test_take_action(
         self, mock_get_device, mock_check_results, mock_get_table_data
     ):
+        """Test GetDevice take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None
@@ -64,7 +71,10 @@ class TestGetDevice:
 
 
 class TestGetDevices:
+    """Tests for GetDevices command."""
+
     def test_get_parser(self):
+        """Test parser creation for GetDevices command."""
         parser = get_devices.get_parser("")
         assert parser is not None
 
@@ -74,6 +84,7 @@ class TestGetDevices:
     def test_take_action(
         self, mock_get_devices, mock_check_results, mock_get_table_list_data
     ):
+        """Test GetDevices take_action method."""
         mock_client = Mock(spec=Namespace)
         mock_client.filters = None
         mock_client.page = None

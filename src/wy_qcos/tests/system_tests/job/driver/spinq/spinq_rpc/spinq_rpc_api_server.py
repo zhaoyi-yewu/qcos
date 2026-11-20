@@ -35,6 +35,7 @@ from pathlib import Path
 import zerorpc
 
 from wy_qcos.common.library import Library
+from wy_qcos.log import init_console_logger
 
 logger = logging.getLogger(__name__)
 top_dir = Library.get_top_dir()
@@ -59,9 +60,9 @@ _tasks = {}  # task info, includes measures and shots
 
 
 def init_logging():
-    logging.basicConfig(
+    init_console_logger(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+        log_format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 

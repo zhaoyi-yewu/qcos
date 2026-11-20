@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -14,6 +14,7 @@
 #     MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for B-plus tree mapping aggregation."""
 
 from unittest.mock import Mock, patch
 
@@ -437,6 +438,7 @@ class TestBPlusTreeHelperFunctions:
 
         # 模拟层次树的average_fidelity方法
         def mock_average_fidelity(node):
+            """Return a mock fidelity based on the node qubit count."""
             return 0.9 if len(node.qubits) == 3 else 0.8
 
         mock_ht.average_fidelity = mock_average_fidelity

@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Unit tests for JSON-RPC error handling."""
+
 import pytest
 
 from wy_qcos.api.posiq.routes_jsonrpc import errors as jsonrpc_errors
@@ -43,47 +45,58 @@ results = [False, ["err_msg"]]
 
 
 class TestError:
+    """Test JSON-RPC error handling."""
+
     def test_handle_error_bad_requests(self):
+        """Test raising a bad request error."""
         with pytest.raises(BadRequestError) as e:
             handle_error_bad_requests(module_name, func_name, results)
         assert "BadRequestError" in str(e)
 
     def test_handle_error_unauthorized(self):
+        """Test raising an unauthorized error."""
         with pytest.raises(UnauthorizedError) as e:
             handle_error_unauthorized(module_name, func_name, results)
         assert "UnauthorizedError" in str(e)
 
     def test_handle_error_forbidden(self):
+        """Test raising a forbidden error."""
         with pytest.raises(ForbiddenError) as e:
             handle_error_forbidden(module_name, func_name, results)
         assert "ForbiddenError" in str(e)
 
     def test_handle_error_not_found(self):
+        """Test raising a not-found error."""
         with pytest.raises(NotFoundError) as e:
             handle_error_not_found(module_name, func_name, results)
         assert "NotFoundError" in str(e)
 
     def test_handle_error_conflict(self):
+        """Test raising a conflict error."""
         with pytest.raises(ConflictError) as e:
             handle_error_conflict(module_name, func_name, results)
         assert "ConflictError" in str(e)
 
     def test_handle_error_internal_server(self):
+        """Test raising an internal server error."""
         with pytest.raises(InternalServerError) as e:
             handle_error_internal_server(module_name, func_name, results)
         assert "InternalServerError" in str(e)
 
     def test_handle_error_not_implemented(self):
+        """Test raising a not-implemented error."""
         with pytest.raises(NotImplementedError) as e:
             handle_error_not_implemented(module_name, func_name, results)
         assert "NotImplementedError" in str(e)
 
     def test_handle_error_service_unavailable(self):
+        """Test raising a service-unavailable error."""
         with pytest.raises(ServiceUnavailableError) as e:
             handle_error_service_unavailable(module_name, func_name, results)
         assert "ServiceUnavailableError" in str(e)
 
     def test_handle_errors_success_returns_none(self):
+        """Test returning None for successful results."""
         assert (
             jsonrpc_errors.handle_errors(
                 BadRequestError,
@@ -97,6 +110,7 @@ class TestError:
         )
 
     def test_handle_errors_with_param_name_and_code(self):
+        """Test attaching parameter details and an error code."""
         with pytest.raises(BadRequestError) as exc_info:
             jsonrpc_errors.handle_errors(
                 BadRequestError,
@@ -110,6 +124,7 @@ class TestError:
         assert "field: invalid" in str(exc_info.value)
 
     def test_jsonrpc_base_error_data_model_str_and_repr(self):
+        """Test string representations of error data."""
         data_model = jsonrpc_errors.JsonRpcBaseError.DataModel(
             details="detail msg"
         )
@@ -118,6 +133,7 @@ class TestError:
         assert repr(data_model) == "detail msg"
 
     def test_handle_errors_with_list_error_message(self):
+        """Test formatting a list of error messages."""
         with pytest.raises(BadRequestError) as exc_info:
             jsonrpc_errors.handle_errors(
                 BadRequestError,

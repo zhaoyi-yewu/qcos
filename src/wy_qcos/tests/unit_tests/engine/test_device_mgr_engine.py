@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
 
 """Unit tests for device_mgr_engine module."""
 
@@ -28,7 +29,10 @@ import prefect
 
 
 def _mock_flow(*args, **kwargs):
+    """Mock prefect.flow without wrapping the decorated function."""
+
     def decorator(fn):
+        """Return the decorated function unchanged."""
         return fn
 
     if len(args) == 1 and callable(args[0]):

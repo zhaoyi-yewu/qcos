@@ -186,7 +186,7 @@ QCOS_API_ENDPOINTS = [
 ```mermaid
 flowchart LR
     Toml["/etc/qcos/webui.toml"] --> Parser["parse-webui-toml.py"]
-    Parser --> Env["/tmp/webui.env<br/>LISTEN_IP / LISTEN_PORT"]
+    Parser --> Env["/etc/qcos/webui.env<br/>LISTEN_IP / LISTEN_PORT"]
     Parser --> Json["/apps/webui-config.json<br/>endpoints + debug"]
     Parser --> NginxConf["/etc/nginx/default.d/endpoints.conf<br/>location /api/<name>/"]
     Json --> Browser["浏览器 fetch 加载"]

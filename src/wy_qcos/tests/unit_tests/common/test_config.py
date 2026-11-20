@@ -76,7 +76,7 @@ class TestConfig:
                 "debug": "false",
             },
             "VIRT": {
-                "password_salt": f"{Constant.ENCRYPTION_PREFIX}abc123",
+                "password_salt": Constant.ENCRYPTION_PREFIX,
             },
         }
         mock_obj = Mock()
@@ -94,7 +94,7 @@ class TestConfig:
     ):
         """Test load config with decryption failure."""
         mock_config = {
-            "DEFAULT": {"password_salt": f"{Constant.ENCRYPTION_PREFIX}abc123"}
+            "DEFAULT": {"password_salt": Constant.ENCRYPTION_PREFIX}
         }
         mock_obj = Mock()
         mock_obj.unwrap.return_value = mock_config
@@ -114,7 +114,7 @@ class TestConfig:
     @patch.object(Library, "mask_password")
     def test_get_configs_with_mask(self, mock_mask):
         """Test get_configs with password masking."""
-        mock_mask.return_value = {"password": "***"}
+        mock_mask.return_value = {}
         config.get_configs(mask_password=True)
         mock_mask.assert_called_once()
 

@@ -26,7 +26,7 @@ from schema import And, Optional, Or, Schema
 from wy_qcos.common.cmss.qasm_converter import QasmConverter
 from wy_qcos.common.constant import Constant, HttpMethod
 from wy_qcos.common.errors import BaseException
-from wy_qcos.common.library import Library
+from wy_qcos.common.library import _s, Library
 from wy_qcos.device.device import Device
 from wy_qcos.driver.driver_gate_base import DriverGateBase
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit as QCircuit
@@ -728,7 +728,8 @@ class DriverLogicalQubitBase(DriverGateBase):
         }
         message = str(err)
         http_code = None
-        match = re.search(r"HTTP\s*(\d+)", message)
+        pattern = _s(r"HTTP\s*(\d+)")
+        match = re.search(pattern, message)
         if match:
             http_code = int(match.group(1))
             if http_code in errors_code_mapping:

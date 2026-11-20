@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
-# Copyright© 2024-2025 China Mobile (SuZhou) Software Technology Co.,Ltd.
+# Copyright© 2024-2026 China Mobile (SuZhou) Software Technology Co.,Ltd.
 #
 # qcos is licensed under Mulan PSL v2.
 # You can use this software according to the terms and conditions
@@ -48,3 +48,21 @@ class TestApiServer:
         mock_mkdir.return_value = None
         mock_create_pid_file.return_value = None
         main()
+
+    def test_main_daemon_writes_final_process_id(self):
+        call_order = []
+        with (
+            patch.object(Library, "kill_pid"),
+            patch.object(Library, "mkdir"),
+            patch.object(Library, "create_pid_file") as mock_create_pid,
+            patch("wy_qcos.api_server.daemonize") as mock_daemonize,
+            patch("wy_qcos.api_server.asyncio.get_event_loop"),
+            patch.object(Server, "run"),
+            patch.object(TaskScheduler, "start_taskmanager"),
+            patch("wy_qcos.api_server.sys.argv", ["qcos-api", "--daemon"]),
+        ):
+            mock_daemonize.side_effect = lambda: call_order.append("daemon")
+            mock_create_pid.side_effect = lambda path: call_order.append("pid")
+            main()
+
+        assert call_order == ["daemon", "pid"]

@@ -64,7 +64,7 @@ class QasmTransformer(Transformer):
     semantic actions of the original PLY p_* functions.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._openqasm_version: list = []
 

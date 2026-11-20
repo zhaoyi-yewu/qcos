@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for quantum circuit equivalence checking."""
+
 import pytest
 
 from wy_qcos.transpiler.common.errors import CircuitException
@@ -24,8 +26,11 @@ from wy_qcos.transpiler.cmss.circuit.circuit_equiv import CircuitEquivChecker
 
 
 class TestCircuitEquvChecker:
+    """Tests for quantum circuit equivalence checking."""
+
     @pytest.mark.smoke
     def test_circuit_equiv(self):
+        """Test equivalent circuits with all equivalence algorithms."""
         qc1 = QuantumCircuit(num_qubits=2)
         gates_list = [X([0]), CX([0, 1]), H([1])]
         for gate in gates_list:
@@ -43,6 +48,7 @@ class TestCircuitEquvChecker:
         assert cec.algo_equiv(algo_no=2) is True
 
     def test_circuit_exception(self):
+        """Test exceptions raised for invalid equivalence checker inputs."""
         with pytest.raises(CircuitException) as e:
             _ = CircuitEquivChecker("qc1", "qc2")
 

@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=83.0.0", "nanobind>=2.13.0", "wheel>=0.37.1"]
+requires = ["setuptools>=84.1.0", "nanobind>=2.13.0", "wheel>=0.46.2"]
 
 [project]
 name = "wy-qcos"
@@ -52,7 +52,7 @@ classifiers = [
 # Format for dependency strings: https://peps.python.org/pep-0508/
 dependencies = [
     # requirements of qcos
-    "aiohttp==3.14.1",
+    "aiohttp==3.14.4",
     "aiomysql==0.3.2",
     "alembic==1.18.5",
     "annotated-types==0.7.0",
@@ -63,7 +63,7 @@ dependencies = [
     "bcrypt==5.0.0",
     "click==8.4.2",
     "cliff==4.17.0",
-    "cryptography==49.0.0",
+    "cryptography==50.0.0",
     "fastapi==0.139.2",
     "fastapi-jsonrpc==3.5.0",
     "h11==0.16.0",
@@ -85,7 +85,7 @@ dependencies = [
     "oqpy==0.3.10",
     "pg8000==1.31.5",
     "poetry==2.4.1",
-    "prefect==3.7.8; sys_platform == 'linux'",
+    "prefect==3.8.3; sys_platform == 'linux'",
     "prometheus-client==0.25.0",
     "psutil==7.2.2",
     "psycopg==3.3.3",
@@ -99,17 +99,16 @@ dependencies = [
     "pydantic==2.13.4",
     "pydantic_core==2.46.4",
     "pydocket==0.23.0",
-    "PyJWT==2.13.0",
+    "PyJWT==2.15.0",
     "PyMySQL==1.2.0",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
     "pytest-cov==7.1.0",
     "python-box==7.4.1",
-    "python-jose==3.5.0",
     "python-socketio==5.16.3",
     "PyYAML==6.0.3",
     # for performance testing
-    "qiskit==2.4.1",
+    "qiskit==2.5.2",
     "redis==8.0.1",
     "requests==2.34.2",
     "rustworkx==0.18.0",
@@ -128,7 +127,7 @@ dependencies = [
     "typing-inspection==0.4.2",
     "typing_extensions==4.16.0",
     "uvicorn[standard]==0.51.0",
-    "uv==0.9.13",
+    "uv==0.13.4",
     "uvloop==0.22.1",
     "wheel==0.47.0",
     # AI agent (pydantic-ai + LLM providers + RAG + vision)
@@ -221,7 +220,7 @@ sandbox = [
     "poetry-plugin-export==1.10.0",
     "semver==3.0.4",
     "twine==6.2.0",
-    "uv==0.9.13",
+    "uv==0.13.4",
 ]
 
 # requirements of transpiler-cmss
@@ -240,7 +239,7 @@ transpiler-cmss = [
 
 # requirements of driver qiskit aer
 driver-qiskit = [
-    "qiskit==2.5.0",
+    "qiskit==2.5.2",
     "qiskit_aer==0.17.2",
 ]
 

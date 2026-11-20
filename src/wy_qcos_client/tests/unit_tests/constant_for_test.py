@@ -15,6 +15,8 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Shared constants and objects for client unit tests."""
+
 from prefect.client.schemas.objects import Artifact
 
 from wy_qcos_client.common.client_library import ClientLibrary
@@ -22,6 +24,8 @@ from wy_qcos_client.common.constant import Constant
 
 
 class ConstantForTest:
+    """Provide shared constants and objects for client unit tests."""
+
     args = {
         "job_info": {
             "data": {

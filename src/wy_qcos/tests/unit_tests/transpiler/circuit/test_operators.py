@@ -15,9 +15,10 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+"""Tests for quantum gate matrices and circuit operators."""
+
 import pytest
 import numpy as np
-import math as m
 
 from wy_qcos.common.cmss.gate_operation import (
     H,
@@ -65,8 +66,11 @@ from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
 
 class TestOperators:
+    """Tests for quantum gate matrices and circuit operators."""
+
     @pytest.mark.smoke
     def test_gate_matrix(self):
+        """Test matrix representations of quantum gates."""
         # test H gate matrix
         gate = H(targets=[0])
         res_gate_mat = np.asarray(
@@ -1005,10 +1009,10 @@ class TestOperators:
         gate = C4X(targets=[0, 1, 2, 3, 4])
         gate_matrix = gate.to_matrix()
         mat_shape = gate_matrix.shape
-        close1 = m.isclose(
+        close1 = np.isclose(
             gate_matrix[mat_shape[0] - 1][mat_shape[1] // 2 - 1], 1
         )
-        close2 = m.isclose(
+        close2 = np.isclose(
             gate_matrix[mat_shape[0] // 2 - 1][mat_shape[1] - 1], 1
         )
         assert close1 and close2
@@ -1044,6 +1048,7 @@ class TestOperators:
         assert np.all(np.isclose(gate.to_matrix(), res_gate_mat))
 
     def test_operator(self):
+        """Test operator construction from matrices, circuits, and gates."""
         op1 = Operator(np.eye(4))
         assert op1.data.shape == (4, 4)
 
@@ -1062,6 +1067,7 @@ class TestOperators:
         assert np.all(np.isclose(op3.data, res_gate_mat))
 
     def test_operator_equiv(self):
+        """Test operator equivalence comparisons."""
         qc1 = QuantumCircuit(num_qubits=1)
         gate_list = [H([0]), Z([0]), H([0])]
         qc1.append_operations(gate_list)
@@ -1075,6 +1081,7 @@ class TestOperators:
         assert op1.equiv(Operator(np.eye(3))) is False
 
     def test_operator_dot(self):
+        """Test operator composition in both orders."""
         op1 = Operator(np.eye(4))
         op2 = Operator(np.eye(4))
         op1.compose(op2, front=False)
@@ -1085,6 +1092,7 @@ class TestOperators:
         assert np.all(np.isclose(op1.data, np.eye(4)))
 
     def test_operater_exception(self):
+        """Test exceptions for invalid operator inputs and instructions."""
         with pytest.raises(Exception) as e1:
             Operator("invalid input")
 

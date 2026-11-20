@@ -29,11 +29,11 @@ mkdir -p /etc/nginx/qcos/
 # nginx endpoints.conf); the script is copied into the image at build time
 python3 /usr/local/bin/parse-webui-toml.py \
   --toml /etc/qcos/qcos-webui.toml \
-  --env-out /tmp/webui.env \
+  --env-out /etc/qcos/webui.env \
   --json-out /apps/webui-config.json \
   --nginx-snippet-out /etc/nginx/qcos/endpoints.conf
 
-source /tmp/webui.env
+source /etc/qcos/webui.env
 
 WEBUI_LISTEN_IP=${WEBUI_LISTEN_IP:-$LISTEN_IP}
 WEBUI_LISTEN_PORT=${WEBUI_LISTEN_PORT:-$LISTEN_PORT}

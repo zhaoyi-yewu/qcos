@@ -23,6 +23,7 @@ import pytest
 import requests
 
 from wy_qcos.common.constant import Constant, HttpCode
+from wy_qcos.common.library import _s
 from wy_qcos.tests.system_tests.conftest import GLOBAL_CONFIGS
 
 
@@ -33,13 +34,16 @@ def parse_prometheus_metrics(text):
         dict mapping "metric_name{labels}" or "metric_name" to float value
     """
     result = {}
+    # Expand optional labels to avoid nested quantifiers.
+    pattern = _s(
+        r"^([a-zA-Z_:][a-zA-Z0-9_:]*\{[^}]*\}"
+        r"|[a-zA-Z_:][a-zA-Z0-9_:]*)[ \t]+(.+)$"
+    )
     for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        match = re.match(
-            r"^([a-zA-Z_:][a-zA-Z0-9_:]*(?:\{[^}]*\})?)[ \t]+(.+)$", line
-        )
+        match = re.match(pattern, line)
         if match:
             metric_key = match.group(1)
             try:
@@ -47,6 +51,21 @@ def parse_prometheus_metrics(text):
             except ValueError:
                 pass
     return result
+
+
+def test_parse_prometheus_metrics_formats():
+    text = "\n".join([
+        "# comment",
+        "qcos_jobs_total 10",
+        'qcos_jobs{status="running"} 3',
+        'qcos_labels{description="a b"}\t2.5',
+        "invalid_metric not-a-number",
+    ])
+    assert parse_prometheus_metrics(text) == {
+        "qcos_jobs_total": 10.0,
+        'qcos_jobs{status="running"}': 3.0,
+        'qcos_labels{description="a b"}': 2.5,
+    }
 
 
 @pytest.mark.usefixtures("global_configs")

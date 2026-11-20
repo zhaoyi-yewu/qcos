@@ -14,6 +14,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+# pylint: disable=bad-continuation
+
+"""Unit tests for the CETC base quantum device driver."""
 
 import json
 
@@ -35,6 +38,7 @@ class MockOp:
     """Lightweight stand-in for a GateOperation / BaseOperation."""
 
     def __init__(self, name, targets, arg_value=None):
+        """Initialize a mock operation with its gate and target data."""
         self.name = name
         self.targets = list(targets)
         self.arg_value = list(arg_value) if arg_value else []
@@ -67,18 +71,22 @@ class TestDriverCetcBase:
     # -- lifecycle --------------------------------------------------------
 
     def test_init_driver(self):
+        """Verify driver initialization completes without a return value."""
         assert driver_cetc.init_driver() is None
 
     def test_close_driver(self):
+        """Verify driver closure completes without a return value."""
         assert driver_cetc.close_driver() is None
 
     def test_cancel(self):
+        """Verify task cancellation completes without a return value."""
         assert driver_cetc.cancel("job-1") is None
 
     # -- config validation -----------------------------------------------
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_valid(self, mock_validate):
+        """Verify valid driver configurations pass schema validation."""
         mock_validate.return_value = True, None
         configs = {"token": _s("tok"), "url": "http://localhost"}
         success, _ = driver_cetc.validate_driver_configs(configs)
@@ -86,6 +94,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "validate_schema")
     def test_validate_driver_configs_invalid(self, mock_validate):
+        """Verify invalid driver configurations return validation errors."""
         mock_validate.return_value = False, ["token required"]
         success, err = driver_cetc.validate_driver_configs({})
         assert success is False
@@ -95,6 +104,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "get_configs")
     def test_fetch_configs(self, mock_get_configs):
+        """Verify fetched configuration values populate driver settings."""
         mock_get_configs.return_value = {
             "token": "abc",
             "url": "http://localhost:8080/",
@@ -108,6 +118,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "get_configs")
     def test_fetch_configs_defaults(self, mock_get_configs):
+        """Verify missing configuration values retain driver defaults."""
         mock_get_configs.return_value = {}
         # Use a fresh instance so computer_type isn't polluted by
         # earlier tests that set it via config or driver_options.
@@ -120,6 +131,7 @@ class TestDriverCetcBase:
     # -- update_driver_params_from_options -------------------------------
 
     def test_update_driver_params_from_options(self):
+        """Verify driver options update the computer type."""
         driver_cetc.driver_options = {"computer_type": 61}
         driver_cetc.update_driver_params_from_options()
         assert driver_cetc.computer_type == 61
@@ -128,6 +140,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_device_info_success(self, mock_http):
+        """Verify device information is parsed from a successful response."""
         response = json.dumps({"code": 200, "msg": "", "data": {"state": 1}})
         mock_http.return_value = _http_ok(response)
         driver_cetc.base_url = "http://localhost"
@@ -138,6 +151,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_device_info_empty_body(self, mock_http):
+        """Verify an empty device information response returns an error."""
         mock_http.return_value = _http_ok("")
         driver_cetc.base_url = "http://localhost"
         success, err, _ = driver_cetc.get_device_info()
@@ -146,6 +160,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_device_info_wrong_code(self, mock_http):
+        """Verify a non-success device response code returns an error."""
         response = json.dumps({"code": 500, "msg": "error"})
         mock_http.return_value = _http_ok(response)
         driver_cetc.base_url = "http://localhost"
@@ -155,6 +170,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_device_info_http_error(self, mock_http):
+        """Verify an HTTP device information failure returns an error."""
         mock_http.return_value = _http_err(500, "Internal Error", "err")
         driver_cetc.base_url = "http://localhost"
         success, err, _ = driver_cetc.get_device_info()
@@ -166,6 +182,7 @@ class TestDriverCetcBase:
     @patch.object(DriverCetcBase, "get_device_info")
     @patch.object(DriverCetcBase, "fetch_configs")
     def test_fetch_running_info_online(self, mock_fetch, mock_dev):
+        """Verify online device data is converted to running information."""
         mock_dev.return_value = (
             True,
             None,
@@ -203,6 +220,7 @@ class TestDriverCetcBase:
     @patch.object(DriverCetcBase, "get_device_info")
     @patch.object(DriverCetcBase, "fetch_configs")
     def test_fetch_running_info_offline(self, mock_fetch, mock_dev):
+        """Verify offline device data maps to offline running information."""
         mock_dev.return_value = (
             True,
             None,
@@ -214,6 +232,7 @@ class TestDriverCetcBase:
     @patch.object(DriverCetcBase, "get_device_info")
     @patch.object(DriverCetcBase, "fetch_configs")
     def test_fetch_running_info_dev_info_fail(self, mock_fetch, mock_dev):
+        """Verify device query failures produce offline running information."""
         mock_dev.return_value = (False, "err", None)
         info = driver_cetc.fetch_running_info()
         assert info["status"] == Device.DEVICE_STATUS_OFFLINE
@@ -222,6 +241,7 @@ class TestDriverCetcBase:
     @patch.object(DriverCetcBase, "get_device_info")
     @patch.object(DriverCetcBase, "fetch_configs")
     def test_fetch_running_info_maintain(self, mock_fetch, mock_dev):
+        """Verify a maintenance device state maps to maintenance status."""
         mock_dev.return_value = (
             True,
             None,
@@ -233,15 +253,18 @@ class TestDriverCetcBase:
     # -- convert_code -----------------------------------------------------
 
     def test_convert_code_empty(self):
+        """Verify an empty operation list produces no circuit steps."""
         steps, n = driver_cetc.convert_code(2, "code", [])
         assert steps == []
         assert n == 2
 
     def test_convert_code_none(self):
+        """Verify missing operations produce no circuit steps."""
         steps, n = driver_cetc.convert_code(2, "code", None)
         assert steps == []
 
     def test_convert_code_h_and_cz(self):
+        """Verify H and CZ operations are converted to circuit steps."""
         ops = [
             MockOp("h", [0]),
             MockOp("cz", [0, 1]),
@@ -255,11 +278,13 @@ class TestDriverCetcBase:
         assert steps[1]["gates"][0]["targets"] == [0, 1]
 
     def test_convert_code_rzz_with_theta(self):
+        """Verify an RZZ operation preserves its theta parameter."""
         ops = [MockOp("rzz", [1, 0], [2.27])]
         steps, n = driver_cetc.convert_code(2, "code", ops)
         assert steps[0]["gates"][0]["theta"] == 2.27
 
     def test_convert_code_measure(self):
+        """Verify measurement operations include quantum and classical bits."""
         ops = [MockOp("measure", [0])]
         steps, n = driver_cetc.convert_code(1, "code", ops)
         gate = steps[0]["gates"][0]
@@ -268,6 +293,7 @@ class TestDriverCetcBase:
         assert gate["cBit"] == 0
 
     def test_convert_code_skip_ops(self):
+        """Verify unsupported operations are omitted from circuit steps."""
         ops = [
             MockOp("barrier", [0, 1]),
             MockOp("sync", [0]),
@@ -294,6 +320,7 @@ class TestDriverCetcBase:
     # -- convert_results --------------------------------------------------
 
     def test_convert_results(self):
+        """Verify frequency results are converted to a counts dictionary."""
         data = {
             "frequencyResult": [
                 {"qState": "00", "freq": 512},
@@ -304,10 +331,12 @@ class TestDriverCetcBase:
         assert results == {"00": 512, "11": 512}
 
     def test_convert_results_empty(self):
+        """Verify empty result data produces an empty counts dictionary."""
         results = driver_cetc.convert_results({})
         assert results == {}
 
     def test_convert_results_missing_key(self):
+        """Verify a missing frequency value defaults to zero."""
         data = {"frequencyResult": [{"qState": "01"}]}
         results = driver_cetc.convert_results(data)
         assert results == {"01": 0}
@@ -316,6 +345,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_submit_task_success(self, mock_http):
+        """Verify successful task submission returns the instance ID."""
         response = json.dumps({
             "code": 200,
             "data": {"instanceId": task_id},
@@ -334,6 +364,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_submit_task_api_error(self, mock_http):
+        """Verify a task submission API error returns no instance ID."""
         response = json.dumps({"code": 400, "msg": "bad request"})
         mock_http.return_value = _http_ok(response)
         driver_cetc.base_url = "http://localhost"
@@ -346,6 +377,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_submit_task_http_error(self, mock_http):
+        """Verify a task submission HTTP error returns no instance ID."""
         mock_http.return_value = _http_err(500, "Internal Error", "err")
         driver_cetc.base_url = "http://localhost"
         success, err, instance_id = driver_cetc.submit_task(
@@ -359,6 +391,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "_get_task_detail")
     def test_check_task_status_completed(self, mock_detail):
+        """Verify a completed task status matches the expected state."""
         mock_detail.return_value = True, None, {"state": 2}
         success, err, status = driver_cetc.check_task_status(
             task_id, [driver_cetc.state_completed]
@@ -368,6 +401,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "_get_task_detail")
     def test_check_task_status_failed(self, mock_detail):
+        """Verify a failed task state returns a task failure error."""
         mock_detail.return_value = True, None, {"state": 1}
         success, err, status = driver_cetc.check_task_status(
             task_id, [driver_cetc.state_completed]
@@ -377,6 +411,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "_get_task_detail")
     def test_check_task_status_pending(self, mock_detail):
+        """Verify a pending task state remains incomplete."""
         mock_detail.return_value = True, None, {"state": 3}
         success, err, status = driver_cetc.check_task_status(
             task_id, [driver_cetc.state_completed]
@@ -386,6 +421,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "_get_task_detail")
     def test_check_task_status_detail_fail(self, mock_detail):
+        """Verify a task detail query failure returns no status."""
         mock_detail.return_value = False, "network error", None
         success, err, status = driver_cetc.check_task_status(
             task_id, [driver_cetc.state_completed]
@@ -397,6 +433,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "_get_task_detail")
     def test_get_task_results_success(self, mock_detail):
+        """Verify task details are converted to measurement counts."""
         mock_detail.return_value = (
             True,
             None,
@@ -410,6 +447,7 @@ class TestDriverCetcBase:
 
     @patch.object(DriverCetcBase, "_get_task_detail")
     def test_get_task_results_fail(self, mock_detail):
+        """Verify a task detail failure returns no measurement results."""
         mock_detail.return_value = False, "timeout", None
         success, err, results = driver_cetc.get_task_results(task_id)
         assert success is False
@@ -419,6 +457,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_detail_success(self, mock_http):
+        """Verify task details are parsed from a successful response."""
         response = json.dumps({"code": 200, "data": {"state": 2}})
         mock_http.return_value = _http_ok(response)
         driver_cetc.base_url = "http://localhost"
@@ -429,6 +468,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_detail_api_error(self, mock_http):
+        """Verify a task detail API error returns no data."""
         response = json.dumps({"code": 404, "msg": "not found"})
         mock_http.return_value = _http_ok(response)
         driver_cetc.base_url = "http://localhost"
@@ -438,6 +478,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_detail_http_error(self, mock_http):
+        """Verify a task detail HTTP error returns a failure."""
         mock_http.return_value = _http_err(408, "Timeout", "")
         driver_cetc.base_url = "http://localhost"
         success, err, data = driver_cetc._get_task_detail(task_id)
@@ -447,6 +488,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_list_success(self, mock_http):
+        """Verify task list retrieval returns the response data."""
         response = json.dumps({"code": 200, "data": {"list": []}})
         mock_http.return_value = _http_ok(response)
         driver_cetc.base_url = "http://localhost"
@@ -457,6 +499,7 @@ class TestDriverCetcBase:
 
     @patch.object(Library, "call_http_api")
     def test_get_task_list_http_error(self, mock_http):
+        """Verify a task list HTTP error returns no data."""
         mock_http.return_value = _http_err(500, "Server Error", "")
         driver_cetc.base_url = "http://localhost"
         success, err, data = driver_cetc.get_task_list()
@@ -477,6 +520,7 @@ class TestDriverCetcBase:
         mock_loop,
         mock_get_results,
     ):
+        """Verify a job run submits, polls, and retrieves results."""
         mock_convert.return_value = (
             [{"index": 0, "gates": [{"name": "h", "targets": [0]}]}],
             1,
@@ -499,6 +543,7 @@ class TestDriverCetcBase:
         mock_loop,
         mock_get_results,
     ):
+        """Verify a submission failure raises an error during a job run."""
         mock_convert.return_value = ([], 1)
         mock_submit.return_value = False, "HTTP 500", None
 
@@ -515,6 +560,7 @@ class TestDriverCetcBase:
         mock_submit,
         mock_loop,
     ):
+        """Verify a polling timeout raises an error during a job run."""
         mock_convert.return_value = ([], 1)
         mock_submit.return_value = True, None, task_id
         mock_loop.return_value = False, "timeout", None
@@ -526,40 +572,49 @@ class TestDriverCetcBase:
     # -- static helpers ---------------------------------------------------
 
     def test_get_op_name_python(self):
+        """Verify operation names are read from Python operations."""
         op = MockOp("h", [0])
         assert DriverCetcBase._get_op_name(op) == "h"
 
     def test_get_op_name_cpp(self):
+        """Verify operation names are read from C++ operations."""
         op = Mock(spec=[])
         op.gate_name = "cz"
         assert DriverCetcBase._get_op_name(op) == "cz"
 
     def test_get_op_targets_python(self):
+        """Verify target qubits are read from Python operations."""
         op = MockOp("h", [0, 1])
         assert DriverCetcBase._get_op_targets(op) == [0, 1]
 
     def test_get_op_targets_cpp(self):
+        """Verify target qubits are read from C++ operations."""
         op = Mock(spec=[])
         op.qubits = [2, 3]
         assert DriverCetcBase._get_op_targets(op) == [2, 3]
 
     def test_get_op_arg_value_python(self):
+        """Verify argument values are read from Python operations."""
         op = MockOp("rx", [0], [1.5])
         assert DriverCetcBase._get_op_arg_value(op) == [1.5]
 
     def test_get_op_arg_value_cpp(self):
+        """Verify argument values are read from C++ operations."""
         op = Mock(spec=[])
         op.params = [2.0]
         assert DriverCetcBase._get_op_arg_value(op) == [2.0]
 
     def test_get_op_name_none(self):
+        """Verify an operation without name attributes returns no name."""
         op = object()
         assert DriverCetcBase._get_op_name(op) is None
 
     def test_get_op_targets_none(self):
+        """Verify an operation without target attributes returns no targets."""
         op = object()
         assert DriverCetcBase._get_op_targets(op) == []
 
     def test_get_op_arg_value_none(self):
+        """Verify missing argument attributes return no values."""
         op = object()
         assert DriverCetcBase._get_op_arg_value(op) == []

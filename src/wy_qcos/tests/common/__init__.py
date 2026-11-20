@@ -14,3 +14,10 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+
+import ipaddress
+
+
+def make_test_ip(host):
+    """Return a deterministic private IPv4 address for tests."""
+    return str(ipaddress.IPv4Address(0xC0A80100 + host))

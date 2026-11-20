@@ -146,9 +146,14 @@ class CMakeBuildExt(_build_ext):
         build_dir = Path(self.build_temp) / "cmake_high_performance"
         build_dir.mkdir(parents=True, exist_ok=True)
 
+        cmake = shutil.which("cmake")
+        if cmake is None:
+            raise RuntimeError("cmake not found in PATH")
+        cmake_path = Path(cmake).resolve()
+
         subprocess.check_call(
             [
-                "cmake",
+                str(cmake_path),
                 "-S",
                 str(_CPP_SOURCE_DIR),
                 "-B",
@@ -158,11 +163,12 @@ class CMakeBuildExt(_build_ext):
                 "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
                 "-DUSE_PYQCOS=ON",
                 f"-DPython_EXECUTABLE={sys.executable}",
-            ]
+            ],
+            shell=False,
         )
         subprocess.check_call(
             [
-                "cmake",
+                str(cmake_path),
                 "--build",
                 str(build_dir),
                 "--target",
@@ -171,7 +177,8 @@ class CMakeBuildExt(_build_ext):
                 "Release",
                 "--parallel",
                 str(self._parallel_jobs()),
-            ]
+            ],
+            shell=False,
         )
 
         built = self._find_built_so()
@@ -191,8 +198,8 @@ class CMakeBuildExt(_build_ext):
     @staticmethod
     def _parallel_jobs():
         n = os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL")
-        if n and n.isdigit():
-            return int(n)
+        if n and re.fullmatch(r"[1-9][0-9]{0,3}", n):
+            return min(int(n), 256)
         return os.cpu_count() or 1
 
 

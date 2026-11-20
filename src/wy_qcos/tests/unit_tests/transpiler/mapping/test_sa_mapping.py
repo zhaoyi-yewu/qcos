@@ -14,6 +14,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
+"""Unit tests for simulated annealing initial mapping."""
 
 from networkx import Graph
 
@@ -24,7 +25,10 @@ from wy_qcos.transpiler.cmss.mapping.init_mapping.simulated_annealing import (
 
 
 class TestSAMapping:
+    """Tests for simulated annealing mapping."""
+
     def test_sa_initial_mapping(self):
+        """Test generating an initial mapping with simulated annealing."""
         coupling_graph = Graph()
         edges = [(0, 1), (1, 2), (2, 3), (3, 4), (7, 8)]
         coupling_graph.add_edges_from(edges)
@@ -41,6 +45,7 @@ class TestSAMapping:
         assert len(mapping) == 3
 
     def test_init_cost_matrix(self):
+        """Test initializing the simulated annealing cost matrix."""
         coupling_graph = Graph()
         edges = [(0, 1), (1, 2)]
         coupling_graph.add_edges_from(edges)

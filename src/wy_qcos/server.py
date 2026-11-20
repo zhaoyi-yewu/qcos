@@ -38,7 +38,11 @@ from wy_qcos.db import database
 from wy_qcos.db.utils import db_utils
 from wy_qcos.device.device_manager import DeviceManager
 from wy_qcos.driver.driver_manager import DriverManager
-from wy_qcos.log.logger import init_logger, PERF_LEVEL
+from wy_qcos.log.logger import (
+    PERF_LEVEL,
+    init_logger,
+    suppress_prefect_third_party_debug,
+)
 from wy_qcos.task_manager import scheduler
 from wy_qcos.task_manager.job_synchronizer import JobSynchronizer
 from wy_qcos.transpiler.transpiler_manager import TranspilerManager
@@ -146,6 +150,7 @@ class Server:
             quiet=False,
         )
         logger.setLevel(logger_level)
+        suppress_prefect_third_party_debug()
 
         # TRANSPILER.DEBUG only affects transpiler loggers, not global level
         if Config.TRANSPILER.DEBUG:
@@ -292,6 +297,8 @@ class Server:
             scheduler.init_flavor_manager()
             scheduler.init_auto_scheduler()
             scheduler.start_taskmanager()
+            # Prefect may add its console handler during worker startup.
+            suppress_prefect_third_party_debug()
             app.state._task_manager = scheduler.get_task_manager()
 
             # Sync all non-terminal jobs with Prefect flow-run states.

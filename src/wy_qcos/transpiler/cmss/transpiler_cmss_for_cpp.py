@@ -311,7 +311,8 @@ class TranspilerHighPerformanceCmss(TranspilerBase):
                     mapper.prepare_data(value[0], value[1], qpu_cfg)
                 log_perf(
                     logger,
-                    f"mapping(prepare_data):{mapping_pre_timer.elapsed:.4f}s\n",
+                    "mapping(prepare_data):"
+                    f"{mapping_pre_timer.elapsed:.4f}s\n",
                 )
                 with Timer() as mapping_exec_timer:
                     mapping_res, final_layout = mapper.execute_with_order()
