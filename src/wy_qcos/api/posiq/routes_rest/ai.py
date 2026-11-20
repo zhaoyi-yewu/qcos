@@ -32,12 +32,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from wy_qcos.ai.session_store import RedisSessionStore
+from wy_qcos.ai.session_store import (
+    RedisSessionStore,
+    SessionMessageConflictError,
+    SessionNotFoundError,
+)
 from wy_qcos.api.posiq.routes_jsonrpc.dependencies.authentication import (
     get_current_user_from_token,
     get_user_manager,
 )
-from wy_qcos.common.config import Config
+from wy_qcos.common.config import Config, UnknownAIModelError
 from wy_qcos.common.constant import Constant
 
 logger = logging.getLogger(__name__)
@@ -63,12 +67,24 @@ class ChatRequest(BaseModel):
     message: str
     enable_rag: bool = True
     attachments: list[Attachment] | None = None
+    # Optional configured model ID. ``None`` lets the server restore
+    # the session's latest model or fall back to the default entry.
+    # Arbitrary provider/URL/key values are NOT accepted - only IDs
+    # from GET /v1/ai/models (strict whitelist).
+    model_id: str | None = None
 
 
 class SessionCreateRequest(BaseModel):
     """POST /v1/ai/sessions request body."""
 
     title: str = "新的会话"
+
+
+class SessionMessagesTruncateRequest(BaseModel):
+    """Request to remove an edited user message and its successors."""
+
+    from_index: int = Field(ge=0)
+    expected_content: str
 
 
 class SessionInfoResponse(BaseModel):
@@ -78,6 +94,7 @@ class SessionInfoResponse(BaseModel):
     created_at: float
     title: str
     message_count: int
+    model_id: str | None = None
 
 
 class MessageResponse(BaseModel):
@@ -87,6 +104,11 @@ class MessageResponse(BaseModel):
     content: str
     created_at: float
     attachments: list[dict] | None = None
+    # Configured model ID selected for this turn (nullable for
+    # messages persisted before multi-model support).
+    model_id: str | None = None
+    # Actual upstream model name that produced this answer.
+    model: str | None = None
 
 
 # ===== Auth dependency =====
@@ -202,12 +224,80 @@ def _generate_agui_text_end(message_id: str) -> str:
     return _sse_event("TEXT_MESSAGE_END", {"messageId": message_id})
 
 
-def _generate_agui_run_started() -> str:
-    """Generate AG-UI RUN_STARTED event."""
-    return _sse_event("RUN_STARTED", {})
+def _generate_agui_run_started(session_id: str) -> str:
+    """Generate AG-UI RUN_STARTED event with the real session id.
+
+    The frontend must key sessions off ``sessionId`` (not the
+    per-message ``messageId``) so multi-model session restore works.
+    """
+    return _sse_event("RUN_STARTED", {"sessionId": session_id})
+
+
+def _build_ai_agent(user_id: str, request: ChatRequest):
+    """Construct an AiAgent, mapping unknown model IDs to HTTP 400.
+
+    Validation happens BEFORE the StreamingResponse is returned so an
+    invalid explicit ``model_id`` fails fast instead of surfacing
+    mid-stream.
+    """
+    try:
+        from wy_qcos.ai.agent import AiAgent
+    except ImportError as exc:
+        logger.error(f"AI agent dependencies missing: {exc}")
+        raise HTTPException(
+            status_code=503,
+            detail="AI agent dependencies not installed",
+        ) from exc
+    try:
+        return AiAgent(
+            user_id=user_id,
+            session_id=request.session_id,
+            model_id=request.model_id,
+        )
+    except UnknownAIModelError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+async def _check_vision_attachments(agent, request: ChatRequest):
+    """Reject image attachments for vision-less models before streaming.
+
+    Resolves the effective model exactly as the orchestrator will
+    (explicit ID -> session-saved ID -> default) so the request fails
+    with HTTP 400 instead of a mid-stream error event.
+    """
+    if not request.attachments:
+        return
+    model_id = await agent._resolve_session_model()
+    if Config.AI_AGENT.resolve_vision(model_id) is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"AI model '{model_id}' does not support image attachments"
+            ),
+        )
 
 
 # ===== Routes =====
+
+
+@router.get("/models")
+async def list_models(
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """List configured AI models (non-sensitive fields only).
+
+    The response never includes provider URLs, API keys, prompts or
+    any other connection detail, and no Agent is instantiated.
+    """
+    if not Config.is_ai_agent_enabled():
+        raise HTTPException(status_code=503, detail="AI agent is disabled")
+    user_id = user.get("user_id") or user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid user token")
+    return {
+        "default_model_id": Config.AI_AGENT.default_model_id,
+        "models": Config.AI_AGENT.public_models(),
+    }
 
 
 @router.post("/chat")
@@ -217,22 +307,14 @@ async def chat_stream(
 ):
     """Submit a user message and stream the AI response via SSE."""
     if not Config.is_ai_agent_enabled():
-        raise HTTPException(status_code=503, detail="AI assistant is disabled")
+        raise HTTPException(status_code=503, detail="AI agent is disabled")
 
     user_id = user.get("user_id") or user.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid user token")
 
-    try:
-        from wy_qcos.ai.agent import AiAgent
-    except ImportError as exc:
-        logger.error(f"AI agent dependencies missing: {exc}")
-        raise HTTPException(
-            status_code=503,
-            detail="AI assistant dependencies not installed",
-        ) from exc
-
-    agent = AiAgent(user_id=user_id, session_id=request.session_id)
+    agent = _build_ai_agent(user_id, request)
+    await _check_vision_attachments(agent, request)
 
     async def event_generator():
         try:
@@ -282,23 +364,15 @@ async def chat_stream_agui(
     )
 
     if not Config.is_ai_agent_enabled():
-        raise HTTPException(status_code=503, detail="AI assistant is disabled")
+        raise HTTPException(status_code=503, detail="AI agent is disabled")
 
     user_id = user.get("user_id") or user.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid user token")
 
-    try:
-        from wy_qcos.ai.agent import AiAgent
-    except ImportError as exc:
-        logger.error(f"AI agent dependencies missing: {exc}")
-        raise HTTPException(
-            status_code=503,
-            detail="AI assistant dependencies not installed",
-        ) from exc
-
     t_agent_init_start = time.monotonic()
-    agent = AiAgent(user_id=user_id, session_id=request.session_id)
+    agent = _build_ai_agent(user_id, request)
+    await _check_vision_attachments(agent, request)
     logger.info(
         "AI agui AiAgent init done in %.3fs (session=%s)",
         time.monotonic() - t_agent_init_start,
@@ -310,8 +384,8 @@ async def chat_stream_agui(
         t_gen_start = time.monotonic()
         logger.info("AI agui generator started (message_id=%s)", message_id)
         try:
-            # Send RUN_STARTED event
-            yield _generate_agui_run_started()
+            # Send RUN_STARTED event with the real session id
+            yield _generate_agui_run_started(agent.session_id)
             logger.info(
                 "AI agui first yield (RUN_STARTED) at +%.3fs",
                 time.monotonic() - t_gen_start,
@@ -327,6 +401,9 @@ async def chat_stream_agui(
             # ``done`` event; consumed by RUN_FINISHED below. ``None``
             # when the backend has no usage stats for this run.
             token_usage: dict | None = None
+            # Model metadata relayed from the internal done event.
+            done_model_id: str | None = None
+            done_model: str | None = None
             async for event in agent.chat_stream(
                 user_message=request.message,
                 enable_rag=request.enable_rag,
@@ -343,12 +420,14 @@ async def chat_stream_agui(
                     )
                     first_event_logged = True
                 event_count += 1
-                # Capture token usage from the internal ``done`` event
-                # so we can forward it in RUN_FINISHED below. The
-                # internal event is dropped by _to_agui_event (returns
-                # None) - only its usage payload is relayed.
+                # Capture token usage and model info from the internal
+                # ``done`` event so we can forward them in RUN_FINISHED
+                # below. The internal event is dropped by _to_agui_event
+                # (returns None) - only its payload is relayed.
                 if event.get("type") == "done":
                     token_usage = event.get("usage")
+                    done_model_id = event.get("model_id")
+                    done_model = event.get("model")
                 agui_event = _to_agui_event(event, message_id)
                 if agui_event:
                     yield agui_event
@@ -369,7 +448,14 @@ async def chat_stream_agui(
             # UI stays in streaming skeleton state forever. This is the
             # ONLY place RUN_FINISHED is emitted - the per-event mapper
             # above deliberately drops the internal "done" event.
-            run_finished_payload: dict = {"messageId": message_id}
+            run_finished_payload: dict = {
+                "messageId": message_id,
+                # Real session id: the frontend keys sessions off this
+                # value instead of the per-message messageId.
+                "sessionId": agent.session_id,
+                "modelId": done_model_id,
+                "model": done_model,
+            }
             if token_usage:
                 run_finished_payload["usage"] = token_usage
             yield _sse_event("RUN_FINISHED", run_finished_payload)
@@ -410,6 +496,7 @@ async def list_sessions(
             created_at=s.created_at,
             title=s.title,
             message_count=s.message_count,
+            model_id=s.model_id,
         )
         for s in sessions
     ]
@@ -436,6 +523,7 @@ async def get_session(
             created_at=info.created_at,
             title=info.title,
             message_count=info.message_count,
+            model_id=info.model_id,
         ),
         "messages": [
             MessageResponse(
@@ -443,6 +531,8 @@ async def get_session(
                 content=m["content"],
                 created_at=m["created_at"],
                 attachments=m.get("attachments"),
+                model_id=m.get("model_id"),
+                model=m.get("model"),
             )
             for m in messages
         ],
@@ -462,6 +552,52 @@ async def delete_session(
     await store.delete_session()
     await store.close()
     return {"status": "deleted", "session_id": session_id}
+
+
+@router.post("/sessions/{session_id}/messages/truncate")
+async def truncate_session_messages(
+    session_id: str,
+    request: SessionMessagesTruncateRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+):
+    """Remove an edited user message and all subsequent messages."""
+    user_id = user.get("user_id") or user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid user identity")
+    store = RedisSessionStore(str(user_id), session_id)
+    try:
+        retained = await store.truncate_from(
+            request.from_index,
+            request.expected_content,
+        )
+    except SessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=404, detail="Session not found"
+        ) from exc
+    except SessionMessageConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Session history changed; reload and retry",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        await store.close()
+    return {
+        "session_id": session_id,
+        "message_count": len(retained),
+        "messages": [
+            MessageResponse(
+                role=message["role"],
+                content=message["content"],
+                created_at=message["created_at"],
+                attachments=message.get("attachments"),
+                model_id=message.get("model_id"),
+                model=message.get("model"),
+            )
+            for message in retained
+        ],
+    }
 
 
 @router.delete("/sessions/{session_id}/messages")
@@ -495,6 +631,10 @@ async def create_session(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid user identity")
     store = RedisSessionStore(str(user_id))
-    session_id = await store.create_session(title=request.title)
+    # New sessions start on the configured default model.
+    session_id = await store.create_session(
+        title=request.title,
+        model_id=Config.AI_AGENT.default_model_id,
+    )
     await store.close()
     return {"session_id": session_id, "title": request.title}
