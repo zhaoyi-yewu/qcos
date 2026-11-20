@@ -20,6 +20,7 @@ from typing import Any
 
 from wy_qcos.api import schemas
 from wy_qcos.api.posiq.routes_jsonrpc.routes import base_api
+from wy_qcos.common.capability_schemas import build_capabilities_schemas
 from wy_qcos.common.config import Config
 from wy_qcos.common.constant import Constant
 from wy_qcos.common.qcos_version import QcosVersion
@@ -59,6 +60,7 @@ def version(
     if body.details:
         driver_name_mapping = {}
         transpiler_name_mappings = {}
+        transpilers = {}
         driver_transpiler_mappings = {}
         driver_manager = scheduler.get_driver_manager()
         drivers = driver_manager.get_drivers()
@@ -89,8 +91,10 @@ def version(
                         "alias_name": transpiler_alias_name,
                         "supported_code_types": supported_code_types,
                     }
+                    transpilers[transpiler_name] = transpiler
                 driver_transpiler_mappings[driver_name].add(transpiler_name)
 
+        capability_schemas = build_capabilities_schemas(drivers, transpilers)
         _response_info["capabilities"] = {
             "job_catalogs": {
                 "qc_circuit": {
@@ -120,6 +124,7 @@ def version(
             "tech_types": Constant.TECH_TYPE_INFO,
             "profiling": Constant.PROFILING_INFO,
             "driver_transpiler_mappings": driver_transpiler_mappings,
+            "schemas": capability_schemas,
         }
 
     response_info = schemas.GetVersionResponse.model_validate(_response_info)

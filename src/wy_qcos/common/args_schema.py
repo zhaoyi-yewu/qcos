@@ -79,6 +79,30 @@ JOB_OPTIONS_SCHEMA = {
     Optional("enable_prec_reduce"): bool,
 }
 
+JOB_OPTIONS_METADATA = {
+    "enable_wirecut": {
+        "alias_name": "启用线路拆分",
+        "description": (
+            "是否允许按 Flavor 关联设备组自动拆分量子线路；"
+            "Driver 同名字段具有更高优先级。"
+        ),
+    },
+    "enable_subqubo": {
+        "alias_name": "启用 QUBO 拆分",
+        "description": (
+            "是否允许按 Flavor 关联设备组自动拆分 QUBO 问题；"
+            "Driver 同名字段具有更高优先级。"
+        ),
+    },
+    "enable_prec_reduce": {
+        "alias_name": "启用精度约减",
+        "description": (
+            "是否在作业预处理中启用 QUBO 精度约减；"
+            "Driver 同名字段具有更高优先级。"
+        ),
+    },
+}
+
 JOB_PARAMS_SCHEMA = [Or(int, float)]
 
 DEVICE_INFO_SCHEMA = {
