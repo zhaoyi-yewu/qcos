@@ -50,11 +50,15 @@ async def index_directory(
         docs_dirs: One or more Sphinx documentation source directories.
         batch_size: Number of chunks to embed per batch.
         recreate: When True, delete all existing rows from
-            ``ai_document_chunks`` before re-indexing (a full
-            refresh). The table structure itself is untouched -
-            schema is owned by Alembic migrations. When False
-            (default), rows are upserted by ``chunk_id`` and stale
-            entries from removed source files are left in place.
+            ``ai_document_chunks`` and rebuild the index. The delete
+            is deferred until after chunking succeeded and produced a
+            non-empty chunk list - if no files match or chunking
+            fails the existing index is left untouched, so a transient
+            failure cannot wipe the table. The table structure itself
+            is untouched; schema is owned by Alembic migrations.
+            When False (default), rows are upserted by ``chunk_id``
+            and stale entries from removed source files are left in
+            place.
     """
     factory = get_async_session_factory()
     async with factory() as session:
@@ -68,14 +72,6 @@ async def index_directory(
                 "Run 'alembic upgrade head' first."
             )
             raise RuntimeError("ai_document_chunks table missing") from exc
-
-        if recreate:
-            logger.info(
-                "recreate=True: deleting all existing rows from "
-                "ai_document_chunks before re-indexing"
-            )
-            await session.execute(delete(AiDocumentChunk))
-            await session.commit()
 
         # Collect all .md and .rst files from every docs dir
         files = []
@@ -105,6 +101,25 @@ async def index_directory(
                 logger.warning(f"Failed to chunk {f}: {e}")
 
         logger.info(f"Total chunks to index: {len(all_chunks)}")
+
+        if recreate:
+            # Delete only after chunking succeeded and we know there is
+            # data to upsert. Doing it earlier would wipe the table on a
+            # transient failure (no docs dirs, empty matches, embedding
+            # unavailable, ...) with no way to recover the old index.
+            if not all_chunks:
+                logger.warning(
+                    "recreate=True but no chunks were produced from the "
+                    "docs dirs; skipping delete to avoid losing the "
+                    "existing index"
+                )
+                return
+            logger.info(
+                "recreate=True: deleting all existing rows from "
+                "ai_document_chunks before re-indexing"
+            )
+            await session.execute(delete(AiDocumentChunk))
+            await session.commit()
 
         # Embed and upsert in batches
         for i in range(0, len(all_chunks), batch_size):
