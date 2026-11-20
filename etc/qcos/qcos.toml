@@ -176,16 +176,18 @@ METRICS_SERVER_LISTEN_PORT = 19400
 [PROXY]
 # Reverse-proxy upstream endpoints mounted under /v1/proxy/<service>.
 #
-# 每项字段的语义：
-#   - 非空字符串：将该服务的请求通过 QCOS API 反向代理转发到该 URL，
-#     例如 PROMETHEUS_BASE_URL = "http://127.0.0.1:9090" 后，
-#     WebUI 可通过 /v1/proxy/prometheus/* 访问 Prometheus。
-#   - 空字符串 ""  ：禁用该代理端点，对应的 /v1/proxy/<service>/*
-#     不会被注册，健康检查接口 (get_proxy_health) 会把该项目标记为
-#     status="disabled"。如果三个字段全为空字符串，整个反代挂载
-#     循环会跳过所有项目，等同于关闭反代功能。
+# Field semantics:
+#   - Non-empty string: forward requests for that service through the
+#     QCOS API reverse proxy to this URL. For example, with
+#     PROMETHEUS_BASE_URL = "http://127.0.0.1:9090", the WebUI can
+#     reach Prometheus via /v1/proxy/prometheus/*.
+#   - Empty string "": disable that proxy endpoint; the matching
+#     /v1/proxy/<service>/* routes are not registered and the health
+#     check (get_proxy_health) reports the item as status="disabled".
+#     When all three fields are empty, the reverse-proxy mount loop
+#     skips every item, effectively disabling the whole proxy.
 #
-# 示例：禁用全部反代
+# Example: disable all reverse proxies
 #   PROMETHEUS_BASE_URL = ""
 #   ALERTMANAGER_BASE_URL = ""
 #   VICTORIALOGS_BASE_URL = ""
@@ -217,26 +219,24 @@ ENABLED = false
 # Master switch for the AI agent chat feature (/v1/ai/*).
 # Effective only when [AI].ENABLED is also true.
 ENABLED = false
-# LLM provider: openai_compatible | openai | anthropic
-LLM_PROVIDER = "openai_compatible"
-# LLM endpoint base URL (ignored for openai/anthropic)
-# eg. LLM_BASE_URL = "http://vllm:8000/v1"
-LLM_BASE_URL = ""
-# LLM API key (empty for unauthenticated endpoints)
-LLM_API_KEY = ""
-# LLM model name passed to the provider
-LLM_MODEL = "glm/glm-5.3"
+# Shared default sampling parameters; each [[AI.AGENT.MODELS]] entry
+# may override them with TEMPERATURE / MAX_TOKENS /
+# MODEL_SETTINGS_ENABLED / TIMEOUT / SYSTEM_PROMPT /
+# VISION_SYSTEM_PROMPT.
 LLM_TEMPERATURE = 0.3
 LLM_MAX_TOKENS = 4096
-# LLM HTTP request timeout in seconds (default: 60). Guards against
-# hung LLM endpoints: on expiry the chat stream returns RUN_ERROR to
-# the frontend instead of spinning forever.
+# Keep false for providers with strict or fixed sampling parameters.
+# Set true only when the model accepts temperature and max_tokens.
+LLM_MODEL_SETTINGS_ENABLED = false
+# Shared default LLM HTTP request timeout in seconds (default: 60).
+# Guards against hung LLM endpoints: on expiry the chat stream returns
+# RUN_ERROR to the frontend instead of spinning forever.
 LLM_TIMEOUT = 60.0
-# Vision model (optional, falls back to LLM_* when empty)
-VISION_PROVIDER = ""
-VISION_BASE_URL = ""
-VISION_API_KEY = ""
-VISION_MODEL = ""
+# Custom text-agent system prompt. Set to "" to use the built-in default.
+# TOML multi-line literal strings make the full template easy to edit.
+SYSTEM_PROMPT = ""
+# Custom vision-agent system prompt. Empty falls back to the built-in default.
+VISION_SYSTEM_PROMPT = ""
 # Image attachment limits
 IMAGE_MAX_COUNT_PER_MESSAGE = 4
 IMAGE_MAX_BYTES_PER_IMAGE = 5242880
@@ -250,6 +250,24 @@ EMBEDDING_DIM = 1024
 # Session
 SESSION_TTL_SECONDS = 604800
 RAG_TOP_K = 8
+
+# Model list: the FIRST entry is the default model. Clients reference
+# entries by ID only; DISPLAY_NAME is shown in WebUI/CLI. Each entry
+# owns an independent provider connection (PROVIDER / BASE_URL /
+# API_KEY / MODEL). VISION_ENABLED=true allows image attachments;
+# unset VISION_* fields fall back to the entry's own connection.
+# Optional per-entry overrides: TEMPERATURE / MAX_TOKENS /
+# MODEL_SETTINGS_ENABLED / TIMEOUT / SYSTEM_PROMPT /
+# VISION_SYSTEM_PROMPT (unset means inherit the shared default above).
+# Both TOML forms are accepted: an inline-table array (shown here; it
+# may sit anywhere in [AI.AGENT]) or [[AI.AGENT.MODELS]] tables (which
+# must come after all other [AI.AGENT] keys).
+MODELS = [
+  # eg. BASE_URL = "http://vllm:8000/v1"
+  # { ID = "kimi-k3", DISPLAY_NAME = "Kimi-K3", PROVIDER = "openai_compatible", BASE_URL = "http://gateway-a.example/v1", API_KEY = "", MODEL = "moma/kimi-k3", VISION_ENABLED = true, VISION_MODEL = "", TEMPERATURE = 0.2, MAX_TOKENS = 2048, TIMEOUT = 45.0 },
+  # Example of a second model with its own gateway and vision support:
+  # { ID = "glm-m5.3", DISPLAY_NAME = "GLM-5.3", PROVIDER = "openai_compatible", BASE_URL = "http://gateway-b.example/v1", API_KEY = "", MODEL = "glm/glm-5.3", VISION_ENABLED = false },
+]
 
 [TERMINAL]
 # Master switch for the in-browser terminal. Default off; flip to true

@@ -16,9 +16,18 @@
 # ----------------------------------------------------------------------
 
 from collections import OrderedDict
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
-from pydantic import BaseModel, Field, ValidationError, ConfigDict
+import re
+from typing import Any, Literal, Self
+from pydantic import (
+    BaseModel,
+    Field,
+    ValidationError,
+    ConfigDict,
+    field_validator,
+    model_validator,
+)
 
 from wy_qcos.common import errors
 from wy_qcos.common.constant import Constant
@@ -538,6 +547,152 @@ class AIMcpServerSection(BaseModel):
     )
 
 
+class UnknownAIModelError(ValueError):
+    """Raised when a client references an unconfigured AI model id.
+
+    Maps to HTTP 400 at the REST layer; it is intentionally a
+    ``ValueError`` subclass so generic validation handling also works.
+    """
+
+
+# Legacy single-model fields rejected with an explicit migration hint.
+_LEGACY_AI_AGENT_FIELDS = (
+    "LLM_PROVIDER",
+    "LLM_BASE_URL",
+    "LLM_API_KEY",
+    "LLM_MODEL",
+    "VISION_PROVIDER",
+    "VISION_BASE_URL",
+    "VISION_API_KEY",
+    "VISION_MODEL",
+)
+
+_AI_MODEL_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+
+
+@dataclass(frozen=True)
+class ResolvedVisionConfig:
+    """Final immutable vision connection for one configured model."""
+
+    provider: str
+    base_url: str
+    api_key: str
+    model: str
+
+
+@dataclass(frozen=True)
+class ResolvedAIModelConfig:
+    """Final immutable model config with shared defaults applied.
+
+    Produced by :meth:`AIAgentSection.resolve_model`; per-model
+    overrides win over the shared ``[AI.AGENT]`` defaults.
+    """
+
+    id: str
+    display_name: str
+    provider: str
+    base_url: str
+    api_key: str
+    model: str
+    temperature: float
+    max_tokens: int
+    model_settings_enabled: bool
+    timeout: float
+    system_prompt: str
+    vision_system_prompt: str
+    vision_enabled: bool
+
+
+class AIModelConfig(BaseModel):
+    """One entry of ``[[AI.AGENT.MODELS]]``.
+
+    Each entry owns an independent provider connection. Optional
+    sampling / timeout / prompt fields default to ``None`` meaning
+    "inherit the shared [AI.AGENT] default".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ID: str = Field(description="Unique model id sent by clients")
+    DISPLAY_NAME: str = Field(
+        default="",
+        description="Display name for WebUI/CLI (defaults to MODEL)",
+    )
+    PROVIDER: str = Field(
+        default="openai_compatible",
+        description="LLM provider: openai_compatible | openai | anthropic",
+    )
+    BASE_URL: str = Field(
+        default="",
+        description="Endpoint base URL (ignored for openai/anthropic)",
+    )
+    API_KEY: str = Field(
+        default="",
+        description="API key (empty for unauthenticated endpoints)",
+        json_schema_extra={"sensitive": True},
+    )
+    MODEL: str = Field(description="Upstream model name")
+    VISION_ENABLED: bool = Field(
+        default=False,
+        description="Whether this model accepts image attachments",
+    )
+    VISION_PROVIDER: str = Field(
+        default="",
+        description="Vision provider (falls back to PROVIDER)",
+    )
+    VISION_BASE_URL: str = Field(
+        default="",
+        description="Vision endpoint (falls back to BASE_URL)",
+    )
+    VISION_API_KEY: str = Field(
+        default="",
+        description="Vision API key (falls back to API_KEY)",
+        json_schema_extra={"sensitive": True},
+    )
+    VISION_MODEL: str = Field(
+        default="",
+        description="Vision model name (falls back to MODEL)",
+    )
+    TEMPERATURE: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description="Override shared LLM_TEMPERATURE",
+    )
+    MAX_TOKENS: int | None = Field(
+        default=None,
+        ge=1,
+        description="Override shared LLM_MAX_TOKENS",
+    )
+    MODEL_SETTINGS_ENABLED: bool | None = Field(
+        default=None,
+        description="Override shared LLM_MODEL_SETTINGS_ENABLED",
+    )
+    TIMEOUT: float | None = Field(
+        default=None,
+        gt=0,
+        description="Override shared LLM_TIMEOUT",
+    )
+    SYSTEM_PROMPT: str | None = Field(
+        default=None,
+        description="Override shared SYSTEM_PROMPT",
+    )
+    VISION_SYSTEM_PROMPT: str | None = Field(
+        default=None,
+        description="Override shared VISION_SYSTEM_PROMPT",
+    )
+
+    @field_validator("ID")
+    @classmethod
+    def _validate_id(cls, value: str) -> str:
+        normalized = value.strip()
+        if not _AI_MODEL_ID_PATTERN.match(normalized):
+            raise ValueError(
+                "AI model ID must match [A-Za-z0-9][A-Za-z0-9_.-]{0,63}"
+            )
+        return normalized
+
+
 class AIAgentSection(BaseModel):
     """AI agent section ([AI.AGENT]) for QCOS AI chat assistant."""
 
@@ -548,60 +703,42 @@ class AIAgentSection(BaseModel):
         description="Master switch for the AI agent chat feature. "
         "Effective only when [AI].ENABLED is also true.",
     )
-    # LLM provider: openai_compatible | openai | anthropic
-    LLM_PROVIDER: str = Field(
-        default="openai_compatible",
-        description="LLM provider type",
-    )
-    LLM_BASE_URL: str = Field(
-        default="http://vllm:8000/v1",
-        description="LLM endpoint base URL (ignored for openai/anthropic)",
-    )
-    LLM_API_KEY: str = Field(
-        default="",
-        description="LLM API key (empty for unauthenticated endpoints)",
-        json_schema_extra={"sensitive": True},
-    )
-    LLM_MODEL: str = Field(
-        default="Qwen/Qwen2.5-72B-Instruct",
-        description="LLM model name passed to the provider",
+    MODELS: list[AIModelConfig] = Field(
+        default_factory=list,
+        description="Configured models; the first entry is the default. "
+        "Must contain 1-32 entries with unique IDs when the AI agent "
+        "is enabled.",
     )
     LLM_TEMPERATURE: float = Field(
         default=0.3,
         ge=0.0,
         le=2.0,
-        description="LLM sampling temperature",
+        description="Shared default sampling temperature",
     )
     LLM_MAX_TOKENS: int = Field(
         default=4096,
         ge=1,
-        description="Max tokens for LLM response",
+        description="Shared default max tokens for LLM response",
+    )
+    LLM_MODEL_SETTINGS_ENABLED: bool = Field(
+        default=False,
+        description="Send temperature/max_tokens only when the provider "
+        "supports them",
+    )
+    SYSTEM_PROMPT: str = Field(
+        default="",
+        description="Custom text-agent system prompt; empty uses built-in",
+    )
+    VISION_SYSTEM_PROMPT: str = Field(
+        default="",
+        description="Custom vision-agent system prompt; empty uses built-in",
     )
     LLM_TIMEOUT: float = Field(
         default=60.0,
         gt=0,
-        description="LLM HTTP request timeout in seconds. Guards "
-        "against indefinitely hanging LLM endpoints; on expiry the "
-        "chat stream returns RUN_ERROR instead of spinning forever. "
-        "Applies to text and vision models.",
-    )
-    # Vision model (optional, falls back to LLM_* when empty)
-    VISION_PROVIDER: str = Field(
-        default="",
-        description="Vision model provider (falls back to LLM_PROVIDER)",
-    )
-    VISION_BASE_URL: str = Field(
-        default="",
-        description="Vision model endpoint (falls back to LLM_BASE_URL)",
-    )
-    VISION_API_KEY: str = Field(
-        default="",
-        description="Vision model API key (falls back to LLM_API_KEY)",
-        json_schema_extra={"sensitive": True},
-    )
-    VISION_MODEL: str = Field(
-        default="",
-        description="Vision model name (falls back to LLM_MODEL)",
+        description="Shared default LLM HTTP request timeout in seconds. "
+        "Guards against indefinitely hanging LLM endpoints; on expiry "
+        "the chat stream returns RUN_ERROR instead of spinning forever.",
     )
     # Image attachment limits
     IMAGE_MAX_COUNT_PER_MESSAGE: int = Field(
@@ -650,6 +787,168 @@ class AIAgentSection(BaseModel):
         le=100,
         description="Number of RAG chunks to retrieve",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_legacy_fields_and_normalize(cls, data):
+        """Reject legacy single-model fields with a migration hint.
+
+        Also uppercases keys of each ``MODELS`` entry so TOML array
+        items behave like regular section keys.
+        """
+        if not isinstance(data, dict):
+            return data
+        legacy = [key for key in _LEGACY_AI_AGENT_FIELDS if key in data]
+        if legacy:
+            raise ValueError(
+                "Legacy AI agent fields "
+                f"{legacy} are no longer supported. Migrate to "
+                "[[AI.AGENT.MODELS]] entries (ID / PROVIDER / BASE_URL "
+                "/ API_KEY / MODEL, optional VISION_*); see the AI "
+                "agent configuration documentation."
+            )
+        models = data.get("MODELS")
+        if isinstance(models, list):
+            normalized = []
+            for item in models:
+                if isinstance(item, dict):
+                    normalized.append({
+                        key.upper() if isinstance(key, str) else key: value
+                        for key, value in item.items()
+                    })
+                else:
+                    normalized.append(item)
+            data = {**data, "MODELS": normalized}
+        return data
+
+    @model_validator(mode="after")
+    def _validate_models(self) -> Self:
+        """Enforce the MODELS count cap and unique IDs."""
+        if len(self.MODELS) > 32:
+            raise ValueError("AI.AGENT.MODELS supports at most 32 entries")
+        seen: set[str] = set()
+        for entry in self.MODELS:
+            if entry.ID in seen:
+                raise ValueError(f"Duplicate AI model ID: {entry.ID}")
+            seen.add(entry.ID)
+        return self
+
+    def validate_models(self):
+        """Fail startup when the AI agent has no usable model config.
+
+        Called by :meth:`Config.validate` (and by model resolution)
+        so an empty MODELS list produces an actionable error instead
+        of a runtime failure on the first chat request.
+        """
+        if not self.MODELS:
+            raise ValueError(
+                "AI.AGENT.MODELS is empty. Configure at least one "
+                "[[AI.AGENT.MODELS]] entry (ID / PROVIDER / BASE_URL "
+                "/ API_KEY / MODEL); the legacy LLM_* / VISION_* "
+                "single-model fields were removed."
+            )
+
+    @property
+    def default_model_id(self) -> str | None:
+        """ID of the default model (first entry), None when empty."""
+        return self.MODELS[0].ID if self.MODELS else None
+
+    def default_model(self) -> AIModelConfig:
+        """Return the first configured model (the default)."""
+        self.validate_models()
+        return self.MODELS[0]
+
+    def _find_model(self, model_id: str | None) -> AIModelConfig:
+        """Locate a configured model entry by ID (default when None)."""
+        self.validate_models()
+        if model_id is None:
+            return self.MODELS[0]
+        for entry in self.MODELS:
+            if entry.ID == model_id:
+                return entry
+        raise UnknownAIModelError(f"Unknown AI model id: {model_id}")
+
+    def resolve_model(
+        self, model_id: str | None = None
+    ) -> ResolvedAIModelConfig:
+        """Return the immutable effective config for one model.
+
+        Per-model overrides win over the shared section defaults.
+        Unknown IDs raise :class:`UnknownAIModelError` (HTTP 400).
+        """
+        entry = self._find_model(model_id)
+        return ResolvedAIModelConfig(
+            id=entry.ID,
+            display_name=entry.DISPLAY_NAME or entry.MODEL,
+            provider=entry.PROVIDER,
+            base_url=entry.BASE_URL,
+            api_key=entry.API_KEY,
+            model=entry.MODEL,
+            temperature=(
+                self.LLM_TEMPERATURE
+                if entry.TEMPERATURE is None
+                else entry.TEMPERATURE
+            ),
+            max_tokens=(
+                self.LLM_MAX_TOKENS
+                if entry.MAX_TOKENS is None
+                else entry.MAX_TOKENS
+            ),
+            model_settings_enabled=(
+                self.LLM_MODEL_SETTINGS_ENABLED
+                if entry.MODEL_SETTINGS_ENABLED is None
+                else entry.MODEL_SETTINGS_ENABLED
+            ),
+            timeout=(
+                self.LLM_TIMEOUT if entry.TIMEOUT is None else entry.TIMEOUT
+            ),
+            system_prompt=(
+                self.SYSTEM_PROMPT
+                if entry.SYSTEM_PROMPT is None
+                else entry.SYSTEM_PROMPT
+            ),
+            vision_system_prompt=(
+                self.VISION_SYSTEM_PROMPT
+                if entry.VISION_SYSTEM_PROMPT is None
+                else entry.VISION_SYSTEM_PROMPT
+            ),
+            vision_enabled=entry.VISION_ENABLED,
+        )
+
+    def resolve_vision(
+        self, model_id: str | None = None
+    ) -> ResolvedVisionConfig | None:
+        """Return the effective vision connection for one model.
+
+        Returns ``None`` when the model has ``VISION_ENABLED=false``;
+        unset VISION_* fields fall back to the model's own connection.
+        """
+        entry = self._find_model(model_id)
+        if not entry.VISION_ENABLED:
+            return None
+        return ResolvedVisionConfig(
+            provider=entry.VISION_PROVIDER or entry.PROVIDER,
+            base_url=entry.VISION_BASE_URL or entry.BASE_URL,
+            api_key=entry.VISION_API_KEY or entry.API_KEY,
+            model=entry.VISION_MODEL or entry.MODEL,
+        )
+
+    def public_models(self) -> list[dict[str, Any]]:
+        """Return the non-sensitive model list for clients.
+
+        Only id / display_name / upstream model / vision capability
+        are exposed; provider URLs, API keys and prompts never leave
+        the server through this payload.
+        """
+        return [
+            {
+                "id": entry.ID,
+                "display_name": entry.DISPLAY_NAME or entry.MODEL,
+                "model": entry.MODEL,
+                "supports_vision": entry.VISION_ENABLED,
+            }
+            for entry in self.MODELS
+        ]
 
 
 class ConfigModel(BaseModel):
@@ -809,7 +1108,22 @@ class Config:
         cls.initialize()
 
         def decrypt_value(value, section_key):
-            """Decrypt encrypted configuration values."""
+            """Decrypt encrypted configuration values recursively.
+
+            Lists and dicts are traversed so nested entries such as
+            ``MODELS[i].API_KEY`` / ``VISION_API_KEY`` are decrypted.
+            Error messages never echo the ciphertext.
+            """
+            if isinstance(value, dict):
+                return {
+                    key: decrypt_value(item, f"{section_key}:{key}")
+                    for key, item in value.items()
+                }
+            if isinstance(value, list):
+                return [
+                    decrypt_value(item, f"{section_key}[{index}]")
+                    for index, item in enumerate(value)
+                ]
             if isinstance(value, str) and value.startswith(
                 Constant.ENCRYPTION_PREFIX
             ):
@@ -820,7 +1134,7 @@ class Config:
                 )
                 if not _success:
                     raise errors.GenericException(
-                        f"Can't decrypt text: {value} ({section_key})"
+                        f"Can't decrypt configuration value ({section_key})"
                     )
                 return decrypted_value
             return value
@@ -1056,20 +1370,21 @@ class Config:
 
     @classmethod
     def is_vision_enabled(cls) -> bool:
-        """Whether the vision (image understanding) model is enabled.
+        """Whether the default AI model supports image understanding.
 
-        The vision pipeline is considered enabled when the AI agent
-        feature is enabled AND either an explicit ``VISION_MODEL`` is
-        configured OR the configured ``VISION_PROVIDER`` is non-empty.
-        When neither is set, image attachments would only be passed
-        to the text-only model, which usually has no vision support
-        and would silently drop them - the UI must therefore disable
-        the image-attachment button.
+        Image attachments are gated per model via
+        ``[[AI.AGENT.MODELS]] VISION_ENABLED``; this class-level flag
+        reflects the DEFAULT model so legacy component switches keep
+        working. Per-model checks should use
+        ``AI_AGENT.resolve_vision(model_id)`` instead.
         """
         cls.initialize()
         if not cls.is_ai_agent_enabled():
             return False
-        return bool(cls.AI_AGENT.VISION_MODEL or cls.AI_AGENT.VISION_PROVIDER)
+        default_id = cls.AI_AGENT.default_model_id
+        if default_id is None:
+            return False
+        return cls.AI_AGENT.resolve_vision(default_id) is not None
 
     @classmethod
     def get_component_switch_status(cls) -> dict[str, bool | dict[str, bool]]:
@@ -1118,6 +1433,10 @@ class Config:
 
         # Validate database URL
         cls.DATABASE.validate_url()
+
+        # AI agent must have at least one configured model when enabled
+        if cls.is_ai_agent_enabled():
+            cls.AI_AGENT.validate_models()
 
         # Remove duplicates from device list
         cls.DEVICES.DEVICE_LIST = Library.remove_duplicates(
