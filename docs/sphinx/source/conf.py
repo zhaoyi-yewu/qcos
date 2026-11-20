@@ -135,6 +135,7 @@ autodoc_mock_imports = [
     "wy_qcos.driver.spinq",
     "wy_qcos.driver.uqc",
     "wy_qcos.driver.logical_qubit",
+    "wy_qcos.driver.quafu",
     "wy_qcos.server",
     "wy_qcos.tests",
     "wy_qcos.transpiler.cmss.compiler.openqasm3",
@@ -145,6 +146,13 @@ autodoc_mock_imports = [
     "wy_qcos.transpiler.cmss.transpiler_cmss",
     "wy_qcos.transpiler.cmss.transpiler_cmss_for_cpp",
     "wy_qcos.transpiler.common.pulse_ir",
+    # Legacy modules retained for source-history reference; their submodule
+    # dependencies (instructions, utils, qpd, cut_finding) have been removed.
+    "wy_qcos.transpiler.common.qpd_cutting.automated_cut_finding",
+    "wy_qcos.transpiler.common.qpd_cutting.conversion",
+    "wy_qcos.transpiler.common.qpd_cutting.cutting_decomposition",
+    "wy_qcos.transpiler.common.qpd_cutting.cutting_experiments",
+    "wy_qcos.transpiler.common.qpd_cutting.cutting_reconstruction",
     "wy_qcos.transpiler.dummy.transpiler_dummy",
     "wy_qcos.transpiler.high_performance",
 ]
