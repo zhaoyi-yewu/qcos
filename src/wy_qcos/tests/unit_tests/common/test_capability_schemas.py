@@ -173,10 +173,10 @@ def test_qem_root_allows_unknown_strategies(capabilities):
         assert strategy["properties"]
 
 
-def test_qem_strategies_nullable_map_and_independent_aliases(capabilities):
+def test_qem_strategies_nullable_map(capabilities):
     qem = capabilities["qem_options"]["properties"]
-    assert set(qem) == {"readout", "rem", "zne", "dd"}
-    for name in ("readout", "rem", "zne", "dd"):
+    assert set(qem) == {"readout", "zne", "dd"}
+    for name in ("readout", "zne", "dd"):
         assert qem[name]["properties"]["enabled"]["default"] is False
 
     nullable_paths = {
@@ -203,9 +203,6 @@ def test_qem_strategies_nullable_map_and_independent_aliases(capabilities):
     assert gate_times["type"] == ["object", "null"]
     assert gate_times["additionalProperties"]["type"] == "number"
     assert "微秒" in gate_times["description"]
-
-    qem["readout"]["properties"]["enabled"]["default"] = True
-    assert qem["rem"]["properties"]["enabled"]["default"] is False
 
 
 def test_extra_specs_ten_keys_nullable_and_sensitive_values(capabilities):

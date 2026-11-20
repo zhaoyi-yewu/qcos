@@ -67,7 +67,7 @@ REM 通过校准每个量子比特的混淆矩阵并施加伪逆校正，修正�
        shots=1024,
        backend="quafu_dongling",
        qem_options={
-           "rem": {"enabled": True, "calibration_shots": 8192},
+           "readout": {"enabled": True, "calibration_shots": 8192},
        },
    )
 
@@ -141,7 +141,7 @@ DD 在量子线路的空闲窗口插入回波脉冲序列，抑制空闲期间�
        shots=1024,
        backend="quafu_dongling",
        qem_options={
-           "rem": {"enabled": True, "calibration_shots": 8192},
+           "readout": {"enabled": True, "calibration_shots": 8192},
            "zne": {
                "enabled": True,
                "scale_factors": [1, 3, 5],
@@ -162,7 +162,7 @@ DD 在量子线路的空闲窗口插入回波脉冲序列，抑制空闲期间�
    * - 技术
      - 字段
      - 说明
-   * - **rem**
+   * - **readout**
      - enabled / calibration_shots
      - 启用读出错误缓解；``calibration_shots`` 为校准采样数
    * - **zne**

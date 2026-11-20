@@ -46,28 +46,28 @@ def make_test_circuit() -> QuantumCircuit:
 class TestMitigationManagerConfigure:
     """Test MitigationManager configuration."""
 
-    def test_configure_rem(self):
+    def test_configure_readout(self):
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True, "calibration_shots": 4096}})
+        mgr.configure({"readout": {"enabled": True, "calibration_shots": 4096}})
         assert mgr.has_enabled()
-        assert "rem" in mgr.get_enabled_names()
+        assert "readout" in mgr.get_enabled_names()
 
     def test_configure_multiple(self):
         mgr = MitigationManager()
         mgr.configure({
-            "rem": {"enabled": True},
+            "readout": {"enabled": True},
             "zne": {"enabled": True},
             "dd": {"enabled": False},
         })
         assert len(mgr.get_enabled_names()) == 2
-        assert "rem" in mgr.get_enabled_names()
+        assert "readout" in mgr.get_enabled_names()
         assert "zne" in mgr.get_enabled_names()
         assert "dd" not in mgr.get_enabled_names()
 
     def test_configure_none_enabled(self):
         mgr = MitigationManager()
         mgr.configure({
-            "rem": {"enabled": False},
+            "readout": {"enabled": False},
             "zne": {"enabled": False},
         })
         assert not mgr.has_enabled()
@@ -81,9 +81,9 @@ class TestMitigationManagerConfigure:
 class TestMitigationManagerValidation:
     """Test device validation."""
 
-    def test_validate_rem(self):
+    def test_validate_readout(self):
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True}})
+        mgr.configure({"readout": {"enabled": True}})
         valid, msg = mgr.validate_device({})
         assert valid is True
 
@@ -106,8 +106,8 @@ class TestMitigationManagerCalibration:
 
     def test_needs_calibration(self):
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True}})
-        assert "rem" in mgr.needs_calibration()
+        mgr.configure({"readout": {"enabled": True}})
+        assert "readout" in mgr.needs_calibration()
 
     def test_no_calibration_needed(self):
         mgr = MitigationManager()
@@ -116,7 +116,7 @@ class TestMitigationManagerCalibration:
 
     def test_get_calibration_circuits(self):
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True}})
+        mgr.configure({"readout": {"enabled": True}})
         qc = make_test_circuit()
         circuits = mgr.get_calibration_circuits(qc, [0, 1])
         assert "readout" in circuits
@@ -160,9 +160,9 @@ class TestMitigationManagerPostprocess:
         assert output["results"] == results
         assert output["mitigation_metadata"]["techniques_applied"] == []
 
-    def test_postprocess_rem(self):
+    def test_postprocess_readout(self):
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True}})
+        mgr.configure({"readout": {"enabled": True}})
         mgr.store_calibration_data(
             "readout",
             {
@@ -179,9 +179,9 @@ class TestMitigationManagerPostprocess:
         )
         assert "readout" in output["mitigation_metadata"]["techniques_applied"]
 
-    def test_postprocess_rem_zne(self):
+    def test_postprocess_readout_zne(self):
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True}, "zne": {"enabled": True}})
+        mgr.configure({"readout": {"enabled": True}, "zne": {"enabled": True}})
         mgr.store_calibration_data(
             "readout",
             {
@@ -205,7 +205,7 @@ class TestMitigationManagerPostprocess:
 
     def test_postprocess_preserves_raw_results(self):
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True}})
+        mgr.configure({"readout": {"enabled": True}})
         mgr.store_calibration_data(
             "readout",
             {
@@ -229,9 +229,9 @@ class TestMitigationManagerConfigureEdges:
     def test_configure_skips_non_dict_config(self):
         mgr = MitigationManager()
         # non-dict value should be skipped, not crash
-        mgr.configure({"rem": "not a dict", "zne": {"enabled": True}})
+        mgr.configure({"readout": "not a dict", "zne": {"enabled": True}})
         assert "zne" in mgr.get_enabled_names()
-        assert "rem" not in mgr.get_enabled_names()
+        assert "readout" not in mgr.get_enabled_names()
 
     def test_configure_invalid_technique_skipped(self):
         mgr = MitigationManager()
@@ -261,7 +261,7 @@ class TestMitigationManagerConfigureEdges:
     def test_get_technique_missing_returns_none(self):
         mgr = MitigationManager()
         mgr.configure({"zne": {"enabled": True}})
-        assert mgr.get_technique("rem") is None
+        assert mgr.get_technique("readout") is None
 
 
 class TestMitigationManagerTransformDD:
@@ -328,11 +328,11 @@ class TestMitigationManagerPostprocessDD:
         # DD passthrough -> results unchanged
         assert output["results"] == results
 
-    def test_postprocess_dd_then_rem_then_zne(self):
+    def test_postprocess_dd_then_readout_then_zne(self):
         mgr = MitigationManager()
         mgr.configure({
             "dd": {"enabled": True, "sequence": "XY4"},
-            "rem": {"enabled": True},
+            "readout": {"enabled": True},
             "zne": {"enabled": True},
         })
         mgr.store_calibration_data(
@@ -371,16 +371,16 @@ class TestMitigationManagerGetCalibrationCircuits:
     def test_calibration_circuits_default_qubits(self):
         # target_qubits=None -> defaults to range(num_qubits)
         mgr = MitigationManager()
-        mgr.configure({"rem": {"enabled": True}})
+        mgr.configure({"readout": {"enabled": True}})
         qc = make_test_circuit()  # 2 qubits
         circuits = mgr.get_calibration_circuits(qc)  # no target_qubits
         assert "readout" in circuits
         assert len(circuits["readout"]) == 4  # 2 qubits * 2 states
 
-    def test_calibration_circuits_no_rem_skips(self):
+    def test_calibration_circuits_no_readout_skips(self):
         mgr = MitigationManager()
         mgr.configure({"zne": {"enabled": True}})
         qc = make_test_circuit()
         circuits = mgr.get_calibration_circuits(qc, [0, 1])
-        # no REM enabled -> no calibration circuits
+        # no readout enabled -> no calibration circuits
         assert "readout" not in circuits

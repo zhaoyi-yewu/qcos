@@ -42,7 +42,6 @@ class MitigationFactory:
     def __init__(self):
         self._registry = {
             "readout": ReadoutMitigation,
-            "rem": ReadoutMitigation,
             "zne": ZNEMitigation,
             "dd": DDMitigation,
         }
