@@ -66,7 +66,7 @@
 import { markRaw } from 'vue'
 import { VueMonacoEditor, loader } from '@guolao/vue-monaco-editor'
 import { registerQasmLanguage } from './qasm-language'
-import { runLint, LINT_OWNER } from './lint'
+import { runLint, LINT_OWNER, SCHEMA_OWNER } from './lint'
 // Use editor.api instead of monaco-editor to avoid loading all built-in language
 // contributions (e.g. markdown findSectionHeaders.js which uses RegExp 'd' flag
 // not supported by older MS Edge browsers)
@@ -144,9 +144,15 @@ export default {
     showStatusBar: {
       type: Boolean,
       default: true
+    },
+    // JSON lint mode: matrix preserves the QUBO behavior, object accepts
+    // a plain JSON object without applying matrix-specific semantics.
+    lintMode: {
+      type: String,
+      default: 'matrix'
     }
   },
-  emits: ['change', 'mount'],
+  emits: ['change', 'mount', 'blur'],
   data() {
     return {
       // NOTE: editorInstance holds the monaco editor instance. If
@@ -172,8 +178,8 @@ export default {
       indentSpaces: (this.options && this.options.insertSpaces) !== false,
       indentSize: (this.options && this.options.tabSize) || 4,
       // Lint debounce timer handle; null when no lint is scheduled.
-      _lintTimer: null,
-      _disposers: []
+      lintTimer: null,
+      listenerDisposers: []
     }
   },
   computed: {
@@ -235,6 +241,7 @@ export default {
     this._disposeListeners()
     this._cancelLintTimer()
     this._clearLintMarkers()
+    this._clearSchemaMarkers()
   },
   methods: {
     onChange(value, event) {
@@ -252,6 +259,7 @@ export default {
       // by timeout" stack trace pointing at track -> getValue).
       this.editorInstance = markRaw(editor)
       this._attachListeners(editor)
+      this._clearSchemaMarkers()
       this._refreshDocStats()
       this._refreshCursor(editor)
       // NO lint on mount. Calling model.getValue() during mount
@@ -269,6 +277,12 @@ export default {
         this.editorInstance.focus()
       }
     },
+    getValue() {
+      const editor = this.editorInstance
+      if (!editor) return this.value
+      const model = editor.getModel()
+      return model ? model.getValue() : this.value
+    },
     // ==================== status bar ====================
     _attachListeners(editor) {
       if (!editor) return
@@ -280,8 +294,14 @@ export default {
       // would fire N duplicate callbacks — that is the root cause of
       // the "add tab -> editor freezes" report.
       this._disposeListeners()
-      this._disposers.push(
+      this.listenerDisposers.push(
         editor.onDidChangeCursorPosition(() => this._refreshCursor(editor)),
+        editor.onDidBlurEditorText(() => {
+          const model = editor.getModel()
+          if (model && !(typeof model.isDisposed === 'function' && model.isDisposed())) {
+            this.$emit('blur', model.getValue())
+          }
+        }),
         editor.onDidChangeModelContent(() => {
           this._refreshDocStats()
           // Schedule a lint pass on the *model* (not the editor) so
@@ -293,7 +313,8 @@ export default {
           const model = editor.getModel()
           if (model && typeof model.isDisposed === 'function' && !model.isDisposed()) {
             const lang = this.language
-            this._scheduleLintForModel(model, lang, 400)
+            const lintMode = this.lintMode
+            this._scheduleLintForModel(model, lang, 400, lintMode)
           }
         }),
         editor.onDidChangeConfiguration(() => this._refreshIndent(editor))
@@ -305,16 +326,16 @@ export default {
       const dom = editor.getDomNode()
       if (dom) {
         dom.addEventListener('keydown', this._onKeydown, true)
-        this._disposers.push({
+        this.listenerDisposers.push({
           dispose: () => dom.removeEventListener('keydown', this._onKeydown, true)
         })
       }
     },
     _disposeListeners() {
-      this._disposers.forEach(d => {
-        try { d.dispose() } catch (e) { /* noop */ }
+      this.listenerDisposers.forEach(d => {
+        try { d.dispose() } catch { /* noop */ }
       })
-      this._disposers = []
+      this.listenerDisposers = []
     },
     _onKeydown(e) {
       // Caps Lock indicator — KeyboardEvent.getModifierState is the only
@@ -406,11 +427,12 @@ export default {
      * @param {object} model - monaco.ITextModel, captured raw
      * @param {string} language - language id captured at schedule time
      * @param {number} delayMs - debounce delay (400 ms for typing)
+     * @param {string} lintMode - JSON lint mode captured at schedule time
      */
-    _scheduleLintForModel(model, language, delayMs) {
+    _scheduleLintForModel(model, language, delayMs, lintMode = 'matrix') {
       this._cancelLintTimer()
-      this._lintTimer = setTimeout(() => {
-        this._lintTimer = null
+      this.lintTimer = setTimeout(() => {
+        this.lintTimer = null
         // requestIdleCallback so a slow parse cannot block typing;
         // Safari lacks it, fall back to a plain setTimeout.
         const schedule = typeof requestIdleCallback === 'function'
@@ -429,9 +451,8 @@ export default {
             if (typeof text !== 'string') return
             let markers
             try {
-              markers = runLint(language, text)
+              markers = runLint(language, text, lintMode)
             } catch (e) {
-              // eslint-disable-next-line no-console
               console.error('[monaco-lint] linter crashed:', e)
               markers = []
             }
@@ -455,7 +476,7 @@ export default {
               source: LINT_OWNER
             }))
             monaco.editor.setModelMarkers(model, LINT_OWNER, mapped)
-          } catch (e) {
+          } catch {
             // Any unexpected failure must not propagate — a lint
             // pass can never break typing.
           }
@@ -463,9 +484,9 @@ export default {
       }, delayMs)
     },
     _cancelLintTimer() {
-      if (this._lintTimer) {
-        clearTimeout(this._lintTimer)
-        this._lintTimer = null
+      if (this.lintTimer) {
+        clearTimeout(this.lintTimer)
+        this.lintTimer = null
       }
     },
     _clearLintMarkers() {
@@ -479,7 +500,42 @@ export default {
         if (model && !(typeof model.isDisposed === 'function' && model.isDisposed())) {
           monaco.editor.setModelMarkers(model, LINT_OWNER, [])
         }
-      } catch (e) {
+      } catch {
+        // ignore
+      }
+    },
+    setSchemaMarkers(markers) {
+      const editor = this.editorInstance
+      if (!editor) return
+      try {
+        const model = editor.getModel()
+        if (!model || (typeof model.isDisposed === 'function' && model.isDisposed())) return
+        const mapped = (markers || []).map(marker => ({
+          severity: marker.severity === 'warning' ? 4 : 8,
+          message: marker.message,
+          startLineNumber: marker.startLineNumber || 1,
+          startColumn: marker.startColumn || 1,
+          endLineNumber: marker.endLineNumber || marker.startLineNumber || 1,
+          endColumn: marker.endColumn || (marker.startColumn || 1) + 1,
+          source: SCHEMA_OWNER
+        }))
+        monaco.editor.setModelMarkers(model, SCHEMA_OWNER, mapped)
+      } catch {
+        // External diagnostics must never break editing.
+      }
+    },
+    clearSchemaMarkers() {
+      this._clearSchemaMarkers()
+    },
+    _clearSchemaMarkers() {
+      const editor = this.editorInstance
+      if (!editor) return
+      try {
+        const model = editor.getModel()
+        if (model && !(typeof model.isDisposed === 'function' && model.isDisposed())) {
+          monaco.editor.setModelMarkers(model, SCHEMA_OWNER, [])
+        }
+      } catch {
         // ignore
       }
     }
@@ -531,7 +587,6 @@ export default {
   border-radius: 3px;
   white-space: nowrap;
 }
-
 
 .status-item-clickable {
   cursor: pointer;

@@ -23,9 +23,8 @@
  *
  * Language coverage:
  *
- *   - ``json``: handled by monaco's built-in JSON worker; this
- *     module returns an empty array and lets the worker set its own
- *     markers (with a different owner).
+ *   - ``json``: local syntax checks plus either the default QUBO
+ *     matrix semantics or an optional plain-object check.
  *   - ``csv``:  papaparse-based checker.
  *   - ``qasm`` / ``qasm2`` / ``qasm3``: hand-written QASM checker
  *     (see ``./qasm-lint.js``).
@@ -39,15 +38,18 @@ import { lintJson } from './json-lint.js'
 
 /** Marker owner used for all our custom linters. */
 export const LINT_OWNER = 'qcos-lint'
+/** Marker owner used by callers for external JSON Schema diagnostics. */
+export const SCHEMA_OWNER = 'qcos-schema'
 
 /**
  * Return markers for the given source.
  *
  * @param {string} language - monaco language id ('qasm', 'csv', ...)
  * @param {string} text - source code
+ * @param {string} lintMode - JSON semantics: 'matrix' (default) or 'object'
  * @returns {Array<object>} markers
  */
-export function runLint(language, text) {
+export function runLint(language, text, lintMode = 'matrix') {
   if (typeof text !== 'string') return []
   const lang = (language || '').toLowerCase()
   switch (lang) {
@@ -63,7 +65,7 @@ export function runLint(language, text) {
       // built-in worker is not running. Do a local JSON.parse-based
       // check instead — cheap, synchronous, and gives a useful
       // position for the most common syntax errors.
-      return lintJson(text)
+      return lintJson(text, lintMode)
     default:
       return []
   }

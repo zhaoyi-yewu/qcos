@@ -34,21 +34,52 @@
  * @param {string} text - JSON source
  * @returns {Array<object>} markers
  */
-export function lintJson(text) {
-  if (typeof text !== 'string') return []
-  if (!text.trim()) {
-    return [{
-      severity: 'warning',
-      message: 'JSON file is empty',
-      startLineNumber: 1,
-      startColumn: 1,
-      endLineNumber: 1,
-      endColumn: 2
-    }]
+export function lintJson(text, lintMode = 'matrix') {
+  const result = parseJson(text)
+  if (result.markers.length) return result.markers
+  if (lintMode === 'object') {
+    if (result.value === null || typeof result.value !== 'object' || Array.isArray(result.value)) {
+      return [{
+        severity: 'error',
+        message: `Top-level JSON value must be a plain object (got ${describeType(result.value)})`,
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 2
+      }]
+    }
+    return []
   }
-  let parsed
+  return lintQuboMatrix(result.value, text)
+}
+
+/**
+ * Run only the generic JSON syntax check.
+ *
+ * @param {string} text - JSON source
+ * @returns {Array<object>} markers
+ */
+export function lintJsonSyntax(text) {
+  return parseJson(text).markers
+}
+
+function parseJson(text) {
+  if (typeof text !== 'string') return { value: undefined, markers: [] }
+  if (!text.trim()) {
+    return {
+      value: undefined,
+      markers: [{
+        severity: 'warning',
+        message: 'JSON file is empty',
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: 1,
+        endColumn: 2
+      }]
+    }
+  }
   try {
-    parsed = JSON.parse(text)
+    return { value: JSON.parse(text), markers: [] }
   } catch (e) {
     const marker = {
       severity: 'error',
@@ -68,7 +99,7 @@ export function lintJson(text) {
       marker.startColumn = column
       marker.endLineNumber = line
       marker.endColumn = column + 1
-      return [marker]
+      return { value: undefined, markers: [marker] }
     }
     const lineColMatch = /line\s+(\d+)\s+column\s+(\d+)/.exec(e.message)
     if (lineColMatch) {
@@ -76,7 +107,7 @@ export function lintJson(text) {
       marker.startColumn = parseInt(lineColMatch[2], 10) + 1
       marker.endLineNumber = marker.startLineNumber
       marker.endColumn = marker.startColumn + 1
-      return [marker]
+      return { value: undefined, markers: [marker] }
     }
     // Fallback: highlight the first non-whitespace character so the
     // user always sees a marker somewhere.
@@ -88,15 +119,8 @@ export function lintJson(text) {
       marker.endLineNumber = line
       marker.endColumn = column + 1
     }
-    return [marker]
+    return { value: undefined, markers: [marker] }
   }
-
-  // ---- Semantic check: numeric matrix --------------------------
-  // The qubo workflow expects JSON to be a 2-D array of numbers
-  // (a square QUBO matrix). Walk the parsed value and flag any
-  // non-numeric leaf. We deliberately do NOT recurse into nested
-  // objects — QUBO matrices are arrays of arrays of numbers.
-  return findNonNumericLeaves(parsed, text)
 }
 
 /**
@@ -115,7 +139,7 @@ export function lintJson(text) {
  * @param {string} text - the original source text
  * @returns {Array<object>} markers
  */
-function findNonNumericLeaves(value, text) {
+export function lintQuboMatrix(value, text) {
   const markers = []
   // The top-level shape must be an array of arrays of numbers.
   // Anything else (object, scalar, array of objects, ...) is an error.
