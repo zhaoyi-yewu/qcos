@@ -521,6 +521,45 @@ class TestDriverQudoorAbaQu100:
         assert "probs" in data
 
     @patch.object(Library, "call_http_api")
+    def test_get_task_results_machine_profiling_timestamps(self, mock_http):
+        """Verify machine profiling uses Unix timestamps."""
+        resp = json.dumps({
+            "taskStatus": TASK_STATUS_SUCCESS,
+            "outData": {"counts": {"00": 1}},
+            "execStartTime": 1700000000000000,
+            "execEndTime": 1700000000500000,
+            "timeConsume": 500,
+        })
+        mock_http.return_value = _http_ok(resp)
+
+        success, _, _, machine_profiling = driver.get_task_results("task-1")
+
+        assert success is True
+        assert machine_profiling == {
+            "machine_started_at": 1700000000.0,
+            "machine_ended_at": 1700000000.5,
+            "machine_duration": 500.0,
+        }
+        assert Library.to_iso(machine_profiling["machine_started_at"])
+        assert Library.to_iso(machine_profiling["machine_ended_at"])
+
+    @patch.object(Library, "call_http_api")
+    def test_get_task_results_invalid_profiling_timestamps(self, mock_http):
+        """Verify invalid machine timestamps are ignored."""
+        resp = json.dumps({
+            "taskStatus": TASK_STATUS_SUCCESS,
+            "outData": {},
+            "execStartTime": "invalid",
+            "execEndTime": {"invalid": "timestamp"},
+        })
+        mock_http.return_value = _http_ok(resp)
+
+        success, _, _, machine_profiling = driver.get_task_results("task-1")
+
+        assert success is True
+        assert machine_profiling == {}
+
+    @patch.object(Library, "call_http_api")
     def test_get_task_results_not_succeeded(self, mock_http):
         """Verify results are rejected when the task has not succeeded."""
         resp = json.dumps({"taskStatus": 1, "outData": "已提交."})
