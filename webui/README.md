@@ -9,6 +9,7 @@
 - **资源规格（Flavor）**：自动调度策略配置
 - **用户与权限**：用户/角色/项目管理、登录日志
 - **系统监控**：API 统计、作业统计、组件状态、系统信息
+- **AI Agent**：流式智能问答、RAG 检索和 MCP 工具调用（取决于服务端配置）
 - **多 Endpoint 切换**：支持配置多个 QCOS API endpoint，免登录动态切换
 - **主题定制**：明暗色模式、自定义主题色
 
@@ -38,6 +39,12 @@ QCOS_API_ENDPOINTS = [
 
 ## 快速开始
 
+### 环境要求
+
+- 本地开发：Node.js 18+、npm 8+
+- 容器部署：Docker、docker-compose
+- 页面联调：可访问的 QCOS API 服务
+
 ### 容器部署（推荐）
 
 ```bash
@@ -54,13 +61,53 @@ sudo vim /etc/qcos/qcos-webui.toml
 
 ### 本地开发
 
+启动前准备 `/etc/qcos/qcos-webui.toml`。配置文件不存在时，Vite 开发服务器会退出并提示配置路径。
+
 ```bash
 cd webui
 npm install
 npm run dev
 ```
 
-访问 `http://localhost:9528`
+访问 `http://localhost:18401`。可通过以下环境变量调整开发服务器行为：
+
+| 环境变量 | 默认值 | 说明 |
+|:---------|:-------|:-----|
+| `WEBUI_TOML` | `/etc/qcos/qcos-webui.toml` | WebUI TOML 配置文件路径 |
+| `WEBUI_LISTEN_IP` | `localhost` | Vite 监听地址 |
+| `WEBUI_LISTEN_PORT` | `18401` | Vite 监听端口 |
+| `WEBUI_OPEN_BROWSER` | `false` | 设为 `true` 时启动后自动打开浏览器 |
+
+例如，在 Bash 中指定其他配置文件：
+
+```bash
+export WEBUI_TOML=/path/to/qcos-webui.toml
+npm run dev
+```
+
+PowerShell 使用 `$env:WEBUI_TOML = "C:\path\to\qcos-webui.toml"` 设置。
+
+### 常用命令
+
+在 `webui/` 目录执行：
+
+| 命令 | 用途 |
+|:-----|:-----|
+| `npm run dev` | 启动 Vite 开发服务器，加载 TOML 并代理各 endpoint |
+| `npm run lint` | 检查 `src/` 下的 JavaScript 和 Vue 文件 |
+| `npm run build:prod` | 生成生产环境构建产物 `dist/` |
+| `npm run build:stage` | 使用 staging 模式构建 |
+| `npm run preview` | 本地预览构建产物 |
+
+提交前至少执行 `npm run lint` 和 `npm run build:prod`，确保本次修改没有新增问题。生产构建目标为 Chrome 63，同时覆盖 Edge 85 和 360 安全浏览器 10 的兼容要求。
+
+### 页面开发规范
+
+- 新页面遵循 [WebUI 页面开发指南](../docs/sphinx/source/developer-guide/develop-new-webui-page.md)。
+- 列表页使用 `PageTable` 实现服务端分页、搜索、过滤和排序，禁止以前端数组切片代替服务端分页。
+- API 封装位于 `src/api/`，路由、菜单和角色配置位于 `src/router/index.js`。
+- 页面私有状态保留在组件内，仅在跨页面共享或持久化时使用 Pinia。
+- 完整步骤和检查清单见 [WebUI 页面开发技能](../.agents/skills/develop-new-webui-page/SKILL.md)。
 
 ## 项目结构
 
@@ -91,7 +138,7 @@ webui/
 │   │   ├── device/        # 设备相关页面
 │   │   └── ...
 │   ├── App.vue
-│   ├── main.js            # 入口：加载 runtime config → 恢复 session → 挂载
+│   ├── main.js            # 入口：加载配置、会话和组件开关后挂载
 │   └── permission.js      # 路由守卫
 ├── index.html
 ├── vite.config.js
@@ -106,8 +153,9 @@ webui/
 
 1. `fetch('/webui-config.json')` → 加载 endpoint 列表、debug 开关、探测超时
 2. 从 localStorage 恢复当前 endpoint 的会话
-3. 后台并发探测所有 endpoint 的 `/version` → 更新健康状态
-4. 挂载 Vue 应用
+3. 加载 AI Agent、终端、监控和日志等组件的功能开关
+4. 后台并发探测所有 endpoint 的 `/version` → 更新健康状态
+5. 注册路由守卫并挂载 Vue 应用
 
 ### 会话隔离
 
@@ -126,6 +174,8 @@ webui/
 - [`INSTALL.md`](INSTALL.md) — 安装部署详细说明
 - [`config-run-webui.rst`](../docs/sphinx/source/user-guide/deploy-guide/config-run-webui.rst) — 配置与启动手册
 - [`etc/qcos/qcos-webui.toml`](../etc/qcos/qcos-webui.toml) — 默认配置文件模板
+- [`develop-new-webui-page.md`](../docs/sphinx/source/developer-guide/develop-new-webui-page.md) — WebUI 页面开发指南
+- [`SKILL.md`](../.agents/skills/develop-new-webui-page/SKILL.md) — WebUI 页面开发技能与检查清单
 
 ## 许可证
 
