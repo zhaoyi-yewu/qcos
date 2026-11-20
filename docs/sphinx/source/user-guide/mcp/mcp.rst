@@ -1,8 +1,8 @@
 MCP服务使用指南
 ==================
 
-QCOS 通过 MCP（Model Context Protocol）服务将量子计算能力暴露给 AI 助手。
-用户可以通过自然语言与 AI 助手交互，完成设备查询、作业提交、结果查看等操作，
+QCOS 通过 MCP（Model Context Protocol）服务将量子计算能力暴露给 AI 智能体。
+用户可以通过自然语言与 AI 智能体交互，完成设备查询、作业提交、结果查看等操作，
 无需直接调用 API 或使用命令行。
 
 前提条件
@@ -11,7 +11,7 @@ QCOS 通过 MCP（Model Context Protocol）服务将量子计算能力暴露给 
 1. QCOS 服务已启动并正常运行
 2. 已知 QCOS 服务地址（如 ``http://192.168.1.100:18400``）
 3. 拥有 QCOS 账号（用户名和密码）
-4. AI 助手支持 MCP 协议（如 Claude Desktop、支持 MCP 的 IDE 插件等）
+4. AI 智能体支持 MCP 协议（如 Claude Desktop、支持 MCP 的 IDE 插件等）
 
 MCP 端点地址
 --------------------
@@ -28,7 +28,7 @@ MCP 服务与 QCOS JSON-RPC API 共享同一端口，端点地址为：
 
    http://192.168.1.100:18400/v1/ai/mcp
 
-配置 AI 助手
+配置 AI 智能体
 --------------------
 
 Claude Desktop
@@ -92,7 +92,7 @@ OpenClaw（中文社区常称"小龙虾"）是一款开源的桌面 AI 客户端
 Hermes Agent
 ~~~~~~~~~~~~~~~~~~~~
 
-Hermes Agent 是另一款支持 MCP 协议的 AI 助手客户端，
+Hermes Agent 是另一款支持 MCP 协议的 AI 智能体客户端，
 提供图形化的服务器管理界面。
 
 1. 打开 Hermes Agent，进入 **设置** 或 **MCP 配置** 页面
@@ -110,7 +110,7 @@ Hermes Agent 是另一款支持 MCP 协议的 AI 助手客户端，
 Cursor
 ~~~~~~~~~~~~~~~~~~~~
 
-Cursor 编辑器内置 AI 助手，支持通过 MCP 协议接入外部工具。
+Cursor 编辑器内置 AI 智能体，支持通过 MCP 协议接入外部工具。
 
 1. 打开 Cursor 设置（``Ctrl + Shift + J`` 或 **File** → **Preferences** → **Cursor Settings**）
 
@@ -220,7 +220,7 @@ Zoo Code 是 JetBrains PyCharm / VSCode 中的 AI 编码助手插件，
 
    请帮我登录 QCOS 系统，用户名是 admin，密码是 xxxxxxxx
 
-AI 助手会调用 ``qcos_login`` 工具，返回的 JWT Token 会自动存储在 MCP 会话中，
+AI 智能体会调用 ``qcos_login`` 工具，返回的 JWT Token 会自动存储在 MCP 会话中，
 后续所有工具调用都会自动携带该 Token。
 
 .. note::
@@ -239,7 +239,7 @@ AI 助手会调用 ``qcos_login`` 工具，返回的 JWT Token 会自动存储�
 
    请查看 QCOS 系统版本和状态
 
-AI 助手会调用：
+AI 智能体会调用：
 - ``qcos_get_version``: 获取系统版本
 - ``qcos_get_system_health``: 获取健康状态
 - ``qcos_system_info``: 获取系统信息
@@ -251,7 +251,7 @@ AI 助手会调用：
 
    请列出所有可用的量子设备
 
-AI 助手会调用 ``qcos_list_devices``，返回设备名称、类型、比特数、状态等信息。
+AI 智能体会调用 ``qcos_list_devices``，返回设备名称、类型、比特数、状态等信息。
 
 查看设备详情
 ~~~~~~~~~~~~~~~~~~~~
@@ -260,7 +260,7 @@ AI 助手会调用 ``qcos_list_devices``，返回设备名称、类型、比特�
 
    请查看 dummy 设备的详细信息
 
-AI 助手会调用 ``qcos_get_device_detail(name="dummy")``。
+AI 智能体会调用 ``qcos_get_device_detail(name="dummy")``。
 
 提交量子作业
 ~~~~~~~~~~~~~~~~~~~~
@@ -276,7 +276,7 @@ AI 助手会调用 ``qcos_get_device_detail(name="dummy")``。
    cx q[0], q[1];
    measure q -> c;
 
-AI 助手会调用 ``qcos_submit_job``，参数包括：
+AI 智能体会调用 ``qcos_submit_job``，参数包括：
 - ``source_code``: QASM 代码列表
 - ``backend``: 设备名称（如 ``dummy``）
 - ``shots``: 测量次数（默认 1024）
@@ -288,7 +288,7 @@ AI 助手会调用 ``qcos_submit_job``，参数包括：
 
    请查看作业 job-12345 的状态
 
-AI 助手会调用 ``qcos_get_job_status(job_id="job-12345")``。
+AI 智能体会调用 ``qcos_get_job_status(job_id="job-12345")``。
 
 获取作业结果
 ~~~~~~~~~~~~~~~~~~~~
@@ -297,7 +297,7 @@ AI 助手会调用 ``qcos_get_job_status(job_id="job-12345")``。
 
    请获取作业 job-12345 的执行结果
 
-AI 助手会调用 ``qcos_get_job_result(job_id="job-12345")``，返回测量计数和概率分布。
+AI 智能体会调用 ``qcos_get_job_result(job_id="job-12345")``，返回测量计数和概率分布。
 
 列出我的作业
 ~~~~~~~~~~~~~~~~~~~~
@@ -306,13 +306,13 @@ AI 助手会调用 ``qcos_get_job_result(job_id="job-12345")``，返回测量计
 
    请列出我提交的所有作业
 
-AI 助手会调用 ``qcos_list_jobs``，可以添加过滤条件：
+AI 智能体会调用 ``qcos_list_jobs``，可以添加过滤条件：
 
 .. code-block:: text
 
    请列出状态为 running 的作业
 
-AI 助手会调用 ``qcos_list_jobs(job_status="running")``。
+AI 智能体会调用 ``qcos_list_jobs(job_status="running")``。
 
 管理资源规格（Flavor）
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -321,14 +321,14 @@ AI 助手会调用 ``qcos_list_jobs(job_status="running")``。
 
    请列出所有资源规格
 
-AI 助手会调用 ``qcos_get_flavors``。
+AI 智能体会调用 ``qcos_get_flavors``。
 
 .. code-block:: text
 
    请创建一个名为 "high-fidelity" 的资源规格，要求最小 1 比特，最大 10 比特，
    单比特门保真度不低于 0.99
 
-AI 助手会调用 ``qcos_create_flavor``，并自动关联设备分组。
+AI 智能体会调用 ``qcos_create_flavor``，并自动关联设备分组。
 
 系统监控
 ~~~~~~~~~~~~~~~~~~~~
@@ -337,7 +337,7 @@ AI 助手会调用 ``qcos_create_flavor``，并自动关联设备分组。
 
    请查看系统 API 统计和作业统计
 
-AI 助手会调用：
+AI 智能体会调用：
 - ``qcos_get_api_stats``: API 请求统计
 - ``qcos_get_job_stats``: 作业统计（按状态分组）
 
@@ -535,7 +535,7 @@ AI 助手会调用：
 MCP 资源
 --------------------
 
-MCP 资源是只读的数据端点，AI 助手可以直接读取：
+MCP 资源是只读的数据端点，AI 智能体可以直接读取：
 
 .. list-table::
    :header-rows: 1
@@ -554,7 +554,7 @@ MCP 资源是只读的数据端点，AI 助手可以直接读取：
 连接失败
 ~~~~~~~~~~~~~~~~~~~~
 
-**问题**: AI 助手无法连接到 MCP 端点
+**问题**: AI 智能体无法连接到 MCP 端点
 
 **排查步骤**:
 
@@ -616,7 +616,7 @@ HTTP 头 ``Mcp-Session-Id`` 中携带该值。若客户端未正确缓存或
         -d '{"jsonrpc":"2.0","id":2,"method":"tools/call",
              "params":{"name":"qcos_get_version","arguments":{}}}'
 
-3. 若上述两步均成功，但 AI 助手仍报错，则问题在客户端实现：
+3. 若上述两步均成功，但 AI 智能体仍报错，则问题在客户端实现：
 
    - 确认 IDE / 插件版本为最新
    - 重启 IDE 让客户端重新执行 ``initialize`` 握手

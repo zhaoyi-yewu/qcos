@@ -17,7 +17,7 @@
 
 """MCP (Model Context Protocol) server integration for QCOS.
 
-This module provides MCP tools and resources that allow AI assistants
+This module provides MCP tools and resources that allow AI agents
 to interact with the QCOS quantum computing operating system.
 
 The MCP server is mounted on the same FastAPI application as the

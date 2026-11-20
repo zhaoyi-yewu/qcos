@@ -18,7 +18,7 @@
 """MCP Server for QCOS quantum computing operating system.
 
 This module creates an MCP (Model Context Protocol) server that exposes
-QCOS quantum computing capabilities to AI assistants. It is designed to
+QCOS quantum computing capabilities to AI agents. It is designed to
 be mounted on the existing FastAPI application, sharing the same HTTP
 port as the JSON-RPC API.
 

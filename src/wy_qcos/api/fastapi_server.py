@@ -51,7 +51,7 @@ from wy_qcos.metrics.metrics_middleware import MetricsMiddleware
 logger = logging.getLogger(__name__)
 
 # MCP endpoint path under /v1/ai/mcp like other QCOS API endpoints.
-# Placed under the /v1/ai/ namespace to distinguish AI assistant
+# Placed under the /v1/ai/ namespace to distinguish AI agent
 # integration endpoints from regular JSON-RPC API endpoints.
 MCP_ENDPOINT = f"{BASE_ENDPOINT}/ai/mcp"
 

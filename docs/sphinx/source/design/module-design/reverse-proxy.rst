@@ -450,7 +450,7 @@ QCOS 在 JSON-RPC 入口暴露 ``get_proxy_health`` 方法。
      - MCP server 在 ``/v1/proxy/<service>`` 之上封装了
        ``qcos_proxy_query_metrics`` / ``qcos_proxy_list_alerts`` /
        ``qcos_proxy_query_logs`` 等工具（见 mcp_server.py），并经
-       in-process 桥接暴露给内置 AI Agent，使 AI 助手可直接回答
+       in-process 桥接暴露给内置 AI Agent，使 AI 智能体可直接回答
        指标 / 告警 / 日志类问题
 
 使用示例
