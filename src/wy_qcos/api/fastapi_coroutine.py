@@ -25,6 +25,7 @@ import fastapi_jsonrpc as jsonrpc
 import httpx
 
 from wy_qcos.common.config import Config
+from wy_qcos.metrics import init_metrics_collector
 from wy_qcos.metrics.metrics_server import MetricsServer
 from wy_qcos.metrics.metrics_scheduler import MetricsScheduler
 from wy_qcos.metrics.metrics_task import set_app, init_metrics
@@ -117,6 +118,12 @@ async def app_lifespan(app: jsonrpc.API):
     set_app(app)
     # Pass app instance to device_availability_task as well
     set_availability_app(app)
+
+    # Initialize the MetricsCollector singleton explicitly. Importing
+    # wy_qcos.metrics no longer creates it at import time, so the
+    # collector must be initialized here before any middleware /
+    # background task records metrics.
+    init_metrics_collector()
 
     # Initialize metrics module (verify app and db engine available)
     init_metrics()

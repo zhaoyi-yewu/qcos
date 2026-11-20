@@ -32,6 +32,12 @@ from wy_qcos.api.schemas import (
     GetSystemStatsResponse,
 )
 from wy_qcos.common.constant import Constant
+from wy_qcos.metrics import init_metrics_collector
+
+# Some tests below (TestGetSystemStats) exercise the real collector
+# fall-back path instead of patching it, so initialize the singleton
+# once for the whole module.
+init_metrics_collector()
 
 
 class MockSystemHealthMetrics:
@@ -78,8 +84,9 @@ class TestGetSystemHealth:
         """Test system health response when all components are healthy."""
         mock_health = MockSystemHealthMetrics()
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.system_health_metrics.get_values.return_value = (
                 mock_health
             )
@@ -108,8 +115,9 @@ class TestGetSystemHealth:
         mock_health.redis_healthy = False
 
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.system_health_metrics.get_values.return_value = (
                 mock_health
             )
@@ -137,8 +145,9 @@ class TestGetSystemHealth:
         mock_health.redis_healthy = False
 
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.system_health_metrics.get_values.return_value = (
                 mock_health
             )
@@ -159,8 +168,9 @@ class TestGetSystemHealth:
         """Test system health response with None request body."""
         mock_health = MockSystemHealthMetrics()
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.system_health_metrics.get_values.return_value = (
                 mock_health
             )
@@ -187,8 +197,9 @@ class TestGetApiStats:
             }
 
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.api_metrics.get_api_stats = mock_get_api_stats
 
             mock_client = Mock()
@@ -210,8 +221,9 @@ class TestGetApiStats:
             }
 
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.api_metrics.get_api_stats = mock_get_api_stats
 
             mock_client = Mock()
@@ -234,8 +246,9 @@ class TestGetApiStats:
             }
 
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.api_metrics.get_api_stats = mock_get_api_stats
 
             response = get_api_stats(None)
@@ -252,8 +265,9 @@ class TestGetJobStats:
         """Test job stats response."""
         mock_job_data = MockJobMetricsData()
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.job_metrics.get_values.return_value = mock_job_data
 
             mock_client = Mock()
@@ -290,8 +304,9 @@ class TestGetJobStats:
         mock_job_data.completed_job_rate_min = 0.0
 
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.job_metrics.get_values.return_value = mock_job_data
 
             mock_client = Mock()
@@ -319,8 +334,9 @@ class TestGetJobStats:
         mock_job_data.completed_job_rate_min = 3.0
 
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.job_metrics.get_values.return_value = mock_job_data
 
             mock_client = Mock()
@@ -335,8 +351,9 @@ class TestGetJobStats:
         """Test job stats response with None request body."""
         mock_job_data = MockJobMetricsData()
         with patch(
-            "wy_qcos.api.posiq.routes_jsonrpc.metrics.metrics_collector"
-        ) as mock_collector:
+            "wy_qcos.api.posiq.routes_jsonrpc.metrics.get_metrics_collector"
+        ) as mock_get:
+            mock_collector = mock_get.return_value
             mock_collector.job_metrics.get_values.return_value = mock_job_data
 
             response = get_job_stats(None)

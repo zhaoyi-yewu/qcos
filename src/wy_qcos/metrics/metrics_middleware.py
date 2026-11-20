@@ -28,7 +28,7 @@ from fastapi import (
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from wy_qcos.common.constant import HttpCode
-from wy_qcos.metrics import metrics_collector
+from wy_qcos.metrics import get_metrics_collector
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,8 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Increment in-progress counter
-        metrics_collector.record_api_requests_in_progress(is_increment=True)
+        collector = get_metrics_collector()
+        collector.record_api_requests_in_progress(is_increment=True)
         normalized_path = self._normalize_endpoint(request.url.path)
 
         # Read body to parse JSON-RPC method
@@ -123,19 +124,17 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             duration = time.time() - start_time
 
             #  Record metrics
-            data = metrics_collector.api_metrics.APIMetricsData(
+            data = collector.api_metrics.APIMetricsData(
                 module=module,
                 method=rpc_method,
                 endpoint=self._normalize_endpoint(request.url.path),
                 status_code=status_code,
                 duration=duration,
             )
-            metrics_collector.record_api_request(data=data)
+            collector.record_api_request(data=data)
 
             # Decrement in-progress counter
-            metrics_collector.record_api_requests_in_progress(
-                is_increment=False
-            )
+            collector.record_api_requests_in_progress(is_increment=False)
 
     def _normalize_endpoint(self, path: str) -> str:
         """Normalize endpoint path by removing dynamic parameters.

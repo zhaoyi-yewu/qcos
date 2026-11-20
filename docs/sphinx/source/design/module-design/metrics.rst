@@ -24,7 +24,7 @@ QCOS Metrics 模块（``wy_qcos.metrics``）是量子操作系统的监控核心
 模块组成
 --------
 
-* ``__init__.py`` — 模块入口，导出 MetricsCollector 单例
+* ``__init__.py`` — 模块入口，导出 ``init_metrics_collector()`` / ``get_metrics_collector()``；单例在服务启动时显式初始化，import 模块不产生副作用
 * ``metrics_collector.py`` — 指标采集器（核心，定义所有指标类型）
 * ``metrics_middleware.py`` — FastAPI 中间件，自动采集 API 访问指标
 * ``metrics_server.py`` — Prometheus HTTP 指标服务（独立 HTTP 服务器）

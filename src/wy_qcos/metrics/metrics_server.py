@@ -27,7 +27,7 @@ from http.server import (
 )
 
 from wy_qcos.common.config import Config
-from wy_qcos.metrics import metrics_collector
+from wy_qcos.metrics import get_metrics_collector
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class PrometheusHandler(BaseHTTPRequestHandler):
         try:
             if self.path == self.DEFAULT_SERVER_METRICS_PATH:
                 # returns a byte string representing the metrics in text format
-                data = metrics_collector.get_metrics()
+                data = get_metrics_collector().get_metrics()
                 self.send_response(HTTPStatus.OK)
                 self.send_header(
                     self.HEADER_CONTENT_TYPE, self.CONTENT_TYPE_TEXT_UTF8
