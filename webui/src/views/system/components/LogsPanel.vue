@@ -262,6 +262,7 @@ const TIME_RANGE_OPTIONS = [
 // of the values below.
 const TAG_OPTIONS = [
   { label: 'API 服务', value: 'api' },
+  { label: '工作流组件', value: 'prefect' },
   { label: '设备作业', value: 'device' },
   { label: '设备监控', value: 'device_monitor' },
   { label: '设备管理', value: 'device_manager' }
@@ -489,6 +490,7 @@ export default {
         : String(tag)
       const map = {
         api: 'primary',
+        prefect: 'primary',
         device: 'success',
         device_monitor: 'warning',
         device_manager: 'danger'

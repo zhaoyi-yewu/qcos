@@ -157,7 +157,7 @@
           <GridLayout
             v-model:layout="overviewLayout"
             :col-num="12"
-            :row-height="24"
+            :row-height="overviewRowHeight"
             :is-draggable="isOverviewEditMode"
             :is-resizable="isOverviewEditMode"
             :vertical-compact="true"
@@ -1323,6 +1323,11 @@ export default {
         { i: 'group-alerts', x: 0, y: 22, w: 6, h: 10 },
         { i: 'group-logs', x: 6, y: 22, w: 6, h: 10 }
       ],
+      // Overview grid row height. In browser fullscreen the grid must fill
+      // the whole viewport, so the row height is recomputed from the
+      // available height (see _syncOverviewRowHeight); in normal mode it
+      // stays at the fixed default.
+      overviewRowHeight: 24,
       // Edit-mode flags (long-press to enter, "完成" to exit).
       // Each tab tracks its own edit-mode state so switching tabs doesn't
       // accidentally leave the other tab in edit mode.
@@ -1490,8 +1495,16 @@ export default {
     this._onFullscreenChange = () => {
       this.isBrowserFullscreen =
         document.fullscreenElement === this.$refs.browserFullscreenRef
+      // Defer one frame: right after requestFullscreen() resolves the
+      // container may not have its final :fullscreen layout yet, so
+      // clientHeight read in the same tick would be stale.
+      requestAnimationFrame(() => this._syncOverviewRowHeight())
     }
     document.addEventListener('fullscreenchange', this._onFullscreenChange)
+    // Recompute the fullscreen row height when the window is resized while
+    // the overview tab is in browser fullscreen (e.g. monitor rotation).
+    this._onWindowResize = () => this._syncOverviewRowHeight()
+    window.addEventListener('resize', this._onWindowResize)
   },
 
   beforeUnmount() {
@@ -1499,6 +1512,10 @@ export default {
     if (this._onFullscreenChange) {
       document.removeEventListener('fullscreenchange', this._onFullscreenChange)
       this._onFullscreenChange = null
+    }
+    if (this._onWindowResize) {
+      window.removeEventListener('resize', this._onWindowResize)
+      this._onWindowResize = null
     }
   },
 
@@ -2522,6 +2539,37 @@ export default {
       }
     },
 
+    // Recompute the overview grid row height so the grid fills the
+    // container vertically. grid-layout-plus lays out items at
+    // rowHeight * h + margin * (h - 1) px, so with a fixed item row
+    // budget (32 rows) the row height that fills `available` px is:
+    //   rowHeight = (available - margin * (rows - 1)) / rows
+    // Only applied while the overview tab is in browser fullscreen;
+    // otherwise the fixed default (24) is restored.
+    _syncOverviewRowHeight() {
+      const DEFAULT_ROW_HEIGHT = 24
+      const GRID_MARGIN = 6
+      const GRID_ROWS = 32
+      if (!this.isBrowserFullscreen) {
+        this.overviewRowHeight = DEFAULT_ROW_HEIGHT
+        return
+      }
+      const el = this.$refs.browserFullscreenRef
+      if (!el) return
+      // Fullscreen container height minus toolbar (~32px) and paddings.
+      const toolbar = el.querySelector('.browser-fullscreen-toolbar')
+      const toolbarH = toolbar ? toolbar.offsetHeight : 32
+      const style = getComputedStyle(el)
+      const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      const available = el.clientHeight - toolbarH - 8 - padY
+      if (available <= 0) {
+        this.overviewRowHeight = DEFAULT_ROW_HEIGHT
+        return
+      }
+      const rowHeight = (available - GRID_MARGIN * (GRID_ROWS - 1)) / GRID_ROWS
+      this.overviewRowHeight = Math.max(DEFAULT_ROW_HEIGHT, Math.floor(rowHeight))
+    },
+
     // ==================== 工具方法 ====================
     clampPercent(v) {
       const n = Number(v) || 0
@@ -2788,6 +2836,32 @@ export default {
 
 .monitor-tabs {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* el-tabs wraps its panes in .el-tabs__content, which by default is a
+   block-level div that doesn't inherit the flex height. Force the
+   whole chain (el-tabs > el-tabs__content > el-tab-pane) to flex so
+   tab content can fill the remaining viewport space. */
+.monitor-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* el-tabs positions panes absolutely inside this container when it
+     has a fixed height; overflow-y keeps the tab switchable when the
+     inner content overflows. */
+  overflow: hidden;
+}
+
+.monitor-tabs :deep(.el-tab-pane) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* 通用面板 */
@@ -2804,7 +2878,13 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  /* Compact 6px vertical padding matches LogsPanel's toolbar density
+     so all overview cards share the same header height (~33px).
+     Fixed height keeps cards with different right-side tools (text
+     subtitle vs 20px-tall el-tag vs 24px inputs) pixel-aligned. */
+  height: 33px;
+  box-sizing: border-box;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--el-border-color-light);
 }
 
@@ -3128,6 +3208,7 @@ export default {
 
 /* 告警 tab */
 .alert-panel {
+  flex: 1;
   min-height: 480px;
 }
 
@@ -3140,10 +3221,27 @@ export default {
    default panel-body padding + flex layout. */
 .alert-panel-pagetable {
   /* drop the panel wrapper flex column; PageTable manages its own box */
-  display: block;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: transparent;
   box-shadow: none;
+  /* Let the PageTable card fuse with this wrapper: toolbar and table
+     share the same rounded card, mirroring the standalone logs tab. */
+  border-radius: 8px;
+  overflow: hidden;
 }
+
+/* Let the PageTable fill the alerts tab pane vertically so the table
+   scrolls inside the panel instead of growing past the viewport. */
+.alert-panel-pagetable :deep(.page-table-container) {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Alerts tab toolbar styling is now inherited from the PageTable
+   component itself (12px padding + bottom border), matching the
+   logs-toolbar density without an extra override. */
 
 /* Embedded alerts PageTable inside the overview grid: remove the outer
    PageTable padding/background so it blends with the panel card, and
@@ -3158,13 +3256,36 @@ export default {
 
 .alerts-body-pagetable :deep(.page-table-container) {
   padding: 0;
+  /* Transparent background inside the overview group card: the
+     group panel itself is already a rounded white card, so the
+     embedded alerts PageTable must fuse into it instead of drawing
+     its own card with corners. */
   background: transparent;
+  border-radius: 0;
   flex: 1;
   min-height: 0;
 }
 
+/* Overview alerts toolbar styling is inherited from PageTable
+   (12px padding + bottom border), matching the adjacent logs
+   toolbar. The narrower max-width below keeps the search box
+   usable when the overview grid column is tight. */
+
 .alerts-body-pagetable :deep(.global-search) {
   max-width: 260px;
+}
+
+/* Tighten the embedded alerts toolbar / pagination to match the logs
+   panel density inside the same overview grid row: logs uses
+   6px 8px on the toolbar and 4px 8px on pagination. Without these
+   overrides the PageTable defaults (12px / 6px 12px) leave the alerts
+   card visibly taller than the adjacent logs card. */
+.alerts-body-pagetable :deep(.table-toolbar) {
+  padding: 6px 8px;
+}
+
+.alerts-body-pagetable :deep(.pagination-container) {
+  padding: 4px 8px;
 }
 
 .alerts-body-pagetable :deep(.table-container) {
@@ -3173,12 +3294,21 @@ export default {
   overflow: auto;
 }
 
-/* Reduce the gap between the toolbar (search box) and the table below.
-   PageTable's own .table-toolbar has margin-bottom: 12px; the alerts
-   panel wants the table to hug the toolbar tighter. */
-.alert-panel-pagetable :deep(.table-toolbar),
-.alerts-body-pagetable :deep(.table-toolbar) {
-  margin-bottom: 0;
+/* Compact table headers inside the overview grid: drop the font size
+   one notch (14 -> 12) and prevent wrapping so the alerts and logs
+   cards free up more vertical space for rows. Applies to both the
+   PageTable-driven alerts list and the LogsPanel embedded next to it. */
+.alerts-body-pagetable :deep(.el-table th),
+.logs-group :deep(.el-table th) {
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 6px 0;
+}
+
+.alerts-body-pagetable :deep(.el-table th .cell),
+.logs-group :deep(.el-table th .cell) {
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 /* Keep the severity column header on a single line so the label doesn't
