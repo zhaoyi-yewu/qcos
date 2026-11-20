@@ -31,8 +31,13 @@ mkdir -p /var/qcos/backup/database
 mkdir -p /etc/qcos/postgres
 mkdir -p /var/prefect/
 
-# copy postgresql config files
+# copy prefect config files
 rm -rf /etc/qcos/prefect/profiles.toml
+if [ ! -f /etc/prefect/logging.yml ]; then
+  cp ${QCOS_LOCAL_SRC_DIR}/etc/prefect/logging.yml /etc/qcos/prefect/
+fi
+
+# copy postgresql config files
 if [ ! -f /etc/qcos/postgres/postgresql.conf ]; then
   cp -r ${QCOS_LOCAL_SRC_DIR}/etc/postgres/postgresql.conf /etc/qcos/postgres/
 fi
