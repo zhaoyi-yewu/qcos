@@ -22,15 +22,15 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="11.313709"
-     inkscape:cx="1194.2591"
-     inkscape:cy="307.50305"
+     inkscape:zoom="1.0000001"
+     inkscape:cx="1153.9999"
+     inkscape:cy="430.99996"
      inkscape:window-width="1920"
      inkscape:window-height="976"
      inkscape:window-x="-8"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg66"
+     inkscape:current-layer="group-workflow"
      showguides="false"
      showgrid="false" />
   <defs
@@ -170,11 +170,41 @@
 </style>
     <meshgradient
        inkscape:collect="always"
+       id="meshgradient90-5-6-db"
+       gradientUnits="userSpaceOnUse"
+       x="24.148579"
+       y="89.985786"
+       gradientTransform="matrix(0.1901497,0,0,3.3556,1019.0826,10.09)">
+      <meshrow
+         id="meshrow-db">
+        <meshpatch
+           id="meshpatch-db">
+          <stop
+             path="c 313.333,0  626.667,0  940,0"
+             style="stop-color:#ffffff;stop-opacity:1"
+             id="stop-db-1" />
+          <stop
+             path="c -10.5107,15.089  0,30  0,45"
+             style="stop-color:#f9f9f9;stop-opacity:1"
+             id="stop-db-2" />
+          <stop
+             path="c -313.333,0  -626.667,0  -940,0"
+             style="stop-color:#ffffff;stop-opacity:1"
+             id="stop-db-3" />
+          <stop
+             path="c 0,-15  0,-30  0,-45"
+             style="stop-color:#f9f9f9;stop-opacity:1"
+             id="stop-db-4" />
+        </meshpatch>
+      </meshrow>
+    </meshgradient>
+    <meshgradient
+       inkscape:collect="always"
        id="meshgradient90-5-6"
        gradientUnits="userSpaceOnUse"
        x="24.148579"
        y="89.985786"
-       gradientTransform="matrix(0.1902826,0,0,11.240556,1019.0173,-902.70443)">
+       gradientTransform="matrix(0.19015609,0,0,13.165092,1022.2794,-1041.6775)">
       <meshrow
          id="meshrow15">
         <meshpatch
@@ -349,44 +379,46 @@
          style="fill:context-stroke;fill-rule:evenodd;stroke:none"
          id="path7-3-1" />
     </marker>
-    <marker
-       style="overflow:visible"
-       id="marker77-4-9"
-       refX="0"
-       refY="0"
-       orient="auto-start-reverse"
-       inkscape:stockid="Concave triangle arrow"
-       markerWidth="1"
-       markerHeight="1"
-       viewBox="0 0 1 1"
-       inkscape:isstock="true"
+    <meshgradient
        inkscape:collect="always"
-       preserveAspectRatio="xMidYMid">
-      <path
-         transform="scale(0.7)"
-         d="M -2,-4 9,0 -2,4 c 2,-2.33 2,-5.66 0,-8 z"
-         style="fill:context-stroke;fill-rule:evenodd;stroke:none"
-         id="path77-2-8" />
-    </marker>
-    <marker
-       style="overflow:visible"
-       id="ConcaveTriangle-7-6"
-       refX="0"
-       refY="0"
-       orient="auto-start-reverse"
-       inkscape:stockid="Concave triangle arrow"
-       markerWidth="1"
-       markerHeight="1"
-       viewBox="0 0 1 1"
-       inkscape:isstock="true"
+       id="meshgradient1"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(0.19073202,0,0,5.9808457,1018.7964,-230.24447)"
+       x="24.148579"
+       y="89.985786">
+      <meshrow
+         id="meshrow4">
+        <meshpatch
+           id="meshpatch4">
+          <stop
+             path="c 313.333,0  626.667,0  940,0"
+             style="stop-color:#ffffff;stop-opacity:1"
+             id="stop1" />
+          <stop
+             path="c -10.5107,15.089  0,30  0,45"
+             style="stop-color:#f9f9f9;stop-opacity:1"
+             id="stop2" />
+          <stop
+             path="c -313.333,0  -626.667,0  -940,0"
+             style="stop-color:#ffffff;stop-opacity:1"
+             id="stop3" />
+          <stop
+             path="c 0,-15  0,-30  0,-45"
+             style="stop-color:#f9f9f9;stop-opacity:1"
+             id="stop4" />
+        </meshpatch>
+      </meshrow>
+    </meshgradient>
+    <linearGradient
        inkscape:collect="always"
-       preserveAspectRatio="xMidYMid">
-      <path
-         transform="scale(0.7)"
-         d="M -2,-4 9,0 -2,4 c 2,-2.33 2,-5.66 0,-8 z"
-         style="fill:context-stroke;fill-rule:evenodd;stroke:none"
-         id="path7-7-5" />
-    </marker>
+       xlink:href="#swatch127"
+       id="linearGradient1"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(0.21570476,0,0,8.903247,992.20273,79.150471)"
+       x1="113.0801"
+       y1="31.710608"
+       x2="1029.7131"
+       y2="31.710608" />
   </defs>
   <rect
      x="20.15267"
@@ -405,13 +437,21 @@
      id="rect35-1-1"
      style="fill:url(#linearGradient125);fill-opacity:1;stroke:#0066cc;stroke-width:3.385;stroke-dasharray:10.15499997,3.38499999;stroke-dashoffset:0" />
   <rect
-     x="1023.6124"
-     y="108.78619"
-     width="177.8656"
-     height="337"
+     x="1016.714"
+     y="109.74987"
+     width="197.48351"
+     height="503.4559"
+     class="box"
+     id="rect35-1-1-8"
+     style="fill:url(#linearGradient1);fill-opacity:1;stroke:#0066cc;stroke-width:3.385;stroke-dasharray:10.15499997,3.38499999;stroke-dashoffset:0" />
+  <rect
+     x="1026.8716"
+     y="144.98509"
+     width="177.74736"
+     height="149.91534"
      class="box"
      id="rect35-1-1-4"
-     style="fill:url(#meshgradient90-5-6);fill-opacity:1;stroke:#0066cc;stroke-width:1.46251" />
+     style="fill:url(#meshgradient90-5-6);fill-opacity:1;stroke:#0066cc;stroke-width:1.58224" />
   <rect
      x="19.613026"
      y="636.6123"
@@ -443,6 +483,14 @@
      id="text1"><tspan
        style="fill:#0066cc;fill-opacity:1"
        id="tspan77">开发套件</tspan></text>
+  <text
+     x="1112.0792"
+     y="136.27415"
+     class="text_title"
+     id="text1-1"
+     style="font-weight:bold;font-size:13px;font-family:'Microsoft YaHei', sans-serif;text-anchor:middle"><tspan
+       style="fill:#0066cc;fill-opacity:1"
+       id="tspan77-7">外部依赖组件</tspan></text>
   <rect
      x="142"
      y="13.178293"
@@ -549,41 +597,36 @@
      dominant-baseline="middle"><tspan
        style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Microsoft YaHei', sans-serif;-inkscape-font-specification:'Microsoft YaHei, sans-serif Bold';text-anchor:middle;dominant-baseline:middle"
        id="tspan129">北向POSIQ接口</tspan></text>
-  <line
-     x1="991.1651"
-     y1="189.15277"
-     x2="1033.0497"
-     y2="189.13464"
-     stroke="#0066cc"
-     stroke-width="1.20195"
-     id="line8-3-2"
-     style="marker-start:url(#marker77-4-9);marker-end:url(#ConcaveTriangle-7-6);stroke-width:1.79239339;stroke-dasharray:none" />
+  <!-- 双向箭头：主图 <-> 工作流组件 -->
   <line
      x1="993.67523"
-     y1="533.13123"
+     y1="220.43999"
      x2="1013.7516"
-     y2="533.13123"
+     y2="220.43999"
      stroke="#0066cc"
      stroke-width="1.79228"
      id="line8-2"
      style="marker-start:url(#marker77-9);marker-end:url(#ConcaveTriangle-4)" />
+  <!-- 双向箭头：主图 <-> 数据库 -->
   <line
      x1="993.83868"
-     y1="587.00507"
+     y1="387.53009"
      x2="1013.6811"
-     y2="587.00507"
+     y2="387.53009"
      stroke="#0066cc"
      stroke-width="1.78181"
      id="line8-2-8"
      style="marker-start:url(#marker77-9-3);marker-end:url(#ConcaveTriangle-4-1)" />
-  <text
-     x="1002.007"
-     y="165"
-     class="text_sm"
-     id="text9"
-     text-anchor="middle"
-     dominant-baseline="middle"
-     style="text-anchor:middle;dominant-baseline:middle">TCP</text>
+  <!-- 双向箭头：主图 <-> 运维组件 -->
+  <line
+     x1="993.83868"
+     y1="540.65955"
+     x2="1013.6811"
+     y2="540.65955"
+     stroke="#0066cc"
+     stroke-width="1.78181"
+     id="line8-ops"
+     style="marker-start:url(#marker77-9-3);marker-end:url(#ConcaveTriangle-4-1)" />
   <!-- 量子设备管理 -->
   <rect
      x="31.398401"
@@ -814,9 +857,9 @@
      y="371.45282"
      width="145"
      height="48"
-     class="box_green"
+     class="box"
      id="rect27"
-     style="fill:#c5e0c7;fill-opacity:1" />
+     style="fill:#c6dafb;fill-opacity:1" />
   <text
      x="552.44385"
      y="395.45282"
@@ -830,9 +873,9 @@
      y="371.45282"
      width="145"
      height="48"
-     class="box_green"
+     class="box"
      id="rect28"
-     style="fill:#c5e0c7;fill-opacity:1" />
+     style="fill:#c6dafb;fill-opacity:1" />
   <text
      x="713.10059"
      y="395.45282"
@@ -846,9 +889,9 @@
      y="371.42279"
      width="145.82671"
      height="48.060059"
-     class="box_green"
+     class="box"
      id="rect29"
-     style="fill:#c5e0c7;fill-opacity:1" />
+     style="fill:#c6dafb;fill-opacity:1" />
   <text
      x="880.92896"
      y="395.45282"
@@ -1015,9 +1058,9 @@
      y="431.42258"
      width="145.69576"
      height="48.060482"
-     class="box_green"
+     class="box"
      id="rect34"
-     style="fill:#c5e0c7;fill-opacity:1" />
+     style="fill:#c6dafb;fill-opacity:1" />
   <text
      x="877.729"
      y="455.45282"
@@ -1082,111 +1125,233 @@
   <!-- 测控系统（紫色背景） -->
   <!-- 量子计算机（蓝色背景） -->
   <!-- 右侧工作流组件（白色背景） -->
-  <text
-     x="1112"
-     y="146.96126"
-     class="text_title"
-     id="text53"
-     text-anchor="middle">工作流组件</text>
-  <rect
-     x="1041.9283"
-     y="165"
-     width="140.14325"
-     height="45"
-     class="box"
-     id="rect53"
-     style="fill:#f4e3d7;fill-opacity:1" />
-  <text
-     x="1112"
-     y="187.5"
-     class="text_sm"
-     id="text54"><tspan
-       sodipodi:role="line"
-       id="tspan7"
+  <g
+     id="group-workflow"
+     transform="translate(4.4)">
+    <text
        x="1112"
-       y="187.5">API服务</tspan></text>
-  <rect
-     x="1042"
-     y="220"
-     width="140"
-     height="45"
-     class="box"
-     id="rect54"
-     style="fill:#f4e3d7;fill-opacity:1" />
-  <text
-     x="1112"
-     y="242.5"
-     class="text_sm"
-     id="text55">工作池</text>
-  <rect
-     x="1042"
-     y="275"
-     width="140"
-     height="45"
-     class="box"
-     id="rect55"
-     style="fill:#f4e3d7;fill-opacity:1" />
-  <text
-     x="1112"
-     y="297.5"
-     class="text_sm"
-     id="text56">工作器</text>
-  <rect
-     x="1042"
-     y="330"
-     width="140"
-     height="45"
-     class="box"
-     id="rect56"
-     style="fill:#f4e3d7;fill-opacity:1" />
-  <text
-     x="1112"
-     y="352.5"
-     class="text_sm"
-     id="text57">工作队列</text>
-  <rect
-     x="1042"
-     y="385"
-     width="140"
-     height="45"
-     class="box"
-     id="rect57"
-     style="fill:#f4e3d7;fill-opacity:1" />
-  <text
-     x="1112"
-     y="407.5"
-     class="text_sm"
-     id="text58">工作流</text>
-  <!-- Redis缓存 -->
-  <rect
-     x="1024"
-     y="510"
-     width="178"
-     height="45"
-     class="box"
-     style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1.46251"
-     id="rect6" />
-  <text
-     x="1113"
-     y="532.5"
-     class="text_sm"
-     style="dominant-baseline:middle;text-anchor:middle"
-     id="text14">Redis缓存</text>
-  <!-- PG数据库 -->
-  <rect
-     x="1024"
-     y="565"
-     width="178"
-     height="45"
-     class="box"
-     style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1.46251"
-     id="rect14" />
-  <text
-     x="1113"
-     y="587.5"
-     class="text_sm"
-     style="text-anchor:middle;dominant-baseline:middle"
-     id="text15">PG数据库</text>
+       y="161.71999"
+       class="text"
+       id="text53"
+       style="font-weight:bold;font-size:13px;dominant-baseline:middle;text-anchor:middle">工作流组件</text>
+    <rect
+       x="1033"
+       y="174.43999"
+       width="158"
+       height="32"
+       class="box"
+       id="rect53"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1" />
+    <text
+       x="1112"
+       y="190.43999"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text54"><tspan
+         sodipodi:role="line"
+         id="tspan7"
+         x="1112"
+         y="190.43999">API服务</tspan></text>
+    <rect
+       x="1033"
+       y="214.43999"
+       width="76"
+       height="32"
+       class="box"
+       id="rect54"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1" />
+    <text
+       x="1071"
+       y="230.43999"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text55">工作池</text>
+    <rect
+       x="1033"
+       y="254.43999"
+       width="76"
+       height="32"
+       class="box"
+       id="rect55"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1" />
+    <text
+       x="1071"
+       y="270.44012"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text56">工作器</text>
+    <rect
+       x="1115"
+       y="214.43999"
+       width="76"
+       height="32"
+       class="box"
+       id="rect56"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1" />
+    <text
+       x="1153"
+       y="230.43999"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text57">工作队列</text>
+    <rect
+       x="1115"
+       y="254.43999"
+       width="76"
+       height="32"
+       class="box"
+       id="rect57"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1" />
+    <text
+       x="1153"
+       y="270.44012"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text58">工作流</text>
+  </g>
+  <!-- ===== 右侧分组：数据库 ===== -->
+  <g
+     id="group-database"
+     transform="translate(2.8)">
+    <rect
+       x="1023.657"
+       y="312.03009"
+       width="177.77631"
+       height="151"
+       class="box"
+       id="rect-db-group"
+       style="fill:url(#meshgradient90-5-6-db);fill-opacity:1;stroke:#0066cc;stroke-width:1.55292" />
+    <text
+       x="1112"
+       y="325.4801"
+       class="text"
+       id="text-db-group-title"
+       style="font-weight:bold;font-size:13px;dominant-baseline:middle;text-anchor:middle">数据库</text>
+    <!-- Redis缓存 -->
+    <rect
+       x="1033"
+       y="339.4801"
+       width="158"
+       height="32"
+       class="box"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1"
+       id="rect6" />
+    <text
+       x="1112"
+       y="355.4801"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text14">Redis缓存</text>
+    <!-- PG数据库 -->
+    <rect
+       x="1033"
+       y="379.4801"
+       width="158"
+       height="32"
+       class="box"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1"
+       id="rect14" />
+    <text
+       x="1112"
+       y="395.4801"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text15">PG数据库</text>
+    <!-- 向量数据库(RAG知识库) -->
+    <rect
+       x="1033"
+       y="419.4801"
+       width="158"
+       height="32"
+       class="box"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1"
+       id="rect-vecdb" />
+    <text
+       x="1112"
+       y="435.4801"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text-vecdb">向量数据库(RAG知识库)</text>
+  </g>
+  <!-- ===== 右侧分组：运维组件 (可选) ===== -->
+  <g
+     id="group-ops"
+     transform="translate(2.8)">
+    <rect
+       x="1023.4024"
+       y="480.61685"
+       width="178.28568"
+       height="122.06577"
+       class="box"
+       id="rect-ops-group"
+       style="fill:url(#meshgradient1);fill-opacity:1;stroke:#0066cc;stroke-width:1.42715" />
+    <text
+       x="1112"
+       y="496.78003"
+       class="text"
+       id="text-ops-group-title"
+       style="font-weight:bold;font-size:13px;dominant-baseline:middle;text-anchor:middle">运维组件 (可选)</text>
+    <!-- 监控告警管理 -->
+    <rect
+       x="1033"
+       y="512.7594"
+       width="76"
+       height="32"
+       class="box"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1"
+       id="rect-metrics-mon" />
+    <text
+       x="1071"
+       y="528.7594"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text-metrics-mon">监控管理</text>
+    <!-- 指标采集 -->
+    <rect
+       x="1115"
+       y="512.7594"
+       width="76"
+       height="32"
+       class="box"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1"
+       id="rect-node-mon" />
+    <text
+       x="1153"
+       y="528.7594"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text-node-mon">告警上报</text>
+    <!-- 日志采集 -->
+    <rect
+       x="1033"
+       y="556.35925"
+       width="76"
+       height="32"
+       class="box"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1"
+       id="rect-log-mon" />
+    <text
+       x="1071"
+       y="572.35925"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text-log-mon">指标采集</text>
+    <!-- 告警上报 -->
+    <rect
+       x="1115"
+       y="556.35925"
+       width="76"
+       height="32"
+       class="box"
+       style="fill:#f4e3d7;fill-opacity:1;stroke:#0066cc;stroke-width:1"
+       id="rect-alert-mgr" />
+    <text
+       x="1153"
+       y="572.35925"
+       class="text_sm"
+       style="font-size:12px;dominant-baseline:middle;text-anchor:middle"
+       id="text-alert-mgr">日志采集</text>
+  </g>
   <!-- 右侧量子模拟器（蓝色背景） -->
   <rect
      x="831.54291"
@@ -1615,7 +1780,7 @@
      id="text14-8-8"
      text-anchor="middle"
      dominant-baseline="middle"
-     style="font-size:14px;font-family:'Microsoft YaHei', sans-serif;dominant-baseline:middle;text-anchor:middle">全局配置</text>
+     style="font-size:14px;font-family:'Microsoft YaHei', sans-serif;dominant-baseline:middle;text-anchor:middle">AI智能体</text>
   <text
      x="428.28732"
      y="252.97908"
