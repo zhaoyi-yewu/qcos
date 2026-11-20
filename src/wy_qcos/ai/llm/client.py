@@ -19,12 +19,14 @@
 
 Supports any OpenAI-compatible endpoint (OpenAI, Anthropic via
 pydantic-ai's AnthropicModel, Azure OpenAI, DeepSeek, Moonshot, Qwen,
-self-hosted vLLM / Ollama, LiteLLM gateway, ...). Provider selection
-is driven by [AI] LLM_PROVIDER + LLM_MODEL + LLM_BASE_URL.
+self-hosted vLLM / Ollama, LiteLLM gateway, ...). Each configured
+``[[AI.AGENT.MODELS]]`` entry owns an independent provider connection.
 
-Maintains TWO Agent instances:
-- text_agent   : text-only conversation, tool calling, RAG
-- vision_agent : handles messages with image attachments (separate model)
+Maintains per-model Agent instances:
+
+- text agents   : text-only conversation, tool calling, RAG
+- vision agents : handle messages with image attachments (only for
+  models with VISION_ENABLED=true)
 """
 
 import inspect
@@ -36,7 +38,7 @@ from functools import lru_cache
 os.environ["PYDANTIC_AI_NO_BANNER"] = "1"
 
 from openai import AsyncOpenAI
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ModelSettings
 from pydantic_ai.models.anthropic import AnthropicModel
 
 # pydantic-ai >= 0.2 renamed OpenAIModel -> OpenAIChatModel
@@ -46,6 +48,8 @@ except ImportError:
     from pydantic_ai.models.openai import OpenAIModel
 
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai_harness import ToolOutputLimits
+from pydantic_ai_harness.tool_output_limits import Band, Truncate
 
 from wy_qcos.ai.llm.prompts import (
     build_system_prompt,
@@ -54,6 +58,8 @@ from wy_qcos.ai.llm.prompts import (
 from wy_qcos.common.config import Config
 
 logger = logging.getLogger(__name__)
+
+_TOOL_OUTPUT_MAX_CHARS = 8000
 
 # pydantic-ai added the `instrument` Agent kwarg in a recent release;
 # older versions raise TypeError on it. Detect support once at import
@@ -124,6 +130,58 @@ def get_ai_config():
     return Config.AI_AGENT
 
 
+def _build_agent_kwargs(cfg) -> dict:
+    """Build Agent options from a resolved per-model config."""
+    kwargs = {"instrument": True} if _AGENT_SUPPORTS_INSTRUMENT else {}
+    if _AGENT_SUPPORTS_MODEL_SETTINGS and cfg.model_settings_enabled:
+        kwargs["model_settings"] = ModelSettings(
+            temperature=cfg.temperature,
+            max_tokens=cfg.max_tokens,
+        )
+    return kwargs
+
+
+class _QcosToolOutputLimits(ToolOutputLimits):
+    """Limit tool output without registering an additional read-back tool."""
+
+    def get_toolset(self) -> None:
+        return None
+
+
+def _build_harness_capabilities() -> list[ToolOutputLimits]:
+    """Bound tool output without changing the existing tool interfaces."""
+    return [
+        _QcosToolOutputLimits(
+            bands=[
+                Band(
+                    over=_TOOL_OUTPUT_MAX_CHARS,
+                    action=Truncate(max_chars=_TOOL_OUTPUT_MAX_CHARS),
+                )
+            ]
+        )
+    ]
+
+
+def _assemble_agent(model, system_prompt: str, cfg) -> Agent:
+    """Assemble an Agent with the shared MCP toolset and limits.
+
+    Text and vision agents share the exact same tool registration and
+    tool-output truncation so both turn types can run the real
+    submit/status/result tool chain; they differ only in the model
+    connection and the system prompt.
+    """
+    from wy_qcos.ai.tools.mcp_tools import register_mcp_tools
+
+    agent = Agent(
+        model,
+        system_prompt=system_prompt,
+        capabilities=_build_harness_capabilities(),
+        **_build_agent_kwargs(cfg),
+    )
+    register_mcp_tools(agent)
+    return agent
+
+
 def _build_model(
     provider: str,
     model_name: str,
@@ -175,47 +233,82 @@ def _build_model(
     raise ValueError(f"unsupported provider: {provider}")
 
 
-@lru_cache(maxsize=1)
-def build_text_agent() -> Agent:
-    """Build the text-only Agent (tool calling + RAG)."""
-    from wy_qcos.ai.tools.mcp_tools import register_mcp_tools
+def build_text_agent(model_id: str | None = None) -> Agent:
+    """Build (or reuse) the text Agent for one configured model.
 
-    cfg = get_ai_config()
+    ``None`` selects the default model; an explicit default ID hits
+    the same cache entry because the cache is keyed by the resolved
+    model ID, never by the raw argument.
+    """
+    resolved = get_ai_config().resolve_model(model_id)
+    return _build_text_agent_cached(resolved.id)
+
+
+@lru_cache(maxsize=32)
+def _build_text_agent_cached(model_id: str) -> Agent:
+    """Build the text-only Agent (tool calling + RAG) for one model."""
+    cfg = get_ai_config().resolve_model(model_id)
     model = _build_model(
-        cfg.LLM_PROVIDER.lower(),
-        cfg.LLM_MODEL,
-        cfg.LLM_BASE_URL,
-        cfg.LLM_API_KEY,
-        cfg.LLM_TIMEOUT,
+        cfg.provider.lower(),
+        cfg.model,
+        cfg.base_url,
+        cfg.api_key,
+        cfg.timeout,
     )
-    kwargs = {"instrument": True} if _AGENT_SUPPORTS_INSTRUMENT else {}
-    agent = Agent(
+    return _assemble_agent(
         model,
-        system_prompt=build_system_prompt(),
-        **kwargs,
+        build_system_prompt(cfg.system_prompt, cfg.display_name, cfg.model),
+        cfg,
     )
-    register_mcp_tools(agent)
-    return agent
 
 
-@lru_cache(maxsize=1)
-def build_vision_agent() -> Agent:
+def build_vision_agent(model_id: str | None = None) -> Agent:
+    """Build (or reuse) the vision Agent for one configured model.
+
+    Raises ``ValueError`` when the model has VISION_ENABLED=false so
+    callers can reject image attachments before streaming starts.
+    """
+    resolved = get_ai_config().resolve_model(model_id)
+    return _build_vision_agent_cached(resolved.id)
+
+
+@lru_cache(maxsize=32)
+def _build_vision_agent_cached(model_id: str) -> Agent:
     """Build the vision Agent for image understanding.
 
-    Falls back to the text model's provider config when VISION_*
-    settings are absent, so single-provider deployments work out of
-    the box.
+    VISION_* overrides fall back to the model's own connection, so
+    single-provider deployments work out of the box.
+
+    MCP tools ARE registered (same set as the text agent): a request
+    like "analyse this circuit image, submit it and analyse the
+    result" needs the real submit/status/result tool chain after the
+    image has been transcribed. Without tools the model could only
+    fabricate a job id and counts.
     """
-    cfg = get_ai_config()
-    provider = (cfg.VISION_PROVIDER or cfg.LLM_PROVIDER).lower()
-    model_name = cfg.VISION_MODEL or cfg.LLM_MODEL
-    base_url = cfg.VISION_BASE_URL or cfg.LLM_BASE_URL
-    api_key = cfg.VISION_API_KEY or cfg.LLM_API_KEY
-    timeout = cfg.LLM_TIMEOUT
-    model = _build_model(provider, model_name, base_url, api_key, timeout)
-    kwargs = {"instrument": True} if _AGENT_SUPPORTS_INSTRUMENT else {}
-    return Agent(
-        model,
-        system_prompt=build_vision_system_prompt(),
-        **kwargs,
+    section = get_ai_config()
+    cfg = section.resolve_model(model_id)
+    vision = section.resolve_vision(model_id)
+    if vision is None:
+        raise ValueError(
+            f"AI model '{model_id}' does not support image attachments"
+        )
+    model = _build_model(
+        vision.provider.lower(),
+        vision.model,
+        vision.base_url,
+        vision.api_key,
+        cfg.timeout,
     )
+    return _assemble_agent(
+        model,
+        build_vision_system_prompt(
+            cfg.vision_system_prompt, cfg.display_name, vision.model
+        ),
+        cfg,
+    )
+
+
+def reset_agent_caches() -> None:
+    """Drop all cached Agents (used by tests and config reloads)."""
+    _build_text_agent_cached.cache_clear()
+    _build_vision_agent_cached.cache_clear()
