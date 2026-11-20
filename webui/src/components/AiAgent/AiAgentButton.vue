@@ -15,7 +15,7 @@
 
 <template>
   <t-tooltip
-    :content="enabled ? 'AI 助手 (Ctrl+/)' : '功能未开启'"
+    :content="enabled ? 'AI 智能体 (Ctrl+/)' : '功能未开启'"
     placement="bottom"
     :show-after="200"
   >
@@ -44,7 +44,7 @@ const enabled = computed(() => componentsStore.aiAgentEnabled)
 
 function onClick() {
   if (!enabled.value) {
-    ElMessage.warning('AI 助手功能未开启')
+    ElMessage.warning('AI 智能体功能未开启')
     return
   }
   store.open()

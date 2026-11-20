@@ -40,7 +40,10 @@
     />
     <template #header>
       <div class="drawer-header">
-        <span class="drawer-header-title">AI 助手</span>
+        <div class="drawer-header-title">
+          <svg-icon icon-class="ai-robot" class="drawer-header-title-icon" />
+          <span>量子AI智能体</span>
+        </div>
         <div class="drawer-header-actions">
           <t-tooltip content="切换为浮窗" placement="bottom">
             <t-button size="small" variant="text" shape="square" @click="switchToFloating">
@@ -168,8 +171,8 @@
         @dblclick="onHeaderDblClick"
       >
         <div class="floating-title">
-          <ChatBubbleIcon class="floating-title-icon" />
-          <span class="floating-title-text">AI 助手</span>
+          <svg-icon icon-class="ai-robot" class="floating-title-icon" />
+          <span class="floating-title-text">量子AI智能体</span>
         </div>
         <div class="floating-controls">
           <t-tooltip content="吸附到右侧" placement="bottom">
@@ -292,8 +295,16 @@
       :class="{ 'is-above-terminal': isTerminalPillVisible }"
       @click="store.restoreFromMinimize()"
     >
-      <ChatBubbleIcon />
-      <span>AI 助手</span>
+      <svg-icon
+        icon-class="ai-robot"
+        class="minimized-robot-icon"
+      />
+      <span>量子AI智能体</span>
+      <!-- Green status dot, mirroring the terminal pill's "connected"
+           indicator: always lit while the AI service is available, so
+           the minimized pill shows the same alive-state as the
+           terminal's connected dot. -->
+      <span v-if="aiEnabled" class="pill-dot-on" />
     </div>
   </teleport>
 </template>
@@ -305,17 +316,18 @@ import {
   ChevronRightIcon,
   MinusIcon,
   CloseIcon,
-  ChatBubbleIcon,
   Fullscreen1Icon,
   FullscreenExit1Icon,
   DeleteIcon
 } from 'tdesign-icons-vue-next'
 import { useAiAgentStore } from '@/store/modules/aiAgent'
 import { useTerminalStore } from '@/store/modules/terminal'
+import { useComponentsStore } from '@/store/modules/components'
 import AiAgentChat from './AiAgentChat.vue'
 
 const store = useAiAgentStore()
 const terminalStore = useTerminalStore()
+const componentsStore = useComponentsStore()
 
 // Mirror the visibility rule of TerminalDialog's minimized pill: the
 // pill only renders while the terminal dialog itself is visible AND
@@ -323,6 +335,11 @@ const terminalStore = useTerminalStore()
 const isTerminalPillVisible = computed(
   () => terminalStore.visible && terminalStore.minimized
 )
+
+// AI service availability drives the green status dot on the minimized
+// pill, mirroring the terminal pill's always-on "connected" indicator:
+// lit whenever the feature is available, not only while generating.
+const aiEnabled = computed(() => componentsStore.aiAgentEnabled)
 
 const drawerVisible = computed({
   get: () => store.visible && store.displayMode === 'drawer',
@@ -409,12 +426,12 @@ async function onDeleteSession(sessionId) {
 const selectedSessionIds = ref(new Set())
 
 const isAllSelected = computed(
-  () => sessions.value.length > 0
-    && selectedSessionIds.value.size === sessions.value.length
+  () => sessions.value.length > 0 &&
+    selectedSessionIds.value.size === sessions.value.length
 )
 const isIndeterminate = computed(
-  () => selectedSessionIds.value.size > 0
-    && selectedSessionIds.value.size < sessions.value.length
+  () => selectedSessionIds.value.size > 0 &&
+    selectedSessionIds.value.size < sessions.value.length
 )
 
 function onToggleSelectSession(sessionId, checked) {
@@ -576,6 +593,18 @@ function onHeaderMouseDown(e) {
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
 }
+
+/*
+ * Expose the header's drag starter to AiAgentChat so the input toolbar
+ * (the status bar below the textarea) works as a second drag handle
+ * for the floating panel. Guarded to floating mode only - in drawer
+ * mode the panel is docked to the right edge and must not move.
+ */
+function startFloatingDrag(e) {
+  if (store.displayMode !== 'floating') return
+  onHeaderMouseDown(e)
+}
+provide('startFloatingDrag', startFloatingDrag)
 
 function onDragMove(e) {
   if (!isDragging.value) return
@@ -756,10 +785,18 @@ onUnmounted(() => {
 }
 
 .drawer-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   font-weight: 600;
   color: var(--td-text-color-primary);
   letter-spacing: 0.2px;
+}
+
+.drawer-header-title-icon {
+  font-size: 16px;
+  color: var(--td-brand-color);
 }
 
 .drawer-header-actions {
@@ -942,8 +979,14 @@ onUnmounted(() => {
   right: 24px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 9px 16px;
+  /* Fixed width (border-box) shared with TerminalDialog's minimized
+     pill so both docked pills line up at the same width on the
+     bottom-right corner, regardless of their different labels. */
+  box-sizing: border-box;
+  width: 160px;
   opacity: 0.4;
   /* Gradient + ring makes the pill feel like a FAB rather than a tag. */
   background: linear-gradient(
@@ -968,6 +1011,29 @@ onUnmounted(() => {
   /* Subtle "breathing" glow so the user notices the assistant is still
      alive while minimized. */
   animation: ai-pill-glow 2.6s ease-in-out infinite;
+}
+
+.ai-agent-minimized-pill :deep(.minimized-robot-icon) {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  font-size: 18px;
+  color: #fff;
+}
+
+/*
+ * Activity indicator on the minimized pill. Same 8px glowing green dot
+ * as the terminal's "connected" pill-dot-on, but lit while the AI is
+ * still generating a response in the background.
+ */
+.ai-agent-minimized-pill .pill-dot-on {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #67c23a;
+  box-shadow: 0 0 6px rgba(103, 194, 58, 0.95);
 }
 
 .ai-agent-minimized-pill:hover {
@@ -1012,7 +1078,10 @@ onUnmounted(() => {
  * reads like a typical IDE sidebar / chat-app drawer. */
 .session-list-overlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(15, 23, 42, 0.32);
   display: flex;
   justify-content: flex-start;
