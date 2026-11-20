@@ -29,6 +29,7 @@ from typing import Any
 from collections.abc import Sequence
 
 import numpy as np
+from schema import Optional, Or
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
@@ -218,6 +219,48 @@ class ReadoutMitigation(MitigationBase):
     Corrects measurement errors by calibrating per-qubit confusion matrices
     and applying pseudo-inverse correction to measurement probabilities.
     """
+
+    qem_options_schema: dict[Any, Any] = {
+        Optional("enabled"): bool,
+        Optional("calibration_shots"): int,
+        Optional("cache_ttl"): int,
+        Optional("max_correction_threshold"): Or(int, float),
+    }
+    qem_options_metadata = {
+        "enabled": {
+            "alias_name": "启用读出误差缓解",
+            "description": "是否启用读出误差缓解，未配置时默认为 false。",
+            "default": False,
+        },
+        "calibration_shots": {
+            "alias_name": "校准采样次数",
+            "description": (
+                "设置每个读出校准线路的采样次数，用于估计混淆矩阵。"
+            ),
+        },
+        "cache_ttl": {
+            "alias_name": "校准缓存时长",
+            "description": "设置读出校准数据的缓存有效时长，单位为秒。",
+        },
+        "max_correction_threshold": {
+            "alias_name": "最大校正阈值",
+            "description": (
+                "设置读出校正允许的最大概率偏移；0 表示关闭安全回退，"
+                "文档建议的范围未作为提交约束。"
+            ),
+            "field_constraints": {
+                "runtime": {
+                    "on_invalid": "fallback",
+                    "custom": [
+                        {
+                            "when": "校正偏移超过非零阈值",
+                            "rule": "当前线路回退到原始计数，不应用读出校正。",
+                        }
+                    ],
+                }
+            },
+        },
+    }
 
     def __init__(
         self,

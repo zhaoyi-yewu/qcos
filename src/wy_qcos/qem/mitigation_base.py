@@ -15,8 +15,11 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 from abc import ABC, abstractmethod
 from typing import Any
+
+from schema import Optional
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 
@@ -27,6 +30,25 @@ class MitigationBase(ABC):
     Provides the interface for calibration, circuit transformation,
     and result post-processing used by all mitigation strategies.
     """
+
+    qem_options_schema = {Optional("enabled"): bool}
+    qem_options_metadata = {
+        "enabled": {
+            "alias_name": "启用误差缓解",
+            "description": "是否启用当前误差缓解策略，未配置时默认为 false。",
+            "default": False,
+        }
+    }
+
+    @classmethod
+    def get_qem_options_schema(cls):
+        """Get the declarative options schema for this technique."""
+        return copy.deepcopy(cls.qem_options_schema)
+
+    @classmethod
+    def get_qem_options_metadata(cls):
+        """Get an independent copy of the options display metadata."""
+        return copy.deepcopy(cls.qem_options_metadata)
 
     def __init__(self, name: str):
         self._name = name

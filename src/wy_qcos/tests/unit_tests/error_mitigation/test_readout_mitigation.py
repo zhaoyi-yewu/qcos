@@ -28,6 +28,19 @@ from wy_qcos.qem.readout_mitigation import (
 )
 
 
+class TestReadoutOptionMetadata:
+    def test_metadata_does_not_change_runtime_configuration(self):
+        metadata = ReadoutMitigation.get_qem_options_metadata()
+        metadata["calibration_shots"]["alias_name"] = "已修改"
+        mitigation = ReadoutMitigation()
+        mitigation.set_config({"enabled": True, "calibration_shots": 128})
+
+        assert mitigation.enabled is True
+        assert mitigation._calibration_shots == 128
+        fresh = ReadoutMitigation.get_qem_options_metadata()
+        assert fresh["calibration_shots"]["alias_name"] == "校准采样次数"
+
+
 class TestBuildLocalConfusionMatrix:
     """Test build_local_confusion_matrix function."""
 

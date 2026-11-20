@@ -856,6 +856,24 @@ class TestProbsToCounts:
 class TestZneSetConfigEdges:
     """Cover set_config edge cases."""
 
+    def test_nullable_metadata_matches_factory_semantics(self):
+        metadata = ZNEMitigation.get_qem_options_metadata()
+        nullable_fields = {
+            name
+            for name, field in metadata.items()
+            if field.get("field_constraints", {})
+            .get("schema", {})
+            .get("nullable")
+        }
+        assert nullable_fields == {
+            "scale_factors",
+            "scale_factor",
+            "polynomial_degree",
+            "folding_seed",
+            "fold_gate_names",
+        }
+        assert "全部内置自逆门" in metadata["fold_gate_names"]["description"]
+
     def test_set_config_fold_gate_names_none(self):
         zne = ZNEMitigation()
         zne.set_config({"enabled": True, "fold_gate_names": None})

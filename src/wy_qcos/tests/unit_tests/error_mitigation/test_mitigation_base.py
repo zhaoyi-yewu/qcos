@@ -38,6 +38,17 @@ class TestMitigationBaseDefaults:
         assert m.enabled is False
         assert m._config == {}
 
+    def test_qem_metadata_getter_returns_independent_copy(self):
+        schema = MitigationBase.get_qem_options_schema()
+        metadata = MitigationBase.get_qem_options_metadata()
+        metadata["enabled"]["default"] = True
+
+        assert schema == MitigationBase.get_qem_options_schema()
+        assert (
+            MitigationBase.get_qem_options_metadata()["enabled"]["default"]
+            is False
+        )
+
     def test_set_config_enables(self):
         m = _ConcreteMitigation("test")
         m.set_config({"enabled": True, "foo": "bar"})

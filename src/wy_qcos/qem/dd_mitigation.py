@@ -27,6 +27,7 @@ import logging
 from typing import Any
 
 import numpy as np
+from schema import Optional, Or
 
 from wy_qcos.common.cmss.quantum_circuit import QuantumCircuit
 from wy_qcos.common.cmss.gate_operation import GateOperation
@@ -371,6 +372,62 @@ class DDMitigation(MitigationBase):
     Inserts echo pulse sequences into idle windows to suppress
     decoherence.
     """
+
+    qem_options_schema: dict[Any, Any] = {
+        Optional("enabled"): bool,
+        Optional("sequence"): str,
+        Optional("gate_times"): Or({str: Or(int, float)}, None),
+    }
+    qem_options_metadata = {
+        "enabled": {
+            "alias_name": "启用动态解耦",
+            "description": "是否启用动态解耦误差缓解，未配置时默认为 false。",
+            "default": False,
+        },
+        "sequence": {
+            "alias_name": "脉冲序列",
+            "description": (
+                "选择动态解耦脉冲序列，支持 XX、CPMG、XY4、XY8、XXYX 和 "
+                "UDD<n>；未知名称回退为 XY4。"
+            ),
+            "field_constraints": {
+                "runtime": {
+                    "on_invalid": "fallback",
+                    "custom": [
+                        {
+                            "when": "序列名称无法识别",
+                            "rule": "记录告警并回退到 XY4。",
+                        },
+                        {
+                            "when": "使用 UDD<n> 序列",
+                            "rule": (
+                                "n 必须为至少 1 的整数，"
+                                "空闲窗口还需容纳全部脉冲时长。"
+                            ),
+                        },
+                    ],
+                }
+            },
+        },
+        "gate_times": {
+            "alias_name": "门执行时长",
+            "description": (
+                "按门名称配置执行时长，单位为微秒；"
+                "null 或缺少有效时长配置时跳过 DD。"
+            ),
+            "field_constraints": {
+                "schema": {"nullable": True},
+                "runtime": {"on_invalid": "skip_technique"},
+            },
+            "*": {
+                "alias_name": "单门执行时长",
+                "description": (
+                    "指定一个门名称对应的执行时长，单位为微秒，"
+                    "值必须为非空 number。"
+                ),
+            },
+        },
+    }
 
     def __init__(
         self,

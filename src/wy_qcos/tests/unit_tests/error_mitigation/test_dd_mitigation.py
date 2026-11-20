@@ -323,6 +323,17 @@ class TestDDMitigation:
         assert dd.name == "dd"
         assert dd._sequence == "XY4"
 
+    def test_gate_times_metadata_preserves_runtime_behavior(self):
+        metadata = DDMitigation.get_qem_options_metadata()
+        gate_times = metadata["gate_times"]
+        assert gate_times["field_constraints"]["schema"]["nullable"] is True
+        assert "微秒" in gate_times["description"]
+        assert "微秒" in gate_times["*"]["description"]
+
+        dd = DDMitigation()
+        dd.set_config({"enabled": True, "gate_times": {"x": 0.02}})
+        assert dd._config["gate_times"] == {"x": 0.02}
+
     def test_set_config(self):
         dd = DDMitigation()
         dd.set_config({"enabled": True, "sequence": "CPMG"})
