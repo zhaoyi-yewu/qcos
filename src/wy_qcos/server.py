@@ -17,6 +17,7 @@
 
 import argparse
 import logging
+import pathlib
 import sys
 import uvicorn
 
@@ -106,11 +107,20 @@ class Server:
 
         # read and parse config files under config dir
         if args.config_dir:
-            config_files = Library.find_files(
-                args.config_dir, pattern="*.toml", recursive=True
-            )
-            for cf in config_files:
-                Config.load_config_file(cf, extra_config=True)
+            # resolve to an absolute path first to eliminate relative
+            # path and symlink ambiguity before scanning config files
+            config_dir = pathlib.Path(args.config_dir).expanduser().resolve()
+            if not config_dir.is_dir():
+                logger.warning(
+                    "Config dir is not a valid directory, skipped: %s",
+                    config_dir,
+                )
+            else:
+                config_files = Library.find_files(
+                    str(config_dir), pattern="*.toml", recursive=True
+                )
+                for cf in config_files:
+                    Config.load_config_file(cf, extra_config=True)
 
         # validate Config
         Config.validate()

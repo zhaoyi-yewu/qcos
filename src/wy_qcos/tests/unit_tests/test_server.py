@@ -28,6 +28,13 @@ from wy_qcos.server import Server
 server = Server()
 
 
+@pytest.fixture(autouse=True)
+def _disable_ai_agent():
+    """Isolate server tests from required AI model configuration."""
+    with patch.object(Config, "is_ai_agent_enabled", return_value=False):
+        yield
+
+
 class TestServer:
     @patch("wy_qcos.server.init_logger")
     @patch("wy_qcos.server.Config.load_driver_env_file")
@@ -91,6 +98,7 @@ class TestServer:
         mock_load_config_file,
         mock_load_driver_env_file,
         mock_init_logger,
+        tmp_path,
     ):
         """config_dir specified: find_files scans and loads them."""
         mock_init_logger.return_value = [Mock()]
@@ -99,16 +107,50 @@ class TestServer:
 
         mock_args = Mock()
         mock_args.config_files = []
-        mock_args.config_dir = "/etc/qcos/conf.d/"
+        mock_args.config_dir = str(tmp_path)
         mock_parser.parse_args.return_value = mock_args
-        mock_find_files.return_value = ["/etc/qcos/conf.d/dev1.toml"]
+        config_file = str(tmp_path / "dev1.toml")
+        mock_find_files.return_value = [config_file]
         Config.DEFAULT.VENV_DIR = "/venv"
 
         server._parse_arguments(None)
-        mock_find_files.assert_called_once()
-        mock_load_config_file.assert_called_once_with(
-            "/etc/qcos/conf.d/dev1.toml", extra_config=True
+        expected_dir = str(tmp_path.expanduser().resolve())
+        mock_find_files.assert_called_once_with(
+            expected_dir, pattern="*.toml", recursive=True
         )
+        mock_load_config_file.assert_called_once_with(
+            config_file, extra_config=True
+        )
+        mock_load_driver_env_file.assert_called_once()
+
+    @patch("wy_qcos.server.init_logger")
+    @patch("wy_qcos.server.Config.load_driver_env_file")
+    @patch("wy_qcos.server.Config.load_config_file")
+    @patch("wy_qcos.server.Library.find_files")
+    @patch("wy_qcos.server.argparse.ArgumentParser")
+    def test_parse_arguments_with_invalid_config_dir(
+        self,
+        mock_argument_parser,
+        mock_find_files,
+        mock_load_config_file,
+        mock_load_driver_env_file,
+        mock_init_logger,
+        tmp_path,
+    ):
+        """Invalid config dir is skipped with a warning."""
+        mock_init_logger.return_value = [Mock()]
+        mock_parser = Mock()
+        mock_argument_parser.return_value = mock_parser
+
+        mock_args = Mock()
+        mock_args.config_files = []
+        mock_args.config_dir = str(tmp_path / "not-exist")
+        mock_parser.parse_args.return_value = mock_args
+        Config.DEFAULT.VENV_DIR = "/venv"
+
+        server._parse_arguments(None)
+        mock_find_files.assert_not_called()
+        mock_load_config_file.assert_not_called()
         mock_load_driver_env_file.assert_called_once()
 
     @patch("wy_qcos.server.init_logger")
