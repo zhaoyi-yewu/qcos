@@ -1,7 +1,7 @@
-AI Agent 助手
+AI智能体
 ====================================
 
-本章节介绍 QCOS 操作系统中内置 AI Agent（AI 助手）后端的设计与实现，
+本章节介绍 QCOS 操作系统中内置 AI Agent（AI智能体）后端的设计与实现，
 代码位于 ``src/wy_qcos/ai/``。
 
 .. note::
@@ -12,7 +12,7 @@ AI Agent 助手
 概述
 --------------------
 
-QCOS AI Agent 是集成在 QCOS API 服务中的智能助手，为用户提供：
+QCOS AI Agent 是集成在 QCOS API 服务中的智能体，为用户提供：
 
 - **自然语言问答**：QCOS 使用方法、量子计算概念、故障排查
 - **实时数据查询**：通过工具调用（function calling）查询设备状态、
@@ -123,18 +123,36 @@ Provider 无关
 
 - **openai_compatible**：任何暴露 OpenAI ``/v1/chat/completions`` 协议的
   端点（vLLM / Ollama / DeepSeek / Moonshot / Qwen / LiteLLM 网关），
-  由 ``[AI.AGENT] LLM_BASE_URL`` 指定
+  由模型项 ``BASE_URL`` 指定
 - **anthropic**：Claude 官方 API，经 ``AnthropicModel`` 直连
-- 通过 ``[AI.AGENT] LLM_PROVIDER + LLM_MODEL + LLM_BASE_URL + LLM_API_KEY``
-  切换，无需改代码
+- 通过 ``[[AI.AGENT.MODELS]]`` 的
+  ``PROVIDER + MODEL + BASE_URL + API_KEY`` 切换，无需改代码
 
-**超时防护**：``LLM_TIMEOUT`` （默认 60s）覆盖 OpenAI SDK 默认的 600s，
-防止挂起的 LLM 端点长期占用 API worker 耗尽 worker 池。
+**超时防护**：``LLM_TIMEOUT`` （默认 60s，逐模型 ``TIMEOUT`` 可覆盖）
+覆盖 OpenAI SDK 默认的 600s，防止挂起的 LLM 端点长期占用 API worker
+耗尽 worker 池。
 
-文本与视觉双 Agent
+按模型构建与缓存 Agent
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-维护两个独立 Agent 实例：
+``AI.AGENT.MODELS`` 支持配置多个模型（第一项为默认）。每个模型项拥有
+独立的 provider 连接；``build_text_agent(model_id)`` /
+``build_vision_agent(model_id)`` 先经 ``AIAgentSection.resolve_model()``
+合并共享默认得到不可变 ``ResolvedAIModelConfig``，再以**规范化模型 ID
+为 key** 调用 ``@lru_cache(maxsize=32)`` 的有界缓存构建函数：
+
+- 缺省调用与显式传默认 ID 命中**同一缓存项**
+- 不同 ID 各自独立构建 Agent 并注册 MCP 工具；**禁止** 通过修改全局
+  ``Config.AI_AGENT`` 切换模型，避免并发请求串扰
+- 采样 / 超时 / 提示词使用解析后的覆盖值；``model_settings`` 仅在最终
+  开关为真时传入（严格网关不会因可选参数报 400）
+- 保持惰性初始化：模块导入与模型清单查询均不连接 LLM；
+  ``reset_agent_caches()`` 供测试与配置重载清空缓存
+
+文本与视觉 Agent
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+每个模型可独立配置视觉能力（``VISION_ENABLED``）：
 
 .. list-table::
    :header-rows: 1
@@ -144,13 +162,14 @@ Provider 无关
      - 配置来源
      - 特点
    * - text agent
-     - ``LLM_*``
+     - 模型项 ``PROVIDER / BASE_URL / API_KEY / MODEL``
      - 文本对话 + 工具调用 + RAG，成本敏感
    * - vision agent
-     - ``VISION_*`` （缺省回退 ``LLM_*``）
-     - 仅图片分析；**不注册 MCP 工具**，防止图像分析意外触发工具调用
-
-均通过 ``@lru_cache(maxsize=1)`` 单例构建，惰性初始化避免 import 副作用。
+     - 模型项 ``VISION_*`` （缺省回退本项连接）
+     - 图片分析 + 真实工具链；**同样注册 MCP 工具** （与文本 Agent 相同），
+       使"分析图片并提交作业"能真正执行 submit/status/result，而不是
+       捏造作业 ID 与结果；``VISION_ENABLED=false`` 的模型构建时直接
+       报错，REST 层在流前拒绝附件（HTTP 400）
 
 Agent 图手动驱动（Agent.iter）
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -239,9 +258,7 @@ RAG 设计
   warning 并返回空上下文，对话降级为无 RAG 继续进行，**不中断聊天**
 - **图片消息跳过 RAG**：vision 分支不检索文档
 - **离线索引**：``bin/qcos-ai-indexer.py`` 独立脚本一次性入库，
-  不占用 FastAPI 进程；``--recreate`` 可先 ``DELETE`` 清空
-  ``ai_document_chunks`` 再走 embedding+upsert 全量重建（表结构
-  由 Alembic 迁移管理，本函数不动 schema）
+  不占用 FastAPI 进程
 
 会话管理
 --------------------
@@ -265,6 +282,28 @@ Redis 键结构
 - **容量上限**：消息列表超过 200 条时 ``LTRIM`` 保留最近 200 条
 - **自动标题**：首条用户消息截取前 50 字符作为会话标题
 - **pipeline 批量**：写入用 Redis pipeline 合并往返
+- **分支截断**：编辑问题时通过 ``WATCH/MULTI`` 校验原文并原子删除
+  该用户问题及后续消息，同时更新计数与 TTL，避免并发或陈旧页面误删历史
+
+会话与消息的模型元数据
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+多模型支持后，会话 JSON 增加可空 ``model_id`` （最近使用的配置模型），
+消息 JSON 增加可空 ``model_id`` / ``model`` （本轮配置 ID 与实际上游
+模型名）：
+
+- ``AiAgent`` 解析优先级：**显式请求 ID → 会话保存且仍存在的 ID →
+  配置第一项**；显式非法 ID 在流开始前报错（HTTP 400），会话中已
+  删除的模型安全回退默认项并在下一次 ``append()`` 时修复元数据
+- 用户消息记录本轮配置 ID；助手成功/失败消息均记录配置 ID 与实际
+  上游模型（视觉分支记录 ``VISION_MODEL or MODEL``）
+- 旧 Redis 数据缺字段时回退默认模型，无需迁移；清空与截断不改变
+  会话当前模型选择
+- ``done`` 事件与 AG-UI ``RUN_FINISHED`` 均携带模型信息；历史重放
+  保持通用 ``ModelRequest/ModelResponse`` ，且**按当前模型视觉能力
+  过滤历史图片**：切换到 ``VISION_ENABLED=false`` 的模型后，上一轮
+  带图消息中的附件不再内联为 ``BinaryContent`` （以占位文本代替），
+  避免上游返回"当前模型不支持图片输入"的 400 错误
 
 REST API
 --------------------
@@ -280,10 +319,15 @@ REST API
      - 说明
    * - ``/v1/ai/chat``
      - POST
-     - 内部事件格式 SSE 流式聊天
+     - 内部事件格式 SSE 流式聊天（``model_id`` 可选，严格白名单）
    * - ``/v1/ai/chat/agui``
      - POST
-     - AG-UI 协议标准事件流（TEXT_MESSAGE_* / TOOL_CALL_* / RUN_*）
+     - AG-UI 协议标准事件流（TEXT_MESSAGE_* / TOOL_CALL_* / RUN_*）；
+       ``RUN_STARTED/RUN_FINISHED`` 携带真实 ``sessionId`` 与模型信息
+   * - ``/v1/ai/models``
+     - GET
+     - 模型清单（仅 id / display_name / model / supports_vision，
+       不含连接与密钥，不实例化 Agent）
    * - ``/v1/ai/sessions``
      - GET / POST
      - 列出当前用户会话 / 创建新会话
@@ -293,6 +337,9 @@ REST API
    * - ``/v1/ai/sessions/{id}/messages``
      - DELETE
      - 清空消息但保留会话记录（聊天工具栏"清空对话"按钮）
+   * - ``/v1/ai/sessions/{id}/messages/truncate``
+     - POST
+     - 从被编辑的用户问题开始原子截断后续历史，返回保留的消息前缀
 
 鉴权
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -402,6 +449,11 @@ AI 唯一的文件能力，**严格只读**，实现为 ``_read_local_file()``�
 - **工具调用强制规则**：涉及设备/作业/状态/文件等真实数据问题时必须
   发起真实 function call，禁止只以文字描述"我将调用…"；工具失败或
   返回空时如实告知，禁止编造数据
+- **真实数据强制约束**：作业 ID、作业状态、测量 counts、设备状态等只能
+  来自 MCP 工具真实返回；"提交并分析结果"必须按
+  ``qcos_submit_job → qcos_get_job_status → qcos_get_job_result`` 完整
+  工具链执行；图片分析分支与文本分支共用同一 ``Agent.iter()`` 工具
+  调用循环，严禁捏造作业 ID、提交成功提示或测量结果
 - **工具清单**：与 ``register_mcp_tools`` 注册集严格同步
 
 配置
@@ -431,24 +483,23 @@ AI.AGENT 配置项
    * - 字段
      - 默认值
      - 说明
-   * - ``LLM_PROVIDER``
-     - ``openai_compatible``
-     - provider 类型（openai_compatible / openai / anthropic）
-   * - ``LLM_BASE_URL``
-     - ``http://vllm:8000/v1``
-     - LLM 端点（托管 provider 忽略）
-   * - ``LLM_API_KEY``
-     - ``""``
-     - API key（本地端点可为空）
-   * - ``LLM_MODEL``
-     - ``Qwen/Qwen2.5-72B-Instruct``
-     - 模型名
+   * - ``MODELS``
+     - 必填（1-32 项）
+     - ``[[AI.AGENT.MODELS]]`` 模型数组，第一项为默认；每项含
+       ``ID / DISPLAY_NAME / PROVIDER / BASE_URL / API_KEY / MODEL /
+       VISION_ENABLED / VISION_*``，ID 唯一且格式受限；旧
+       ``LLM_PROVIDER / LLM_MODEL / VISION_*`` 单模型字段已移除，
+       加载时触发迁移报错
+   * - ``LLM_TEMPERATURE / LLM_MAX_TOKENS / LLM_MODEL_SETTINGS_ENABLED``
+     - 0.3 / 4096 / false
+     - 共享采样默认值；模型项 ``TEMPERATURE / MAX_TOKENS /
+       MODEL_SETTINGS_ENABLED`` 可覆盖
    * - ``LLM_TIMEOUT``
      - ``60.0``
-     - LLM HTTP 超时秒数
-   * - ``VISION_PROVIDER / VISION_BASE_URL / VISION_API_KEY / VISION_MODEL``
+     - 共享 LLM HTTP 超时秒数；模型项 ``TIMEOUT`` 可覆盖
+   * - ``SYSTEM_PROMPT / VISION_SYSTEM_PROMPT``
      - 空
-     - 视觉模型独立配置，空值回退 ``LLM_*``
+     - 共享提示词；模型项同名字段可覆盖，空值使用内置模板
    * - ``IMAGE_MAX_COUNT_PER_MESSAGE``
      - 4
      - 单消息图片上限
@@ -464,6 +515,17 @@ AI.AGENT 配置项
    * - ``RAG_TOP_K``
      - 8
      - RAG 检索 chunk 数
+
+解析与安全：
+
+- ``resolve_model(model_id)`` 返回合并共享默认后的不可变配置；未知 ID
+  抛出 ``UnknownAIModelError`` （REST 映射 HTTP 400）
+- ``public_models()`` 只输出 ``id / display_name / model /
+  supports_vision``；``resolve_vision()`` 仅在 ``VISION_ENABLED=true``
+  时返回最终视觉连接
+- 配置解密递归处理 list/dict，``MODELS[i].API_KEY / VISION_API_KEY``
+  的加密值可用，错误路径不回显密文；Pydantic 脱敏同样递归处理模型
+  列表项的 ``sensitive`` 元数据
 
 附件校验（``_validate_attachments()``）：
 图片仅允许 png/jpeg/webp/gif，超数量/超大小直接 raise（HTTP 层转为 4xx）。
@@ -487,8 +549,9 @@ AI.AGENT 配置项
 2. 编排层校验数量/大小/媒体类型，超限 raise
 3. base64 解码为字节，包成 pydantic-ai 的 ``BinaryContent``
    （自动序列化为 OpenAI ``image_url`` 格式）
-4. 走 vision agent（``run_stream`` 纯文本流，无工具事件）
-5. 图片消息**不做 RAG 检索**、不注册工具
+4. 走 vision agent，与文本分支**共用同一 ``Agent.iter()`` 图驱动**：
+   图片分析后可继续发起真实工具调用（如提交作业、查询结果）
+5. 图片消息 **不做 RAG 检索**
 
 安全设计汇总
 --------------------
@@ -514,8 +577,9 @@ AI.AGENT 配置项
      - RAG chunk 2000 字符截断、文件读取 2000 行截断、
        图片数量/大小上限
    * - 配置中的敏感信息
-     - ``LLM_API_KEY`` / ``EMBEDDING_API_KEY`` 等字段标记
-       ``sensitive``，输出时脱敏
+     - 模型项 ``API_KEY`` / ``VISION_API_KEY``、``EMBEDDING_API_KEY``
+       等字段标记 ``sensitive``，输出时递归脱敏；模型清单接口不
+       返回任何连接信息
    * - 无界资源消耗
      - 会话 TTL + 消息 200 条 LTRIM
 
@@ -537,7 +601,6 @@ AI.AGENT 配置项
    │   ├── chunker.py      # Markdown / RST 文档切分
    │   ├── embedder.py     # OpenAI 兼容 embedding 客户端
    │   ├── indexer.py      # 离线批量入库（bin/qcos-ai-indexer.py）
-   │   │                   # --recreate 可先清空再全量重建
    │   └── retriever.py    # pgvector top-K 检索
    └── tools/
        └── mcp_tools.py    # MCP 工具桥接 + qcos_read_file
