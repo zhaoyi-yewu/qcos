@@ -27,17 +27,17 @@
 
 | 驱动名称 | 厂商/社区 | 驱动类名 | 驱动版本 | 技术路线 | 最大量子比特数 | 转译器 | 驱动描述 |
 |:-------------------------------|:-----------|:-----------------------|:------|:-------|:--------|:-------|:------------------------------------|
-| 空载测试驱动(中性原子) | QCOS社区 | DriverDummy | 0.0.1 | 中性原子 | 36 | cmss | 空载测试驱动(中性原子) |
+| 空载测试驱动(中性原子) | QCOS社区 | DriverDummy | 0.0.1 | 中性原子 | 10 | cmss | 空载测试驱动(中性原子) |
 | 中科酷原-汉原1 中性原子驱动 (FPGA) | 中科酷原 | DriverHanyuan1 | 0.0.1 | 中性原子 | 100 | cmss | 中科酷原-汉原1 中性原子驱动 (FPGA版) |
 | 中科酷原-汉原1-Pulse 中性原子脉冲驱动 | 中科酷原 | DriverHanyuan1Pulse | 0.0.1 | 中性原子 | 100 | cmss | 中科酷原-汉原1 中性原子脉冲驱动 |
 | 中科酷原-汉原1 中性原子驱动 | 中科酷原 | DriverWuyueHanyuan1 | 0.0.1 | 中性原子 | 100 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台版) |
 | 中科酷原-汉原1 中性原子驱动 - 模拟器 | 中科酷原 | DriverWuyueHanyuan1Sim | 0.0.1 | 中性原子 | 25 | cmss | 五岳-中科酷原-汉原1 中性原子驱动 (云平台模拟器版) |
-| 量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本) | 量旋科技 | DriverSpinQRpc | 0.0.1 | 超导 | 57 | cmss | 量旋科技 大熊座-S25 超导量子计算机驱动 (RPC版本) (实验) |
-| 量旋科技 双子座 核磁量子计算机驱动 | 量旋科技 | DriverSpinQGemini | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 双子座 核磁量子计算机驱动 (实验) |
-| 量旋科技 三角座 核磁量子计算机驱动 | 量旋科技 | DriverSpinQTriangulum | 0.0.1 | 核磁共振 | 2 | dummy | 量旋科技 三角座 核磁量子计算机驱动 (实验) |
-| 量旋科技 SQC-25 云平台超导驱动 | 量旋科技 | DriverSqc25 | 0.0.1 | 超导 | 25 | cmss | 量旋科技 SQC-25 云平台超导驱动 |
+| 量旋科技 双子座 核磁驱动 | 量旋科技 | DriverSpinQGemini | 0.0.1 | 核磁共振 | 2 | cmss | 量旋科技 双子座 核磁驱动 |
+| 量旋科技 三角座 核磁量子计算机驱动 | 量旋科技 | DriverSpinQTriangulum | 0.0.1 | 核磁共振 | 3 | cmss | 量旋科技 三角座 核磁量子计算机驱动 |
+| 量旋科技 SQC-25 云平台超导驱动 | 量旋科技 | DriverSpinqSqc25 | 0.0.1 | 超导 | 25 | cmss | 量旋科技 SQC-25 云平台超导驱动 |
 | 幺正量子 UQC-Matrix2 离子阱驱动 | 幺正量子 | DriverUQCMatrix2 | 0.0.1 | 离子阱 | 5 | cmss | 幺正量子 UQC-Matrix2 离子阱驱动 |
-| 启科量子 AbaQu100 离子阱驱动 | 启科量子 | DriverAbaQu100 | 0.0.1 | 离子阱 | 20 | cmss | 启科量子 AbaQu100 离子阱驱动 |
+| 国仪量子-离子阱驱动 | 国仪量子 | DriverCiqtekIon1 | 0.0.1 | 离子阱 | 5 | dummy | 国仪量子-离子阱驱动 |
+| 启科量子 AbaQu100 离子阱驱动 | 启科量子 | DriverQudoorAbaQu100 | 0.0.1 | 离子阱 | 20 | cmss | 启科量子 AbaQu100 离子阱驱动 |
 | 北京量子院 夸父-Dongling 超导驱动 | 北京量子院 | DriverQuafuDongling | 0.0.1 | 超导 | 84 | cmss | 北京量子院 夸父-Dongling 超导驱动 |
 | 北京量子院-夸父-Shenglian 超导驱动 | 北京量子院 | DriverQuafuShenglian | 0.0.1 | 超导 | 84 | cmss | 北京量子院-夸父-Shenglian 超导驱动 |
 | 北京量子院-夸父-Hongluo 超导驱动 | 北京量子院 | DriverQuafuHongluo | 0.0.1 | 超导 | 84 | cmss | 北京量子院-夸父-Hongluo 超导驱动 |
@@ -47,7 +47,7 @@
 | 逻辑比特 QZ01-repetition_code 超导驱动 | 逻辑比特 | DriverLqQZ01RepetitionCode | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 QZ01-repetition_code 超导驱动 |
 | 逻辑比特 QZ02 超导驱动 | 逻辑比特 | DriverLqQZ02 | 0.0.1 | 超导 | 20 | cmss | 逻辑比特 QZ02 超导驱动 |
 | 逻辑比特 MQ02 超导驱动 | 逻辑比特 | DriverLqMQ02 | 0.0.1 | 超导 | 24 | cmss | 逻辑比特 MQ02 超导驱动 |
-| 逻辑比特 MQ02 超导脉冲驱动 | 逻辑比特 | DriverLqMQ02Pulse | 0.0.1 | 超导 | 24 | cmss | 逻辑比特 MQ02 超导脉冲驱动 |
+| 逻辑比特 MQ02 超导脉冲驱动 | 逻辑比特 | DriverLqMQ02Pulse | 0.0.1 | 超导 | 17 | cmss | 逻辑比特 MQ02 超导脉冲驱动 |
 | 逻辑比特 AGate-100 超导驱动 | 逻辑比特 | DriverLqAGate100 | 0.0.1 | 超导 | 101 | cmss | 逻辑比特 AGate-100 超导驱动 |
 | 国基量子 百花 超导驱动 | 国基量子 | DriverCetcBaihua | 0.0.1 | 超导 | 156 | cmss | 国基量子 百花 超导驱动 |
 | Qiskit Aer 模拟器驱动 | IBM Qiskit | DriverQiskitAerSim | 0.0.1 | 通用模拟器 | 30 | qiskit | Qiskit Aer 模拟器驱动 |

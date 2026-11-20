@@ -47,6 +47,14 @@ copy_from = "spinq"
 module_name = "driver_spinq_rpc"
 copy_from = "spinq"
 
+[DriverSpinQGemini]
+module_name = "driver_spinq_gemini"
+copy_from = "spinq"
+
+[DriverSpinQTriangulum]
+module_name = "driver_spinq_triangulum"
+copy_from = "spinq"
+
 [DriverUQCMatrix2]
 module_name = "driver_uqc"
 deps_pyproject_file = "../pyproject.toml"
