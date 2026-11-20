@@ -1,0 +1,152 @@
+// OpenQASM 2.0/3.0 grammar for QCOS compiler
+// Replaces PLY-based tokrules.py + parser.py BNF
+
+// ── Terminals ──────────────────────────────────────────────
+
+REAL: /([0-9]+\.[0-9]*|[0-9]*\.[0-9]+)([eE][-+]?[0-9]+)?/
+NUMBER: /[1-9]+[0-9]*|0/
+BOOL_TRUE: "true"
+BOOL_FALSE: "false"
+STDFILE: "qelib1.inc" | "stdgates.inc"
+ID: /[a-zA-Z_][a-zA-Z_0-9]*/
+
+// Type keywords
+QREG: "qreg"
+CREG: "creg"
+QUBIT: "qubit"
+BIT: "bit"
+INT_KW: "int"
+FLOAT_KW: "float"
+BOOL_KW: "bool"
+
+// Math constants and functions
+PI: "pi"
+SIN: "sin"
+COS: "cos"
+TAN: "tan"
+EXP_KW: "exp"
+LN: "ln"
+SQRT: "sqrt"
+
+// Action keywords
+BARRIER: "barrier"
+RESET: "reset"
+
+// Operators
+EQ: "=="
+ARROW: "->"
+PLUS: "+"
+MINUS: "-"
+STAR: "*"
+SLASH: "/"
+
+// Ignore whitespace, newlines and C++-style comments
+%ignore /[ \t\r]/
+%ignore /\n+/
+%ignore /\/\/[^\n]*/
+
+// ── Grammar rules ──────────────────────────────────────────
+
+start: main_program
+
+main_program: "OPENQASM" REAL ";" incfile ";" program
+
+incfile: "include" "\"" STDFILE "\""
+
+program: statement+
+
+?statement: decl | decl3 | gate_decl | qop | if_statement
+          | for_statement | classical_declare_statement
+          | assign_statement
+          | BARRIER qlist ";" -> barrier_statement
+          | RESET qlist ";" -> reset_statement
+
+decl: (QREG|CREG) ID "[" NUMBER "]" ";"
+
+decl3: (QUBIT|BIT) "[" NUMBER "]" ID ";"
+     | (QUBIT|BIT) ID ";"
+
+classical_declare_statement: scalar_type ID "=" exp ";" -> classical_decl_init
+                           | array_type ID "=" array_literal ";" -> classical_decl_array
+                           | scalar_type ID ";" -> classical_decl_only
+
+scalar_type: INT_KW designator01 -> scalar_type_int
+           | FLOAT_KW designator01 -> scalar_type_float
+           | BOOL_KW -> scalar_type_bool
+
+?designator: "[" exp "]"
+
+designator01: designator?
+
+array_type: "array" "[" scalar_type "," exp "]"
+
+array_literal: "{" "}" -> array_literal_empty
+             | "{" exp_or_array_literal ("," exp_or_array_literal)* ","? "}" -> array_literal_items
+
+?exp_or_array_literal: exp | array_literal
+
+assign_statement: indexed_identifier "=" exp ";"
+
+indexed_identifier: ID index_operator*
+
+?index_operator: "[" exp "]"
+
+gate_decl: "gate" ID idlist "{" goplist "}" -> gate_decl_no_params
+         | "gate" ID "(" idlist ")" idlist "{" goplist "}" -> gate_decl_with_params
+
+idlist: ID ("," ID)*
+
+goplist: goplist_item*
+
+goplist_item: uop -> goplist_uop
+            | BARRIER idlist ";" -> goplist_barrier
+            | RESET idlist ";" -> goplist_reset
+
+?qop: uop
+    | "measure" argument ARROW argument ";" -> measure_qop
+
+argument: ID ("[" exp "]")?
+
+qlist: argument ("," argument)*
+
+uop: ID qlist ";" -> uop_no_params
+   | ID "(" explist ")" qlist ";" -> uop_with_params
+
+explist: exp ("," exp)*
+
+if_statement: "if" "(" ID EQ NUMBER ")" qop
+
+for_statement: "for" scalar_type ID "in" for_source "{" block_body "}"
+
+for_source: NUMBER -> for_source_number
+          | "[" range_exp "]" -> for_source_range
+          | ID -> for_source_id
+          | array_literal -> for_source_array
+
+range_exp: expression01 ":" expression01 (":" exp)?
+
+expression01: exp -> expression01_exp
+            | -> expression01_empty
+
+block_body: statement*
+
+// Expression hierarchy (PLY left-recursive rules rewritten for LALR)
+?exp: add_exp
+
+add_exp: mul_exp ((PLUS | MINUS) mul_exp)*
+
+mul_exp: unary_exp ((STAR | SLASH) unary_exp)*
+
+?unary_exp: MINUS unary_exp -> neg_exp
+          | primary_exp
+
+primary_exp: REAL -> exp_real
+            | NUMBER -> exp_number
+            | PI -> exp_pi
+            | ID -> exp_id
+            | BOOL_TRUE -> exp_bool
+            | BOOL_FALSE -> exp_bool
+            | "(" exp ")" -> exp_paren
+            | unaryop "(" exp ")" -> exp_func
+
+unaryop: SIN | COS | TAN | EXP_KW | LN | SQRT
