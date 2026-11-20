@@ -42,6 +42,21 @@ class DriverQuboBase(DriverBase):
             Optional("enable_subqubo"): bool,
             Optional("enable_prec_reduce"): bool,
         })
+        self.driver_options_metadata.update({
+            "enable_subqubo": {
+                "alias_name": "启用 QUBO 拆分",
+                "description": (
+                    "是否按设备组能力自动拆分 QUBO 问题，"
+                    "与作业通用选项同名时以驱动字段为准。"
+                ),
+            },
+            "enable_prec_reduce": {
+                "alias_name": "启用精度约减",
+                "description": (
+                    "是否在 QUBO 提交前按驱动实现降低矩阵数值精度。"
+                ),
+            },
+        })
         self.transpiler = Constant.TRANSPILER_CMSS_QUBO
         self.supported_transpilers = [Constant.TRANSPILER_CMSS_QUBO]
 

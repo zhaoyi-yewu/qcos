@@ -108,6 +108,42 @@ class DriverQudoorAbaQu100(DriverQudoorBase):
             Optional("eng_code"): str,
             Optional("user_id"): str,
         })
+        self.driver_options_metadata.update({
+            "url": {
+                "alias_name": "平台服务地址",
+                "description": (
+                    "指定启科量子平台 API 服务地址，"
+                    "不在能力响应中返回实际配置值。"
+                ),
+            },
+            "client_id": {
+                "alias_name": "客户端标识",
+                "description": (
+                    "指定启科量子平台分配的客户端标识，"
+                    "用于设备和任务接口请求。"
+                ),
+            },
+            "device_code": {
+                "alias_name": "设备编码",
+                "description": (
+                    "指定启科量子平台中的目标设备编码，"
+                    "可用值取决于账号设备权限。"
+                ),
+            },
+            "eng_code": {
+                "alias_name": "量子机编码",
+                "description": (
+                    "指定启科量子平台中的量子机编码，用于查询设备和提交任务。"
+                ),
+            },
+            "user_id": {
+                "alias_name": "用户标识",
+                "description": (
+                    "指定启科量子平台任务关联的用户标识，"
+                    "不在能力响应中返回实际值。"
+                ),
+            },
+        })
 
     def get_device_info(self):
         """Get device info via /api/cmccos/device/get (GET).

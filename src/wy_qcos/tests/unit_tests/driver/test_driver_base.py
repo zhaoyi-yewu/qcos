@@ -15,6 +15,7 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -76,6 +77,34 @@ class TestDriverBase:
     def test_get_driver_options_schema(self):
         driver_options_schema = driver_base.get_driver_options_schema()
         assert driver_options_schema == driver_base.driver_options_schema
+
+    def test_metadata_getter_does_not_change_validation_schema(self):
+        driver = DriverDummy()
+        original_schema = copy.deepcopy(driver.get_driver_options_schema())
+        metadata = driver.get_driver_options_metadata()
+        metadata["max_qubits"]["alias_name"] = "修改后的名称"
+
+        assert driver.get_driver_options_schema() == original_schema
+        assert (
+            driver.get_driver_options_metadata()["max_qubits"]["alias_name"]
+            == "最大比特数"
+        )
+        success, _ = Library.validate_schema(
+            {"max_qubits": 10}, driver.get_driver_options_schema()
+        )
+        assert success is True
+        success, _ = Library.validate_schema(
+            {"max_qubits": "invalid"},
+            driver.get_driver_options_schema(),
+        )
+        assert success is False
+
+    def test_qec_metadata_getter_returns_independent_copy(self):
+        metadata = driver_base.get_qec_options_metadata()
+        metadata["new"] = {"alias_name": "新字段"}
+
+        assert driver_base.get_qec_options_metadata() == {}
+        assert driver_base.get_qec_options_schema() is None
 
     @pytest.mark.parametrize("compute_fidelity", [True, False])
     def test_compute_fidelity_is_available_to_all_drivers(

@@ -90,6 +90,15 @@ class DriverQutipAshnSim(DriverQutipSim):
         self.driver_options_schema.update({
             Optional("max_qubits"): int,
         })
+        self.driver_options_metadata.update({
+            "max_qubits": {
+                "alias_name": "最大比特数",
+                "description": (
+                    "声明支持 ASHN 的 QuTiP 模拟器可接受的最大线路比特数，"
+                    "实际运行还受计算资源限制。"
+                ),
+            }
+        })
 
     def run(
         self,
