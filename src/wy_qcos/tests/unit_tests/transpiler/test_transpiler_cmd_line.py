@@ -1780,3 +1780,119 @@ class TestSuppressPerfCmss:
                 suppress_perf=False,
             )
             assert mock_log_perf.call_count > 0
+
+
+# ──────────────────────────────────────────────
+# validate_qasm_file (-q command) tests
+# ──────────────────────────────────────────────
+@pytest.mark.usefixtures("global_configs")
+class TestValidateQasmFile:
+    @classmethod
+    def setup_class(cls):
+        cls.samples_dir = GLOBAL_CONFIGS["samples_dir"]
+        cls.etc_dir = GLOBAL_CONFIGS["etc_dir"]
+
+    def test_validate_qasm_file_success(self, caplog):
+        """validate_qasm_file 校验成功并打印线路信息."""
+        from wy_qcos.log.logger import PERF_LEVEL
+
+        perf = CMSSTranspilerPerf()
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        with caplog.at_level(PERF_LEVEL):
+            perf.validate_qasm_file(input_file)
+        assert "simple-qasm.qasm" in caplog.text
+        assert "量子比特数" in caplog.text
+        assert "量子线路深度" in caplog.text
+        assert "量子门数量" in caplog.text
+
+    def test_validate_qasm_file_not_found(self):
+        """文件不存在时应抛出 FileNotFoundError."""
+        perf = CMSSTranspilerPerf()
+        with pytest.raises(FileNotFoundError) as e:
+            perf.validate_qasm_file("/nonexistent/file.qasm")
+        assert "Input file not existed" in str(e.value)
+
+    @patch("wy_qcos.transpiler.cmss.transpiler_cmd_line.qasm_to_ir")
+    def test_validate_qasm_file_parse_error(self, mock_qasm_to_ir):
+        """解析 qasm 失败时应抛出 ValueError."""
+        mock_qasm_to_ir.side_effect = Exception("parse error")
+        perf = CMSSTranspilerPerf()
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        with pytest.raises(ValueError) as e:
+            perf.validate_qasm_file(input_file)
+        assert "parse qasm file" in str(e.value)
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.read_qasm_from_file"
+    )
+    def test_validate_qasm_file_read_none(self, mock_read):
+        """读取 qasm 文件返回 None 时应抛出 ValueError."""
+        mock_read.return_value = None
+        perf = CMSSTranspilerPerf()
+        input_file = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        with pytest.raises(ValueError) as e:
+            perf.validate_qasm_file(input_file)
+        assert "read qasm data from file" in str(e.value)
+
+    def test_parse_args_qasm_file_short(self):
+        """get_parse_args 应正确解析 -q 参数."""
+        sys.argv = [
+            "transpiler_cmd_line.py",
+            "-q",
+            "samples/qasm/2.0/simple-qasm.qasm",
+        ]
+        cmss_args = get_parse_args()
+        assert cmss_args["qasm_file"] == "samples/qasm/2.0/simple-qasm.qasm"
+
+    def test_parse_args_qasm_file_long(self):
+        """get_parse_args 应正确解析 --qasm-file 参数."""
+        sys.argv = [
+            "transpiler_cmd_line.py",
+            "--qasm-file",
+            "test.qasm",
+        ]
+        cmss_args = get_parse_args()
+        assert cmss_args["qasm_file"] == "test.qasm"
+
+    def test_parse_args_qasm_file_default_empty(self):
+        """get_parse_args 未传 -q 时默认为空字符串."""
+        sys.argv = [
+            "transpiler_cmd_line.py",
+            "-c",
+            "config.toml",
+        ]
+        cmss_args = get_parse_args()
+        assert cmss_args["qasm_file"] == ""
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.validate_qasm_file"
+    )
+    def test_main_q_mode(self, mock_validate):
+        """-q 模式下应调用 validate_qasm_file."""
+        qasm_path = f"{self.samples_dir}/qasm/2.0/simple-qasm.qasm"
+        sys.argv = [
+            "transpiler_cmd_line.py",
+            "-q",
+            qasm_path,
+        ]
+        cmss_main()
+        mock_validate.assert_called_once_with(qasm_path)
+
+    @patch(
+        "wy_qcos.transpiler.cmss.transpiler_cmd_line."
+        "CMSSTranspilerPerf.main_cmss_transpiler"
+    )
+    def test_main_without_q_uses_config_mode(self, mock_main):
+        """未传 -q 时应走原有 -c 配置转译模式."""
+        mock_main.return_value = 0
+        with patch("sys.exit") as mock_exit:
+            sys.argv = [
+                "transpiler_cmd_line.py",
+                "-c",
+                f"{self.etc_dir}/perf/transpile_conf.toml",
+            ]
+            cmss_main()
+            mock_exit.assert_called_once_with(0)
+            mock_main.assert_called_once()
