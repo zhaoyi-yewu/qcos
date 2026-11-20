@@ -15,12 +15,19 @@
 # See the Mulan PSL v2 for more details.
 # ----------------------------------------------------------------------
 
+import copy
+
+from schema import Optional
+
 
 class TranspilerBase:
     """Transpiler Base Class.
 
     All Transpiler classes are inherited from this class.
     """
+
+    # Display-only common options; concrete validation stays in subclasses.
+    base_transpiler_options_schema = {Optional("optimization_level"): int}
 
     def __init__(self):
         # name
@@ -43,6 +50,7 @@ class TranspilerBase:
         self.transpiler_options = {}
         # transpiler_options schema
         self.transpiler_options_schema = None
+        self.transpiler_options_metadata = {}
         # qpu_config
         self.qpu_config = None
 
@@ -60,6 +68,10 @@ class TranspilerBase:
             transpiler options schema
         """
         return self.transpiler_options_schema
+
+    def get_transpiler_options_metadata(self):
+        """Get display metadata without changing option validation."""
+        return copy.deepcopy(self.transpiler_options_metadata)
 
     def update_transpiler_options(self, transpiler_options):
         """Update transpiler options.
