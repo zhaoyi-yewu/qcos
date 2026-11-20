@@ -31,6 +31,11 @@ import locale from 'element-plus/es/locale/lang/zh-cn' // lang i18n
 // and is required as a peer of @tdesign-vue-next/chat.
 import TDesign from 'tdesign-vue-next'
 import 'tdesign-vue-next/es/style/index.css'
+// Mermaid bootstrap must be evaluated BEFORE the chat bundle: the chat
+// markdown renderer checks
+// window.mermaid at module-evaluation time to decide whether to enable
+// its mermaid code-block plugin. Keep this import above TDesignChat.
+import '@/utils/diagramBoot'
 import TDesignChat from '@tdesign-vue-next/chat'
 
 import '@/styles/index.scss' // global css
