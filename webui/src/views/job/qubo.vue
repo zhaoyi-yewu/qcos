@@ -77,14 +77,18 @@
                 placeholder="请输入代码参数 (可选, JSON格式)"
               />
             </el-form-item>
-            <el-form-item label="作业选项" prop="options">
-              <el-input
-                v-model="taskData.options"
-                type="textarea"
-                :rows="2"
-                placeholder="请输入作业选项 (可选, JSON格式)"
-              />
-            </el-form-item>
+            <advanced-params-editor
+              ref="optionsEditor"
+              section="options"
+              label="作业选项"
+              form-prop="options"
+              :preview-height="64"
+              :value="advancedParamsFor('options')"
+              :schemas="advancedParamSchemas"
+              :resolve-dynamic="taskData.scheduleMode === 'backend'"
+              model-path="job-advanced-params-qubo-options.json"
+              @apply="applyAdvancedParams('options', $event)"
+            />
             <div class="inline-form-row">
               <div class="inline-form-col inline-form-left">
                 <el-form-item label="作业优先级" prop="taskPriority" class="inline-form-item">
@@ -277,29 +281,35 @@
                 </el-option>
               </el-select>
             </el-form-item>
-            <el-form-item
+            <advanced-params-editor
               v-if="taskData.scheduleMode === 'flavor'"
+              ref="extraSpecsEditor"
+              section="extra_specs"
               label="额外调度参数"
-              prop="extraSpecs"
-            >
-              <el-input
-                v-model="taskData.extraSpecs"
-                type="textarea"
-                :rows="3"
-                placeholder="请输入额外调度参数 (可选, JSON格式)，例如 {&quot;qcos:min_qubits&quot;: 5, &quot;qc:tech_types&quot;: &quot;superconducting&quot;}"
-              />
-            </el-form-item>
+              form-prop="extraSpecs"
+              :preview-height="88"
+              :value="advancedParamsFor('extra_specs')"
+              :schemas="advancedParamSchemas"
+              :resolve-dynamic="false"
+              model-path="job-advanced-params-qubo-extra-specs.json"
+              @apply="applyAdvancedParams('extra_specs', $event)"
+            />
           </el-col>
 
           <el-col :span="14" style="padding-right: 0;">
-            <el-form-item label="驱动自定义选项" prop="driverOptions">
-              <el-input
-                v-model="taskData.driverOptions"
-                type="textarea"
-                :rows="4"
-                placeholder="请输入驱动自定义选项 (可选, JSON格式)"
-              />
-            </el-form-item>
+            <advanced-params-editor
+              ref="driverOptionsEditor"
+              section="driver_options"
+              label="驱动自定义选项"
+              form-prop="driverOptions"
+              :preview-height="112"
+              :value="advancedParamsFor('driver_options')"
+              :schemas="advancedParamSchemas"
+              :driver-name="currentDriverName"
+              :resolve-dynamic="taskData.scheduleMode === 'backend'"
+              model-path="job-advanced-params-qubo-driver-options.json"
+              @apply="applyAdvancedParams('driver_options', $event)"
+            />
           </el-col>
         </el-row>
 
@@ -323,14 +333,19 @@
           </el-col>
 
           <el-col :span="14" style="padding-right: 0;">
-            <el-form-item label="转译器自定义选项" prop="transpilerOptions">
-              <el-input
-                v-model="taskData.transpilerOptions"
-                type="textarea"
-                :rows="2"
-                placeholder="请输入转译器自定义选项 (可选, JSON格式)"
-              />
-            </el-form-item>
+            <advanced-params-editor
+              ref="transpilerOptionsEditor"
+              section="transpiler_options"
+              label="转译器自定义选项"
+              form-prop="transpilerOptions"
+              :preview-height="64"
+              :value="advancedParamsFor('transpiler_options')"
+              :schemas="advancedParamSchemas"
+              :transpiler-name="taskData.taskTranspiler"
+              :resolve-dynamic="taskData.scheduleMode === 'backend'"
+              model-path="job-advanced-params-qubo-transpiler-options.json"
+              @apply="applyAdvancedParams('transpiler_options', $event)"
+            />
           </el-col>
         </el-row>
 
@@ -380,16 +395,23 @@ import {
   filterDevices,
   getDeviceStatusDisplay,
   isEmptyStr,
-  normalizeJsonInput,
   quboParser
 } from '@/common/library'
 import MonacoEditor from '@/components/MonacoEditor/index.vue'
+import AdvancedParamsEditor from '@/components/AdvancedParamsEditor/index.vue'
 import { Document, FullScreen, CopyDocument, Odometer } from '@element-plus/icons-vue'
 import { getFlavors } from '@/api/flavor'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 // Import JSON language contribution to enable syntax highlighting
 // (editor.api does not include language contributions by default)
 import 'monaco-editor/esm/vs/language/json/monaco.contribution'
+
+const ADVANCED_PARAM_FIELDS = {
+  driver_options: 'driverOptions',
+  transpiler_options: 'transpilerOptions',
+  options: 'options',
+  extra_specs: 'extraSpecs'
+}
 
 // Register CSV language for syntax highlighting (Monaco does not ship CSV by default)
 if (!monaco.languages.getLanguages().some(lang => lang.id === 'csv')) {
@@ -420,6 +442,7 @@ export default {
   name: 'QuboSubmit',
   components: {
     MonacoEditor,
+    AdvancedParamsEditor,
     Document,
     FullScreen,
     Odometer
@@ -487,9 +510,7 @@ export default {
         scheduleMode: 'backend',
         taskBackend: '',
         taskFlavor: '',
-        // extra scheduling specs (JSON text), only meaningful in flavor
-        // mode; parsed into extra_specs on submit and forwarded to the
-        // auto-scheduler to override flavor defaults
+        // Extra scheduling specs object, only submitted in flavor mode.
         extraSpecs: null,
         driverOptions: null,
         params: null,
@@ -558,6 +579,14 @@ export default {
     },
     effectiveFlavorOptions() {
       return this.flavorOptions || this.localFlavorOptions
+    },
+    currentDriverName() {
+      const device = this.effectiveDevicesDetails[this.taskData.taskBackend]
+      return (device && device['driver_name']) || ''
+    },
+    advancedParamSchemas() {
+      const capabilities = (this.effectiveVersionData && this.effectiveVersionData.capabilities) || {}
+      return capabilities.schemas || {}
     },
     // group the visible devices by their technology route (tech_type) so
     // the backend dropdown can render them under per-route headers; the
@@ -1209,7 +1238,35 @@ export default {
       }
     },
 
+    advancedParamsFor(section) {
+      const value = this.taskData[ADVANCED_PARAM_FIELDS[section]]
+      return value && Object.keys(value).length ? { [section]: value } : {}
+    },
+
+    applyAdvancedParams(section, params) {
+      const value = params[section]
+      this.taskData[ADVANCED_PARAM_FIELDS[section]] = value && Object.keys(value).length
+        ? value
+        : null
+    },
+
+    getAdvancedParamEditors() {
+      return [
+        this.$refs.optionsEditor,
+        this.$refs.transpilerOptionsEditor,
+        this.$refs.driverOptionsEditor,
+        this.$refs.extraSpecsEditor
+      ].filter(Boolean)
+    },
+
     submitForm() {
+      const hasPendingChanges = this.getAdvancedParamEditors().some(
+        editor => editor.hasPendingChanges()
+      )
+      if (hasPendingChanges) {
+        this.$message.error('请先确认应用或重置尚未保存的高级参数修改！')
+        return
+      }
       this.$refs.taskForm.validate((valid) => {
         if (!valid) {
           this.$message.error('请完善作业提交信息！')
@@ -1238,35 +1295,8 @@ export default {
     },
 
     doSubmit(source_codes) {
-      let driverOptions = null
-      if (!isEmptyStr(this.taskData.driverOptions)) {
-        try {
-          driverOptions = JSON.parse(this.taskData.driverOptions.trim())
-        } catch (error) {
-          this.$notify.error({
-            title: '作业提交失败',
-            message: error.message,
-            duration: 4500
-          })
-          this.isSubmitting = false
-          return
-        }
-      }
-
-      let transpilerOptions = null
-      if (!isEmptyStr(this.taskData.transpilerOptions)) {
-        try {
-          transpilerOptions = JSON.parse(this.taskData.transpilerOptions.trim())
-        } catch (error) {
-          this.$notify.error({
-            title: '作业提交失败',
-            message: error.message,
-            duration: 4500
-          })
-          this.isSubmitting = false
-          return
-        }
-      }
+      const driverOptions = this.taskData.driverOptions || null
+      const transpilerOptions = this.taskData.transpilerOptions || null
 
       let paramsObj = null
       if (!isEmptyStr(this.taskData.params)) {
@@ -1283,39 +1313,10 @@ export default {
         }
       }
 
-      let optionsObj = null
-      if (!isEmptyStr(this.taskData.options)) {
-        try {
-          optionsObj = JSON.parse(this.taskData.options.trim())
-        } catch {
-          this.$notify.error({
-            title: '作业提交失败',
-            message: '作业选项格式错误，请输入合法的 JSON',
-            duration: 4500
-          })
-          this.isSubmitting = false
-          return
-        }
-      }
-
-      // extra_specs -- optional JSON dict with scheduling overrides, only
-      // allowed when scheduleMode === 'flavor' (mutually exclusive with
-      // backend on the server side). Parsed early so a malformed payload
-      // fails fast before any submit request is issued
-      let extraSpecsObj = null
-      if (this.taskData.scheduleMode === 'flavor' && !isEmptyStr(this.taskData.extraSpecs)) {
-        try {
-          extraSpecsObj = JSON.parse(normalizeJsonInput(this.taskData.extraSpecs))
-        } catch {
-          this.$notify.error({
-            title: '作业提交失败',
-            message: '额外调度参数格式错误，请输入合法的 JSON',
-            duration: 4500
-          })
-          this.isSubmitting = false
-          return
-        }
-      }
+      const optionsObj = this.taskData.options || null
+      const extraSpecsObj = this.taskData.scheduleMode === 'flavor'
+        ? this.taskData.extraSpecs || null
+        : null
 
       let circuitAggregation = null
       if (this.taskData.circuitAggregation !== 'none') {
@@ -1410,7 +1411,11 @@ export default {
     },
 
     resetForm() {
+      this.getAdvancedParamEditors().forEach(editor => editor.close())
       this.$refs.taskForm.resetFields()
+      Object.values(ADVANCED_PARAM_FIELDS).forEach(field => {
+        this.taskData[field] = null
+      })
       this.taskData.quboTabs = []
       this.taskData.activeQuboTab = 0
       // clear the last file path display
