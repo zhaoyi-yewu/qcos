@@ -6072,8 +6072,59 @@ def _print_ai_stream(response, show_tool_events=False):
     return session_id
 
 
+class AiModels(Command):
+    """List AI models configured on the server."""
+
+    group = QcosShell.CMD_GROUP_AI
+
+    def take_action(self, parsed_args):
+        info = _fetch_ai_models(self.app.client)
+        default_id = info.get("default_model_id")
+        models = info.get("models", [])
+        if not models:
+            print("No AI models configured.")
+            return
+        for m in models:
+            marker = "*" if m.get("id") == default_id else " "
+            vision = "vision" if m.get("supports_vision") else "text-only"
+            print(
+                f"{marker} {m.get('id')}: {m.get('display_name')}  "
+                f"(model={m.get('model')}, {vision})"
+            )
+        print("(* = default model)")
+
+
+def _fetch_ai_models(client):
+    """Fetch the server model list with a clear old-server error.
+
+    Older servers have no /v1/ai/models endpoint; explicit model
+    selection must fail with an upgrade hint instead of silently
+    retrying without the model.
+    """
+    try:
+        return client.ai_list_models()
+    except errors.GenericException as exc:
+        if "status_code: 404" in str(exc):
+            raise errors.GenericException(
+                "This server does not support AI model selection "
+                "(/v1/ai/models returned 404). Upgrade the QCOS server "
+                "or omit the model option to use the server default."
+            ) from exc
+        raise
+
+
+def _validate_model_id(models_info, model_id):
+    """Validate an explicit model ID against the server whitelist."""
+    ids = [m.get("id") for m in models_info.get("models", [])]
+    if model_id not in ids:
+        available = ", ".join(str(i) for i in ids) or "<none>"
+        raise errors.GenericException(
+            f"Unknown AI model id: {model_id}. Available: {available}"
+        )
+
+
 class AiAsk(Command):
-    """Ask the AI assistant a single question."""
+    """Ask the AI agent a single question."""
 
     group = QcosShell.CMD_GROUP_AI
 
@@ -6083,13 +6134,19 @@ class AiAsk(Command):
             "message",
             type=str,
             nargs="+",
-            help="Question text for the AI assistant",
+            help="Question text for the AI agent",
         )
         parser.add_argument(
             "--session-id",
             type=str,
             default=None,
             help="Continue an existing AI chat session",
+        )
+        parser.add_argument(
+            "--model",
+            type=str,
+            default=None,
+            help="Configured AI model ID (see ai-models)",
         )
         parser.add_argument(
             "--no-rag",
@@ -6107,26 +6164,37 @@ class AiAsk(Command):
 
     def take_action(self, parsed_args):
         message = " ".join(parsed_args.message)
+        model_id = parsed_args.model
+        if model_id is not None:
+            # Explicit selection: validate against the server first.
+            _validate_model_id(_fetch_ai_models(self.app.client), model_id)
         response = self.app.client.ai_chat_stream(
             message=message,
             session_id=parsed_args.session_id,
             enable_rag=not parsed_args.no_rag,
+            model_id=model_id,
         )
         _print_ai_stream(response, show_tool_events=parsed_args.show_tools)
 
 
 class AiChat(Command):
-    """Interactive multi-turn chat with the AI assistant."""
+    """Interactive multi-turn chat with the AI agent."""
 
     group = QcosShell.CMD_GROUP_AI
 
     REPL_HELP = (
         "Commands:\n"
-        "  /new [title]      Start a new session\n"
+        "  /new [title]      Start a new session (resets to the "
+        "default model)\n"
         "  /list             List my sessions\n"
-        "  /use <id>         Switch to an existing session\n"
+        "  /use <id>         Switch to an existing session (restores "
+        "its model)\n"
         "  /history          Show messages of the current session\n"
         "  /delete <id>      Delete a session\n"
+        "  /model            List available models and the current "
+        "selection\n"
+        "  /model <id>       Select a model for subsequent messages\n"
+        "  /model default    Select the server default model\n"
         "  /rag on|off       Toggle RAG retrieval\n"
         "  /tools on|off     Toggle tool call/result markers\n"
         "  /help             Show this help\n"
@@ -6141,6 +6209,12 @@ class AiChat(Command):
             type=str,
             default=None,
             help="Resume an existing AI chat session",
+        )
+        parser.add_argument(
+            "--model",
+            type=str,
+            default=None,
+            help="Configured AI model ID (see ai-models)",
         )
         parser.add_argument(
             "--no-rag",
@@ -6161,12 +6235,21 @@ class AiChat(Command):
         session_id = parsed_args.session_id
         enable_rag = not parsed_args.no_rag
         show_tools = parsed_args.show_tools
+        # Currently selected model; None means "let the server decide"
+        # (session-saved model or default), so no capability precheck
+        # happens unless the user explicitly selects a model.
+        current_model_id = None
+        if parsed_args.model is not None:
+            _validate_model_id(_fetch_ai_models(client), parsed_args.model)
+            current_model_id = parsed_args.model
 
         print(
             "AI chat session started. Type /help for commands, /exit to quit."
         )
         if session_id:
             print(f"Resuming session: {session_id}")
+        if current_model_id:
+            print(f"Model: {current_model_id}")
 
         while True:
             try:
@@ -6194,6 +6277,8 @@ class AiChat(Command):
                     title = arg or "CLI conversation"
                     result = client.ai_create_session(title=title)
                     session_id = result.get("session_id")
+                    # New sessions start on the server default model.
+                    current_model_id = None
                     print(f"New session created: {session_id} ({title})")
                 elif cmd == "/list":
                     sessions = client.ai_list_sessions()
@@ -6218,7 +6303,33 @@ class AiChat(Command):
                         print("Usage: /use <session_id>")
                         continue
                     session_id = arg
+                    current_model_id = None
+                    # Restore the session's saved model so subsequent
+                    # messages keep using it explicitly.
+                    try:
+                        data = client.ai_get_session(session_id)
+                        saved_model = (data.get("session") or {}).get(
+                            "model_id"
+                        )
+                        if saved_model:
+                            try:
+                                _validate_model_id(
+                                    _fetch_ai_models(client), saved_model
+                                )
+                                current_model_id = saved_model
+                            except errors.GenericException:
+                                print(
+                                    f"Session model '{saved_model}' is no "
+                                    "longer available; using the server "
+                                    "default."
+                                )
+                    except Exception as exc:
+                        # Restoring the model is best-effort: switching
+                        # sessions must never fail because of it.
+                        print(f"Warning: could not read session model: {exc}")
                     print(f"Switched to session: {session_id}")
+                    if current_model_id:
+                        print(f"Model: {current_model_id}")
                 elif cmd == "/history":
                     if not session_id:
                         print("No active session. Use /new or /use first.")
@@ -6227,7 +6338,10 @@ class AiChat(Command):
                     for m in data.get("messages", []):
                         role = m.get("role", "?")
                         content = m.get("content", "")
-                        print(f"[{role}] {content}\n")
+                        model_tag = (
+                            f" ({m.get('model')})" if m.get("model") else ""
+                        )
+                        print(f"[{role}{model_tag}] {content}\n")
                 elif cmd == "/delete":
                     if not arg:
                         print("Usage: /delete <session_id>")
@@ -6236,6 +6350,44 @@ class AiChat(Command):
                     if arg == session_id:
                         session_id = None
                     print(f"Session deleted: {arg}")
+                elif cmd == "/model":
+                    try:
+                        info = _fetch_ai_models(client)
+                        default_id = info.get("default_model_id")
+                        if not arg:
+                            models = info.get("models", [])
+                            for m in models:
+                                marker = (
+                                    "*" if m.get("id") == default_id else " "
+                                )
+                                vision = (
+                                    "vision"
+                                    if m.get("supports_vision")
+                                    else "text-only"
+                                )
+                                print(
+                                    f"{marker} {m.get('id')}: "
+                                    f"{m.get('display_name')}  "
+                                    f"(model={m.get('model')}, {vision})"
+                                )
+                            current = current_model_id or (
+                                f"server default ({default_id})"
+                            )
+                            print(f"Current model: {current}")
+                        else:
+                            if arg == "default":
+                                if not default_id:
+                                    print("No default model configured.")
+                                    continue
+                                current_model_id = default_id
+                            else:
+                                _validate_model_id(info, arg)
+                                current_model_id = arg
+                            # Only subsequent messages are affected.
+                            print(f"Model set to: {current_model_id}")
+                    except errors.GenericException as exc:
+                        # Keep the REPL alive on validation failures.
+                        print(f"Error: {exc}")
                 elif cmd == "/rag":
                     if arg.lower() == "on":
                         enable_rag = True
@@ -6258,6 +6410,7 @@ class AiChat(Command):
                     message=line,
                     session_id=session_id,
                     enable_rag=enable_rag,
+                    model_id=current_model_id,
                 )
                 new_session_id = _print_ai_stream(
                     response, show_tool_events=show_tools
@@ -6354,6 +6507,7 @@ command_manager.add_command("get-proxy-health", GetProxyHealth)
 # ai command
 command_manager.add_command("ai-ask", AiAsk)
 command_manager.add_command("ai-chat", AiChat)
+command_manager.add_command("ai-models", AiModels)
 
 
 def set_debug_option(args):
