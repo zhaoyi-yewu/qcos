@@ -77,7 +77,7 @@ venv_dir="/var/lib/qcos/venv/default"
 venv_site_package_dir="${venv_dir}/lib/python3.11/site-packages"
 source ${venv_dir}/bin/activate
 
-# check if file /etc/qcos/qcos.conf exists and create it if not
+# check if file /etc/qcos/qcos.toml exists and create it if not
 if [ -f "${qcos_config_file_path}" ]; then
   echo "QCOS config file: ${qcos_config_file_path} exists, use it"
 else
