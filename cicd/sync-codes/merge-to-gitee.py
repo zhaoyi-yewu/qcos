@@ -20,7 +20,7 @@ Merge local git branch to remote branch / Split commits to single branches
 
 Prerequisite:
 yum install -y git
-pip3 install --break-system-packages git-filter-repo GitPython
+pip3 install --break-system-packages requests git-filter-repo GitPython
 
 1. Initialize git repo (Init only once, no need to run in the next time)
 mkdir WuYue
@@ -78,7 +78,7 @@ gitee_remote_branch = "develop"
 gitee_local_branch = "gitee-develop"
 
 cmss_remote = "origin"
-cmss_local_branch = "dev_gitee"
+cmss_local_branch = "develop"
 cmss_local_merge_branch = "gitee-merge"
 
 branch_prefix = "feature_new-"
