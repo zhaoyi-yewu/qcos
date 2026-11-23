@@ -8,13 +8,13 @@
 [<img alt="PyPI - Version" src="https://img.shields.io/pypi/v/wy-qcos?logo=pypi&logoColor=white&style=flat" height="20" style="vertical-align:middle;">](https://pypi.org/project/wy-qcos)
 [<img alt="PyPI - Wheel" src="https://img.shields.io/pypi/wheel/wy-qcos?logo=python&logoColor=white&style=flat" height="20" style="vertical-align:middle;">](https://pypi.org/project/wy-qcos)
 [<img alt="MCP Server" src="https://img.shields.io/badge/MCP-Server-black?logo=modelcontextprotocol&style=flat" height="20" style="vertical-align:middle;">](https://qcos.readthedocs.io/zh-cn/latest/user-guide/mcp/mcp.html)
-[<img alt="AI Agent Chat" src="https://img.shields.io/badge/AI_Agent-Chat_Enabled-brightgreen?logo=probot&logoColor=white&style=flat" height="20" style="vertical-align:middle;">](https://qcos.readthedocs.io/zh-cn/latest/user-guide/ai-agent.html)
+[<img alt="AI Agent" src="https://img.shields.io/badge/AI_Agent-Enabled-brightgreen?logo=probot&logoColor=white&style=flat" height="20" style="vertical-align:middle;">](https://qcos.readthedocs.io/zh-cn/latest/user-guide/ai/)
 [<img alt="License" src="https://img.shields.io/badge/license-MulanPSL--2.0-blue?logo=opensourceinitiative&style=flat" height="20" style="vertical-align:middle;">](https://gitee.com/WUYUEQbit/qcos/blob/develop/LICENSE)
 <br>
 [<img alt="Codecov" src="https://img.shields.io/codecov/c/github/zhaoyi-yewu/qcos?branch=develop&style=flat" height="20" style="vertical-align:middle;">](https://codecov.io/github/zhaoyi-yewu/qcos)
 [<img alt="Documentation Status" src="https://img.shields.io/readthedocs/qcos/latest?style=flat" height="20" style="vertical-align:middle;">](https://qcos.readthedocs.io/zh-cn/latest/)
 [<img alt="GITHUB CICD" src="https://img.shields.io/github/actions/workflow/status/zhaoyi-yewu/qcos/qcos-cicd.yml?logo=githubactions&logoColor=white&labelColor=blue&label=github/cicd&style=flat" height="20" style="vertical-align:middle;">](https://github.com/zhaoyi-yewu/qcos/actions/workflows/qcos-cicd.yml)
-[<img alt="JENKINS CICD" src="https://img.shields.io/badge/jenkins/cicd-failing-orange?style=flat" height="20" style="vertical-align:middle;">](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/badge/icon?subject=jenkins/cicd)
+[<img alt="JENKINS CICD" src="https://img.shields.io/badge/jenkins/cicd-failing-orange?style=flat" height="20" style="vertical-align:middle;">](http://39.155.148.150:8080/job/WuYueOS-CICD-Daily/)
 
 WUYUEQbit量子计算操作系统：QCOS（Quantum Computing Operating System）是一款开源的通用量子计算操作系统，旨在为不同架构的量子计算机（如：超导、中性原子、离子阱、相干伊辛机等）提供统一的软件支持，推动量子计算的生态发展。
 
