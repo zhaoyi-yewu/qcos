@@ -33,6 +33,7 @@ import inspect
 import logging
 import os
 from functools import lru_cache
+from typing import Any
 
 # Disable pydantic-ai startup banner
 os.environ["PYDANTIC_AI_NO_BANNER"] = "1"
@@ -59,13 +60,26 @@ from wy_qcos.common.config import Config
 
 logger = logging.getLogger(__name__)
 
-_TOOL_OUTPUT_MAX_CHARS = 8000
+# Zero disables tool-output truncation. Set a positive value to enforce
+# a character budget when the configured model has a smaller context.
+_TOOL_OUTPUT_MAX_CHARS = int(
+    os.environ.get("QCOS_AI_TOOL_OUTPUT_MAX_CHARS", "0")
+)
+_REASONING_LANGUAGE_INSTRUCTIONS = (
+    "内部分析、推理以及 thinking/reasoning 内容必须始终使用简体中文，"
+    "禁止使用英文思考。最终回答默认使用简体中文；用户明确要求其他语言时，"
+    "仅最终回答可以切换语言，思考过程仍须使用简体中文。"
+    "代码、标识符、工具参数和报错信息保持原文。"
+)
 
 # pydantic-ai added the `instrument` Agent kwarg in a recent release;
 # older versions raise TypeError on it. Detect support once at import
 # time so deployments pinned to either version work.
 _AGENT_SUPPORTS_INSTRUMENT = (
     "instrument" in inspect.signature(Agent.__init__).parameters
+)
+_AGENT_SUPPORTS_INSTRUCTIONS = (
+    "instructions" in inspect.signature(Agent.__init__).parameters
 )
 # pydantic-ai added `model_settings` Agent kwarg in v0.4+; older
 # versions raise TypeError. Detect support once at import time.
@@ -130,9 +144,13 @@ def get_ai_config():
     return Config.AI_AGENT
 
 
-def _build_agent_kwargs(cfg) -> dict:
+def _build_agent_kwargs(cfg) -> dict[str, Any]:
     """Build Agent options from a resolved per-model config."""
-    kwargs = {"instrument": True} if _AGENT_SUPPORTS_INSTRUMENT else {}
+    kwargs: dict[str, Any] = (
+        {"instrument": True} if _AGENT_SUPPORTS_INSTRUMENT else {}
+    )
+    if _AGENT_SUPPORTS_INSTRUCTIONS:
+        kwargs["instructions"] = _REASONING_LANGUAGE_INSTRUCTIONS
     if _AGENT_SUPPORTS_MODEL_SETTINGS and cfg.model_settings_enabled:
         kwargs["model_settings"] = ModelSettings(
             temperature=cfg.temperature,
@@ -149,7 +167,9 @@ class _QcosToolOutputLimits(ToolOutputLimits):
 
 
 def _build_harness_capabilities() -> list[ToolOutputLimits]:
-    """Bound tool output without changing the existing tool interfaces."""
+    """Return the optional tool-output limit without a read-back tool."""
+    if _TOOL_OUTPUT_MAX_CHARS <= 0:
+        return []
     return [
         _QcosToolOutputLimits(
             bands=[
@@ -166,12 +186,16 @@ def _assemble_agent(model, system_prompt: str, cfg) -> Agent:
     """Assemble an Agent with the shared MCP toolset and limits.
 
     Text and vision agents share the exact same tool registration and
-    tool-output truncation so both turn types can run the real
+    optional tool-output limit so both turn types can run the real
     submit/status/result tool chain; they differ only in the model
     connection and the system prompt.
     """
     from wy_qcos.ai.tools.mcp_tools import register_mcp_tools
 
+    if not _AGENT_SUPPORTS_INSTRUCTIONS:
+        system_prompt = (
+            f"{system_prompt}\n\n{_REASONING_LANGUAGE_INSTRUCTIONS}"
+        )
     agent = Agent(
         model,
         system_prompt=system_prompt,

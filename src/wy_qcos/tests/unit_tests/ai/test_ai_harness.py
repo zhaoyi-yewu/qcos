@@ -19,6 +19,8 @@
 
 import sys
 import types
+from contextlib import nullcontext
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -33,6 +35,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai_harness import ToolOutputLimits
 
 from wy_qcos.ai.llm import client
+from wy_qcos.ai.tools import mcp_tools
 from wy_qcos.common.config import AIAgentSection
 
 
@@ -55,12 +58,28 @@ def _has_capability(agent, capability_type) -> bool:
     return False
 
 
+def test_custom_prompt_cannot_override_chinese_reasoning_instructions():
+    """Reasoning language stays mandatory with a custom system prompt."""
+    section = AIAgentSection(
+        SYSTEM_PROMPT="Use English for all responses.",
+        MODELS=[{"ID": "main", "MODEL": "test-model"}],
+    )
+
+    kwargs = client._build_agent_kwargs(section.resolve_model("main"))
+
+    instructions = kwargs["instructions"]
+    assert instructions == client._REASONING_LANGUAGE_INSTRUCTIONS
+    assert "简体中文" in instructions
+    assert "thinking/reasoning" in instructions
+
+
 def test_text_and_vision_agents_mount_harness(monkeypatch):
     """Both agents mount MCP tools with bounded tool output.
 
     The vision agent needs the same real tool chain as the text
     agent so image turns can submit jobs for real.
     """
+    monkeypatch.setattr(client, "_TOOL_OUTPUT_MAX_CHARS", 8000)
     cfg = AIAgentSection(
         MODELS=[
             {
@@ -93,9 +112,18 @@ def test_text_and_vision_agents_mount_harness(monkeypatch):
     assert registered_agents == [text_agent, vision_agent]
 
 
+def test_tool_output_limit_can_be_disabled(monkeypatch):
+    """Zero disables the limit so detailed tool responses pass through."""
+    monkeypatch.setattr(client, "_TOOL_OUTPUT_MAX_CHARS", 0)
+    assert client._build_harness_capabilities() == []
+
+
 @pytest.mark.asyncio
-async def test_tool_output_limits_preserve_small_and_truncate_large():
+async def test_tool_output_limits_preserve_small_and_truncate_large(
+    monkeypatch,
+):
     """Existing small results pass through and large results are bounded."""
+    monkeypatch.setattr(client, "_TOOL_OUTPUT_MAX_CHARS", 8000)
     capability = client._build_harness_capabilities()[0]
     call = ToolCallPart(tool_name="qcos_list_devices")
     tool_def = ToolDefinition(name="qcos_list_devices")
@@ -119,3 +147,35 @@ async def test_tool_output_limits_preserve_small_and_truncate_large():
     assert len(large_result) <= client._TOOL_OUTPUT_MAX_CHARS
     assert large_result != "x" * (client._TOOL_OUTPUT_MAX_CHARS + 100)
     assert capability.get_toolset() is None
+
+
+@pytest.mark.parametrize("details", [None, True, False])
+@pytest.mark.asyncio
+async def test_device_list_supports_detailed_and_summary_responses(
+    monkeypatch, details
+):
+    """The AI list tool defaults to details and accepts summary requests."""
+
+    class ToolRegistry:
+        def __init__(self):
+            self.tools = {}
+
+        def tool(self, func):
+            self.tools[func.__name__] = func
+            return func
+
+    registry = ToolRegistry()
+    mcp_tools.register_mcp_tools(registry)
+    response = '{"dev1": {"name": "dev1"}}'
+    mock_list = AsyncMock(return_value=response)
+    monkeypatch.setattr(mcp_tools.mcp_server, "qcos_list_devices", mock_list)
+    ctx = types.SimpleNamespace(
+        deps=types.SimpleNamespace(auth_context=nullcontext)
+    )
+    kwargs = {} if details is None else {"details": details}
+
+    result = await registry.tools["qcos_list_devices"](ctx, **kwargs)
+
+    expected_details = True if details is None else details
+    assert result == response
+    mock_list.assert_awaited_once_with(details=expected_details)

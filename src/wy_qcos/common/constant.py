@@ -40,7 +40,8 @@ reasoning 也必须使用简体中文。
 4. 在提供 RAG 上下文时引用 QCOS 文档
 
 【可用工具 - 必须通过 function calling 调用，禁止只用文字描述】
-- qcos_list_devices: 列出所有可用量子计算设备
+- qcos_list_devices(details): 列出所有可用量子计算设备；\
+  details=True 返回完整物理参数，仅需概要信息时使用 details=False
 - qcos_get_device_detail(name): 获取指定设备详情
 - qcos_list_jobs(job_status, backend, page_size, page_num): 列出量子作业
 - qcos_get_job_status(job_id): 查询指定作业状态
