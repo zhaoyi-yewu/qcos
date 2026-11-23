@@ -20,6 +20,7 @@
     @dragover="onDragOver"
     @dragleave="onDragLeave"
     @drop="onDrop"
+    @copy.capture="onShadowCopy"
   >
     <!-- Drag-over overlay: visible while a file is being dragged
          over the chat area. -->
@@ -451,27 +452,32 @@
                hit send to enqueue the next message; it will be sent
                automatically once the current stream finishes (see
                store.messageQueue). -->
-          <t-button
-            v-if="streaming"
-            size="small"
-            theme="danger"
-            shape="square"
-            @click="handleStop"
-          >
-            <template #icon><StopIcon /></template>
-          </t-button>
+          <t-tooltip v-if="streaming" content="停止生成" placement="top">
+            <t-button
+              size="small"
+              theme="danger"
+              shape="square"
+              aria-label="停止生成"
+              @click="handleStop"
+            >
+              <template #icon><StopIcon /></template>
+            </t-button>
+          </t-tooltip>
           <!-- Send button: always available. While streaming the new
                message is appended to the store's send queue and
                delivered FIFO. -->
-          <t-button
-            size="small"
-            theme="primary"
-            shape="square"
-            :disabled="historyMutating || (!draft && pendingAttachments.length === 0)"
-            @click="onSend"
-          >
-            <template #icon><SendIcon /></template>
-          </t-button>
+          <t-tooltip content="发送消息（Ctrl+Enter）" placement="top">
+            <t-button
+              size="small"
+              theme="primary"
+              shape="square"
+              aria-label="发送消息"
+              :disabled="historyMutating || (!draft && pendingAttachments.length === 0)"
+              @click="onSend"
+            >
+              <template #icon><SendIcon /></template>
+            </t-button>
+          </t-tooltip>
         </div>
       </div>
       <input
@@ -1305,6 +1311,31 @@ async function onRetryMessage(item) {
  */
 function onDeleteMessage(item) {
   store.deleteMessage(item._raw)
+}
+
+/*
+ * Native selection APIs cannot read text selected inside the chat's
+ * nested Shadow DOM in some browsers, leaving Ctrl+C with an empty
+ * selection. Copy the selected range explicitly without affecting
+ * ordinary page text or the message input.
+ */
+function onShadowCopy(event) {
+  const clipboardData = event.clipboardData
+  if (!clipboardData) return
+  for (const node of event.composedPath()) {
+    if (!(node instanceof ShadowRoot)) continue
+    const selection = node.getSelection?.()
+    if (!selection) continue
+    for (let index = 0; index < selection.rangeCount; index += 1) {
+      const range = selection.getRangeAt(index)
+      if (range.collapsed) continue
+      const text = range.toString()
+      if (!text) continue
+      clipboardData.setData('text/plain', text)
+      event.preventDefault()
+      return
+    }
+  }
 }
 
 /**
