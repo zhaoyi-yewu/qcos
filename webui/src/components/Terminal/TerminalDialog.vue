@@ -727,7 +727,7 @@ watch(activeSessionId, async() => {
   border-radius: 18px;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-  opacity: 0.5;
+  opacity: 0.6;
   transition: opacity 0.15s ease;
 
   &:hover {
