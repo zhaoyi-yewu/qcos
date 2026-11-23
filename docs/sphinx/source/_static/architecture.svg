@@ -443,7 +443,7 @@
      height="503.4559"
      class="box"
      id="rect35-1-1-8"
-     style="fill:url(#linearGradient1);fill-opacity:1;stroke:#0066cc;stroke-width:3.385;stroke-dasharray:10.15499997,3.38499999;stroke-dashoffset:0" />
+     style="fill:url(#linearGradient1);fill-opacity:1;stroke:#0066cc;stroke-width:1.69172;stroke-dasharray:none" />
   <rect
      x="1026.8716"
      y="144.98509"
@@ -451,7 +451,7 @@
      height="149.91534"
      class="box"
      id="rect35-1-1-4"
-     style="fill:url(#meshgradient90-5-6);fill-opacity:1;stroke:#0066cc;stroke-width:1.58224" />
+     style="fill:url(#meshgradient90-5-6);fill-opacity:1;stroke:#0066cc;stroke-width:0.565301" />
   <rect
      x="19.613026"
      y="636.6123"
@@ -485,10 +485,10 @@
        id="tspan77">开发套件</tspan></text>
   <text
      x="1112.0792"
-     y="136.27415"
+     y="132.27415"
      class="text_title"
      id="text1-1"
-     style="font-weight:bold;font-size:13px;font-family:'Microsoft YaHei', sans-serif;text-anchor:middle"><tspan
+     style="font-weight:bold;font-size:14px;font-family:'Microsoft YaHei', sans-serif;text-anchor:middle"><tspan
        style="fill:#0066cc;fill-opacity:1"
        id="tspan77-7">外部依赖组件</tspan></text>
   <rect
@@ -1220,7 +1220,7 @@
        height="151"
        class="box"
        id="rect-db-group"
-       style="fill:url(#meshgradient90-5-6-db);fill-opacity:1;stroke:#0066cc;stroke-width:1.55292" />
+       style="fill:url(#meshgradient90-5-6-db);fill-opacity:1;stroke:#0066cc;stroke-width:0.565301" />
     <text
        x="1112"
        y="325.4801"
@@ -1284,7 +1284,7 @@
        height="122.06577"
        class="box"
        id="rect-ops-group"
-       style="fill:url(#meshgradient1);fill-opacity:1;stroke:#0066cc;stroke-width:1.42715" />
+       style="fill:url(#meshgradient1);fill-opacity:1;stroke:#0066cc;stroke-width:0.565301" />
     <text
        x="1112"
        y="496.78003"
@@ -1372,7 +1372,7 @@
      y="780"
      width="110"
      height="28"
-     fill="#ffffffff"
+     fill="#ececec"
      stroke="#ccc"
      id="rect60"
      style="stroke-width:3;stroke-dasharray:9, 3;stroke-dashoffset:0;stroke:#0066cc;stroke-opacity:1" />
