@@ -33,11 +33,12 @@ services:
     network_mode: "host"
     environment:
       TZ: Asia/Shanghai
-      PREFECT_SERVER_API_HOST:
-      PREFECT_SERVER_DATABASE_CONNECTION_URL: "postgresql+asyncpg://prefect:123456@127.0.0.1:5432/prefect"
+      PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: ${PREFECT_SERVER_DATABASE_CONNECTION_URL}
       PREFECT_SERVER_ANALYTICS_ENABLED: "false"
       PREFECT_API_DATABASE_TIMEOUT: "30"
-      PREFECT_API_URL: http://100.78.61.22:4200/api
+      PREFECT_API_URL: ${PREFECT_API_URL:-http://127.0.0.1:4200/api}
+      PREFECT_UI_API_URL: "/api"
       PREFECT_API_DEFAULT_LIMIT: "200"
       PREFECT_TASKS_DISABLE_CACHING: "true"
       PREFECT_TASKS_DEFAULT_CACHE_RESULT_IN_MEMORY: "false"
@@ -55,5 +56,4 @@ services:
       - /var/log/qcos:/var/log/qcos
       - /var/qcos:/var/qcos
       - /etc/qcos/prefect:/root/.prefect
-      - /root/zhaoyi/projects/quantum-os/WuYueOs/temp/prefect-src/prefect:/usr/local/lib/python3.13/site-packages/prefect/
-
+      - /var/prefect:/var/prefect
