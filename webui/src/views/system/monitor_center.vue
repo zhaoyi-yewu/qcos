@@ -1028,6 +1028,18 @@ const STEP_OPTIONS = [
 // Prometheus query_range 单次查询最大数据点数（硬编码限制）
 const PROMETHEUS_MAX_POINTS = 11000
 
+// Host metrics come from node-exporter so the overview shows the actual
+// host rather than only the QCOS container or its working partition.
+const HOST_PROMQL = {
+  cpuUsage: '100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[2m])))',
+  cpuCount: 'count(node_cpu_seconds_total{mode="idle"})',
+  memUsage: '(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100',
+  memTotalMb: 'node_memory_MemTotal_bytes / 1024 / 1024',
+  diskUsage: '100 * (1 - sum(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}) / sum(node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}))',
+  diskFreeMb: 'sum(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}) / 1024 / 1024',
+  diskTotalMb: 'sum(node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}) / 1024 / 1024'
+}
+
 /**
  * 根据时间范围（秒）计算最小安全 step 秒数
  * @param {number} timeRange - 时间范围（秒）
@@ -1615,17 +1627,33 @@ export default {
 
     async fetchSystemStats() {
       try {
-        const response = await getSystemStats()
-        if (!response.error && response.result) {
-          const r = response.result
-          this.systemStats.host_cpu_percent = r.host_cpu_percent || 0
-          this.systemStats.cpu_count = r.cpu_count || 0
-          this.systemStats.mem_percent = r.mem_percent || 0
-          this.systemStats.mem_total_mb = r.mem_total_mb || 0
-          this.systemStats.disk_percent = r.disk_percent || 0
-          this.systemStats.disk_free_mb = r.disk_free_mb || 0
-          this.systemStats.disk_total_mb = r.disk_total_mb || 0
+        const [cpuPercent, cpuCount, memPercent, memTotalMb, diskPercent, diskFreeMb, diskTotalMb] = await Promise.all([
+          queryPrometheus(HOST_PROMQL.cpuUsage).then(extractLatestValue).catch(() => null),
+          queryPrometheus(HOST_PROMQL.cpuCount).then(extractLatestValue).catch(() => null),
+          queryPrometheus(HOST_PROMQL.memUsage).then(extractLatestValue).catch(() => null),
+          queryPrometheus(HOST_PROMQL.memTotalMb).then(extractLatestValue).catch(() => null),
+          queryPrometheus(HOST_PROMQL.diskUsage).then(extractLatestValue).catch(() => null),
+          queryPrometheus(HOST_PROMQL.diskFreeMb).then(extractLatestValue).catch(() => null),
+          queryPrometheus(HOST_PROMQL.diskTotalMb).then(extractLatestValue).catch(() => null)
+        ])
+        const values = [cpuPercent, cpuCount, memPercent, memTotalMb, diskPercent, diskFreeMb, diskTotalMb]
+
+        // Only call the backend for missing series. Prometheus remains the
+        // primary source while psutil covers disabled or incomplete targets.
+        let fallback = {}
+        if (values.some(value => value === null)) {
+          const response = await getSystemStats()
+          if (!response.error && response.result) {
+            fallback = response.result
+          }
         }
+        this.systemStats.host_cpu_percent = cpuPercent ?? fallback.host_cpu_percent ?? 0
+        this.systemStats.cpu_count = cpuCount ?? fallback.cpu_count ?? 0
+        this.systemStats.mem_percent = memPercent ?? fallback.mem_percent ?? 0
+        this.systemStats.mem_total_mb = memTotalMb ?? fallback.mem_total_mb ?? 0
+        this.systemStats.disk_percent = diskPercent ?? fallback.disk_percent ?? 0
+        this.systemStats.disk_free_mb = diskFreeMb ?? fallback.disk_free_mb ?? 0
+        this.systemStats.disk_total_mb = diskTotalMb ?? fallback.disk_total_mb ?? 0
       } catch (error) {
         console.error('获取系统资源失败:', error)
       }
@@ -2206,9 +2234,9 @@ export default {
 
     /**
      * Overview node-info group history line charts: CPU / memory / disk
-     * usage percentages and network IO rates. CPU / mem / disk reuse the
-     * qcos_system_* percent gauges (same source as the gauge panels),
-     * network uses node-exporter receive / transmit rates (bytes per
+     * usage percentages and network IO rates. All host series use
+     * node-exporter so current values and history share the same source.
+     * Network receive / transmit rates are bytes per
      * second, auto-scaled via the y-axis formatter).
      */
     async fetchOverviewNodeChartData(id, panel, start, end, step) {
@@ -2220,19 +2248,19 @@ export default {
         switch (id) {
           case 'chart-overview-node-cpu':
             seriesData = [
-              { name: 'CPU 使用率', data: await this.queryPercentRange('qcos_system_host_cpu_percent', 'CPU 使用率', start, end, step) }
+              { name: 'CPU 使用率', data: await this.queryPercentRange(HOST_PROMQL.cpuUsage, 'CPU 使用率', start, end, step) }
             ]
             colors = ['#409eff']
             break
           case 'chart-overview-node-mem':
             seriesData = [
-              { name: '内存使用率', data: await this.queryPercentRange('qcos_system_mem_percent', '内存使用率', start, end, step) }
+              { name: '内存使用率', data: await this.queryPercentRange(HOST_PROMQL.memUsage, '内存使用率', start, end, step) }
             ]
             colors = ['#67c23a']
             break
           case 'chart-overview-node-disk':
             seriesData = [
-              { name: '磁盘使用率', data: await this.queryPercentRange('qcos_system_disk_percent', '磁盘使用率', start, end, step) }
+              { name: '磁盘使用率', data: await this.queryPercentRange(HOST_PROMQL.diskUsage, '磁盘使用率', start, end, step) }
             ]
             colors = ['#e6a23c']
             break
@@ -2320,15 +2348,15 @@ export default {
       let label = ''
       switch (id) {
         case 'gauge-cpu':
-          promql = 'qcos_system_host_cpu_percent'
+          promql = HOST_PROMQL.cpuUsage
           label = 'CPU 使用率'
           break
         case 'gauge-mem':
-          promql = 'qcos_system_mem_percent'
+          promql = HOST_PROMQL.memUsage
           label = '内存使用率'
           break
         case 'gauge-disk':
-          promql = 'qcos_system_disk_percent'
+          promql = HOST_PROMQL.diskUsage
           label = '磁盘使用率'
           break
         default:

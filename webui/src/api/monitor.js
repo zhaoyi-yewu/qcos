@@ -255,7 +255,7 @@ export function extractLatestValue(response) {
     }
     const result = response.data.result
     if (result.length === 0) {
-      return 0
+      return null
     }
     const value = result[0].value
     if (!value || value.length < 2) {
