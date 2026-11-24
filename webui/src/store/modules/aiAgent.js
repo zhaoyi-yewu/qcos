@@ -1003,6 +1003,12 @@ export const useAiAgentStore = defineStore('aiAgent', {
             this._flushMessageQueue()
           },
           onError: (err) => {
+            // AbortController raises AbortError after cancelStreaming has
+            // already rendered the stopped message; keep that state intact.
+            if (err?.name === 'AbortError') {
+              resolve()
+              return
+            }
             console.error('AI chat stream error:', err)
             stopTypewriter()
             const last = this.messages[this.messages.length - 1]
@@ -1057,21 +1063,32 @@ export const useAiAgentStore = defineStore('aiAgent', {
         this.currentAbortController.abort()
         this.currentAbortController = null
       }
+      // Stop queued typewriter updates as well as the network stream so
+      // no late frame can revive the thinking animation after cancellation.
+      if (this._typewriterTimer) {
+        clearInterval(this._typewriterTimer)
+        this._typewriterTimer = null
+      }
+      this._typewriterQueue = []
+      this._typewriterDone = true
+
       const last = this.messages[this.messages.length - 1]
       const lastItem = this.chatItems[this.chatItems.length - 1]
-      if (last && last.role === 'assistant' && last.streaming) {
+      if (last && last.role === 'assistant' && (last.streaming || last.thinking)) {
         last.streaming = false
         last.thinking = false
         last.aborted = true
         if (!last.content) last.content = '[已停止生成]'
         if (lastItem) {
-          // TDesign Chat 0.7.0: use '' so t-chat-list's
-          // textLoading controls the pending animation.
-          lastItem.status = ''
+          lastItem.status = 'stop'
           const answerBlock = lastItem.content.find(
             b => b.type === 'markdown'
           )
           if (answerBlock) answerBlock.data = normalizeDiagramLang(last.content)
+          const reasoningBlock = lastItem.content.find(
+            b => b.type === 'reasoning'
+          )
+          if (reasoningBlock) reasoningBlock.status = 'complete'
         }
       }
       this.streaming = false
