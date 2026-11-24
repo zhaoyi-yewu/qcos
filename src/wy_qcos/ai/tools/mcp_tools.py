@@ -41,10 +41,18 @@ def register_mcp_tools(agent: Agent[AiDeps, str]) -> None:
     """Register all QCOS MCP tools onto a pydantic-ai Agent."""
 
     @agent.tool
-    async def qcos_list_devices(ctx: RunContext[AiDeps]) -> str:
-        """List all available quantum computing devices."""
+    async def qcos_list_devices(
+        ctx: RunContext[AiDeps], details: bool = True
+    ) -> str:
+        """List all available quantum computing devices.
+
+        Args:
+            ctx: Run context with injected dependencies.
+            details: If True, include full physical parameters. If False,
+                return only summary fields to reduce the response size.
+        """
         with ctx.deps.auth_context():
-            return await mcp_server.qcos_list_devices()
+            return await mcp_server.qcos_list_devices(details=details)
 
     @agent.tool
     async def qcos_get_job_status(ctx: RunContext[AiDeps], job_id: str) -> str:
