@@ -48,7 +48,9 @@ class TestMitigationManagerConfigure:
 
     def test_configure_readout(self):
         mgr = MitigationManager()
-        mgr.configure({"readout": {"enabled": True, "calibration_shots": 4096}})
+        mgr.configure({
+            "readout": {"enabled": True, "calibration_shots": 4096}
+        })
         assert mgr.has_enabled()
         assert "readout" in mgr.get_enabled_names()
 
