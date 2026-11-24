@@ -987,7 +987,7 @@ onUnmounted(() => {
      bottom-right corner, regardless of their different labels. */
   box-sizing: border-box;
   width: 160px;
-  opacity: 0.4;
+  opacity: 0.6;
   /* Gradient + ring makes the pill feel like a FAB rather than a tag. */
   background: linear-gradient(
     135deg,
