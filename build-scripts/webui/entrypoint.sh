@@ -16,6 +16,11 @@
 # set variables
 export PS1="(${QCOS_WEBUI_CONTAINER_NAME})[$(pwd)]$ "
 
+# configs
+qcos_webui_template_base_dir=/etc/qcos-template
+qcos_webui_template_config_file_path=${qcos_webui_template_base_dir}/qcos-webui.toml
+qcos_webui_conf_file_path=/etc/qcos/qcos-webui.toml
+
 # create dirs
 mkdir -p /etc/qcos/
 mkdir -p /var/log/qcos/
@@ -25,10 +30,18 @@ mkdir -p /var/log/qcos/
 # to fail with "duplicate location" errors).
 mkdir -p /etc/nginx/qcos/
 
+# check if file /etc/qcos/qcos-webui.toml exists and create it if not
+if [ -f "${qcos_webui_conf_file_path}" ]; then
+  echo "QCOS webui config file: ${qcos_webui_conf_file_path} exists, use it"
+else
+  echo "QCOS webui config file: ${qcos_webui_conf_file_path} not exists. auto generate ...."
+  cp ${qcos_webui_template_config_file_path} ${qcos_webui_conf_file_path}
+fi
+
 # parse qcos-webui.toml and generate runtime artifacts (env, webui-config.json,
 # nginx endpoints.conf); the script is copied into the image at build time
 python3 /usr/local/bin/parse-webui-toml.py \
-  --toml /etc/qcos/qcos-webui.toml \
+  --toml ${qcos_webui_conf_file_path} \
   --env-out /etc/qcos/webui.env \
   --json-out /apps/webui-config.json \
   --nginx-snippet-out /etc/nginx/qcos/endpoints.conf

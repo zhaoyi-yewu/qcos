@@ -43,7 +43,7 @@ RUN set -e && \
 # copy qcos-webui dir
     app_dir=/root/qcos-webui && \
     build_date=`date` && \
-    mkdir -p ${app_dir} && \
+    mkdir -p ${app_dir} /etc/qcos-template && \
     cd ${app_dir} && \
     cp -rf ${BUILD_CONTEXT}/webui/* ${app_dir} && \
 # config system
@@ -52,6 +52,7 @@ RUN set -e && \
     chmod +x /entrypoint.sh && \
     /bin/cp ${BUILD_CONTEXT}/build-scripts/webui/parse-webui-toml.py /usr/local/bin/ && \
     chmod +x /usr/local/bin/parse-webui-toml.py && \
+    /bin/cp ${BUILD_CONTEXT}/etc/qcos/qcos-webui.toml /etc/qcos-template/qcos-webui.toml && \
     echo "LANG=C.UTF-8" > /etc/locale.conf && \
 # copy yum repos and create dirs
     if [ -f "${BUILD_CONTEXT}/openEuler.repo" ]; then mkdir -p /tmp/yum.repos.d/; mv /etc/yum.repos.d/*.repo /tmp/yum.repos.d/; cp ${BUILD_CONTEXT}/*.repo /etc/yum.repos.d/; fi && \
