@@ -84,11 +84,11 @@ RUN set -e && \
     # install packages: dev build needs devDependencies
     # (e.g. vite/eslint for npm run dev)
     if [ "${DEV,,}" = "true" ]; then \
-      npm install --no-audit --verbose; \
+      npm install --no-audit --verbose || (cat /root/.npm/_logs/*.log && exit 1) ; \
       # dev mode: node_modules should installed in parent dir, not source dir
       mv ${app_dir}/node_modules ${app_dir}/.. ; \
     else \
-      npm install --no-audit && \
+      npm install --no-audit --verbose || (cat /root/.npm/_logs/*.log && exit 1) && \
       npm run build:prod && \
       cp -rf ${app_dir}/dist/ /apps && \
       rm -rf ${app_dir} && \

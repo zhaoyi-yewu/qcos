@@ -147,8 +147,8 @@ RUN set -e && \
     && \
 # install python requirements
     cd ${BUILD_CONTEXT}/ && \
-    ${BUILD_CONTEXT}/requirements/export-requirements.py --extra base --no-deps ./pyproject.toml ./requirements.txt && \
-    ${PIPBIN} install --no-cache-dir -r ./requirements.txt && \
+    ${BUILD_CONTEXT}/requirements/export-requirements.py --extra base --no-deps ./pyproject.toml ${BUILD_CONTEXT}/requirements.txt && \
+    ${PIPBIN} install --no-cache-dir -r ${BUILD_CONTEXT}/requirements.txt && \
 # Install isolated venv for drivers that requires extra packages
     ${PYTHONBIN} ${BUILD_CONTEXT}/requirements/install-venvs.py --venv-dir ${VENV_PATH} --default-python3 ${PYTHONBIN} --default-pypy pypy3 && \
 # Create ssh keys

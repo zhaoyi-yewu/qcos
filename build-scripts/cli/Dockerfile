@@ -118,9 +118,9 @@ RUN set -e && \
     ${PYTHONBIN} -m venv /var/lib/qcos/venv/qcos-cli && \
 # install python requirements
     cd ${BUILD_CONTEXT}/build-scripts/cli/ && \
-    ${BUILD_CONTEXT}/requirements/export-requirements.py ./pyproject.toml ./requirements.txt && \
+    ${BUILD_CONTEXT}/requirements/export-requirements.py ./pyproject.toml ${BUILD_CONTEXT}/requirements.txt && \
     source ${venv_dir}/bin/activate ; \
-    pip3 install --no-cache-dir -r ./requirements.txt ; \
+    pip3 install --no-cache-dir -r ${BUILD_CONTEXT}/requirements.txt ; \
     deactivate && \
 # install qcos wheel package
     if [ "${DEV,,}" = "false" ]; then \
